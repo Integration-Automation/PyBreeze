@@ -16,7 +16,7 @@ license-files = ["LICENSE"]
 dependencies = [
     "je-editor", "je_auto_control", "je_web_runner",
     "je_load_density", "je_api_testka", "je-mail-thunder",
-    "automation-file", "PySide6==6.10.1", "test_pioneer", "paramiko"
+    "automation-file", "PySide6==6.10.2", "test_pioneer", "paramiko"
 ]
 classifiers = [
     "Programming Language :: Python :: 3.10",
