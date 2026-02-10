@@ -12,19 +12,6 @@ Follow these rules:
    - suggestion: A concise recommendation for improvement.
 3. If no issues are found, return an empty list.
 
-Output format:
-{
-  "linter_messages": [
-    {
-      "rule_id": "...",
-      "severity": "...",
-      "message": "...",
-      "line": ...,
-      "suggestion": "..."
-    }
-  ]
-}
-
 Now analyze the following code:
 {code_diff}
 """

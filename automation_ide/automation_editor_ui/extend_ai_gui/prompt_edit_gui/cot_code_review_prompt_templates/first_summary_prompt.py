@@ -1,12 +1,6 @@
 FIRST_SUMMARY_TEMPLATE = """
 # PR Summary Template
 
-## Global Rules
-{global_rules}
-
-## PR Description
-{pr_description}
-
 ## Summary Rules
 Generate a first-step Pull Request summary focusing on:
 1. Key changes: Briefly describe the core modifications or new features.

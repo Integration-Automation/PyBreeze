@@ -6,8 +6,6 @@ from automation_ide.automation_editor_ui.extend_ai_gui.prompt_edit_gui.cot_code_
     FIRST_SUMMARY_TEMPLATE
 from automation_ide.automation_editor_ui.extend_ai_gui.prompt_edit_gui.cot_code_review_prompt_templates.global_rule import \
     GLOBAL_RULE_TEMPLATE
-from automation_ide.automation_editor_ui.extend_ai_gui.prompt_edit_gui.cot_code_review_prompt_templates.judge import \
-    JUDGE_TEMPLATE
 from automation_ide.automation_editor_ui.extend_ai_gui.prompt_edit_gui.cot_code_review_prompt_templates.linter import \
     LINTER_TEMPLATE
 from automation_ide.automation_editor_ui.extend_ai_gui.prompt_edit_gui.cot_code_review_prompt_templates.total_summary import \
@@ -21,20 +19,18 @@ COT_TEMPLATE_FILES = [
     "global_rule.md",
     "first_summary_prompt.md",
     "first_code_review.md",
-    "judge.md",
-    "total_summary.md",
     "linter.md",
     "code_smell_detector.md",
+    "total_summary.md",
 ]
 
 COT_TEMPLATE_RELATION = {
     "global_rule.md": GLOBAL_RULE_TEMPLATE,
     "first_summary_prompt.md": FIRST_SUMMARY_TEMPLATE,
     "first_code_review.md": FIRST_CODE_REVIEW_TEMPLATE,
-    "judge.md": JUDGE_TEMPLATE,
-    "total_summary.md": TOTAL_SUMMARY_TEMPLATE,
     "linter.md": LINTER_TEMPLATE,
     "code_smell_detector.md": CODE_SMELL_DETECTOR_TEMPLATE,
+    "total_summary.md": TOTAL_SUMMARY_TEMPLATE,
 }
 
 SKILLS_TEMPLATE_FILES = [

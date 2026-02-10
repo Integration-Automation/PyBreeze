@@ -57,7 +57,7 @@ class CoTPromptEditor(QWidget):
         self.save_button.clicked.connect(self.save_file)
 
         self.reload_button = QPushButton(language_wrapper.language_word_dict.get(
-            "cot_cot_prompt_editor_button_reload_file"
+            "cot_prompt_editor_button_reload_file"
         ))
         self.reload_button.clicked.connect(lambda: self.load_file_content(self.file_selector.currentIndex()))
 

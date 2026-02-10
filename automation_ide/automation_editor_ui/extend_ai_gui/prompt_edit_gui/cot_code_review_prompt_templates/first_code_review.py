@@ -1,12 +1,6 @@
 FIRST_CODE_REVIEW_TEMPLATE = """
 # Code Review Template
 
-## Global Rules
-{global_rules}
-
-## PR Description
-{pr_description}
-
 ## Review Rules
 Perform a first-step code review focusing on:
 1. Code readability (indentation, formatting, comments).

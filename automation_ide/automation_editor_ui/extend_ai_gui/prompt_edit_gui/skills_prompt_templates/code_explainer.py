@@ -17,5 +17,5 @@ Format:
 - Example usage if relevant.
 
 Code:
-{code}
+{code_diff}
 """
