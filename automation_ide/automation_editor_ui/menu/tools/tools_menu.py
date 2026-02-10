@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from PySide6.QtGui import QAction, Qt
 from je_editor import language_wrapper
 from je_editor.pyside_ui.main_ui.dock.destroy_dock import DestroyDock
+from je_editor.utils.logging.loggin_instance import jeditor_logger
 
 from automation_ide.automation_editor_ui.connect_gui.ssh.ssh_main_widget import SSHMainWidget
 from automation_ide.automation_editor_ui.connect_gui.url.ai_code_review_gui import AICodeReviewClient
