@@ -7,73 +7,56 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
-from automation_ide.automation_editor_ui.prompt_edit_gui.prompt_templates.first_code_review import FIRST_CODE_REVIEW
-from automation_ide.automation_editor_ui.prompt_edit_gui.prompt_templates.first_summary_prompt import \
-    FIRST_SUMMARY_PROMPT
-from automation_ide.automation_editor_ui.prompt_edit_gui.prompt_templates.global_rule import GLOBAL_RULE_TEMPLATE
-from automation_ide.automation_editor_ui.prompt_edit_gui.prompt_templates.judge import JUDGE_TEMPLATE
-from automation_ide.automation_editor_ui.prompt_edit_gui.prompt_templates.total_summary import TOTAL_SUMMARY_TEMPLATE
+from automation_ide.automation_editor_ui.extend_ai_gui.ai_gui_global_variable import SKILLS_TEMPLATE_FILES, \
+    SKILLS_TEMPLATE_RELATION
 
 
-class PromptEditor(QWidget):
-    def __init__(self, prompt_files=None, parent=None):
+class SkillPromptEditor(QWidget):
+    def __init__(self, skill_files=None, parent=None):
         super().__init__(parent)
-        self.prompt_files = prompt_files or [
-            "global_rule.md",
-            "first_summary_prompt.md",
-            "first_code_review.md",
-            "judge.md",
-            "total_summary.md"
-        ]
+        self.skill_files = skill_files or SKILLS_TEMPLATE_FILES
 
         # 對應檔案名稱與模板內容
-        self.templates = {
-            "global_rule.md": GLOBAL_RULE_TEMPLATE,
-            "first_summary_prompt.md": FIRST_SUMMARY_PROMPT,
-            "first_code_review.md": FIRST_CODE_REVIEW,
-            "judge.md": JUDGE_TEMPLATE,
-            "total_summary.md": TOTAL_SUMMARY_TEMPLATE,
-        }
+        self.templates = SKILLS_TEMPLATE_RELATION
 
         self.setWindowTitle(language_wrapper.language_word_dict.get(
-            "prompt_editor_window_title"
-        ))  # 視窗標題：Prompt 編輯器
+            "skill_prompt_editor_window_title"
+        ))  # 視窗標題：Skill Prompt 編輯器
 
-        # --- Layouts (版面配置) ---
+        # --- Layouts ---
         main_layout = QVBoxLayout(self)
-        top_layout = QHBoxLayout()
         editor_layout = QHBoxLayout()
         bottom_layout = QHBoxLayout()
 
-        # --- ComboBox for selecting files (下拉選單選擇檔案) ---
+        # --- ComboBox for selecting files ---
         self.file_selector = QComboBox()
-        self.file_selector.addItems(self.prompt_files)
+        self.file_selector.addItems(self.skill_files)
         self.file_selector.currentIndexChanged.connect(self.load_file_content)
 
-        # --- Left Editable panel (左邊編輯區塊) ---
+        # --- Editable panel ---
         self.middle_editor = QTextEdit()
-        prompt_group = QGroupBox(language_wrapper.language_word_dict.get(
-            "prompt_editor_groupbox_edit_file_content"
-        ))  # 左邊編輯檔案內容
+        skill_group = QGroupBox(language_wrapper.language_word_dict.get(
+            "skill_prompt_editor_groupbox_edit_file_content"
+        ))
         middle_layout = QVBoxLayout()
         middle_layout.addWidget(self.middle_editor)
-        prompt_group.setLayout(middle_layout)
+        skill_group.setLayout(middle_layout)
 
-        editor_layout.addWidget(prompt_group, 1)
+        editor_layout.addWidget(skill_group, 1)
 
         # --- Buttons ---
         self.create_button = QPushButton(language_wrapper.language_word_dict.get(
-            "prompt_editor_button_create_file"
+            "skill_prompt_editor_button_create_file"
         ))
         self.create_button.clicked.connect(self.create_file)
 
         self.save_button = QPushButton(language_wrapper.language_word_dict.get(
-            "prompt_editor_button_save_file"
+            "skill_prompt_editor_button_save_file"
         ))
         self.save_button.clicked.connect(self.save_file)
 
         self.reload_button = QPushButton(language_wrapper.language_word_dict.get(
-            "prompt_editor_button_reload_file"
+            "skill_prompt_editor_button_reload_file"
         ))
         self.reload_button.clicked.connect(lambda: self.load_file_content(self.file_selector.currentIndex()))
 
@@ -83,21 +66,20 @@ class PromptEditor(QWidget):
         bottom_layout.addWidget(self.save_button)
         bottom_layout.addWidget(self.create_button)
 
-        # --- Combine layouts (組合版面配置) ---
-        main_layout.addLayout(top_layout)
+        # --- Combine layouts ---
         main_layout.addLayout(editor_layout)
         main_layout.addLayout(bottom_layout)
 
-        # --- FileSystemWatcher (檔案監控器) ---
-        self.watcher = QFileSystemWatcher(self.prompt_files)
+        # --- FileSystemWatcher ---
+        self.watcher = QFileSystemWatcher(self.skill_files)
         self.watcher.fileChanged.connect(self.on_file_changed)
 
         # 預設載入第一個檔案
         self.load_file_content(0)
 
     def load_file_content(self, index):
-        """載入選擇的檔案內容到左邊編輯區"""
-        filename = self.prompt_files[index]
+        """載入選擇的檔案內容到編輯區"""
+        filename = self.skill_files[index]
         self.current_file = filename
         if os.path.exists(filename):
             with open(filename, "r", encoding="utf-8") as f:
@@ -105,7 +87,7 @@ class PromptEditor(QWidget):
             self.middle_editor.setPlainText(content)
         else:
             self.middle_editor.setPlainText(language_wrapper.language_word_dict.get(
-                "prompt_editor_file_not_exist"
+                "skill_prompt_editor_file_not_exist"
             ).format(filename=filename))
 
     def create_file(self):
@@ -114,8 +96,9 @@ class PromptEditor(QWidget):
         if os.path.exists(filename):
             QMessageBox.information(
                 self,
-                language_wrapper.language_word_dict.get("prompt_editor_msgbox_info_title"),
-                language_wrapper.language_word_dict.get("prompt_editor_msgbox_file_exists").format(filename=filename))
+                language_wrapper.language_word_dict.get("skill_prompt_editor_msgbox_info_title"),
+                language_wrapper.language_word_dict.get("skill_prompt_editor_msgbox_file_exists").format(
+                    filename=filename))
             return
 
         template_content = self.templates.get(filename, "")
@@ -124,8 +107,9 @@ class PromptEditor(QWidget):
 
         QMessageBox.information(
             self,
-            language_wrapper.language_word_dict.get("prompt_editor_msgbox_success_title"),
-            language_wrapper.language_word_dict.get("prompt_editor_msgbox_file_created").format(filename=filename))
+            language_wrapper.language_word_dict.get("skill_prompt_editor_msgbox_success_title"),
+            language_wrapper.language_word_dict.get("skill_prompt_editor_msgbox_file_created").format(
+                filename=filename))
         self.load_file_content(self.file_selector.currentIndex())
 
     def on_file_changed(self, path):
@@ -134,12 +118,12 @@ class PromptEditor(QWidget):
             self.load_file_content(self.file_selector.currentIndex())
 
     def save_file(self):
-        """將左邊編輯區內容儲存到目前檔案"""
+        """將編輯區內容儲存到目前檔案"""
         if not hasattr(self, "current_file"):
             QMessageBox.warning(
                 self,
-                language_wrapper.language_word_dict.get("prompt_editor_msgbox_error_title"),
-                language_wrapper.language_word_dict.get("prompt_editor_msgbox_no_file_selected"))
+                language_wrapper.language_word_dict.get("skill_prompt_editor_msgbox_error_title"),
+                language_wrapper.language_word_dict.get("skill_prompt_editor_msgbox_no_file_selected"))
             return
 
         content = self.middle_editor.toPlainText()
@@ -147,6 +131,6 @@ class PromptEditor(QWidget):
             f.write(content)
         QMessageBox.information(
             self,
-            language_wrapper.language_word_dict.get("prompt_editor_msgbox_success_title"),
-            language_wrapper.language_word_dict.get("prompt_editor_msgbox_file_saved").format(
+            language_wrapper.language_word_dict.get("skill_prompt_editor_msgbox_success_title"),
+            language_wrapper.language_word_dict.get("skill_prompt_editor_msgbox_file_saved").format(
                 filename=self.current_file))

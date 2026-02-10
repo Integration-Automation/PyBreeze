@@ -1,12 +1,12 @@
-# Rename to dev version
-# This is dev version
+# Rename to build stable version
+# This is stable version
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "automation_ide_dev"
-version = "0.0.67"
+name = "automation_ide"
+version = "1.0.3"
 authors = [
     { name = "JE-Chen", email = "jechenmailman@gmail.com" },
 ]
@@ -14,9 +14,9 @@ description = "AutomationEditor for multi automation"
 requires-python = ">=3.10"
 license-files = ["LICENSE"]
 dependencies = [
-    "je_editor_dev", "je_auto_control", "je_web_runner",
+    "je-editor", "je_auto_control", "je_web_runner",
     "je_load_density", "je_api_testka", "je-mail-thunder",
-    "automation-file", "PySide6==6.10.1", "test_pioneer", "paramiko"
+    "automation-file", "PySide6==6.10.2", "test_pioneer", "paramiko"
 ]
 classifiers = [
     "Programming Language :: Python :: 3.10",
@@ -34,7 +34,6 @@ Code = "https://github.com/Intergration-Automation-Testing/AutomationEditor"
 [project.readme]
 file = "README.md"
 content-type = "text/markdown"
-
 
 [tool.setuptools.packages]
 find = { namespaces = false }
