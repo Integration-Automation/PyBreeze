@@ -1,5 +1,7 @@
 # PyBreeze: The Automation-First IDE
 
+![Main GUI](images/main_gui.png)
+
 ---
 
 ## Core Capabilities: Four-Dimensional Automation
