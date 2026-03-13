@@ -12,7 +12,7 @@ from automation_ide.automation_editor_ui.connect_gui.url.ai_code_review_gui impo
 from automation_ide.automation_editor_ui.extend_ai_gui.prompt_edit_gui.cot_prompt_editor_widget import CoTPromptEditor
 from automation_ide.automation_editor_ui.extend_ai_gui.prompt_edit_gui.skills_prompt_editor_widget import \
     SkillPromptEditor
-from automation_ide.automation_editor_ui.extend_ai_gui.skills_send_gui import SkillsSendGUI
+from automation_ide.automation_editor_ui.extend_ai_gui.skills.skills_send_gui import SkillsSendGUI
 
 if TYPE_CHECKING:
     from automation_ide.automation_editor_ui.editor_main.main_ui import AutomationEditor

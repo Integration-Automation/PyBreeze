@@ -4,8 +4,6 @@ from automation_ide.automation_editor_ui.extend_ai_gui.prompt_edit_gui.cot_code_
     FIRST_CODE_REVIEW_TEMPLATE
 from automation_ide.automation_editor_ui.extend_ai_gui.prompt_edit_gui.cot_code_review_prompt_templates.first_summary_prompt import \
     FIRST_SUMMARY_TEMPLATE
-from automation_ide.automation_editor_ui.extend_ai_gui.prompt_edit_gui.cot_code_review_prompt_templates.global_rule import \
-    GLOBAL_RULE_TEMPLATE
 from automation_ide.automation_editor_ui.extend_ai_gui.prompt_edit_gui.cot_code_review_prompt_templates.linter import \
     LINTER_TEMPLATE
 from automation_ide.automation_editor_ui.extend_ai_gui.prompt_edit_gui.cot_code_review_prompt_templates.total_summary import \
@@ -16,7 +14,6 @@ from automation_ide.automation_editor_ui.extend_ai_gui.prompt_edit_gui.skills_pr
     CODE_REVIEW_SKILL_TEMPLATE
 
 COT_TEMPLATE_FILES = [
-    "global_rule.md",
     "first_summary_prompt.md",
     "first_code_review.md",
     "linter.md",
@@ -25,7 +22,6 @@ COT_TEMPLATE_FILES = [
 ]
 
 COT_TEMPLATE_RELATION = {
-    "global_rule.md": GLOBAL_RULE_TEMPLATE,
     "first_summary_prompt.md": FIRST_SUMMARY_TEMPLATE,
     "first_code_review.md": FIRST_CODE_REVIEW_TEMPLATE,
     "linter.md": LINTER_TEMPLATE,
