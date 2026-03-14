@@ -6,7 +6,7 @@ je-load-density
 je-auto-control
 je-web-runner
 je-mail-thunder
-automation_ide_dev
+pybreeze_dev
 sphinx
 sphinx-rtd-theme
 PySide6

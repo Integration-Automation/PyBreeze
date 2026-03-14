@@ -1,2 +1,2 @@
-automation_ide
+pybreeze
 PySide6
