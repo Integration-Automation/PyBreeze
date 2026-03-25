@@ -8,7 +8,7 @@ from je_load_density.gui.main_widget import LoadDensityWidget
 from pybreeze.pybreeze_ui.menu.menu_utils import open_web_browser
 
 if TYPE_CHECKING:
-    from pybreeze.pybreeze_ui.editor_main.main_ui import AutomationEditor
+    from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
 import sys
 
 from PySide6.QtGui import QAction
@@ -18,7 +18,7 @@ from pybreeze.extend.process_executor.load_density.load_density_process import \
     call_load_density_multi_file_and_send
 
 
-def set_load_density_menu(ui_we_want_to_set: AutomationEditor):
+def set_load_density_menu(ui_we_want_to_set: PyBreezeMainWindow):
     """
     Build menu include LoadDensity feature.
     :param ui_we_want_to_set: main window to add menu.
@@ -131,7 +131,7 @@ def create_project() -> None:
         print(repr(error), file=sys.stderr)
 
 
-def add_load_density_gui(ui_we_want_to_set: AutomationEditor) -> None:
+def add_load_density_gui(ui_we_want_to_set: PyBreezeMainWindow) -> None:
     ui_we_want_to_set.tab_widget.addTab(
         LoadDensityWidget(), "LoadDensity GUI"
     )

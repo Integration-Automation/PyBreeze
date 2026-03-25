@@ -5,7 +5,7 @@ def update_english_word_dict():
     english_word_dict.update(
         {
             # application name
-            "automation_editor_application_name": "Automation Editor",
+            "application_name": "PyBreeze",
             # Menubar
             "automation_menu_label": "Automation",
             "install_menu_label": "Install",
@@ -13,6 +13,8 @@ def update_english_word_dict():
             "run_label": "Run",
             "help_label": "HELP",
             "project_label": "Project",
+            # Tab tools menu
+            "tab_menu_jupyterlab_tab_name": "JupyterLab",
             # APITestka Menu
             "apitestka_menu_label": "APITestka",
             "apitestka_run_script_label": "Run APITestka Script",

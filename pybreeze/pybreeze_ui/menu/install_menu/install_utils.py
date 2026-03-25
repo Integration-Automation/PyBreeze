@@ -5,10 +5,10 @@ from typing import TYPE_CHECKING
 from je_editor import EditorWidget, ShellManager
 
 if TYPE_CHECKING:
-    from pybreeze.pybreeze_ui.editor_main.main_ui import AutomationEditor
+    from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
 
 
-def install_package(package_text: str, ui_we_want_to_set: AutomationEditor) -> None:
+def install_package(package_text: str, ui_we_want_to_set: PyBreezeMainWindow) -> None:
     widget = ui_we_want_to_set.tab_widget.currentWidget()
     if isinstance(widget, EditorWidget):
         widget.python_compiler = ui_we_want_to_set.python_compiler

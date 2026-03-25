@@ -8,7 +8,7 @@ from je_editor import language_wrapper
 from pybreeze.pybreeze_ui.menu.menu_utils import open_web_browser
 
 if TYPE_CHECKING:
-    from pybreeze.pybreeze_ui.editor_main.main_ui import AutomationEditor
+    from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
 import sys
 
 from PySide6.QtGui import QAction
@@ -17,7 +17,7 @@ from pybreeze.extend.process_executor.api_testka.api_testka_process import call_
     call_api_testka_with_send, call_api_testka_multi_file, call_api_testka_multi_file_and_send
 
 
-def set_apitestka_menu(ui_we_want_to_set: AutomationEditor):
+def set_apitestka_menu(ui_we_want_to_set: PyBreezeMainWindow):
     """
     Build menu include APITestka feature.
     :param ui_we_want_to_set: main window to add menu.
@@ -131,7 +131,7 @@ def create_project() -> None:
         print(repr(error), file=sys.stderr)
 
 
-def add_api_testka_gui(ui_we_want_to_set: AutomationEditor) -> None:
+def add_api_testka_gui(ui_we_want_to_set: PyBreezeMainWindow) -> None:
     ui_we_want_to_set.tab_widget.addTab(
         APITestkaWidget(), "APITestka GUI"
     )

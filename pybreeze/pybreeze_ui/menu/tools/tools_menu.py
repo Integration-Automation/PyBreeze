@@ -15,10 +15,10 @@ from pybreeze.pybreeze_ui.extend_ai_gui.prompt_edit_gui.skills_prompt_editor_wid
 from pybreeze.pybreeze_ui.extend_ai_gui.skills.skills_send_gui import SkillsSendGUI
 
 if TYPE_CHECKING:
-    from pybreeze.pybreeze_ui.editor_main.main_ui import AutomationEditor
+    from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
 
 
-def build_tools_menu(ui_we_want_to_set: AutomationEditor):
+def build_tools_menu(ui_we_want_to_set: PyBreezeMainWindow):
     # Menus
     ui_we_want_to_set.tools_menu = ui_we_want_to_set.menu.addMenu(language_wrapper.language_word_dict.get(
         "extend_tools_menu_tools_menu"
@@ -79,7 +79,7 @@ def build_tools_menu(ui_we_want_to_set: AutomationEditor):
     ui_we_want_to_set.tools_ai_menu.addAction(ui_we_want_to_set.tools_ai_skill_send_action)
 
 
-def extend_dock_menu(ui_we_want_to_set: AutomationEditor):
+def extend_dock_menu(ui_we_want_to_set: PyBreezeMainWindow):
     # Sub menu
     ui_we_want_to_set.dock_ssh_menu = ui_we_want_to_set.dock_menu.addMenu(
         language_wrapper.language_word_dict.get("extend_tools_menu_dock_ssh_menu")
@@ -121,7 +121,7 @@ def extend_dock_menu(ui_we_want_to_set: AutomationEditor):
         lambda: add_dock(ui_we_want_to_set, "SkillSendGUI"))
     ui_we_want_to_set.dock_ai_menu.addAction(ui_we_want_to_set.tools_skill_send_dock_action)
 
-def add_dock(ui_we_want_to_set: AutomationEditor, widget_type: str = None):
+def add_dock(ui_we_want_to_set: PyBreezeMainWindow, widget_type: str = None):
     jeditor_logger.info("build_dock_menu.py add_dock_widget "
                         f"ui_we_want_to_set: {ui_we_want_to_set} "
                         f"widget_type: {widget_type}")

@@ -17,19 +17,19 @@ from je_editor.utils.venv_check.check_venv import check_and_choose_venv
 from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
 
 if TYPE_CHECKING:
-    from pybreeze.pybreeze_ui.editor_main.main_ui import AutomationEditor
+    from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
 
 
 class TestPioneerProcess(object):
 
     def __init__(
             self,
-            main_window: AutomationEditor,
+            main_window: PyBreezeMainWindow,
             executable_path: str,
             program_buffer: int = 1024000,
             encoding: str = "utf-8",
     ):
-        self._main_window: AutomationEditor = main_window
+        self._main_window: PyBreezeMainWindow = main_window
         self._widget: QWidget = main_window.tab_widget.currentWidget()
         # Code window init
         self._code_window = CodeWindow()
@@ -175,7 +175,7 @@ class TestPioneerProcess(object):
         self._timer.start()
 
 
-def init_and_start_test_pioneer_process(ui_we_want_to_set: AutomationEditor, file_path: str):
+def init_and_start_test_pioneer_process(ui_we_want_to_set: PyBreezeMainWindow, file_path: str):
     test_pioneer_process_manager = TestPioneerProcess(
         main_window=ui_we_want_to_set, executable_path=file_path)
     test_pioneer_process_manager.start_test_pioneer_process()

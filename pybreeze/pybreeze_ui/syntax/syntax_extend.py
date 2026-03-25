@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from je_editor import EditorWidget
 
 if TYPE_CHECKING:
-    from pybreeze.pybreeze_ui.editor_main.main_ui import AutomationEditor
+    from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
 from PySide6.QtGui import QColor
 
 from pybreeze.pybreeze_ui.syntax.syntax_keyword import \
@@ -15,7 +15,7 @@ from pybreeze.utils.manager.package_manager.package_manager_class import package
 from je_editor import syntax_extend_setting_dict
 
 
-def syntax_extend_package(main_window: AutomationEditor) -> None:
+def syntax_extend_package(main_window: PyBreezeMainWindow) -> None:
     syntax_extend_setting_dict.update({".json": {}})
     for package in package_manager.syntax_check_list:
         syntax_extend_setting_dict.get(".json").update(

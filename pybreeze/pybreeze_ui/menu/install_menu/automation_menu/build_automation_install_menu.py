@@ -8,10 +8,10 @@ from je_editor import language_wrapper
 from pybreeze.pybreeze_ui.menu.install_menu.install_utils import install_package
 
 if TYPE_CHECKING:
-    from pybreeze.pybreeze_ui.editor_main.main_ui import AutomationEditor
+    from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
 
 
-def build_automation_install_menu(ui_we_want_to_set: AutomationEditor):
+def build_automation_install_menu(ui_we_want_to_set: PyBreezeMainWindow):
     ui_we_want_to_set.install_automation_menu = ui_we_want_to_set.install_menu.addMenu(
         language_wrapper.language_word_dict.get("automation_menu_label"))
     # Try to install AutoControl
@@ -58,25 +58,25 @@ def build_automation_install_menu(ui_we_want_to_set: AutomationEditor):
     ui_we_want_to_set.install_automation_menu.addAction(ui_we_want_to_set.install_mail_thunder_action)
 
 
-def install_autocontrol(ui_we_want_to_set: AutomationEditor) -> None:
+def install_autocontrol(ui_we_want_to_set: PyBreezeMainWindow) -> None:
     install_package("je_auto_control", ui_we_want_to_set)
 
 
-def install_api_testka(ui_we_want_to_set: AutomationEditor) -> None:
+def install_api_testka(ui_we_want_to_set: PyBreezeMainWindow) -> None:
     install_package("je_api_testka", ui_we_want_to_set)
 
 
-def install_load_density(ui_we_want_to_set: AutomationEditor) -> None:
+def install_load_density(ui_we_want_to_set: PyBreezeMainWindow) -> None:
     install_package("je_load_density", ui_we_want_to_set)
 
 
-def install_web_runner(ui_we_want_to_set: AutomationEditor) -> None:
+def install_web_runner(ui_we_want_to_set: PyBreezeMainWindow) -> None:
     install_package("je_web_runner", ui_we_want_to_set)
 
 
-def install_automation_file(ui_we_want_to_set: AutomationEditor) -> None:
+def install_automation_file(ui_we_want_to_set: PyBreezeMainWindow) -> None:
     install_package("automation_file", ui_we_want_to_set)
 
 
-def install_mail_thunder_file(ui_we_want_to_set: AutomationEditor) -> None:
+def install_mail_thunder_file(ui_we_want_to_set: PyBreezeMainWindow) -> None:
     install_package("je_mail_thunder", ui_we_want_to_set)

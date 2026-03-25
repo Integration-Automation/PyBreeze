@@ -1,11 +1,13 @@
 import logging
 from logging.handlers import RotatingFileHandler
 
+import pybreeze
+
 # 設定 root logger 等級 Set root logger level
 logging.root.setLevel(logging.DEBUG)
 
 # 建立 AutoControlGUI 專用 logger Create dedicated logger
-automation_ide_logger = logging.getLogger("AutomationIDE")
+pybreeze_logger = logging.getLogger("AutomationIDE")
 
 # 日誌格式 Formatter
 formatter = logging.Formatter(
@@ -13,7 +15,7 @@ formatter = logging.Formatter(
 )
 
 
-class AutomationIDELogger(RotatingFileHandler):
+class PyBreezeLogger(RotatingFileHandler):
     """
     AutoControlGUILoggingHandler
     自訂日誌處理器，繼承 RotatingFileHandler
@@ -46,5 +48,5 @@ class AutomationIDELogger(RotatingFileHandler):
 
 
 # 建立並加入檔案處理器 Add file handler to logger
-file_handler = AutomationIDELogger()
-automation_ide_logger.addHandler(file_handler)
+file_handler = PyBreezeLogger()
+pybreeze_logger.addHandler(file_handler)

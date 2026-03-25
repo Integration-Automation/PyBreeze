@@ -7,7 +7,7 @@
   },
   {
    "optionDest": "filenames",
-   "value": "C:/CodeWorkspace/Python/AutomationIDE/exe/start_automation_editor.py"
+   "value": "C:/CodeWorkspace/Python/PyBreeze/exe/start_pybreeze.py"
   },
   {
    "optionDest": "onefile",
@@ -19,11 +19,11 @@
   },
   {
    "optionDest": "icon_file",
-   "value": "C:/CodeWorkspace/Python/AutomationIDE/exe/automation_ide.ico"
+   "value": "C:/CodeWorkspace/Python/PyBreeze/exe/pybreeze_icon.ico"
   },
   {
    "optionDest": "name",
-   "value": "AutomationIDE"
+   "value": "PyBreeze"
   },
   {
    "optionDest": "clean_build",
@@ -59,23 +59,23 @@
   },
   {
    "optionDest": "datas",
-   "value": "C:/CodeWorkspace/Python/AutomationIDE/.venv/Lib/site-packages/ipython-9.8.0.dist-info;ipython-9.8.0.dist-info/"
+   "value": "C:/CodeWorkspace/Python/PyBreeze/.venv/Lib/site-packages/ipython-9.11.0.dist-info;ipython-9.11.0.dist-info/"
   },
   {
    "optionDest": "datas",
-   "value": "C:/CodeWorkspace/Python/AutomationIDE/.venv/Lib/site-packages/IPython;.IPython/"
+   "value": "C:/CodeWorkspace/Python/PyBreeze/.venv/Lib/site-packages/IPython;.IPython/"
   },
   {
    "optionDest": "datas",
-   "value": "C:/CodeWorkspace/Python/AutomationIDE/.venv/Lib/site-packages/ipykernel-7.1.0.dist-info;ipykernel-7.1.0.dist-info/"
+   "value": "C:/CodeWorkspace/Python/PyBreeze/.venv/Lib/site-packages/ipykernel-7.2.0.dist-info;ipykernel-7.2.0.dist-info/"
   },
   {
    "optionDest": "datas",
-   "value": "C:/CodeWorkspace/Python/AutomationIDE/.venv/Lib/site-packages/ipykernel;ipykernel/"
+   "value": "C:/CodeWorkspace/Python/PyBreeze/.venv/Lib/site-packages/ipykernel;ipykernel/"
   },
   {
    "optionDest": "pathex",
-   "value": "C:/CodeWorkspace/Python/AutomationIDE/.venv"
+   "value": "C:/CodeWorkspace/Python/PyBreeze/.venv"
   }
  ],
  "nonPyinstallerOptions": {

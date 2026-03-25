@@ -5,7 +5,7 @@ def update_traditional_chinese_word_dict():
     traditional_chinese_word_dict.update(
         {
             # application name
-            "automation_editor_application_name": "Automation Editor",
+            "application_name": "PyBreeze",
             # Menubar
             "automation_menu_label": "自動化",
             "install_menu_label": "安裝",
@@ -13,6 +13,8 @@ def update_traditional_chinese_word_dict():
             "run_label": "運行",
             "help_label": "幫助",
             "project_label": "專案",
+            # Tab tools menu
+            "tab_menu_jupyterlab_tab_name": "JupyterLab",
             # APITestka Menu
             "apitestka_menu_label": "APITestka",
             "apitestka_run_script_label": "運行 APITestka 腳本",

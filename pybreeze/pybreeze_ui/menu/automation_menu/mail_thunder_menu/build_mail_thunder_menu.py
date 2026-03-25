@@ -7,7 +7,7 @@ from je_editor import language_wrapper
 from pybreeze.pybreeze_ui.menu.menu_utils import open_web_browser
 
 if TYPE_CHECKING:
-    from pybreeze.pybreeze_ui.editor_main.main_ui import AutomationEditor
+    from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
 import sys
 
 from PySide6.QtGui import QAction
@@ -15,7 +15,7 @@ from PySide6.QtGui import QAction
 from pybreeze.extend.process_executor.mail_thunder.mail_thunder_process import call_mail_thunder
 
 
-def set_mail_thunder_menu(ui_we_want_to_set: AutomationEditor):
+def set_mail_thunder_menu(ui_we_want_to_set: PyBreezeMainWindow):
     """
     Build menu include LoadDensity feature.
     :param ui_we_want_to_set: main window to add menu.
