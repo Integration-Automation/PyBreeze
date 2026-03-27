@@ -13,11 +13,11 @@ from pybreeze.utils.exception.exception_tags import wrong_test_data_format_excep
 from pybreeze.utils.exception.exceptions import ITETestExecutorException
 
 if TYPE_CHECKING:
-    from pybreeze.pybreeze_ui.editor_main.main_ui import AutomationEditor
+    from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
 
 
 def build_process(
-        main_window: AutomationEditor,
+        main_window: PyBreezeMainWindow,
         package: str,
         exec_str: Union[str, None] = None,
         send_mail: bool = False,
@@ -42,7 +42,7 @@ def build_process(
 
 
 def start_process(
-        main_window: AutomationEditor,
+        main_window: PyBreezeMainWindow,
         package: str,
         test_format_code: str,
         send_mail: bool = False,

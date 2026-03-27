@@ -7,7 +7,7 @@ from je_editor import language_wrapper
 from pybreeze.pybreeze_ui.menu.menu_utils import open_web_browser
 
 if TYPE_CHECKING:
-    from pybreeze.pybreeze_ui.editor_main.main_ui import AutomationEditor
+    from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
 import sys
 
 from PySide6.QtGui import QAction
@@ -16,7 +16,7 @@ from pybreeze.extend.process_executor.web_runner.web_runner_process import call_
     call_web_runner_test_with_send, call_web_runner_test_multi_file, call_web_runner_test_multi_file_and_send
 
 
-def set_web_runner_menu(ui_we_want_to_set: AutomationEditor):
+def set_web_runner_menu(ui_we_want_to_set: PyBreezeMainWindow):
     """
     Build menu include WebRunner feature.
     :param ui_we_want_to_set: main window to add menu.

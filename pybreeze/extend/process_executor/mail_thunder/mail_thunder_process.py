@@ -5,11 +5,11 @@ from typing import TYPE_CHECKING, Union
 from pybreeze.extend.process_executor.process_executor_utils import build_process
 
 if TYPE_CHECKING:
-    from pybreeze.pybreeze_ui.editor_main.main_ui import AutomationEditor
+    from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
 
 
 def call_mail_thunder(
-        main_window: AutomationEditor,
+        main_window: PyBreezeMainWindow,
         exec_str: Union[str, None] = None,
         program_buffer: int = 1024000
 ):

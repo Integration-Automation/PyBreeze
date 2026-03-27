@@ -6,17 +6,18 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pybreeze_dev"
-version = "1.0.5"
+version = "1.0.10"
 authors = [
     { name = "JE-Chen", email = "jechenmailman@gmail.com" },
 ]
-description = "AutomationEditor for multi automation"
+description = "IDE for multi automation"
 requires-python = ">=3.10"
 license-files = ["LICENSE"]
 dependencies = [
-    "je_editor_dev", "je_auto_control", "je_web_runner",
+    "je-editor", "je_auto_control", "je_web_runner",
     "je_load_density", "je_api_testka", "je-mail-thunder",
-    "automation-file", "PySide6==6.10.2", "test_pioneer", "paramiko"
+    "automation-file", "PySide6==6.11.0", "test_pioneer", "paramiko",
+    "jupyterlab",
 ]
 classifiers = [
     "Programming Language :: Python :: 3.10",

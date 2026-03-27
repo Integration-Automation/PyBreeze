@@ -4,17 +4,15 @@ from os import environ
 from pathlib import Path
 from typing import List, Dict, Type
 
-from pybreeze.utils.logging.logger import automation_ide_logger
-
 environ["LOCUST_SKIP_MONKEY_PATCH"] = "1"
 
 from PySide6.QtCore import QTimer, QCoreApplication
 from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QApplication, QWidget, QSystemTrayIcon
+from PySide6.QtWidgets import QApplication, QWidget
 from je_editor import EditorMain, language_wrapper
 from qt_material import apply_stylesheet
 
-from pybreeze.pybreeze_ui.extend_multi_language.update_language_dict import update_language_dict
+from pybreeze.extend_multi_language.update_language_dict import update_language_dict
 from pybreeze.pybreeze_ui.menu.build_menubar import add_menu_to_menubar
 from pybreeze.pybreeze_ui.syntax.syntax_extend import \
     syntax_extend_package
@@ -24,7 +22,7 @@ EDITOR_EXTEND_TAB: Dict[str, Type[QWidget]] = {
 }
 
 
-class AutomationEditor(EditorMain):
+class PyBreezeMainWindow(EditorMain):
 
     def __init__(self, debug_mode: bool = False, show_system_tray_ray: bool = False, extend: bool = False) -> None:
         super().__init__(debug_mode, show_system_tray_ray, extend=True)
@@ -40,20 +38,20 @@ class AutomationEditor(EditorMain):
         update_language_dict()
 
         # Title
-        self.setWindowTitle(language_wrapper.language_word_dict.get("automation_editor_application_name"))
-        self.setToolTip(language_wrapper.language_word_dict.get("automation_editor_application_name"))
+        self.setWindowTitle(language_wrapper.language_word_dict.get("application_name"))
+        self.setToolTip(language_wrapper.language_word_dict.get("application_name"))
 
         # Windows 系統專用：設定應用程式 ID
         # Windows only: set application ID
         if not extend:
-            self.id = language_wrapper.language_word_dict.get("automation_editor_application_name")
+            self.id = language_wrapper.language_word_dict.get("application_name")
             if sys.platform in ["win32", "cygwin", "msys"]:
                 from ctypes import windll
                 windll.shell32.SetCurrentProcessExplicitAppUserModelID(self.id)
 
         # Icon
         if not extend:
-            self.icon_path = Path(os.getcwd() + "/pybreeze.ico")
+            self.icon_path = Path(os.getcwd() + "/pybreeze_icon.ico")
             self.icon = QIcon(str(self.icon_path))
             if not self.icon.isNull():
                 self.setWindowIcon(self.icon)
@@ -94,7 +92,7 @@ def start_editor(debug_mode: bool = False, **kwargs) -> None:
     new_ide = QCoreApplication.instance()
     if new_ide is None:
         new_ide = QApplication(sys.argv)
-    window = AutomationEditor(debug_mode=debug_mode, **kwargs)
+    window = PyBreezeMainWindow(debug_mode=debug_mode, **kwargs)
     apply_stylesheet(new_ide, theme="dark_amber.xml")
     window.showMaximized()
     try:

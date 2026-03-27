@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from pybreeze.pybreeze_ui.menu.extend_jeditor_tab_menu.jupyter_lab_tab import extend_tab_tools_menu
 from pybreeze.pybreeze_ui.menu.tools.tools_menu import build_tools_menu, extend_dock_menu
 
 if TYPE_CHECKING:
-    from pybreeze.pybreeze_ui.editor_main.main_ui import AutomationEditor
+    from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
 
 from pybreeze.pybreeze_ui.menu.automation_menu.api_testka_menu.build_api_testka_menu import \
     set_apitestka_menu
@@ -29,19 +30,20 @@ from pybreeze.pybreeze_ui.menu.automation_menu.test_pioneer_menu.build_test_pion
 from je_editor import language_wrapper
 
 
-def add_menu_to_menubar(ui_we_want_to_set: AutomationEditor):
+def add_menu_to_menubar(ui_we_want_to_set: PyBreezeMainWindow):
     ui_we_want_to_set.automation_menu = ui_we_want_to_set.menu.addMenu(
         language_wrapper.language_word_dict.get("automation_menu_label"))
     ui_we_want_to_set.install_menu = ui_we_want_to_set.menu.addMenu(
         language_wrapper.language_word_dict.get("install_menu_label"))
-    set_apitestka_menu(ui_we_want_to_set)
-    set_autocontrol_menu(ui_we_want_to_set)
-    set_automation_file_menu(ui_we_want_to_set)
-    set_load_density_menu(ui_we_want_to_set)
-    set_mail_thunder_menu(ui_we_want_to_set)
-    set_web_runner_menu(ui_we_want_to_set)
-    set_test_pioneer_menu(ui_we_want_to_set)
-    build_automation_install_menu(ui_we_want_to_set)
-    build_tool_install_menu(ui_we_want_to_set)
-    build_tools_menu(ui_we_want_to_set)
-    extend_dock_menu(ui_we_want_to_set)
+    set_apitestka_menu(ui_we_want_to_set=ui_we_want_to_set)
+    set_autocontrol_menu(ui_we_want_to_set=ui_we_want_to_set)
+    set_automation_file_menu(ui_we_want_to_set=ui_we_want_to_set)
+    set_load_density_menu(ui_we_want_to_set=ui_we_want_to_set)
+    set_mail_thunder_menu(ui_we_want_to_set=ui_we_want_to_set)
+    set_web_runner_menu(ui_we_want_to_set=ui_we_want_to_set)
+    set_test_pioneer_menu(ui_we_want_to_set=ui_we_want_to_set)
+    build_automation_install_menu(ui_we_want_to_set=ui_we_want_to_set)
+    build_tool_install_menu(ui_we_want_to_set=ui_we_want_to_set)
+    build_tools_menu(ui_we_want_to_set=ui_we_want_to_set)
+    extend_dock_menu(ui_we_want_to_set=ui_we_want_to_set)
+    extend_tab_tools_menu(ui_we_want_to_set=ui_we_want_to_set)

@@ -9,7 +9,7 @@ from je_editor.pyside_ui.main_ui.save_settings.user_color_setting_file import ac
 from pybreeze.pybreeze_ui.menu.menu_utils import open_web_browser
 
 if TYPE_CHECKING:
-    from pybreeze.pybreeze_ui.editor_main.main_ui import AutomationEditor
+    from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
 import sys
 
 import je_auto_control
@@ -20,7 +20,7 @@ from pybreeze.extend.process_executor.auto_control.auto_control_process import \
     call_auto_control_multi_file_and_send
 
 
-def set_autocontrol_menu(ui_we_want_to_set: AutomationEditor):
+def set_autocontrol_menu(ui_we_want_to_set: PyBreezeMainWindow):
     """
     Build menu include AutoControl feature.
     :param ui_we_want_to_set: main window to add menu.
@@ -153,7 +153,7 @@ def create_project() -> None:
         print(repr(error), file=sys.stderr)
 
 
-def stop_record(editor_instance: AutomationEditor):
+def stop_record(editor_instance: PyBreezeMainWindow):
     widget = editor_instance.tab_widget.currentWidget()
     if isinstance(widget, EditorWidget):
         text_cursor = widget.code_edit.textCursor()
@@ -163,7 +163,7 @@ def stop_record(editor_instance: AutomationEditor):
         text_cursor.insertBlock()
 
 
-def add_autocontrol_gui(ui_we_want_to_set: AutomationEditor) -> None:
+def add_autocontrol_gui(ui_we_want_to_set: PyBreezeMainWindow) -> None:
     ui_we_want_to_set.tab_widget.addTab(
         AutoControlGUIWidget(), "AutoControl GUI"
     )

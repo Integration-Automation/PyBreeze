@@ -5,14 +5,14 @@ from typing import TYPE_CHECKING, Union
 from pybreeze.extend.process_executor.process_executor_utils import build_process
 
 if TYPE_CHECKING:
-    from pybreeze.pybreeze_ui.editor_main.main_ui import AutomationEditor
+    from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
 import sys
 
 from pybreeze.utils.file_process.get_dir_file_list import ask_and_get_dir_files_as_list
 
 
 def call_load_density(
-        main_window: AutomationEditor,
+        main_window: PyBreezeMainWindow,
         exec_str: Union[str, None] = None,
         program_buffer: int = 1024000
 ):
@@ -20,7 +20,7 @@ def call_load_density(
 
 
 def call_load_density_with_send(
-        main_window: AutomationEditor,
+        main_window: PyBreezeMainWindow,
         exec_str: Union[str, None] = None,
         program_buffer: int = 1024000
 ):
@@ -28,7 +28,7 @@ def call_load_density_with_send(
 
 
 def call_load_density_multi_file(
-        main_window: AutomationEditor,
+        main_window: PyBreezeMainWindow,
         program_buffer: int = 1024000
 ):
     try:
@@ -47,7 +47,7 @@ def call_load_density_multi_file(
 
 
 def call_load_density_multi_file_and_send(
-        main_window: AutomationEditor,
+        main_window: PyBreezeMainWindow,
         program_buffer: int = 1024000
 ):
     try:

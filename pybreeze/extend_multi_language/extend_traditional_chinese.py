@@ -5,7 +5,7 @@ def update_traditional_chinese_word_dict():
     traditional_chinese_word_dict.update(
         {
             # application name
-            "automation_editor_application_name": "Automation Editor",
+            "application_name": "PyBreeze",
             # Menubar
             "automation_menu_label": "自動化",
             "install_menu_label": "安裝",
@@ -13,6 +13,8 @@ def update_traditional_chinese_word_dict():
             "run_label": "運行",
             "help_label": "幫助",
             "project_label": "專案",
+            # Tab tools menu
+            "tab_menu_jupyterlab_tab_name": "JupyterLab",
             # APITestka Menu
             "apitestka_menu_label": "APITestka",
             "apitestka_run_script_label": "運行 APITestka 腳本",
@@ -268,5 +270,11 @@ def update_traditional_chinese_word_dict():
             "skills_response_label": "回傳結果:",
             "skills_missing_input": "請輸入 API URL 和 Prompt",
             "skills_generating": "產生中...",
+            # JupyterLab GUI
+            "jupyterlab_init": "初始化中...",
+            "jupyterlab_downloading": "下載中...",
+            "jupyterlab_loading": "載入中...",
+            "jupyterlab_timeout": "JupyterLab 啟動超時",
+            "jupyterlab_init_failed": "JupyterLab 啟動失敗",
         }
     )

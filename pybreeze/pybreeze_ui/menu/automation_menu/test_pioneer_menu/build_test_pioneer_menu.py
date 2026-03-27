@@ -9,14 +9,14 @@ from pybreeze.extend.process_executor.test_pioneer.test_pioneer_process_manager 
     init_and_start_test_pioneer_process
 
 if TYPE_CHECKING:
-    from pybreeze.pybreeze_ui.editor_main.main_ui import AutomationEditor
+    from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
 
 from PySide6.QtGui import QAction
 from je_editor import language_wrapper
 from test_pioneer import create_template_dir
 
 
-def set_test_pioneer_menu(ui_we_want_to_set: AutomationEditor):
+def set_test_pioneer_menu(ui_we_want_to_set: PyBreezeMainWindow):
     """
     Build menu include Test Pioneer feature.
     :param ui_we_want_to_set: main window to add menu.
@@ -44,7 +44,7 @@ def set_test_pioneer_menu(ui_we_want_to_set: AutomationEditor):
     )
 
 
-def check_file(ui_we_want_to_set: AutomationEditor):
+def check_file(ui_we_want_to_set: PyBreezeMainWindow):
     dialog = QFileDialog(ui_we_want_to_set)
     dialog.setNameFilter("Yaml (*.yml)")
     file_tuple = dialog.getOpenFileName()
