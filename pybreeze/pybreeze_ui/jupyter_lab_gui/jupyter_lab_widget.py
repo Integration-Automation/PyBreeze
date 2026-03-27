@@ -2,9 +2,11 @@ import sys
 
 from PySide6.QtCore import QUrl
 from PySide6.QtWebEngineWidgets import QWebEngineView
-from PySide6.QtWidgets import QApplication, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QApplication, QVBoxLayout, QWidget, QLabel
+from je_editor import language_wrapper
 
-from pybreeze.pybreeze_ui.jupyter_lab_gui.jupyer_lab_thread import JupyterServerThread
+from pybreeze.pybreeze_ui.jupyter_lab_gui.jupyer_lab_thread import JupyterLauncherThread
+from pybreeze.utils.logging.logger import pybreeze_logger
 
 
 class JupyterLabWidget(QWidget):
@@ -14,38 +16,41 @@ class JupyterLabWidget(QWidget):
 
         layout = QVBoxLayout(self)
 
+        self.status_label = QLabel(language_wrapper.language_word_dict.get("jupyterlab_init"))
+        layout.addWidget(self.status_label)
+
         self.browser = QWebEngineView()
+        self.browser.hide()
         layout.addWidget(self.browser)
 
-        # 啟動 Jupyter server thread
-        self.thread = JupyterServerThread()
+        self.thread = JupyterLauncherThread()
+        self.thread.status_update.connect(self.update_status)
         self.thread.server_ready.connect(self.load_lab)
+        self.thread.error_occurred.connect(self.show_error)
         self.thread.start()
 
-    def load_lab(self, url: str):
-        """Load JupyterLab URL into WebEngine"""
+    def update_status(self, text):
+        self.status_label.setText(text)
 
-        if not url:
-            print("Invalid JupyterLab URL")
-            return
+    def load_lab(self, url):
+        if self.status_label:
+            self.status_label.setParent(None)
+            self.status_label.deleteLater()
+            self.status_label = None
 
-        print("JupyterLab running at:", url)
+        self.browser.setUrl(QUrl(url))
+        self.browser.show()
 
-        qurl = QUrl(url)
-
-        if not qurl.isValid():
-            print("Invalid QUrl:", url)
-            return
-
-        self.browser.setUrl(qurl)
+    def show_error(self, msg):
+        self.status_label.setText(language_wrapper.language_word_dict.get("jupyterlab_init_failed"))
+        print(msg)
+        pybreeze_logger.info(msg)
 
     def closeEvent(self, event):
-
-        if hasattr(self, "thread") and self.thread.isRunning():
+        if self.thread.isRunning():
             self.thread.stop()
             self.thread.quit()
             self.thread.wait()
-
         event.accept()
 
 
@@ -53,6 +58,6 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
 
     win = JupyterLabWidget()
-    win.show()
+    win.showMaximized()
 
     sys.exit(app.exec())

@@ -270,5 +270,11 @@ def update_traditional_chinese_word_dict():
             "skills_response_label": "回傳結果:",
             "skills_missing_input": "請輸入 API URL 和 Prompt",
             "skills_generating": "產生中...",
+            # JupyterLab GUI
+            "jupyterlab_init": "初始化中...",
+            "jupyterlab_downloading": "下載中...",
+            "jupyterlab_loading": "載入中...",
+            "jupyterlab_timeout": "JupyterLab 啟動超時",
+            "jupyterlab_init_failed": "JupyterLab 啟動失敗",
         }
     )

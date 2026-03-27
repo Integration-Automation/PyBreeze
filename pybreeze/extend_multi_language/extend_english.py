@@ -270,5 +270,11 @@ def update_english_word_dict():
             "skills_response_label": "Response:",
             "skills_missing_input": "Please enter API URL and Prompt",
             "skills_generating": "Generating...",
+            # JupyterLab GUI
+            "jupyterlab_init": "Initializing...",
+            "jupyterlab_downloading": "Downloading...",
+            "jupyterlab_loading": "Loading...",
+            "jupyterlab_timeout": "JupyterLab Timeout",
+            "jupyterlab_init_failed": "JupyterLab init failed",
         }
     )

@@ -1,8 +1,14 @@
+import os
 import socket
 import subprocess
 import sys
-from PySide6.QtCore import QThread, Signal
 import time
+import traceback
+
+from PySide6.QtCore import QThread, Signal
+from je_editor import language_wrapper
+
+from pybreeze.utils.logging.logger import pybreeze_logger
 
 
 def find_free_port():
@@ -13,41 +19,93 @@ def find_free_port():
     return port
 
 
-class JupyterServerThread(QThread):
-    server_ready = Signal(str)
+def get_venv_python():
+    # 如果在 venv 中
+    if hasattr(sys, 'real_prefix') or (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix):
+        return sys.executable
 
-    def __init__(self):
-        super().__init__()
-        self.process = None
+    # 嘗試從常見位置找 venv
+    possible_paths = [
+        os.path.join(os.getcwd(), "venv", "Scripts", "python.exe"),
+        os.path.join(os.getcwd(), ".venv", "Scripts", "python.exe"),
+    ]
+
+    for path in possible_paths:
+        if os.path.exists(path):
+            return path
+
+    raise RuntimeError("找不到 venv 的 python.exe")
+
+
+def is_jupyter_installed(python_exe):
+    result = subprocess.run(
+        [python_exe, "-m", "pip", "show", "jupyterlab"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
+    return result.returncode == 0
+
+
+class JupyterLauncherThread(QThread):
+    server_ready = Signal(str)
+    status_update = Signal(str)
+    error_occurred = Signal(str)
 
     def run(self):
-        port = find_free_port()
+        try:
+            python_exe = get_venv_python()
 
-        cmd = [
-            sys.executable,
-            "-m",
-            "jupyterlab",
-            "--no-browser",
-            f"--ServerApp.port={port}",
-            "--ServerApp.token=",
-            "--ServerApp.password=",
-            "--ServerApp.allow_origin=*",
-            "--ServerApp.disable_check_xsrf=True",
-        ]
+            if not is_jupyter_installed(python_exe):
+                self.status_update.emit(language_wrapper.language_word_dict.get("jupyterlab_downloading"))
 
-        self.process = subprocess.Popen(cmd)
+                result = subprocess.run([
+                    python_exe,
+                    "-m",
+                    "pip",
+                    "install",
+                    "jupyterlab",
+                    "-U"
+                ], capture_output=True, text=True)
 
-        # 輪詢 port，直到可連
-        while True:
-            try:
-                s = socket.create_connection(("localhost", port), timeout=0.5)
-                s.close()
-                break
-            except OSError:
-                time.sleep(0.1)
+                if result.returncode != 0:
+                    raise RuntimeError(result.stderr)
 
-        # Server ready，發射 signal
-        self.server_ready.emit(f"http://localhost:{port}/lab")
+            self.status_update.emit(language_wrapper.language_word_dict.get("jupyterlab_loading"))
+
+            port = find_free_port()
+
+            self.process = subprocess.Popen([
+                python_exe,
+                "-m",
+                "jupyterlab",
+                "--no-browser",
+                f"--ServerApp.port={port}",
+                "--ServerApp.token=",
+                "--ServerApp.password=",
+                "--ServerApp.allow_origin=*",
+                "--ServerApp.disable_check_xsrf=True",
+            ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+            start_time = time.time()
+
+            while True:
+                if time.time() - start_time > 30:
+                    raise TimeoutError("JupyterLab 啟動超時")
+
+                try:
+                    s = socket.create_connection(("localhost", port), timeout=0.5)
+                    s.close()
+                    break
+                except OSError:
+                    time.sleep(0.2)
+
+            self.server_ready.emit(f"http://localhost:{port}/lab")
+
+        except Exception:
+            err = traceback.format_exc()
+            print(err)
+            self.error_occurred.emit(err)
+            pybreeze_logger.info(err)
 
     def stop(self):
         if self.process:

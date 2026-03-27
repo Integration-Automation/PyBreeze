@@ -7,7 +7,7 @@ import pybreeze
 logging.root.setLevel(logging.DEBUG)
 
 # 建立 AutoControlGUI 專用 logger Create dedicated logger
-pybreeze_logger = logging.getLogger("AutomationIDE")
+pybreeze_logger = logging.getLogger("Pybreeze")
 
 # 日誌格式 Formatter
 formatter = logging.Formatter(
@@ -25,7 +25,7 @@ class PyBreezeLogger(RotatingFileHandler):
 
     def __init__(
         self,
-        filename: str = "AutomationIDE.log",
+        filename: str = "PyBreeze.log",
         mode: str = "w",
         max_bytes: int = 1073741824,  # 1GB
         backup_count: int = 0,

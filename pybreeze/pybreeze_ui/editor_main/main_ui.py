@@ -4,17 +4,15 @@ from os import environ
 from pathlib import Path
 from typing import List, Dict, Type
 
-from pybreeze.utils.logging.logger import pybreeze_logger
-
 environ["LOCUST_SKIP_MONKEY_PATCH"] = "1"
 
 from PySide6.QtCore import QTimer, QCoreApplication
 from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QApplication, QWidget, QSystemTrayIcon
+from PySide6.QtWidgets import QApplication, QWidget
 from je_editor import EditorMain, language_wrapper
 from qt_material import apply_stylesheet
 
-from pybreeze.pybreeze_ui.extend_multi_language.update_language_dict import update_language_dict
+from pybreeze.extend_multi_language.update_language_dict import update_language_dict
 from pybreeze.pybreeze_ui.menu.build_menubar import add_menu_to_menubar
 from pybreeze.pybreeze_ui.syntax.syntax_extend import \
     syntax_extend_package
