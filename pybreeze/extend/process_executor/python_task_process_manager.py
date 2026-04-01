@@ -1,4 +1,3 @@
-import json
 import queue
 import subprocess
 import sys
@@ -57,23 +56,19 @@ class TaskProcessManager(object):
     def start_test_process(self, package: str, exec_str: str):
         self.renew_path()
         if sys.platform in ["win32", "cygwin", "msys"]:
-            exec_str = json.dumps(exec_str)
-            args = [
-                self.compiler_path,
-                "-m",
-                package,
-                "--execute_str",
-                exec_str
-            ]
-        else:
-            args = " ".join([f"{self.compiler_path}", f"-m {package}", "--execute_str", f"{exec_str}"])
-        self.process: subprocess.Popen = subprocess.Popen(
+            exec_str = __import__("json").dumps(exec_str)
+        args = [
+            str(self.compiler_path),
+            "-m",
+            package,
+            "--execute_str",
+            exec_str
+        ]
+        self.process = subprocess.Popen(
             args,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            shell=True,
-            encoding=self.program_encoding
         )
         self.still_run_program = True
         # program output message queue thread
@@ -143,7 +138,7 @@ class TaskProcessManager(object):
             self.read_program_output_from_thread = None
         if self.read_program_error_output_from_thread is not None:
             self.read_program_error_output_from_thread = None
-        self.print_and_clear_queue()
+        self.drain_and_display_queue()
         if self.process is not None:
             self.process.terminate()
             text_cursor = self.main_window.code_result.textCursor()
@@ -152,26 +147,56 @@ class TaskProcessManager(object):
             text_cursor.insertText(f"Task exit with code {self.process.returncode}", text_format)
             text_cursor.insertBlock()
             self.process = None
+        if self.task_done_trigger_function is not None:
+            try:
+                self.task_done_trigger_function()
+            except Exception as e:
+                print(repr(e), file=sys.stderr)
 
-    def print_and_clear_queue(self):
-        self.run_output_queue = queue.Queue()
-        self.run_error_queue = queue.Queue()
+    def drain_and_display_queue(self):
+        while not self.run_output_queue.empty():
+            try:
+                output_message = self.run_output_queue.get_nowait()
+                output_message = str(output_message).strip()
+                if output_message:
+                    text_cursor = self.main_window.code_result.textCursor()
+                    text_format = QTextCharFormat()
+                    text_format.setForeground(actually_color_dict.get("normal_output_color"))
+                    text_cursor.insertText(output_message, text_format)
+                    text_cursor.insertBlock()
+            except queue.Empty:
+                break
+        while not self.run_error_queue.empty():
+            try:
+                error_message = self.run_error_queue.get_nowait()
+                error_message = str(error_message).strip()
+                if error_message:
+                    text_cursor = self.main_window.code_result.textCursor()
+                    text_format = QTextCharFormat()
+                    text_format.setForeground(actually_color_dict.get("error_output_color"))
+                    text_cursor.insertText(error_message, text_format)
+                    text_cursor.insertBlock()
+            except queue.Empty:
+                break
 
     def read_program_output_from_process(self):
         while self.still_run_program:
-            self.process: subprocess.Popen
-            program_output_data = self.process.stdout.readline(self.program_buffer_size) \
-                .decode("utf-8", "replace")
-            if self.process:
-                self.process.stdout.flush()
-            if program_output_data.strip() != "":
+            proc = self.process
+            if proc is None:
+                break
+            program_output_data = proc.stdout.readline(self.program_buffer_size)
+            if isinstance(program_output_data, bytes):
+                program_output_data = program_output_data.decode(self.program_encoding, "replace")
+            if program_output_data.strip():
                 self.run_output_queue.put(program_output_data)
 
     def read_program_error_output_from_process(self):
         while self.still_run_program:
-            program_error_output_data = self.process.stderr.readline(self.program_buffer_size) \
-                .decode("utf-8", "replace")
-            if self.process:
-                self.process.stderr.flush()
-            if program_error_output_data.strip() != "":
+            proc = self.process
+            if proc is None:
+                break
+            program_error_output_data = proc.stderr.readline(self.program_buffer_size)
+            if isinstance(program_error_output_data, bytes):
+                program_error_output_data = program_error_output_data.decode(self.program_encoding, "replace")
+            if program_error_output_data.strip():
                 self.run_error_queue.put(program_error_output_data)

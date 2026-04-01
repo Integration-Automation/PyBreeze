@@ -11,7 +11,7 @@ def send_after_test(html_report_path: str = None) -> None:
         mail_thunder_smtp: SMTPWrapper = SMTPWrapper()
         if html_report_path is None and mail_thunder_smtp.login_state is True:
             user: str = mail_thunder_smtp.user
-            with open("default_name.html", "r+") as file:
+            with open("default_name.html", "r") as file:
                 html_string: str = file.read()
             message = mail_thunder_smtp.create_message_with_attach(
                 html_string,
@@ -21,7 +21,7 @@ def send_after_test(html_report_path: str = None) -> None:
             mail_thunder_smtp.quit()
         elif mail_thunder_smtp.login_state is True:
             user: str = mail_thunder_smtp.user
-            with open(html_report_path, "r+") as file:
+            with open(html_report_path, "r") as file:
                 html_string: str = file.read()
             message: MIMEMultipart = mail_thunder_smtp.create_message_with_attach(
                 html_string,

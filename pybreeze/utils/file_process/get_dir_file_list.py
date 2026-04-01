@@ -15,7 +15,7 @@ def get_dir_files_as_list(dir_path: str = getcwd(), default_search_file_extensio
     :return: [] if nothing searched or [file1, file2.... files] file was searched
     """
     return [
-        abspath(join(dir_path, file)) for root, dirs, files in walk(dir_path)
+        abspath(join(root, file)) for root, dirs, files in walk(dir_path)
         for file in files
         if file.endswith(default_search_file_extension.lower())
     ]

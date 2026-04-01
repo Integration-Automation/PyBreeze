@@ -25,7 +25,8 @@ class SFTPClientWrapper:
         self._sftp: Optional[paramiko.SFTPClient] = None
         self.root_path: str = "/"
 
-    def connect(self, host: str, port: int, username: str, password: str):
+    def connect(self, host: str, port: int, username: str, password: str,
+                use_key: bool = False, key_path: str = ""):
         """
         Establish SSH + SFTP connection.
         建立 SSH + SFTP 連線。
@@ -33,7 +34,21 @@ class SFTPClientWrapper:
         self.close()
         self._ssh = paramiko.SSHClient()
         self._ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        self._ssh.connect(hostname=host, port=port, username=username, password=password)
+        if use_key and key_path:
+            pkey = None
+            for KeyType in (paramiko.RSAKey, paramiko.Ed25519Key, paramiko.ECDSAKey):
+                try:
+                    pkey = KeyType.from_private_key_file(key_path, password if password else None)
+                    break
+                except Exception:
+                    continue
+            if pkey is None:
+                raise ValueError(
+                    self.word_dict.get("ssh_command_widget_error_message_unsupported_private_key")
+                )
+            self._ssh.connect(hostname=host, port=port, username=username, pkey=pkey, timeout=10)
+        else:
+            self._ssh.connect(hostname=host, port=port, username=username, password=password, timeout=10)
         self._sftp = self._ssh.open_sftp()
 
     def close(self):
@@ -183,18 +198,20 @@ class SSHFileTreeManager(QWidget):
         連線 SSH 並載入根目錄。
         """
         host = self.login_widget.host_edit.text().strip()
-        port = int(self.login_widget.port_spin.text().strip() or "22")
+        port = self.login_widget.port_spin.value()
         user = self.login_widget.user_edit.text().strip()
         pwd = self.login_widget.pass_edit.text()
+        use_key = self.login_widget.use_key_check.isChecked()
+        key_path = self.login_widget.key_edit.text().strip()
 
-        if not host or not user or not pwd:
+        if not host or not user:
             QMessageBox.warning(
                 self,
                 self.word_dict.get("ssh_file_viewer_dialog_title_missing_input"),
                 self.word_dict.get("ssh_file_viewer_dialog_message_missing_input"))
             return
         try:
-            self.client.connect(host, port, user, pwd)
+            self.client.connect(host, port, user, pwd, use_key, key_path)
             self.load_root("/")
         except Exception as e:
             QMessageBox.critical(

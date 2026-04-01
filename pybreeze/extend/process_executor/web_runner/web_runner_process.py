@@ -36,7 +36,7 @@ def call_web_runner_test_multi_file(
         if need_to_execute_list is not None and isinstance(need_to_execute_list, list) and len(
                 need_to_execute_list) > 0:
             for execute_file in need_to_execute_list:
-                with open(execute_file, "r+") as test_script_json:
+                with open(execute_file, "r") as test_script_json:
                     call_web_runner_test(
                         main_window,
                         test_script_json.read(),
@@ -56,7 +56,7 @@ def call_web_runner_test_multi_file_and_send(
         if need_to_execute_list is not None and isinstance(need_to_execute_list, list) and len(
                 need_to_execute_list) > 0:
             for execute_file in need_to_execute_list:
-                with open(execute_file, "r+") as test_script_json:
+                with open(execute_file, "r") as test_script_json:
                     call_web_runner_test_with_send(
                         main_window,
                         test_script_json.read(),
