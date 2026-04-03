@@ -6,7 +6,7 @@ import sys
 import threading
 from pathlib import Path
 from queue import Queue
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QTextCharFormat
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
 
 
-class TestPioneerProcess(object):
+class TestPioneerProcess:
 
     def __init__(
             self,
@@ -40,8 +40,8 @@ class TestPioneerProcess(object):
         self._program_encoding = encoding
         self._run_output_queue: Queue = Queue()
         self._run_error_queue: Queue = Queue()
-        self._read_program_error_output_from_thread: Union[threading.Thread, None] = None
-        self._read_program_output_from_thread: Union[threading.Thread, None] = None
+        self._read_program_error_output_from_thread: threading.Thread | None = None
+        self._read_program_output_from_thread: threading.Thread | None = None
         self._timer: QTimer = QTimer(self._code_window)
         if self._main_window.python_compiler is None:
             # Renew compiler path
@@ -59,7 +59,7 @@ class TestPioneerProcess(object):
             "-e",
             executable_path
         ]
-        self._process: Union[subprocess.Popen, None] = subprocess.Popen(
+        self._process: subprocess.Popen | None = subprocess.Popen(
             args,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,

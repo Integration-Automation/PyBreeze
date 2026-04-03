@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import sys
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 from je_editor import EditorWidget
 
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 def build_process(
         main_window: PyBreezeMainWindow,
         package: str,
-        exec_str: Union[str, None] = None,
+        exec_str: str | None = None,
         send_mail: bool = False,
         program_buffer: int = 1024000,
 ):

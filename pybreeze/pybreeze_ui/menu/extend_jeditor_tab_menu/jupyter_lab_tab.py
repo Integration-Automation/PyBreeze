@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import je_editor
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QMenu
 from je_editor import language_wrapper

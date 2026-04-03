@@ -5,7 +5,7 @@ from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import QApplication, QVBoxLayout, QWidget, QLabel
 from je_editor import language_wrapper
 
-from pybreeze.pybreeze_ui.jupyter_lab_gui.jupyer_lab_thread import JupyterLauncherThread
+from pybreeze.pybreeze_ui.jupyter_lab_gui.jupyter_lab_thread import JupyterLauncherThread
 from pybreeze.utils.logging.logger import pybreeze_logger
 
 

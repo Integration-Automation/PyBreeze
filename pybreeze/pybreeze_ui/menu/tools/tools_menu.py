@@ -121,7 +121,7 @@ def extend_dock_menu(ui_we_want_to_set: PyBreezeMainWindow):
         lambda: add_dock(ui_we_want_to_set, "SkillSendGUI"))
     ui_we_want_to_set.dock_ai_menu.addAction(ui_we_want_to_set.tools_skill_send_dock_action)
 
-def add_dock(ui_we_want_to_set: PyBreezeMainWindow, widget_type: str = None):
+def add_dock(ui_we_want_to_set: PyBreezeMainWindow, widget_type: str | None = None):
     jeditor_logger.info("build_dock_menu.py add_dock_widget "
                         f"ui_we_want_to_set: {ui_we_want_to_set} "
                         f"widget_type: {widget_type}")

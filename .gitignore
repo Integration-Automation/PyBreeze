@@ -151,3 +151,4 @@ dmypy.json
 **/user_setting.*
 bing_cookies.*
 **/output
+.claude/settings.local.json

@@ -1,12 +1,12 @@
-# Rename to dev version
-# This is dev version
+# Rename to build stable version
+# This is stable version
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pybreeze_dev"
-version = "1.0.11"
+name = "pybreeze"
+version = "1.0.13"
 authors = [
     { name = "JE-Chen", email = "jechenmailman@gmail.com" },
 ]
@@ -35,7 +35,6 @@ Code = "https://github.com/Intergration-Automation-Testing/AutomationEditor"
 [project.readme]
 file = "README.md"
 content-type = "text/markdown"
-
 
 [tool.setuptools.packages]
 find = { namespaces = false }

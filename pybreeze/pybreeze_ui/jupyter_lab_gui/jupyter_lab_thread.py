@@ -46,8 +46,7 @@ def get_venv_python():
 def is_jupyter_installed(python_exe):
     result = subprocess.run(
         [python_exe, "-m", "pip", "show", "jupyterlab"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE
+        capture_output=True,
     )
     return result.returncode == 0
 

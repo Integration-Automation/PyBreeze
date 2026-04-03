@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import queue
 import subprocess
 import sys
@@ -6,7 +8,7 @@ import typing
 from pathlib import Path
 from queue import Queue
 from threading import Thread
-from typing import Union
+
 
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QTextCharFormat
@@ -16,27 +18,27 @@ from je_editor.utils.venv_check.check_venv import check_and_choose_venv
 from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
 
 
-class TaskProcessManager(object):
+class TaskProcessManager:
     def __init__(
             self,
             main_window: CodeWindow,
-            task_done_trigger_function: typing.Callable = None,
-            error_trigger_function: typing.Callable = None,
+            task_done_trigger_function: typing.Callable | None = None,
+            error_trigger_function: typing.Callable | None = None,
             program_buffer_size: int = 1024,
             program_encoding: str = "utf-8"
     ):
         super().__init__()
         self.compiler_path = None
         # ite_instance param
-        self.read_program_error_output_from_thread: Union[threading.Thread, None] = None
-        self.read_program_output_from_thread: Union[threading.Thread, None] = None
+        self.read_program_error_output_from_thread: threading.Thread | None = None
+        self.read_program_output_from_thread: threading.Thread | None = None
         self.main_window: CodeWindow = main_window
         self.timer: QTimer = QTimer(self.main_window)
         self.still_run_program: bool = True
         self.program_encoding: str = program_encoding
         self.run_output_queue: Queue = Queue()
         self.run_error_queue: Queue = Queue()
-        self.process: Union[subprocess.Popen, None] = None
+        self.process: subprocess.Popen | None = None
 
         self.task_done_trigger_function: typing.Callable = task_done_trigger_function
         self.error_trigger_function: typing.Callable = error_trigger_function

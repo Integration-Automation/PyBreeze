@@ -162,7 +162,7 @@ class SSHCommandWidget(QWidget):
                     self.ssh_client.connect(hostname=host, port=port, username=user, pkey=pkey, timeout=10)
                 except Exception as e:
                     raise RuntimeError(
-                        f"{self.word_dict.get('ssh_command_widget_error_message_key_auth_failed')} {e}")
+                        f"{self.word_dict.get('ssh_command_widget_error_message_key_auth_failed')} {e}") from e
             else:
                 self.ssh_client.connect(
                     hostname=host, port=port, username=user, password=password, timeout=10

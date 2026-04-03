@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-from typing import Optional
 
 import paramiko
 from PySide6.QtCore import Qt, QEvent
@@ -21,8 +20,8 @@ class SFTPClientWrapper:
 
     def __init__(self):
         self.word_dict = language_wrapper.language_word_dict
-        self._ssh: Optional[paramiko.SSHClient] = None
-        self._sftp: Optional[paramiko.SFTPClient] = None
+        self._ssh: paramiko.SSHClient | None = None
+        self._sftp: paramiko.SFTPClient | None = None
         self.root_path: str = "/"
 
     def connect(self, host: str, port: int, username: str, password: str,
@@ -100,7 +99,7 @@ class SFTPClientWrapper:
             # S_ISDIR check via stat.S_ISDIR
             import stat
             return stat.S_ISDIR(st.st_mode)
-        except IOError:
+        except OSError:
             return False
 
     def mkdir(self, path: str):
@@ -361,7 +360,7 @@ class SSHFileTreeManager(QWidget):
                 self.word_dict.get("ssh_file_viewer_dialog_title_operation_failed"),
                 f"{self.word_dict.get('ssh_file_viewer_dialog_message_operation_failed')}: {e}")
 
-    def action_refresh(self, item: Optional[QTreeWidgetItem]):
+    def action_refresh(self, item: QTreeWidgetItem | None):
         """
         Refresh current item children (or root).
         重新整理目前項目的子項（或根）。
@@ -375,7 +374,7 @@ class SSHFileTreeManager(QWidget):
             self.add_placeholder(target)
             self.on_item_expanded(target)
 
-    def action_create_folder(self, item: Optional[QTreeWidgetItem]):
+    def action_create_folder(self, item: QTreeWidgetItem | None):
         """
         Create a subfolder under the selected directory.
         在選定目錄下建立子資料夾。
@@ -399,7 +398,7 @@ class SSHFileTreeManager(QWidget):
         self.client.mkdir(new_path)
         self.action_refresh(item)
 
-    def action_rename(self, item: Optional[QTreeWidgetItem]):
+    def action_rename(self, item: QTreeWidgetItem | None):
         """
         Rename selected item.
         重新命名選定項目。
@@ -420,7 +419,7 @@ class SSHFileTreeManager(QWidget):
         item.setText(0, new_name.strip())
         item.setText(3, new_path)
 
-    def action_delete(self, item: Optional[QTreeWidgetItem]):
+    def action_delete(self, item: QTreeWidgetItem | None):
         """
         Delete selected file/folder (folder must be empty).
         刪除選定檔案/資料夾（資料夾需為空）。
@@ -447,7 +446,7 @@ class SSHFileTreeManager(QWidget):
         else:
             self.tree.takeTopLevelItem(self.tree.indexOfTopLevelItem(item))
 
-    def action_download(self, item: Optional[QTreeWidgetItem]):
+    def action_download(self, item: QTreeWidgetItem | None):
         """
         Download selected file to local.
         將選定檔案下載至本地。
@@ -472,7 +471,7 @@ class SSHFileTreeManager(QWidget):
             self.word_dict.get("ssh_file_viewer_dialog_title_downloaded"),
             f"{self.word_dict.get('ssh_file_viewer_dialog_message_saved_to')}: {local_path}")
 
-    def action_upload(self, item: Optional[QTreeWidgetItem]):
+    def action_upload(self, item: QTreeWidgetItem | None):
         """
         Upload a local file into the selected folder.
         將本地檔案上傳至所選資料夾。

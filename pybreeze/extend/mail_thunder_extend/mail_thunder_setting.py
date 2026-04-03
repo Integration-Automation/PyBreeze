@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sys
 from email.mime.multipart import MIMEMultipart
 
@@ -5,13 +7,13 @@ from pybreeze.utils.exception.exception_tags import send_html_exception_tag
 from pybreeze.utils.exception.exceptions import ITESendHtmlReportException
 
 
-def send_after_test(html_report_path: str = None) -> None:
+def send_after_test(html_report_path: str | None = None) -> None:
     try:
         from je_mail_thunder import SMTPWrapper
         mail_thunder_smtp: SMTPWrapper = SMTPWrapper()
-        if html_report_path is None and mail_thunder_smtp.login_state is True:
+        if html_report_path is None and mail_thunder_smtp.login_state:
             user: str = mail_thunder_smtp.user
-            with open("default_name.html", "r") as file:
+            with open("default_name.html") as file:
                 html_string: str = file.read()
             message = mail_thunder_smtp.create_message_with_attach(
                 html_string,
@@ -19,9 +21,9 @@ def send_after_test(html_report_path: str = None) -> None:
                 "default_name.html", use_html=True)
             mail_thunder_smtp.send_message(message)
             mail_thunder_smtp.quit()
-        elif mail_thunder_smtp.login_state is True:
+        elif mail_thunder_smtp.login_state:
             user: str = mail_thunder_smtp.user
-            with open(html_report_path, "r") as file:
+            with open(html_report_path) as file:
                 html_string: str = file.read()
             message: MIMEMultipart = mail_thunder_smtp.create_message_with_attach(
                 html_string,

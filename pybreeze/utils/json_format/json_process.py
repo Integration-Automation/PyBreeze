@@ -17,12 +17,12 @@ def __process_json(json_string: str, **kwargs) -> str:
     except TypeError:
         try:
             return dumps(json_string, indent=4, sort_keys=True, **kwargs)
-        except TypeError:
-            raise ITEJsonException(wrong_json_data_error)
+        except TypeError as err:
+            raise ITEJsonException(wrong_json_data_error) from err
 
 
 def reformat_json(json_string: str, **kwargs) -> str:
     try:
         return __process_json(json_string, **kwargs)
-    except ITEJsonException:
-        raise ITEJsonException(cant_reformat_json_error)
+    except ITEJsonException as err:
+        raise ITEJsonException(cant_reformat_json_error) from err

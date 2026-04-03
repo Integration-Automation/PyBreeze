@@ -115,7 +115,7 @@ class AICodeReviewClient(QWidget):
 
         # 檢查 URL 是否已紀錄
         if os.path.exists(self.url_file):
-            with open(self.url_file, "r", encoding="utf-8") as f:
+            with open(self.url_file, encoding="utf-8") as f:
                 urls = [line.strip() for line in f.readlines()]
         else:
             urls = []
