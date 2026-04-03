@@ -75,7 +75,7 @@ class SenderThread(QThread):
                     case _:
                         continue
             except Exception as e:
-                reply_text = f"{language_wrapper.language_word_dict.get("cot_gui_error_sending")} {file} {e}"
+                reply_text = f"{language_wrapper.language_word_dict.get('cot_gui_error_sending')} {file} {e}"
 
             # 發送訊號更新 UI
             self.update_response.emit(file, reply_text)

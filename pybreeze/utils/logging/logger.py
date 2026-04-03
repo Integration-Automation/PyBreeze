@@ -1,8 +1,6 @@
 import logging
 from logging.handlers import RotatingFileHandler
 
-import pybreeze
-
 # 設定 root logger 等級 Set root logger level
 logging.root.setLevel(logging.DEBUG)
 

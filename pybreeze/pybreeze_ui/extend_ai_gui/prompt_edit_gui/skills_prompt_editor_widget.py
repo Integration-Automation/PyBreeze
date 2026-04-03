@@ -82,7 +82,7 @@ class SkillPromptEditor(QWidget):
         filename = self.skill_files[index]
         self.current_file = filename
         if os.path.exists(filename):
-            with open(filename, "r", encoding="utf-8") as f:
+            with open(filename, encoding="utf-8") as f:
                 content = f.read()
             self.middle_editor.setPlainText(content)
         else:

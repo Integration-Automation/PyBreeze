@@ -162,7 +162,7 @@ class SSHCommandWidget(QWidget):
                     self.ssh_client.connect(hostname=host, port=port, username=user, pkey=pkey, timeout=10)
                 except Exception as e:
                     raise RuntimeError(
-                        f"{self.word_dict.get('ssh_command_widget_error_message_key_auth_failed')} {e}")
+                        f"{self.word_dict.get('ssh_command_widget_error_message_key_auth_failed')} {e}") from e
             else:
                 self.ssh_client.connect(
                     hostname=host, port=port, username=user, password=password, timeout=10
@@ -175,7 +175,7 @@ class SSHCommandWidget(QWidget):
             self.reader_thread.closed.connect(self._on_closed)
             self.reader_thread.start()
             self.login_widget.status_label.setText(
-                self.word_dict.get("ssh_command_widget_dialog_title_not_connected"))
+                self.word_dict.get("ssh_command_widget_log_message_connected"))
             self.append_text(f"{self.word_dict.get('ssh_command_widget_log_message_connected')}"
                              f" {host}:{port} as {user}\n")
         except Exception as e:

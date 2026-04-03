@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-from typing import Optional
 
 import paramiko
 from PySide6.QtCore import Qt, QEvent
@@ -21,11 +20,12 @@ class SFTPClientWrapper:
 
     def __init__(self):
         self.word_dict = language_wrapper.language_word_dict
-        self._ssh: Optional[paramiko.SSHClient] = None
-        self._sftp: Optional[paramiko.SFTPClient] = None
+        self._ssh: paramiko.SSHClient | None = None
+        self._sftp: paramiko.SFTPClient | None = None
         self.root_path: str = "/"
 
-    def connect(self, host: str, port: int, username: str, password: str):
+    def connect(self, host: str, port: int, username: str, password: str,
+                use_key: bool = False, key_path: str = ""):
         """
         Establish SSH + SFTP connection.
         建立 SSH + SFTP 連線。
@@ -33,7 +33,21 @@ class SFTPClientWrapper:
         self.close()
         self._ssh = paramiko.SSHClient()
         self._ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        self._ssh.connect(hostname=host, port=port, username=username, password=password)
+        if use_key and key_path:
+            pkey = None
+            for KeyType in (paramiko.RSAKey, paramiko.Ed25519Key, paramiko.ECDSAKey):
+                try:
+                    pkey = KeyType.from_private_key_file(key_path, password if password else None)
+                    break
+                except Exception:
+                    continue
+            if pkey is None:
+                raise ValueError(
+                    self.word_dict.get("ssh_command_widget_error_message_unsupported_private_key")
+                )
+            self._ssh.connect(hostname=host, port=port, username=username, pkey=pkey, timeout=10)
+        else:
+            self._ssh.connect(hostname=host, port=port, username=username, password=password, timeout=10)
         self._sftp = self._ssh.open_sftp()
 
     def close(self):
@@ -85,7 +99,7 @@ class SFTPClientWrapper:
             # S_ISDIR check via stat.S_ISDIR
             import stat
             return stat.S_ISDIR(st.st_mode)
-        except IOError:
+        except OSError:
             return False
 
     def mkdir(self, path: str):
@@ -183,18 +197,20 @@ class SSHFileTreeManager(QWidget):
         連線 SSH 並載入根目錄。
         """
         host = self.login_widget.host_edit.text().strip()
-        port = int(self.login_widget.port_spin.text().strip() or "22")
+        port = self.login_widget.port_spin.value()
         user = self.login_widget.user_edit.text().strip()
         pwd = self.login_widget.pass_edit.text()
+        use_key = self.login_widget.use_key_check.isChecked()
+        key_path = self.login_widget.key_edit.text().strip()
 
-        if not host or not user or not pwd:
+        if not host or not user:
             QMessageBox.warning(
                 self,
                 self.word_dict.get("ssh_file_viewer_dialog_title_missing_input"),
                 self.word_dict.get("ssh_file_viewer_dialog_message_missing_input"))
             return
         try:
-            self.client.connect(host, port, user, pwd)
+            self.client.connect(host, port, user, pwd, use_key, key_path)
             self.load_root("/")
         except Exception as e:
             QMessageBox.critical(
@@ -344,7 +360,7 @@ class SSHFileTreeManager(QWidget):
                 self.word_dict.get("ssh_file_viewer_dialog_title_operation_failed"),
                 f"{self.word_dict.get('ssh_file_viewer_dialog_message_operation_failed')}: {e}")
 
-    def action_refresh(self, item: Optional[QTreeWidgetItem]):
+    def action_refresh(self, item: QTreeWidgetItem | None):
         """
         Refresh current item children (or root).
         重新整理目前項目的子項（或根）。
@@ -358,7 +374,7 @@ class SSHFileTreeManager(QWidget):
             self.add_placeholder(target)
             self.on_item_expanded(target)
 
-    def action_create_folder(self, item: Optional[QTreeWidgetItem]):
+    def action_create_folder(self, item: QTreeWidgetItem | None):
         """
         Create a subfolder under the selected directory.
         在選定目錄下建立子資料夾。
@@ -382,7 +398,7 @@ class SSHFileTreeManager(QWidget):
         self.client.mkdir(new_path)
         self.action_refresh(item)
 
-    def action_rename(self, item: Optional[QTreeWidgetItem]):
+    def action_rename(self, item: QTreeWidgetItem | None):
         """
         Rename selected item.
         重新命名選定項目。
@@ -403,7 +419,7 @@ class SSHFileTreeManager(QWidget):
         item.setText(0, new_name.strip())
         item.setText(3, new_path)
 
-    def action_delete(self, item: Optional[QTreeWidgetItem]):
+    def action_delete(self, item: QTreeWidgetItem | None):
         """
         Delete selected file/folder (folder must be empty).
         刪除選定檔案/資料夾（資料夾需為空）。
@@ -430,7 +446,7 @@ class SSHFileTreeManager(QWidget):
         else:
             self.tree.takeTopLevelItem(self.tree.indexOfTopLevelItem(item))
 
-    def action_download(self, item: Optional[QTreeWidgetItem]):
+    def action_download(self, item: QTreeWidgetItem | None):
         """
         Download selected file to local.
         將選定檔案下載至本地。
@@ -455,7 +471,7 @@ class SSHFileTreeManager(QWidget):
             self.word_dict.get("ssh_file_viewer_dialog_title_downloaded"),
             f"{self.word_dict.get('ssh_file_viewer_dialog_message_saved_to')}: {local_path}")
 
-    def action_upload(self, item: Optional[QTreeWidgetItem]):
+    def action_upload(self, item: QTreeWidgetItem | None):
         """
         Upload a local file into the selected folder.
         將本地檔案上傳至所選資料夾。

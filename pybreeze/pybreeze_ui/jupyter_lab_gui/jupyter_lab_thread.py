@@ -25,23 +25,28 @@ def get_venv_python():
         return sys.executable
 
     # 嘗試從常見位置找 venv
-    possible_paths = [
-        os.path.join(os.getcwd(), "venv", "Scripts", "python.exe"),
-        os.path.join(os.getcwd(), ".venv", "Scripts", "python.exe"),
-    ]
+    if sys.platform in ["win32", "cygwin", "msys"]:
+        possible_paths = [
+            os.path.join(os.getcwd(), "venv", "Scripts", "python.exe"),
+            os.path.join(os.getcwd(), ".venv", "Scripts", "python.exe"),
+        ]
+    else:
+        possible_paths = [
+            os.path.join(os.getcwd(), "venv", "bin", "python"),
+            os.path.join(os.getcwd(), ".venv", "bin", "python"),
+        ]
 
     for path in possible_paths:
         if os.path.exists(path):
             return path
 
-    raise RuntimeError("找不到 venv 的 python.exe")
+    raise RuntimeError("Cannot find venv python executable")
 
 
 def is_jupyter_installed(python_exe):
     result = subprocess.run(
         [python_exe, "-m", "pip", "show", "jupyterlab"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE
+        capture_output=True,
     )
     return result.returncode == 0
 
@@ -50,6 +55,10 @@ class JupyterLauncherThread(QThread):
     server_ready = Signal(str)
     status_update = Signal(str)
     error_occurred = Signal(str)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.process = None
 
     def run(self):
         try:
@@ -108,5 +117,8 @@ class JupyterLauncherThread(QThread):
             pybreeze_logger.info(err)
 
     def stop(self):
-        if self.process:
-            self.process.terminate()
+        if self.process is not None:
+            try:
+                self.process.terminate()
+            except OSError:
+                pass

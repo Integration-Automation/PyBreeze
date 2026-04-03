@@ -2,7 +2,6 @@ import os
 import sys
 from os import environ
 from pathlib import Path
-from typing import List, Dict, Type
 
 environ["LOCUST_SKIP_MONKEY_PATCH"] = "1"
 
@@ -18,7 +17,7 @@ from pybreeze.pybreeze_ui.syntax.syntax_extend import \
     syntax_extend_package
 
 
-EDITOR_EXTEND_TAB: Dict[str, Type[QWidget]] = {
+EDITOR_EXTEND_TAB: dict[str, type[QWidget]] = {
 }
 
 
@@ -26,8 +25,11 @@ class PyBreezeMainWindow(EditorMain):
 
     def __init__(self, debug_mode: bool = False, show_system_tray_ray: bool = False, extend: bool = False) -> None:
         super().__init__(debug_mode, show_system_tray_ray, extend=True)
+        # Note: EditorMain.__init__ already calls load_external_plugins()
+        # which auto-discovers jeditor_plugins/ in the current working directory.
+        # Third-party plugins placed there will be loaded automatically.
 
-        self.current_run_code_window: List[QWidget] = list()
+        self.current_run_code_window: list[QWidget] = list()
         # Project compiler if user not choose this will use which to find
         self.python_compiler = None
         # Delete JEditor help

@@ -1,7 +1,7 @@
 import os
 
 
-class PackageManager(object):
+class PackageManager:
 
     def __init__(self):
         os.environ["WDM_LOG"] = "0"

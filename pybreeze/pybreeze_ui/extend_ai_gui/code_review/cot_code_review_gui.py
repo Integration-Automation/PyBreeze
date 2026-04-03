@@ -77,6 +77,8 @@ class CoTCodeReviewGUI(QWidget):
 
     def handle_response(self, filename, response):
         self.responses[filename] = response
-        self.response_selector.addItem(filename)  # 加入 ComboBox
+        if self.response_selector.findText(filename) == -1:
+            self.response_selector.addItem(filename)
         # 自動顯示最新回覆
         self.response_selector.setCurrentText(filename)
+        self.show_response(filename)

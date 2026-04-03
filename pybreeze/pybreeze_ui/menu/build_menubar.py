@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pybreeze.pybreeze_ui.menu.extend_jeditor_tab_menu.jupyter_lab_tab import extend_tab_tools_menu
+from pybreeze.pybreeze_ui.menu.plugin_menu.build_plugin_menu import set_plugin_menu
+from pybreeze.pybreeze_ui.menu.plugin_menu.build_run_with_menu import set_run_with_menu
 from pybreeze.pybreeze_ui.menu.tools.tools_menu import build_tools_menu, extend_dock_menu
 
 if TYPE_CHECKING:
@@ -47,3 +49,5 @@ def add_menu_to_menubar(ui_we_want_to_set: PyBreezeMainWindow):
     build_tools_menu(ui_we_want_to_set=ui_we_want_to_set)
     extend_dock_menu(ui_we_want_to_set=ui_we_want_to_set)
     extend_tab_tools_menu(ui_we_want_to_set=ui_we_want_to_set)
+    set_run_with_menu(ui_we_want_to_set=ui_we_want_to_set)
+    set_plugin_menu(ui_we_want_to_set=ui_we_want_to_set)

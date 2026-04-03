@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 from pybreeze.extend.process_executor.process_executor_utils import build_process
 
@@ -13,7 +13,7 @@ from pybreeze.utils.file_process.get_dir_file_list import ask_and_get_dir_files_
 
 def call_web_runner_test(
         main_window: PyBreezeMainWindow,
-        exec_str: Union[str, None] = None,
+        exec_str: str | None = None,
         program_buffer: int = 1024000
 ):
     build_process(main_window, "je_web_runner", exec_str, False, program_buffer)
@@ -21,7 +21,7 @@ def call_web_runner_test(
 
 def call_web_runner_test_with_send(
         main_window: PyBreezeMainWindow,
-        exec_str: Union[str, None] = None,
+        exec_str: str | None = None,
         program_buffer: int = 1024000
 ):
     build_process(main_window, "je_web_runner", exec_str, True, program_buffer)
@@ -36,7 +36,7 @@ def call_web_runner_test_multi_file(
         if need_to_execute_list is not None and isinstance(need_to_execute_list, list) and len(
                 need_to_execute_list) > 0:
             for execute_file in need_to_execute_list:
-                with open(execute_file, "r+") as test_script_json:
+                with open(execute_file) as test_script_json:
                     call_web_runner_test(
                         main_window,
                         test_script_json.read(),
@@ -56,7 +56,7 @@ def call_web_runner_test_multi_file_and_send(
         if need_to_execute_list is not None and isinstance(need_to_execute_list, list) and len(
                 need_to_execute_list) > 0:
             for execute_file in need_to_execute_list:
-                with open(execute_file, "r+") as test_script_json:
+                with open(execute_file) as test_script_json:
                     call_web_runner_test_with_send(
                         main_window,
                         test_script_json.read(),
