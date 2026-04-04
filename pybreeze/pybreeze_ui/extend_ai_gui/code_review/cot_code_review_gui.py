@@ -1,3 +1,5 @@
+from urllib.parse import urlparse
+
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QTextEdit, QComboBox, QPushButton, \
     QMessageBox
 from je_editor import language_wrapper
@@ -65,9 +67,11 @@ class CoTCodeReviewGUI(QWidget):
         # 取得 URL
         url = self.url_input.text().strip()
         if not url:
-            message_box = QMessageBox()
-            message_box.warning(self, "Warning", language_wrapper.language_word_dict.get("cot_gui_error_no_url"))
-            message_box.exec_()
+            QMessageBox.warning(self, "Warning", language_wrapper.language_word_dict.get("cot_gui_error_no_url"))
+            return
+        parsed = urlparse(url)
+        if not parsed.scheme or not parsed.netloc:
+            QMessageBox.warning(self, "Warning", language_wrapper.language_word_dict.get("cot_gui_error_no_url"))
             return
 
         # 啟動傳送 Thread

@@ -1,38 +1,40 @@
 from __future__ import annotations
 
-import sys
+import os
 from email.mime.multipart import MIMEMultipart
 
 from pybreeze.utils.exception.exception_tags import send_html_exception_tag
 from pybreeze.utils.exception.exceptions import ITESendHtmlReportException
+from pybreeze.utils.logging.logger import pybreeze_logger
 
 
 def send_after_test(html_report_path: str | None = None) -> None:
     try:
         from je_mail_thunder import SMTPWrapper
         mail_thunder_smtp: SMTPWrapper = SMTPWrapper()
-        if html_report_path is None and mail_thunder_smtp.login_state:
-            user: str = mail_thunder_smtp.user
-            with open("default_name.html") as file:
-                html_string: str = file.read()
-            message = mail_thunder_smtp.create_message_with_attach(
-                html_string,
-                {"Subject": "Test Report", "To": user, "From": user},
-                "default_name.html", use_html=True)
-            mail_thunder_smtp.send_message(message)
-            mail_thunder_smtp.quit()
-        elif mail_thunder_smtp.login_state:
-            user: str = mail_thunder_smtp.user
-            with open(html_report_path) as file:
-                html_string: str = file.read()
-            message: MIMEMultipart = mail_thunder_smtp.create_message_with_attach(
-                html_string,
-                {"Subject": "Test Report", "To": user, "From": user},
-                html_report_path, use_html=True)
-            mail_thunder_smtp.send_message(message)
-            mail_thunder_smtp.quit()
-        else:
+
+        if not mail_thunder_smtp.login_state:
             raise ITESendHtmlReportException
+
+        # Determine which report file to use
+        report_path = html_report_path if html_report_path is not None else "default_name.html"
+
+        if not os.path.isfile(report_path):
+            pybreeze_logger.error(f"Report file not found: {report_path}")
+            return
+
+        user: str = mail_thunder_smtp.user
+        with open(report_path, encoding="utf-8") as file:
+            html_string: str = file.read()
+        message: MIMEMultipart = mail_thunder_smtp.create_message_with_attach(
+            html_string,
+            {"Subject": "Test Report", "To": user, "From": user},
+            report_path, use_html=True)
+        mail_thunder_smtp.send_message(message)
+        mail_thunder_smtp.quit()
     except ITESendHtmlReportException as error:
-        print(repr(error), file=sys.stderr)
-        print(send_html_exception_tag, file=sys.stderr)
+        pybreeze_logger.error(f"{repr(error)} {send_html_exception_tag}")
+    except FileNotFoundError as error:
+        pybreeze_logger.error(f"Report file not found: {error}")
+    except Exception as error:
+        pybreeze_logger.error(f"Failed to send report: {error}")

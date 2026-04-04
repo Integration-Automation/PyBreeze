@@ -53,7 +53,7 @@ class PyBreezeMainWindow(EditorMain):
 
         # Icon
         if not extend:
-            self.icon_path = Path(os.getcwd() + "/pybreeze_icon.ico")
+            self.icon_path = Path(os.getcwd()) / "pybreeze_icon.ico"
             self.icon = QIcon(str(self.icon_path))
             if not self.icon.isNull():
                 self.setWindowIcon(self.icon)
@@ -86,19 +86,22 @@ class PyBreezeMainWindow(EditorMain):
         sys.exit(0)
 
 
-def start_editor(debug_mode: bool = False, **kwargs) -> None:
+def start_editor(debug_mode: bool = False, theme: str = "dark_amber.xml", **kwargs) -> None:
     """
     Start editor instance
+    :param debug_mode: enable debug mode with auto-close timer
+    :param theme: qt_material theme name (e.g. "dark_amber.xml", "dark_teal.xml", "light_blue.xml")
     :return: None
     """
     new_ide = QCoreApplication.instance()
     if new_ide is None:
         new_ide = QApplication(sys.argv)
     window = PyBreezeMainWindow(debug_mode=debug_mode, **kwargs)
-    apply_stylesheet(new_ide, theme="dark_amber.xml")
+    apply_stylesheet(new_ide, theme=theme)
     window.showMaximized()
     try:
         window.startup_setting()
     except Exception as error:
-        print(repr(error))
+        from pybreeze.utils.logging.logger import pybreeze_logger
+        pybreeze_logger.error(f"Startup setting error: {error}")
     sys.exit(new_ide.exec())

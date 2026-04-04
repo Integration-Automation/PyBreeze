@@ -19,8 +19,10 @@ class AICodeReviewClient(QWidget):
         # 記錄接受/拒絕次數
         self.accept_count = 0
         self.reject_count = 0
-        self.stats_file = "response_stats.txt"
-        self.url_file = "urls.txt"
+        data_dir = os.path.join(os.getcwd(), ".pybreeze")
+        os.makedirs(data_dir, exist_ok=True)
+        self.stats_file = os.path.join(data_dir, "response_stats.txt")
+        self.url_file = os.path.join(data_dir, "urls.txt")
 
         # 主佈局 (垂直)
         main_layout = QVBoxLayout()
@@ -131,13 +133,13 @@ class AICodeReviewClient(QWidget):
 
         try:
             if method == "GET":
-                response = requests.get(url)
+                response = requests.get(url, timeout=30)
             elif method == "POST":
-                response = requests.post(url, data={"code": code_content})
+                response = requests.post(url, data={"code": code_content}, timeout=30)
             elif method == "PUT":
-                response = requests.put(url, data={"code": code_content})
+                response = requests.put(url, data={"code": code_content}, timeout=30)
             elif method == "DELETE":
-                response = requests.delete(url)
+                response = requests.delete(url, timeout=30)
             else:
                 self.response_panel.setPlainText(
                     self.word_dict.get("ai_code_review_gui_message_unsupported_http_method"))

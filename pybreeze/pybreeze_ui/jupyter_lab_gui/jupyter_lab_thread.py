@@ -10,8 +10,10 @@ from je_editor import language_wrapper
 
 from pybreeze.utils.logging.logger import pybreeze_logger
 
+JUPYTER_STARTUP_TIMEOUT = 60
 
-def find_free_port():
+
+def find_free_port() -> int:
     s = socket.socket()
     s.bind(("", 0))
     port = s.getsockname()[1]
@@ -19,12 +21,12 @@ def find_free_port():
     return port
 
 
-def get_venv_python():
-    # 如果在 venv 中
+def get_venv_python() -> str:
+    # If already in a venv
     if hasattr(sys, 'real_prefix') or (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix):
         return sys.executable
 
-    # 嘗試從常見位置找 venv
+    # Try common venv locations
     if sys.platform in ["win32", "cygwin", "msys"]:
         possible_paths = [
             os.path.join(os.getcwd(), "venv", "Scripts", "python.exe"),
@@ -43,7 +45,7 @@ def get_venv_python():
     raise RuntimeError("Cannot find venv python executable")
 
 
-def is_jupyter_installed(python_exe):
+def is_jupyter_installed(python_exe: str) -> bool:
     result = subprocess.run(
         [python_exe, "-m", "pip", "show", "jupyterlab"],
         capture_output=True,
@@ -56,9 +58,10 @@ class JupyterLauncherThread(QThread):
     status_update = Signal(str)
     error_occurred = Signal(str)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, startup_timeout: int = JUPYTER_STARTUP_TIMEOUT):
         super().__init__(parent)
         self.process = None
+        self.startup_timeout = startup_timeout
 
     def run(self):
         try:
@@ -98,8 +101,14 @@ class JupyterLauncherThread(QThread):
             start_time = time.time()
 
             while True:
-                if time.time() - start_time > 30:
-                    raise TimeoutError("JupyterLab 啟動超時")
+                elapsed = time.time() - start_time
+                if elapsed > self.startup_timeout:
+                    raise TimeoutError(
+                        f"JupyterLab startup timeout ({self.startup_timeout}s)")
+
+                self.status_update.emit(
+                    f"{language_wrapper.language_word_dict.get('jupyterlab_loading')} "
+                    f"({int(elapsed)}s / {self.startup_timeout}s)")
 
                 try:
                     s = socket.create_connection(("localhost", port), timeout=0.5)
@@ -112,9 +121,8 @@ class JupyterLauncherThread(QThread):
 
         except Exception:
             err = traceback.format_exc()
-            print(err)
             self.error_occurred.emit(err)
-            pybreeze_logger.info(err)
+            pybreeze_logger.error(f"JupyterLab launch failed: {err}")
 
     def stop(self):
         if self.process is not None:

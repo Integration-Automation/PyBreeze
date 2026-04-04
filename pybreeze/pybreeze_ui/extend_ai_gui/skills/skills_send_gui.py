@@ -20,9 +20,27 @@ class RequestThread(QThread):
 
     def run(self):
         try:
-            response = requests.post(self.api_url, json={"code": self.code_text})
-            if response.status_code == 200:
+            response = requests.post(self.api_url, json={"code": self.code_text}, timeout=30)
+            if response.ok:
                 self.finished.emit(response.text)
+            elif response.is_redirect:
+                self.finished.emit(
+                    language_wrapper.language_word_dict.get(
+                        "skills_error_status").format(
+                        status_code=response.status_code,
+                        text=f"Redirect to {response.headers.get('Location', 'unknown')}"))
+            elif response.status_code == 401 or response.status_code == 403:
+                self.error.emit(
+                    language_wrapper.language_word_dict.get(
+                        "skills_error_status").format(
+                        status_code=response.status_code,
+                        text="Authentication/Authorization failed"))
+            elif response.status_code >= 500:
+                self.error.emit(
+                    language_wrapper.language_word_dict.get(
+                        "skills_error_status").format(
+                        status_code=response.status_code,
+                        text=f"Server error: {response.text}"))
             else:
                 self.finished.emit(
                     language_wrapper.language_word_dict.get(

@@ -15,6 +15,7 @@ from je_editor.pyside_ui.main_ui.save_settings.user_color_setting_file import ac
 from je_editor.utils.venv_check.check_venv import check_and_choose_venv
 
 from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
+from pybreeze.extend.process_executor.python_task_process_manager import find_venv_path
 
 if TYPE_CHECKING:
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
@@ -44,11 +45,7 @@ class TestPioneerProcess:
         self._read_program_output_from_thread: threading.Thread | None = None
         self._timer: QTimer = QTimer(self._code_window)
         if self._main_window.python_compiler is None:
-            # Renew compiler path
-            if sys.platform in ["win32", "cygwin", "msys"]:
-                venv_path = Path(str(Path.cwd()) + "/venv/Scripts")
-            else:
-                venv_path = Path(str(Path.cwd()) + "/venv/bin")
+            venv_path = find_venv_path()
             self._compiler_path = check_and_choose_venv(venv_path)
         else:
             self._compiler_path = main_window.python_compiler
@@ -66,39 +63,34 @@ class TestPioneerProcess:
             stderr=subprocess.PIPE,
         )
 
+    def _append_text(self, text: str, is_error: bool = False) -> None:
+        """Append text to the code result widget."""
+        text_cursor = self._code_window.code_result.textCursor()
+        text_format = QTextCharFormat()
+        color_key = "error_output_color" if is_error else "normal_output_color"
+        text_format.setForeground(actually_color_dict.get(color_key))
+        text_cursor.insertText(text, text_format)
+        text_cursor.insertBlock()
+
     # Pyside UI update method
     def pull_text(self):
         try:
             if not self._run_output_queue.empty():
-                output_message = self._run_output_queue.get_nowait()
-                output_message = str(output_message).strip()
+                output_message = str(self._run_output_queue.get_nowait()).strip()
                 if output_message:
-                    text_cursor = self._code_window.code_result.textCursor()
-                    text_format = QTextCharFormat()
-                    text_format.setForeground(actually_color_dict.get("normal_output_color"))
-                    text_cursor.insertText(output_message, text_format)
-                    text_cursor.insertBlock()
+                    self._append_text(output_message)
             if not self._run_error_queue.empty():
-                error_message = self._run_error_queue.get_nowait()
-                error_message = str(error_message).strip()
+                error_message = str(self._run_error_queue.get_nowait()).strip()
                 if error_message:
-                    text_cursor = self._code_window.code_result.textCursor()
-                    text_format = QTextCharFormat()
-                    text_format.setForeground(actually_color_dict.get("error_output_color"))
-                    text_cursor.insertText(error_message, text_format)
-                    text_cursor.insertBlock()
+                    self._append_text(error_message, is_error=True)
         except queue.Empty:
             pass
         if self._process is not None:
-            if self._process.returncode == 0:
+            if self._process.returncode is not None:
                 if self._timer.isActive():
                     self._timer.stop()
                 self.exit_program()
-            elif self._process.returncode is not None:
-                if self._timer.isActive():
-                    self._timer.stop()
-                self.exit_program()
-            if self._still_run_program:
+            elif self._still_run_program:
                 # poll return code
                 self._process.poll()
         else:
@@ -108,43 +100,32 @@ class TestPioneerProcess:
     # exit program change run flag to false and clean read thread and queue and process
     def exit_program(self):
         self._still_run_program = False
+        # Wait for threads to finish before cleanup
         if self._read_program_output_from_thread is not None:
+            self._read_program_output_from_thread.join(timeout=2)
             self._read_program_output_from_thread = None
         if self._read_program_error_output_from_thread is not None:
+            self._read_program_error_output_from_thread.join(timeout=2)
             self._read_program_error_output_from_thread = None
         self.drain_and_clear_queue()
         if self._process is not None:
             self._process.terminate()
-            text_cursor = self._code_window.code_result.textCursor()
-            text_format = QTextCharFormat()
-            text_format.setForeground(actually_color_dict.get("normal_output_color"))
-            text_cursor.insertText(f"Task exit with code {self._process.returncode}", text_format)
-            text_cursor.insertBlock()
+            self._append_text(f"Task exit with code {self._process.returncode}")
             self._process = None
 
     def drain_and_clear_queue(self):
         while not self._run_output_queue.empty():
             try:
-                output_message = self._run_output_queue.get_nowait()
-                output_message = str(output_message).strip()
+                output_message = str(self._run_output_queue.get_nowait()).strip()
                 if output_message:
-                    text_cursor = self._code_window.code_result.textCursor()
-                    text_format = QTextCharFormat()
-                    text_format.setForeground(actually_color_dict.get("normal_output_color"))
-                    text_cursor.insertText(output_message, text_format)
-                    text_cursor.insertBlock()
+                    self._append_text(output_message)
             except queue.Empty:
                 break
         while not self._run_error_queue.empty():
             try:
-                error_message = self._run_error_queue.get_nowait()
-                error_message = str(error_message).strip()
+                error_message = str(self._run_error_queue.get_nowait()).strip()
                 if error_message:
-                    text_cursor = self._code_window.code_result.textCursor()
-                    text_format = QTextCharFormat()
-                    text_format.setForeground(actually_color_dict.get("error_output_color"))
-                    text_cursor.insertText(error_message, text_format)
-                    text_cursor.insertBlock()
+                    self._append_text(error_message, is_error=True)
             except queue.Empty:
                 break
 
@@ -188,7 +169,7 @@ class TestPioneerProcess:
         # start timer
         self._code_window.setWindowTitle("Test Pioneer")
         self._code_window.show()
-        self._timer = QTimer()
+        self._timer = QTimer(self._code_window)
         self._timer.setInterval(100)
         self._timer.timeout.connect(self.pull_text)
         self._timer.start()
