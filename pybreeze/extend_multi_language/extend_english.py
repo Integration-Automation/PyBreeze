@@ -281,6 +281,21 @@ pybreeze_english_word_dict = {
     # Run with Menu
     "run_with_menu_label": "Run with...",
     "run_with_suffix_mismatch": "Current file ({suffix}) does not match expected suffixes: {expected}",
+    # File Tree Context Menu
+    "file_tree_ctx_new_file": "New File",
+    "file_tree_ctx_new_folder": "New Folder",
+    "file_tree_ctx_rename": "Rename",
+    "file_tree_ctx_delete": "Delete",
+    "file_tree_ctx_copy_path": "Copy Path",
+    "file_tree_ctx_copy_relative_path": "Copy Relative Path",
+    "file_tree_ctx_reveal_in_explorer": "Reveal in File Explorer",
+    "file_tree_ctx_input_file_name": "File name:",
+    "file_tree_ctx_input_folder_name": "Folder name:",
+    "file_tree_ctx_input_new_name": "New name for '{name}':",
+    "file_tree_ctx_error": "Error",
+    "file_tree_ctx_already_exists": "'{name}' already exists.",
+    "file_tree_ctx_confirm_delete": "Confirm Delete",
+    "file_tree_ctx_confirm_delete_message": "Are you sure you want to delete '{name}'?",
     # Plugin Browser
     "plugin_browser_tab_name": "Plugin Browser",
     "plugin_browser_repo_label": "Repository URL:",
