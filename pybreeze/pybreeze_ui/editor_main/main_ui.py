@@ -77,13 +77,15 @@ class PyBreezeMainWindow(EditorMain):
             widget.close()
         super().closeEvent(event)
 
-    @classmethod
-    def debug_close(cls) -> None:
+    @staticmethod
+    def debug_close() -> None:
         """
         Use to run CI test.
         :return: None
         """
-        sys.exit(0)
+        app = QApplication.instance()
+        if app is not None:
+            app.quit()
 
 
 def start_editor(debug_mode: bool = False, theme: str = "dark_amber.xml", **kwargs) -> None:
@@ -104,4 +106,5 @@ def start_editor(debug_mode: bool = False, theme: str = "dark_amber.xml", **kwar
     except Exception as error:
         from pybreeze.utils.logging.logger import pybreeze_logger
         pybreeze_logger.error(f"Startup setting error: {error}")
-    sys.exit(new_ide.exec())
+    ret = new_ide.exec()
+    os._exit(ret)
