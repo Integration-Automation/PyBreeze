@@ -7,7 +7,7 @@
   },
   {
    "optionDest": "filenames",
-   "value": "C:/CodeWorkspace/Python/PyBreeze/exe/start_pybreeze.py"
+   "value": "D:/Codes/PyBreeze/exe/start_pybreeze.py"
   },
   {
    "optionDest": "onefile",
@@ -19,7 +19,7 @@
   },
   {
    "optionDest": "icon_file",
-   "value": "C:/CodeWorkspace/Python/PyBreeze/exe/pybreeze_icon.ico"
+   "value": "D:\\Codes/PyBreeze/exe/pybreeze_icon.ico"
   },
   {
    "optionDest": "name",
@@ -58,24 +58,16 @@
    "value": false
   },
   {
-   "optionDest": "datas",
-   "value": "C:/CodeWorkspace/Python/PyBreeze/.venv/Lib/site-packages/ipython-9.11.0.dist-info;ipython-9.11.0.dist-info/"
-  },
-  {
-   "optionDest": "datas",
-   "value": "C:/CodeWorkspace/Python/PyBreeze/.venv/Lib/site-packages/IPython;.IPython/"
-  },
-  {
-   "optionDest": "datas",
-   "value": "C:/CodeWorkspace/Python/PyBreeze/.venv/Lib/site-packages/ipykernel-7.2.0.dist-info;ipykernel-7.2.0.dist-info/"
-  },
-  {
-   "optionDest": "datas",
-   "value": "C:/CodeWorkspace/Python/PyBreeze/.venv/Lib/site-packages/ipykernel;ipykernel/"
-  },
-  {
    "optionDest": "pathex",
-   "value": "C:/CodeWorkspace/Python/PyBreeze/.venv"
+   "value": "D:\\Codes\\PyBreeze\\.venv"
+  },
+  {
+   "optionDest": "collect_all",
+   "value": "ipython"
+  },
+  {
+   "optionDest": "collect_all",
+   "value": "debugpy"
   }
  ],
  "nonPyinstallerOptions": {

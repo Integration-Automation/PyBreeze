@@ -12,6 +12,7 @@ from je_editor import EditorMain, language_wrapper
 from qt_material import apply_stylesheet
 
 from pybreeze.extend_multi_language.update_language_dict import update_language_dict
+from pybreeze.pybreeze_ui.editor_main.file_tree_context_menu import setup_file_tree_context_menu
 from pybreeze.pybreeze_ui.menu.build_menubar import add_menu_to_menubar
 from pybreeze.pybreeze_ui.syntax.syntax_extend import \
     syntax_extend_package
@@ -65,6 +66,9 @@ class PyBreezeMainWindow(EditorMain):
         # Tab
         for widget_name, widget in EDITOR_EXTEND_TAB.items():
             self.tab_widget.addTab(widget(), widget_name)
+
+        # File tree context menu (right-click)
+        setup_file_tree_context_menu(self)
 
         if debug_mode:
             close_timer = QTimer(self)
