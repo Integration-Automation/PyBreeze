@@ -35,5 +35,9 @@ jobs:
       run: python -m pytest test/test_utils/ -v --tb=short
     - name: Run AutomationEditor With Debug Mode
       run: python ./test/unit_test/start_automation/start_automation_test.py
+      env:
+        PYTHONPATH: .
     - name: Extend AutomationEditor
       run: python ./test/unit_test/start_automation/extend_automation_test.py
+      env:
+        PYTHONPATH: .
