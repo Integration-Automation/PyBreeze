@@ -7,6 +7,7 @@ logging.root.setLevel(logging.DEBUG)
 
 # 建立 AutoControlGUI 專用 logger Create dedicated logger
 pybreeze_logger = logging.getLogger("Pybreeze")
+pybreeze_logger.setLevel(logging.DEBUG)
 
 # 日誌格式 Formatter
 formatter = logging.Formatter(
