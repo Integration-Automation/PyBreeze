@@ -10,8 +10,9 @@ from pybreeze.utils.logging.logger import pybreeze_logger
 
 def send_after_test(html_report_path: str | None = None) -> None:
     try:
-        from je_mail_thunder import SMTPWrapper
+        from je_mail_thunder import SMTPWrapper, read_output_content, get_mail_thunder_os_environ
         mail_thunder_smtp: SMTPWrapper = SMTPWrapper()
+        mail_thunder_smtp.later_init()
 
         if not mail_thunder_smtp.login_state:
             raise ITESendHtmlReportException
@@ -23,7 +24,18 @@ def send_after_test(html_report_path: str | None = None) -> None:
             pybreeze_logger.error(f"Report file not found: {report_path}")
             return
 
-        user: str = mail_thunder_smtp.user
+        # Resolve user from content file or environment variables
+        user: str | None = None
+        user_info = read_output_content()
+        if user_info is not None and isinstance(user_info, dict):
+            user = user_info.get("user")
+        if user is None:
+            env_info = get_mail_thunder_os_environ()
+            user = env_info.get("mail_thunder_user")
+        if user is None:
+            pybreeze_logger.error("Cannot determine mail user for sending report")
+            return
+
         with open(report_path, encoding="utf-8") as file:
             html_string: str = file.read()
         message: MIMEMultipart = mail_thunder_smtp.create_message_with_attach(
