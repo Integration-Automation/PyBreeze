@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import sys
 from typing import TYPE_CHECKING
 
 from je_editor import EditorWidget
@@ -11,6 +10,7 @@ from pybreeze.extend.mail_thunder_extend.mail_thunder_setting import send_after_
 from pybreeze.extend.process_executor.python_task_process_manager import TaskProcessManager
 from pybreeze.utils.exception.exception_tags import wrong_test_data_format_exception_tag
 from pybreeze.utils.exception.exceptions import ITETestExecutorException
+from pybreeze.utils.logging.logger import pybreeze_logger
 
 if TYPE_CHECKING:
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
@@ -31,14 +31,9 @@ def build_process(
             test_format_code = exec_str
         start_process(main_window, package, test_format_code, send_mail, program_buffer)
     except json.decoder.JSONDecodeError as error:
-        print(
-            repr(error) +
-            "\n"
-            + wrong_test_data_format_exception_tag,
-            file=sys.stderr
-        )
+        pybreeze_logger.error(f"{repr(error)}\n{wrong_test_data_format_exception_tag}")
     except ITETestExecutorException as error:
-        print(repr(error), file=sys.stderr)
+        pybreeze_logger.error(repr(error))
 
 
 def start_process(

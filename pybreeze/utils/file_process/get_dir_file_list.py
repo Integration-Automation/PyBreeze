@@ -1,10 +1,13 @@
-import sys
+from __future__ import annotations
+
 from os import getcwd
 from os import walk
 from os.path import abspath
 from os.path import join
 
 from PySide6.QtWidgets import QFileDialog, QMainWindow
+
+from pybreeze.utils.logging.logger import pybreeze_logger
 
 
 def get_dir_files_as_list(dir_path: str = getcwd(), default_search_file_extension: str = ".json") -> list:
@@ -21,9 +24,12 @@ def get_dir_files_as_list(dir_path: str = getcwd(), default_search_file_extensio
     ]
 
 
-def ask_and_get_dir_files_as_list(main_window: QMainWindow, default_search_file_extension: str = ".json") -> list:
+def ask_and_get_dir_files_as_list(
+        main_window: QMainWindow, default_search_file_extension: str = ".json"
+) -> list | None:
     choose_dir = QFileDialog(parent=main_window).getExistingDirectory()
     if choose_dir is not None and choose_dir != "":
         return get_dir_files_as_list(choose_dir, default_search_file_extension)
     else:
-        print("Not select any dir", file=sys.stderr)
+        pybreeze_logger.warning("Not select any dir")
+        return None

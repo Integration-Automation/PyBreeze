@@ -43,8 +43,7 @@ class JupyterLabWidget(QWidget):
 
     def show_error(self, msg):
         self.status_label.setText(language_wrapper.language_word_dict.get("jupyterlab_init_failed"))
-        print(msg)
-        pybreeze_logger.info(msg)
+        pybreeze_logger.error(msg)
 
     def closeEvent(self, event):
         if self.thread.isRunning():

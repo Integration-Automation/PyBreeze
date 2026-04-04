@@ -1,0 +1,43 @@
+name: PyBreeze Dev
+
+on:
+  push:
+    branches: [ "dev" ]
+  pull_request:
+    branches: [ "dev" ]
+  schedule:
+    - cron: "0 2 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  unit-tests:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Update pip wheel setuptools
+      run: python -m pip install --upgrade pip setuptools wheel
+    - name: Install dev dependencies
+      run: python -m pip install -r dev_requirements.txt
+    - name: Install pytest
+      run: python -m pip install pytest
+    - name: Run unit tests (pytest)
+      run: python -m pytest test/test_utils/ -v --tb=short
+    - name: Run AutomationEditor With Debug Mode
+      run: python ./test/unit_test/start_automation/start_automation_test.py
+      env:
+        PYTHONPATH: .
+    - name: Extend AutomationEditor
+      run: python ./test/unit_test/start_automation/extend_automation_test.py
+      env:
+        PYTHONPATH: .

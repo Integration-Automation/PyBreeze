@@ -127,7 +127,7 @@ class FileRunnerProcess:
         self._stderr_thread.start()
 
         self.main_window.show()
-        self.timer = QTimer()
+        self.timer = QTimer(self.main_window)
         self.timer.setInterval(50)
         self.timer.timeout.connect(self._pull_text)
         self.timer.start()
@@ -162,6 +162,14 @@ class FileRunnerProcess:
         self.still_running = False
         if self.timer and self.timer.isActive():
             self.timer.stop()
+
+        # Wait for reader threads to finish
+        if self._stdout_thread is not None:
+            self._stdout_thread.join(timeout=2)
+            self._stdout_thread = None
+        if self._stderr_thread is not None:
+            self._stderr_thread.join(timeout=2)
+            self._stderr_thread = None
 
         # Drain remaining output directly (not via _pull_text to avoid recursion)
         self._drain_queues()

@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
 from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_login_widget import LoginWidget
+from pybreeze.utils.logging.logger import pybreeze_logger
 
 ANSI_ESCAPE_PATTERN = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
 
@@ -152,7 +153,7 @@ class SSHCommandWidget(QWidget):
                             pkey = KeyType.from_private_key_file(key_path, password if password else None)
                             break
                         except Exception as error:
-                            print(error)
+                            pybreeze_logger.debug(f"SSH key type failed: {error}")
                             continue
                     if pkey is None:
                         raise ValueError(
@@ -228,19 +229,19 @@ class SSHCommandWidget(QWidget):
                 self.reader_thread.stop()
                 self.reader_thread.wait(1000)
         except Exception as error:
-            print(error)
+            pybreeze_logger.debug(f"SSH reader thread cleanup: {error}")
         self.reader_thread = None
 
         try:
             if self.shell_channel and not self.shell_channel.closed:
                 self.shell_channel.close()
         except Exception as error:
-            print(error)
+            pybreeze_logger.debug(f"SSH channel cleanup: {error}")
         self.shell_channel = None
 
         try:
             if self.ssh_client:
                 self.ssh_client.close()
         except Exception as error:
-            print(error)
+            pybreeze_logger.debug(f"SSH client cleanup: {error}")
         self.ssh_client = None

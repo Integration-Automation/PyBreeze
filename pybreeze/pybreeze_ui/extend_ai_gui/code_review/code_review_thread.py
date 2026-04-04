@@ -61,7 +61,7 @@ class SenderThread(QThread):
 
             try:
                 # 傳送到指定 URL
-                resp = requests.post(self.url, json={"prompt": prompt})
+                resp = requests.post(self.url, json={"prompt": prompt}, timeout=60)
                 reply_text = resp.text
                 match file:
                     case "first_summary_prompt.md":

@@ -1,3 +1,4 @@
+from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import QWidget, QGridLayout, QTextEdit, QScrollArea
 
 
@@ -16,6 +17,15 @@ class CodeWindow(QWidget):
         self.code_result_scroll_area.setViewportMargins(0, 0, 0, 0)
         self.code_result_scroll_area.setWidget(self.code_result)
         self.grid_layout.addWidget(self.code_result_scroll_area, 0, 0)
-        self.resize(500, 500)
+        # Adaptive sizing based on screen
+        screen = QGuiApplication.primaryScreen()
+        if screen is not None:
+            screen_size = screen.availableSize()
+            self.resize(
+                max(500, screen_size.width() // 3),
+                max(400, screen_size.height() // 3)
+            )
+        else:
+            self.resize(500, 500)
         self.setLayout(self.grid_layout)
         self.setFocus()
