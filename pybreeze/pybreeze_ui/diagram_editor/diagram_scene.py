@@ -574,19 +574,24 @@ class DiagramScene(QGraphicsScene):
                 self._try_load_image_source(img, source)
 
     def _try_load_image_source(self, img: DiagramImage, source: str) -> None:
-        """Load pixmap from local path or URL into a DiagramImage."""
+        """Load pixmap from local path or URL into a DiagramImage.
+
+        Local paths are restricted to existing image files.
+        URLs are validated and size-limited via ``safe_download_image``.
+        """
         from pathlib import Path
         path = Path(source)
-        if path.is_file():
+        # Only load if the file actually exists and has an image extension
+        _IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".svg", ".webp", ".ico"}
+        if path.is_file() and path.suffix.lower() in _IMAGE_SUFFIXES:
             pix = QPixmap(str(path))
             if not pix.isNull():
                 img.set_pixmap(pix, source)
                 return
-        # Try as URL (non-blocking would be better, but keep it simple)
         if source.startswith(("http://", "https://")):
             try:
-                from urllib.request import urlopen
-                data = urlopen(source, timeout=10).read()
+                from pybreeze.pybreeze_ui.diagram_editor.diagram_net_utils import safe_download_image
+                data = safe_download_image(source)
                 pix = QPixmap()
                 pix.loadFromData(data)
                 if not pix.isNull():

@@ -535,8 +535,8 @@ class DiagramEditorWidget(QWidget):
             return
         url = url.strip()
         try:
-            from urllib.request import urlopen
-            data = urlopen(url, timeout=15).read()
+            from pybreeze.pybreeze_ui.diagram_editor.diagram_net_utils import safe_download_image
+            data = safe_download_image(url)
             from PySide6.QtGui import QPixmap
             pix = QPixmap()
             pix.loadFromData(data)

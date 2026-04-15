@@ -85,6 +85,35 @@ python -m pybreeze                              # launch the IDE
 - Logging: use `pybreeze_logger` from `pybreeze.utils.logging.logger`
 - Plugin API: `register_programming_language()` and `register_natural_language()` from `je_editor.plugins`
 
+## Security
+
+All code must follow secure-by-default principles. Review every change against the checklist below before committing.
+
+### General rules
+- Never use `eval()`, `exec()`, or `pickle.loads()` on untrusted data
+- Never use `subprocess.Popen(..., shell=True)` — always pass argument lists
+- Never log or display secrets, tokens, passwords, or API keys
+- Use `json.loads()` / `json.dumps()` for serialisation — never pickle
+- Validate all user input at system boundaries (file dialogs, URL inputs, network data)
+
+### Network requests (SSRF prevention)
+- All outbound HTTP requests must go through `diagram_net_utils.safe_download_image()` or equivalent guards
+- Only `http://` and `https://` schemes are allowed — block `file://`, `ftp://`, `data:`, `gopher://`
+- Resolved IP addresses must be checked against private/loopback/link-local ranges (`ipaddress.is_private`, `is_loopback`, `is_link_local`, `is_reserved`)
+- Enforce download size limits (default: 20 MB) and connection timeouts (default: 15s)
+- Never pass user-supplied URLs directly to `urlopen()` without validation
+
+### File I/O
+- File read/write paths from user dialogs (`QFileDialog`) are trusted (user-initiated)
+- File paths loaded from saved data (`.diagram.json`) must be validated before access:
+  - Local paths: check `path.is_file()` and verify extension is in an allowlist
+  - URLs: pass through the same SSRF validation as user-entered URLs
+- Never construct file paths by string concatenation with user input — use `pathlib.Path` with validation
+
+### Qt / UI
+- `QGraphicsTextItem` with `TextEditorInteraction` must not be enabled by default — use double-click-to-edit pattern to prevent unintended text selection issues in themed environments
+- Plugin loading (`jeditor_plugins/`) uses auto-discovery — only load `.py` files, skip files starting with `_` or `.`
+
 ## Commit & PR rules
 
 - Commit messages: short imperative sentence (e.g., "Update stable version", "Fix github actions")
