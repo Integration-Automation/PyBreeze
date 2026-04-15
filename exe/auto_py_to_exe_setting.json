@@ -63,11 +63,11 @@
   },
   {
    "optionDest": "collect_all",
-   "value": "ipython"
+   "value": "debugpy"
   },
   {
    "optionDest": "collect_all",
-   "value": "debugpy"
+   "value": "ipython"
   }
  ],
  "nonPyinstallerOptions": {
