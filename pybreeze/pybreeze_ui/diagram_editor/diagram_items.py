@@ -8,7 +8,6 @@ from PySide6.QtGui import (
     QBrush,
     QColor,
     QFont,
-    QImage,
     QPainter,
     QPainterPath,
     QPen,

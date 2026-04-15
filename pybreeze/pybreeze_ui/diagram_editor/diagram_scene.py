@@ -4,8 +4,8 @@ from contextlib import contextmanager
 from enum import Enum, auto
 
 from PySide6.QtCore import QPointF, Qt, Signal
-from PySide6.QtGui import QColor, QPen, QPixmap, QTransform, QUndoStack
-from PySide6.QtWidgets import QGraphicsItem, QGraphicsLineItem, QGraphicsScene, QMenu
+from PySide6.QtGui import QColor, QPen, QPixmap, QUndoStack
+from PySide6.QtWidgets import QGraphicsLineItem, QGraphicsScene, QMenu
 
 from pybreeze.pybreeze_ui.diagram_editor.diagram_commands import DiagramSnapshotCommand
 from pybreeze.pybreeze_ui.diagram_editor.diagram_items import (
@@ -42,7 +42,6 @@ class DiagramScene(QGraphicsScene):
 
     mode_changed = Signal(ToolMode)
     item_count_changed = Signal()
-    zoom_requested = Signal(float)  # emitted when scene wants to change zoom
 
     def __init__(self, parent=None):
         super().__init__(parent)

@@ -84,6 +84,7 @@ python -m pybreeze                              # launch the IDE
 - Exception hierarchy: all custom exceptions inherit from `ITEException`
 - Logging: use `pybreeze_logger` from `pybreeze.utils.logging.logger`
 - Plugin API: `register_programming_language()` and `register_natural_language()` from `je_editor.plugins`
+- Delete all unused code — do not leave dead imports, unreachable functions, commented-out blocks, or unused variables. If code is not called by any execution path, remove it entirely. No `# TODO: remove later` or `_old_` prefixes — delete immediately.
 
 ## Security
 
