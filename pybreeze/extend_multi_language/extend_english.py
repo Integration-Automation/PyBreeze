@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from je_editor import english_word_dict
 
 # PyBreeze-specific English translations

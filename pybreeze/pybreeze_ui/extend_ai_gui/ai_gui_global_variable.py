@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pybreeze.pybreeze_ui.extend_ai_gui.prompt_edit_gui.cot_code_review_prompt_templates.code_smell_detector import \
     CODE_SMELL_DETECTOR_TEMPLATE
 from pybreeze.pybreeze_ui.extend_ai_gui.prompt_edit_gui.cot_code_review_prompt_templates.first_code_review import \

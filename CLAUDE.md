@@ -36,6 +36,7 @@ pybreeze/
     ├── logging/                 # pybreeze_logger
     ├── file_process/            # File/directory utilities
     ├── json_format/             # JSON processing
+    ├── network/                 # URL validation (SSRF prevention)
     └── manager/package_manager/ # PackageManager class
 ```
 
@@ -95,14 +96,37 @@ All code must follow secure-by-default principles. Review every change against t
 - Never use `subprocess.Popen(..., shell=True)` — always pass argument lists
 - Never log or display secrets, tokens, passwords, or API keys
 - Use `json.loads()` / `json.dumps()` for serialisation — never pickle
+- Never use `yaml.load()` — always use `yaml.safe_load()`
 - Validate all user input at system boundaries (file dialogs, URL inputs, network data)
+- Handle exceptions without leaking stack traces, file paths, or internal state to the user
 
 ### Network requests (SSRF prevention)
-- All outbound HTTP requests must go through `diagram_net_utils.safe_download_image()` or equivalent guards
-- Only `http://` and `https://` schemes are allowed — block `file://`, `ftp://`, `data:`, `gopher://`
-- Resolved IP addresses must be checked against private/loopback/link-local ranges (`ipaddress.is_private`, `is_loopback`, `is_link_local`, `is_reserved`)
-- Enforce download size limits (default: 20 MB) and connection timeouts (default: 15s)
-- Never pass user-supplied URLs directly to `urlopen()` without validation
+- **All** outbound HTTP requests to user-specified URLs must validate the target before connecting:
+  1. Only `http://` and `https://` schemes — block `file://`, `ftp://`, `data:`, `gopher://`
+  2. Resolve the hostname and check IPs against private/loopback/link-local/reserved ranges (`ipaddress.is_private`, `is_loopback`, `is_link_local`, `is_reserved`)
+  3. Enforce connection timeouts (default: 15 s for downloads, 30 s for API calls)
+  4. Enforce response size limits where applicable (default: 20 MB for binary downloads)
+- Reference implementation: `diagram_net_utils._validate_url()` and `safe_download_image()`
+- For API-style requests (`requests.get/post`): create or reuse a URL validation helper that performs scheme + IP checks, then call it before every `requests.*` call
+- Disable automatic redirect following (`allow_redirects=False`) or re-validate the redirect target to prevent redirect-based SSRF
+- Never pass user-supplied URLs directly to `urlopen()` or `requests.*` without validation
+
+### Network requests (TLS / SSH)
+- All HTTPS requests must use default TLS verification — never set `verify=False`
+- SSH connections: `paramiko.AutoAddPolicy()` accepts any host key and is vulnerable to MITM. Document it as a known limitation in the SSH GUI. Prefer `paramiko.RejectPolicy()` or `paramiko.WarningPolicy()` when non-interactive verification is possible; at minimum, warn the user on first connection to an unknown host
+
+### Subprocess execution
+- Always pass argument lists to `subprocess.Popen` / `subprocess.run` — never `shell=True`
+- Explicitly set `shell=False` for clarity in new code
+- Never interpolate user input into command strings — pass as separate list elements
+- Set `timeout` on all `subprocess.run()` calls to prevent hangs
+- The IDE intentionally runs user-authored scripts; this is trusted local execution, not arbitrary remote code. Subprocess hardening protects against accidental shell injection, not against malicious local files
+
+### JupyterLab integration
+- The embedded JupyterLab server binds to `localhost` only and is intended for local development
+- `--ServerApp.token=` and `--ServerApp.password=` are deliberately empty to enable seamless embedding — this is safe only because the server is localhost-only
+- Do not change `--ServerApp.ip` to `0.0.0.0` or any externally-reachable address
+- `--ServerApp.disable_check_xsrf=True` is required for the embedded QWebEngineView; do not expose the server externally with XSRF disabled
 
 ### File I/O
 - File read/write paths from user dialogs (`QFileDialog`) are trusted (user-initiated)
@@ -110,10 +134,25 @@ All code must follow secure-by-default principles. Review every change against t
   - Local paths: check `path.is_file()` and verify extension is in an allowlist
   - URLs: pass through the same SSRF validation as user-entered URLs
 - Never construct file paths by string concatenation with user input — use `pathlib.Path` with validation
+- When writing to data directories (`.pybreeze/`), create the directory with `os.makedirs(exist_ok=True)` and always use `encoding="utf-8"`
+- Never follow symlinks from untrusted sources — use `Path.resolve(strict=True)` and verify the resolved path is still within expected boundaries
 
 ### Qt / UI
 - `QGraphicsTextItem` with `TextEditorInteraction` must not be enabled by default — use double-click-to-edit pattern to prevent unintended text selection issues in themed environments
 - Plugin loading (`jeditor_plugins/`) uses auto-discovery — only load `.py` files, skip files starting with `_` or `.`
+- `QWebEngineView.setUrl()` must only load trusted URLs (localhost or user-confirmed external URLs) — never load untrusted HTML or URLs without user consent
+- Never call `QWebEngineView.setHtml()` with unsanitised content — this enables XSS within the embedded browser
+
+### Secrets and credentials
+- SSH passwords and private key passphrases are held in memory only during the session — never persist to disk or logs
+- Password fields must use `QLineEdit.EchoMode.Password`
+- API endpoint URLs may contain embedded tokens — treat URL strings with the same care as credentials (do not log full URLs)
+- Environment variables (`PYBREEZE_LOG_MAX_BYTES`, etc.) must never contain secrets; use dedicated secure stores for credentials
+
+### Dependency security
+- Pin dependencies to exact versions in `requirements.txt` / `dev_requirements.txt`
+- Do not add new dependencies without reviewing their security posture (maintained? known CVEs?)
+- Avoid transitive dependency bloat — prefer stdlib solutions when the alternative is a single-function dependency
 
 ## Commit & PR rules
 

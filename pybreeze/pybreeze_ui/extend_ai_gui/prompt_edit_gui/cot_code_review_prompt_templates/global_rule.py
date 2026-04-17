@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 GLOBAL_RULE_TEMPLATE = """
 Please conduct a code review according to the following global rules:
 

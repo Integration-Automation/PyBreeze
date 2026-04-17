@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import re
 
@@ -137,7 +139,11 @@ class SSHCommandWidget(QWidget):
 
         try:
             self.ssh_client = paramiko.SSHClient()
-            self.ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            self.ssh_client.load_system_host_keys()
+            self.ssh_client.set_missing_host_key_policy(paramiko.WarningPolicy())
+            pybreeze_logger.warning(
+                f"SSH connecting to {host}:{port} — host key will be accepted without verification"
+            )
 
             if use_key:
                 if not os.path.exists(key_path):

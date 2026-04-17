@@ -1,5 +1,9 @@
+from __future__ import annotations
+
 import os
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QModelIndex
@@ -248,8 +252,6 @@ def _action_copy_path(tree_view: QTreeView, path: Path | None, relative: bool = 
 def _action_reveal_in_explorer(path: Path | None) -> None:
     if path is None:
         return
-    import subprocess
-    import sys
     target = path if path.is_dir() else path.parent
     if sys.platform == "win32":
         os.startfile(str(target))

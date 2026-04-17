@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from je_editor import traditional_chinese_word_dict
 
 # PyBreeze-specific Traditional Chinese translations

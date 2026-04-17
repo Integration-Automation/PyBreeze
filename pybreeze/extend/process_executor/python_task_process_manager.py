@@ -5,7 +5,7 @@ import queue
 import subprocess
 import sys
 import threading
-import typing
+from typing import Callable
 from pathlib import Path
 from queue import Queue
 from threading import Thread
@@ -42,8 +42,8 @@ class TaskProcessManager:
     def __init__(
             self,
             main_window: CodeWindow,
-            task_done_trigger_function: typing.Callable | None = None,
-            error_trigger_function: typing.Callable | None = None,
+            task_done_trigger_function: Callable | None = None,
+            error_trigger_function: Callable | None = None,
             program_buffer_size: int = 1024,
             program_encoding: str = "utf-8"
     ):
@@ -60,8 +60,8 @@ class TaskProcessManager:
         self.run_error_queue: Queue = Queue()
         self.process: subprocess.Popen | None = None
 
-        self.task_done_trigger_function: typing.Callable = task_done_trigger_function
-        self.error_trigger_function: typing.Callable = error_trigger_function
+        self.task_done_trigger_function: Callable = task_done_trigger_function
+        self.error_trigger_function: Callable = error_trigger_function
         self.program_buffer_size = program_buffer_size
 
     def renew_path(self) -> None:

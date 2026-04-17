@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import socket
 import subprocess
@@ -49,6 +51,7 @@ def is_jupyter_installed(python_exe: str) -> bool:
     result = subprocess.run(
         [python_exe, "-m", "pip", "show", "jupyterlab"],
         capture_output=True,
+        timeout=30,
     )
     return result.returncode == 0
 
@@ -77,7 +80,7 @@ class JupyterLauncherThread(QThread):
                     "install",
                     "jupyterlab",
                     "-U"
-                ], capture_output=True, text=True)
+                ], capture_output=True, text=True, timeout=300)
 
                 if result.returncode != 0:
                     raise RuntimeError(result.stderr)

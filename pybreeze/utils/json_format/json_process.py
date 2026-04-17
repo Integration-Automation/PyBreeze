@@ -1,4 +1,6 @@
-import json.decoder
+from __future__ import annotations
+
+import json
 from json import dumps
 from json import loads
 

@@ -13,6 +13,7 @@ from PySide6.QtWidgets import QMessageBox
 
 from je_editor import language_wrapper
 from je_editor.plugins import get_all_plugin_run_configs
+from je_editor.pyside_ui.dialog.file_dialog.save_file_dialog import choose_file_get_save_file_path
 from je_editor.pyside_ui.main_ui.editor.editor_widget import EditorWidget
 from je_editor.utils.file.save.save_file import write_file
 
@@ -35,7 +36,6 @@ def _get_current_file(main_window: PyBreezeMainWindow) -> str | None:
         return widget.current_file
 
     # No file yet — ask user to save first
-    from je_editor.pyside_ui.dialog.file_dialog.save_file_dialog import choose_file_get_save_file_path
     if choose_file_get_save_file_path(main_window):
         return widget.current_file
     return None

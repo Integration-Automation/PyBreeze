@@ -2,12 +2,15 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from enum import Enum, auto
+from pathlib import Path
 
 from PySide6.QtCore import QPointF, Qt, Signal
 from PySide6.QtGui import QColor, QPen, QPixmap, QUndoStack
 from PySide6.QtWidgets import QGraphicsLineItem, QGraphicsScene, QMenu
+from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.diagram_editor.diagram_commands import DiagramSnapshotCommand
+from pybreeze.pybreeze_ui.diagram_editor.diagram_net_utils import safe_download_image
 from pybreeze.pybreeze_ui.diagram_editor.diagram_items import (
     ConnectionStyle,
     DiagramConnection,
@@ -247,7 +250,6 @@ class DiagramScene(QGraphicsScene):
         super().keyPressEvent(event)
 
     def contextMenuEvent(self, event) -> None:
-        from je_editor import language_wrapper
         menu = QMenu()
         item = self._node_at(event.scenePos())
         conn = self._connection_at(event.scenePos())
@@ -578,7 +580,6 @@ class DiagramScene(QGraphicsScene):
         Local paths are restricted to existing image files.
         URLs are validated and size-limited via ``safe_download_image``.
         """
-        from pathlib import Path
         path = Path(source)
         # Only load if the file actually exists and has an image extension
         _IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".svg", ".webp", ".ico"}
@@ -589,7 +590,6 @@ class DiagramScene(QGraphicsScene):
                 return
         if source.startswith(("http://", "https://")):
             try:
-                from pybreeze.pybreeze_ui.diagram_editor.diagram_net_utils import safe_download_image
                 data = safe_download_image(source)
                 pix = QPixmap()
                 pix.loadFromData(data)

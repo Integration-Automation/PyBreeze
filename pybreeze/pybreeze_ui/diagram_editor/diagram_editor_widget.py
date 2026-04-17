@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from PySide6.QtCore import QMarginsF, QRectF, QSizeF, Qt
-from PySide6.QtGui import QImage, QKeySequence, QPainter, QShortcut
+from PySide6.QtGui import QImage, QKeySequence, QPainter, QPixmap, QShortcut
 from PySide6.QtSvg import QSvgGenerator
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QFrame,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
     QMenu,
     QMessageBox,
@@ -25,6 +26,7 @@ from PySide6.QtWidgets import (
 from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.diagram_editor.diagram_mermaid_parser import parse_mermaid
+from pybreeze.pybreeze_ui.diagram_editor.diagram_net_utils import safe_download_image
 from pybreeze.pybreeze_ui.diagram_editor.diagram_property_panel import DiagramPropertyPanel
 from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene, ToolMode
 from pybreeze.pybreeze_ui.diagram_editor.diagram_view import DiagramView
@@ -516,7 +518,6 @@ class DiagramEditorWidget(QWidget):
         )
         if not path:
             return
-        from PySide6.QtGui import QPixmap
         pix = QPixmap(path)
         if pix.isNull():
             QMessageBox.warning(self, _lang("diagram_editor_error_title", "Error"),
@@ -525,7 +526,6 @@ class DiagramEditorWidget(QWidget):
         self._scene.add_image(pix, path)
 
     def _add_image_from_url(self) -> None:
-        from PySide6.QtWidgets import QInputDialog
         url, ok = QInputDialog.getText(
             self,
             _lang("diagram_editor_dialog_image_url", "Image URL"),
@@ -535,9 +535,7 @@ class DiagramEditorWidget(QWidget):
             return
         url = url.strip()
         try:
-            from pybreeze.pybreeze_ui.diagram_editor.diagram_net_utils import safe_download_image
             data = safe_download_image(url)
-            from PySide6.QtGui import QPixmap
             pix = QPixmap()
             pix.loadFromData(data)
             if pix.isNull():

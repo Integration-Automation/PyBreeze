@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 CODE_SMELL_DETECTOR_TEMPLATE = """
 You are a senior software engineer specializing in code quality reviews.  
 Carefully analyze the following code and identify all possible **code smells**.  

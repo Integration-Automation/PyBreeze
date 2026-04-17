@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 CODE_REVIEW_SKILL_TEMPLATE = """
 You are an expert software reviewer. Your task is to analyze one or more code diffs from a Pull Request (PR).  
 The input may contain multiple `code_diff` sections placed in different positions.  

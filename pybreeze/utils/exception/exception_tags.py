@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # add command exception
 add_command_type_exception_tag: str = "command execute_return_value type must be a method or function"
 add_command_not_allow_package_exception_tag: str = "chosen command package is not allowed"
