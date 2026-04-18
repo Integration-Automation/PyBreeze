@@ -154,6 +154,78 @@ All code must follow secure-by-default principles. Review every change against t
 - Do not add new dependencies without reviewing their security posture (maintained? known CVEs?)
 - Avoid transitive dependency bloat — prefer stdlib solutions when the alternative is a single-function dependency
 
+## Code quality (SonarQube / Codacy compliance)
+
+All code must satisfy common static-analysis rules enforced by SonarQube and Codacy. Review each change against the checklist below.
+
+### Complexity & size
+- Cyclomatic complexity per function: ≤ 15 (hard cap 20). Break large branches into helpers
+- Cognitive complexity per function: ≤ 15. Flatten nested `if`/`for`/`try` chains with early returns or guard clauses
+- Function length: ≤ 75 lines of code (excluding docstring / blank lines). Extract helpers past that
+- Parameter count: ≤ 7 per function/method. Use a dataclass or typed dict when more are needed
+- Nesting depth: ≤ 4 levels of `if`/`for`/`while`/`try`. Refactor with early returns instead of pyramids
+- File length: ≤ 1000 lines — split modules past that
+- Class `__init__`: keep attribute count reasonable; if a class has > 15 instance attributes, split responsibilities
+
+### Exception handling
+- Never use bare `except:` — always specify exception types
+- Avoid catching `Exception` or `BaseException` unless immediately re-raising or logging and re-raising with context
+- Never `pass` silently inside `except` — log the error via `pybreeze_logger` (at minimum `.debug()`) with context
+- Do not `return` / `break` / `continue` inside a `finally` block — it swallows exceptions
+- Custom exceptions must inherit from `ITEException`; never `raise Exception(...)` directly
+- Use `raise ... from err` (or `raise ... from None`) when re-raising to preserve / suppress the chain explicitly
+
+### Pythonic correctness
+- Compare with `None` using `is` / `is not`, never `==` / `!=`
+- Type checks use `isinstance(obj, T)`, never `type(obj) == T`
+- Never use mutable default arguments (`def f(x=[])`) — use `None` and initialise inside
+- Prefer f-strings over `%` formatting or `str.format()`
+- Use context managers (`with open(...) as f:`) for every file / socket / lock — never leave resources to GC
+- Use `enumerate()` instead of `range(len(...))` when the index is needed alongside the item
+- Use `dict.get(key, default)` instead of `key in dict and dict[key]` patterns
+- Use set / dict comprehensions when clearer than manual loops; avoid comprehensions with side effects
+
+### Naming & style (PEP 8)
+- `snake_case` for functions, methods, variables, module names
+- `PascalCase` for classes
+- `UPPER_SNAKE_CASE` for module-level constants
+- `_leading_underscore` for protected / internal members; never use `__dunder__` for custom attributes
+- No single-letter names except loop indices (`i`, `j`) or conventional math (`x`, `y`)
+- Do not shadow built-ins (`id`, `type`, `list`, `dict`, `input`, `file`, `open`, etc.) — rename the local variable
+
+### Duplication & dead code
+- String literal used 3+ times in the same module → extract a module-level constant
+- Identical 6+ line blocks in 2+ places → extract a helper function
+- Remove unused imports, unused parameters, unused local variables, unreachable code after `return` / `raise`
+- No commented-out code blocks — delete them (git history is the archive)
+- No `TODO` / `FIXME` / `XXX` without an accompanying issue reference (`# TODO(#123): ...`)
+
+### Logging, printing, assertions
+- Never use `print()` for diagnostics in library / runtime code — use `pybreeze_logger`
+- Use lazy logging (`logger.debug("x=%s", x)`) — avoid eager f-string formatting inside log calls on hot paths
+- Never use `assert` for runtime validation (Python strips assertions with `-O`). Use explicit `if … raise …` instead; `assert` is only for test code
+
+### Hardcoded values & secrets
+- No hardcoded passwords, tokens, API keys, or secrets — use env vars or a config file excluded from VCS
+- No hardcoded IP addresses or hostnames outside of `localhost` / documented loopback — use config
+- Magic numbers (except 0, 1, -1) should be named constants when repeated or non-obvious
+
+### Boolean & return hygiene
+- Replace `if cond: return True else: return False` with `return bool(cond)` or `return cond`
+- Replace `if x == True` / `if x == False` with `if x` / `if not x`
+- A function should have a consistent return type — never mix `return value` and bare `return` (returns `None`) on meaningful paths unless explicitly documented
+- Do not return inside a generator function (`yield` + `return value` is a syntax pitfall)
+
+### Imports
+- One import per line for `import` statements; grouped `from x import a, b` is fine
+- Order: stdlib → third-party → first-party (`pybreeze.*`) — separated by blank lines
+- No wildcard imports (`from x import *`) outside of `__init__.py` re-exports
+- No relative imports beyond one level (`from ..pkg import x` OK, `from ...pkg import x` avoid)
+
+### Running the linters
+- Before committing any non-trivial change, run `ruff check pybreeze/` locally to catch these rules — `ruff` covers the majority of SonarQube/Codacy Python rules
+- When adding a new rule exception, justify it in a `# noqa: RULE` comment with a short reason — never blanket-disable
+
 ## Commit & PR rules
 
 - Commit messages: short imperative sentence (e.g., "Update stable version", "Fix github actions")

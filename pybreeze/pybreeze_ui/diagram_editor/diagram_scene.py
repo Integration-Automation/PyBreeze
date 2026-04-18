@@ -10,7 +10,6 @@ from PySide6.QtWidgets import QGraphicsLineItem, QGraphicsScene, QMenu
 from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.diagram_editor.diagram_commands import DiagramSnapshotCommand
-from pybreeze.pybreeze_ui.diagram_editor.diagram_net_utils import safe_download_image
 from pybreeze.pybreeze_ui.diagram_editor.diagram_items import (
     ConnectionStyle,
     DiagramConnection,
@@ -19,6 +18,11 @@ from pybreeze.pybreeze_ui.diagram_editor.diagram_items import (
     NodeShape,
     ResizeHandle,
 )
+from pybreeze.pybreeze_ui.diagram_editor.diagram_net_utils import (
+    ImageDownloadError,
+    safe_download_image,
+)
+from pybreeze.utils.logging.logger import pybreeze_logger
 
 
 class ToolMode(Enum):
@@ -595,8 +599,8 @@ class DiagramScene(QGraphicsScene):
                 pix.loadFromData(data)
                 if not pix.isNull():
                     img.set_pixmap(pix, source)
-            except Exception:
-                pass
+            except (ImageDownloadError, OSError) as err:
+                pybreeze_logger.debug("safe_download_image failed: %s", err)
 
     def load_from_dict(self, data: dict) -> None:
         self._clear_items()
