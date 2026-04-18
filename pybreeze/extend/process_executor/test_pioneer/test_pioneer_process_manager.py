@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QTextCharFormat
-from PySide6.QtWidgets import QWidget
 from je_editor.pyside_ui.main_ui.save_settings.user_color_setting_file import actually_color_dict
 from je_editor.utils.venv_check.check_venv import check_and_choose_venv
 
@@ -31,7 +30,6 @@ class TestPioneerProcess:
             encoding: str = "utf-8",
     ):
         self._main_window: PyBreezeMainWindow = main_window
-        self._widget: QWidget = main_window.tab_widget.currentWidget()
         # Code window init
         self._code_window = CodeWindow()
         self._main_window.current_run_code_window.append(self._code_window)

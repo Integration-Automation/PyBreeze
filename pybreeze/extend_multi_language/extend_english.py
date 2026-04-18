@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from je_editor import english_word_dict
 
 # PyBreeze-specific English translations
@@ -99,6 +101,13 @@ pybreeze_english_word_dict = {
     "test_pioneer_create_template_label": "Create TestPioneer Yaml template",
     "test_pioneer_run_yaml": "Execute Test Pioneer Yaml",
     "test_pioneer_not_choose_yaml": "Please choose a Yaml file",
+    # SSH host key verification
+    "ssh_host_key_policy_dialog_title_verify_host": "Verify SSH host key",
+    "ssh_host_key_policy_dialog_message_verify_host": (
+        "The authenticity of host '{host}' cannot be established.\n"
+        "{key_type} key fingerprint is {fingerprint}.\n\n"
+        "Do you want to trust this host and continue connecting?"
+    ),
     # SSH command widget
     "ssh_command_widget_window_title_ssh_command_widget": "SSH Command Widget",
     "ssh_command_widget_button_label_send_command": "Send",

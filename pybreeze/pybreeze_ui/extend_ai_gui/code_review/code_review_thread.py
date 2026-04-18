@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 # Worker Thread 負責傳送資料
 import requests
 from PySide6.QtCore import QThread, Signal
@@ -6,6 +8,7 @@ from je_editor import language_wrapper
 from pybreeze.pybreeze_ui.extend_ai_gui.ai_gui_global_variable import COT_TEMPLATE_RELATION
 from pybreeze.pybreeze_ui.extend_ai_gui.prompt_edit_gui.cot_code_review_prompt_templates.global_rule import \
     build_global_rule_template
+from pybreeze.utils.network.url_validation import validate_url
 
 
 class SenderThread(QThread):
@@ -18,6 +21,7 @@ class SenderThread(QThread):
         self.url = url
 
     def run(self):
+        validate_url(self.url)
         code = self.code
         first_code_review_result = None
         first_summary_result = None
@@ -61,7 +65,7 @@ class SenderThread(QThread):
 
             try:
                 # 傳送到指定 URL
-                resp = requests.post(self.url, json={"prompt": prompt}, timeout=60)
+                resp = requests.post(self.url, json={"prompt": prompt}, timeout=60, allow_redirects=False)
                 reply_text = resp.text
                 match file:
                     case "first_summary_prompt.md":

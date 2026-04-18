@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from je_editor import traditional_chinese_word_dict
 
 # PyBreeze-specific Traditional Chinese translations
@@ -99,6 +101,13 @@ pybreeze_traditional_chinese_word_dict = {
     "test_pioneer_create_template_label": "建立 TestPioneer Yaml 模板",
     "test_pioneer_run_yaml": "執行 Test Pioneer Yaml",
     "test_pioneer_not_choose_yaml": "請選擇 Yaml 檔案",
+    # SSH host key verification
+    "ssh_host_key_policy_dialog_title_verify_host": "驗證 SSH 主機金鑰",
+    "ssh_host_key_policy_dialog_message_verify_host": (
+        "無法驗證主機 '{host}' 的真實性。\n"
+        "{key_type} 金鑰指紋為 {fingerprint}。\n\n"
+        "是否信任此主機並繼續連線？"
+    ),
     # SSH command widget
     "ssh_command_widget_window_title_ssh_command_widget": "SSH 指令介面",
     "ssh_command_widget_button_label_send_command": "送出",

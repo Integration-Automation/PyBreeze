@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 TOTAL_SUMMARY_TEMPLATE = """
 # PR Total Summary Instructions
 

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 CODE_EXPLAINER_TEMPLATE = """
 You are a senior software engineer and educator. Explain the following code clearly and in detail.
 

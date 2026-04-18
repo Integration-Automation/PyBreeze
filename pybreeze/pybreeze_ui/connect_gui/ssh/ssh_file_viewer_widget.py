@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import os
+import stat
 from pathlib import Path
 
 import paramiko
@@ -9,7 +12,9 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_host_key_policy import apply_host_key_policy
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_login_widget import LoginWidget
+from pybreeze.utils.logging.logger import pybreeze_logger
 
 
 class SFTPClientWrapper:
@@ -25,14 +30,16 @@ class SFTPClientWrapper:
         self.root_path: str = "/"
 
     def connect(self, host: str, port: int, username: str, password: str,
-                use_key: bool = False, key_path: str = ""):
+                use_key: bool = False, key_path: str = "",
+                parent_widget: QWidget | None = None):
         """
         Establish SSH + SFTP connection.
         建立 SSH + SFTP 連線。
         """
         self.close()
         self._ssh = paramiko.SSHClient()
-        self._ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        apply_host_key_policy(self._ssh, parent_widget)
+        pybreeze_logger.info("SFTP connecting to %s:%s", host, port)
         if use_key and key_path:
             pkey = None
             for KeyType in (paramiko.RSAKey, paramiko.Ed25519Key, paramiko.ECDSAKey):
@@ -96,8 +103,6 @@ class SFTPClientWrapper:
             ))
         try:
             st = self._sftp.stat(path)
-            # S_ISDIR check via stat.S_ISDIR
-            import stat
             return stat.S_ISDIR(st.st_mode)
         except OSError:
             return False
@@ -210,7 +215,7 @@ class SSHFileTreeManager(QWidget):
                 self.word_dict.get("ssh_file_viewer_dialog_message_missing_input"))
             return
         try:
-            self.client.connect(host, port, user, pwd, use_key, key_path)
+            self.client.connect(host, port, user, pwd, use_key, key_path, parent_widget=self)
             self.load_root("/")
         except Exception as e:
             QMessageBox.critical(
@@ -294,7 +299,6 @@ class SSHFileTreeManager(QWidget):
         try:
             entries = self.client.list_dir(path)
             # Sort: dirs first, then files
-            import stat
             dirs = []
             files = []
             for e in entries:
@@ -307,10 +311,9 @@ class SSHFileTreeManager(QWidget):
                 else:
                     files.append((name, e))
             for name, e in dirs + files:
-                import stat as _stat
                 full_path = os.path.join(path if path != "/" else "", name)
                 full_path = full_path if full_path.startswith("/") else f"/{full_path}"
-                typ = "dir" if _stat.S_ISDIR(e.st_mode) else "file"
+                typ = "dir" if stat.S_ISDIR(e.st_mode) else "file"
                 size = e.st_size if typ == "file" else 0
                 child = self.make_item(name, typ, size, full_path)
                 parent_item.addChild(child)

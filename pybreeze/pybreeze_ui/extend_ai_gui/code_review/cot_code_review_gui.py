@@ -1,4 +1,4 @@
-from urllib.parse import urlparse
+from __future__ import annotations
 
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QTextEdit, QComboBox, QPushButton, \
     QMessageBox
@@ -6,6 +6,7 @@ from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.extend_ai_gui.ai_gui_global_variable import COT_TEMPLATE_FILES
 from pybreeze.pybreeze_ui.extend_ai_gui.code_review.code_review_thread import SenderThread
+from pybreeze.utils.network.url_validation import UnsafeURLError, validate_url
 
 
 class CoTCodeReviewGUI(QWidget):
@@ -69,9 +70,10 @@ class CoTCodeReviewGUI(QWidget):
         if not url:
             QMessageBox.warning(self, "Warning", language_wrapper.language_word_dict.get("cot_gui_error_no_url"))
             return
-        parsed = urlparse(url)
-        if not parsed.scheme or not parsed.netloc:
-            QMessageBox.warning(self, "Warning", language_wrapper.language_word_dict.get("cot_gui_error_no_url"))
+        try:
+            validate_url(url)
+        except UnsafeURLError as e:
+            QMessageBox.warning(self, "Warning", str(e))
             return
 
         # 啟動傳送 Thread

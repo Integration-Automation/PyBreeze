@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import QWidget, QGridLayout, QTextEdit, QScrollArea
 

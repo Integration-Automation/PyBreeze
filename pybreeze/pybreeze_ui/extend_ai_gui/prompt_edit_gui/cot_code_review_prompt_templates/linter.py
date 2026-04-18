@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 LINTER_TEMPLATE = """
     You are a strict code linter. 
     Your task is to analyze the given source code and produce structured linter_messages. 

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 FIRST_SUMMARY_TEMPLATE = """
 # PR Summary Template
 

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import sys
 from os import environ
@@ -16,6 +18,7 @@ from pybreeze.pybreeze_ui.editor_main.file_tree_context_menu import setup_file_t
 from pybreeze.pybreeze_ui.menu.build_menubar import add_menu_to_menubar
 from pybreeze.pybreeze_ui.syntax.syntax_extend import \
     syntax_extend_package
+from pybreeze.utils.logging.logger import pybreeze_logger
 
 
 EDITOR_EXTEND_TAB: dict[str, type[QWidget]] = {
@@ -108,7 +111,6 @@ def start_editor(debug_mode: bool = False, theme: str = "dark_amber.xml", **kwar
     try:
         window.startup_setting()
     except Exception as error:
-        from pybreeze.utils.logging.logger import pybreeze_logger
         pybreeze_logger.error(f"Startup setting error: {error}")
     ret = new_ide.exec()
     os._exit(ret)

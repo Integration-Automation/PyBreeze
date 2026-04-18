@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from PySide6.QtGui import QAction
@@ -7,6 +8,13 @@ from PySide6.QtWidgets import QMessageBox
 
 from je_editor import language_wrapper
 from je_editor.plugins import get_all_plugin_metadata
+from je_editor.pyside_ui.main_ui.editor.editor_widget import EditorWidget
+from je_editor.pyside_ui.main_ui.plugin_browser.plugin_browser_widget import PluginBrowserWidget
+from je_editor.pyside_ui.dialog.file_dialog.save_file_dialog import choose_file_get_save_file_path
+from je_editor.utils.file.save.save_file import write_file
+
+from pybreeze.extend.process_executor.file_runner_process import FileRunnerProcess
+from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
 
 if TYPE_CHECKING:
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
@@ -117,8 +125,6 @@ def _open_plugin_browser(ui_we_want_to_set: PyBreezeMainWindow) -> None:
     開啟插件瀏覽器分頁。
     Open plugin browser tab.
     """
-    from je_editor.pyside_ui.main_ui.plugin_browser.plugin_browser_widget import PluginBrowserWidget
-
     tab_name = language_wrapper.language_word_dict.get("plugin_browser_tab_name", "Plugin Browser")
     ui_we_want_to_set.tab_widget.addTab(
         PluginBrowserWidget(),
@@ -151,15 +157,6 @@ def _make_run_callback(ui_we_want_to_set: PyBreezeMainWindow, run_config: dict, 
     Uses PyBreeze's FileRunnerProcess and CodeWindow.
     """
     def callback():
-        from pathlib import Path
-        from PySide6.QtWidgets import QMessageBox
-
-        from je_editor.pyside_ui.main_ui.editor.editor_widget import EditorWidget
-        from je_editor.utils.file.save.save_file import write_file
-
-        from pybreeze.extend.process_executor.file_runner_process import FileRunnerProcess
-        from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
-
         widget = ui_we_want_to_set.tab_widget.currentWidget()
         if not isinstance(widget, EditorWidget):
             return
@@ -169,7 +166,6 @@ def _make_run_callback(ui_we_want_to_set: PyBreezeMainWindow, run_config: dict, 
             write_file(widget.current_file, widget.code_edit.toPlainText())
             file_path = widget.current_file
         else:
-            from je_editor.pyside_ui.dialog.file_dialog.save_file_dialog import choose_file_get_save_file_path
             if not choose_file_get_save_file_path(ui_we_want_to_set):
                 return
             file_path = widget.current_file

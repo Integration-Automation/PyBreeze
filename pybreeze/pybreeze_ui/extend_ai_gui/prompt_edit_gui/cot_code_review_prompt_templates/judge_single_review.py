@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 JUDGE_SINGLE_REVIEW_TEMPLATE = """
 # Code Review Comment Evaluation Template (Enhanced)
 

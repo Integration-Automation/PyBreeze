@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 STEP_BY_STEP_ANALYSIS_TEMPLATE = """
 You are a code quality reviewer. 
 Analyze the code smell, and linter message step by step.

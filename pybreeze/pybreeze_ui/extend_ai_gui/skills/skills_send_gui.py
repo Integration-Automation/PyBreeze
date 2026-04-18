@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import requests
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLineEdit,
@@ -7,6 +9,7 @@ from PySide6.QtCore import QThread, Signal
 from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.extend_ai_gui.ai_gui_global_variable import SKILLS_TEMPLATE_FILES
+from pybreeze.utils.network.url_validation import validate_url
 
 
 class RequestThread(QThread):
@@ -20,7 +23,8 @@ class RequestThread(QThread):
 
     def run(self):
         try:
-            response = requests.post(self.api_url, json={"code": self.code_text}, timeout=30)
+            validate_url(self.api_url)
+            response = requests.post(self.api_url, json={"code": self.code_text}, timeout=30, allow_redirects=False)
             if response.ok:
                 self.finished.emit(response.text)
             elif response.is_redirect:

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 api_testka_keys: list = [
     "AT_test_api_method", "AT_delegate_async_httpx", "AT_test_api_method_httpx",
     "AT_generate_html", "AT_generate_html_report", "AT_generate_json",

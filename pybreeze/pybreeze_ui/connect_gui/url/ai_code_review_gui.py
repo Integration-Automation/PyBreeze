@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sys
 import requests
 import os
@@ -6,6 +8,8 @@ from PySide6.QtWidgets import (
     QPushButton, QLineEdit, QTextEdit, QComboBox, QLabel, QSizePolicy
 )
 from je_editor import language_wrapper
+
+from pybreeze.utils.network.url_validation import UnsafeURLError, validate_url
 
 
 class AICodeReviewClient(QWidget):
@@ -115,6 +119,13 @@ class AICodeReviewClient(QWidget):
                 self.word_dict.get("ai_code_review_gui_message_enter_valid_url"))
             return
 
+        try:
+            validate_url(url)
+        except UnsafeURLError as e:
+            self.response_panel.setPlainText(
+                f"{self.word_dict.get('ai_code_review_gui_message_error')}: {e}")
+            return
+
         # 檢查 URL 是否已紀錄
         if os.path.exists(self.url_file):
             with open(self.url_file, encoding="utf-8") as f:
@@ -133,13 +144,13 @@ class AICodeReviewClient(QWidget):
 
         try:
             if method == "GET":
-                response = requests.get(url, timeout=30)
+                response = requests.get(url, timeout=30, allow_redirects=False)
             elif method == "POST":
-                response = requests.post(url, data={"code": code_content}, timeout=30)
+                response = requests.post(url, data={"code": code_content}, timeout=30, allow_redirects=False)
             elif method == "PUT":
-                response = requests.put(url, data={"code": code_content}, timeout=30)
+                response = requests.put(url, data={"code": code_content}, timeout=30, allow_redirects=False)
             elif method == "DELETE":
-                response = requests.delete(url, timeout=30)
+                response = requests.delete(url, timeout=30, allow_redirects=False)
             else:
                 self.response_panel.setPlainText(
                     self.word_dict.get("ai_code_review_gui_message_unsupported_http_method"))

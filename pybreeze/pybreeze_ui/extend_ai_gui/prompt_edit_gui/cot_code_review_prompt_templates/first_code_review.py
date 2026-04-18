@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 FIRST_CODE_REVIEW_TEMPLATE = """
 # Code Review Template
 

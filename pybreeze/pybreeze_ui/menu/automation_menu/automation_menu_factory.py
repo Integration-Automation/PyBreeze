@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 from typing import TYPE_CHECKING, Callable
 
 from PySide6.QtGui import QAction
@@ -102,7 +103,6 @@ def safe_create_project(import_name: str) -> Callable:
     """Create a safe project creation function that handles ImportError."""
     def _create():
         try:
-            import importlib
             package = importlib.import_module(import_name)
             if package is not None:
                 package.create_project_dir()
