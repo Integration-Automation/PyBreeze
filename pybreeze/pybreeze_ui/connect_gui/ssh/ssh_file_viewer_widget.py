@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_host_key_policy import apply_host_key_policy
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_login_widget import LoginWidget
 from pybreeze.utils.logging.logger import pybreeze_logger
 
@@ -29,18 +30,16 @@ class SFTPClientWrapper:
         self.root_path: str = "/"
 
     def connect(self, host: str, port: int, username: str, password: str,
-                use_key: bool = False, key_path: str = ""):
+                use_key: bool = False, key_path: str = "",
+                parent_widget: QWidget | None = None):
         """
         Establish SSH + SFTP connection.
         建立 SSH + SFTP 連線。
         """
         self.close()
         self._ssh = paramiko.SSHClient()
-        self._ssh.load_system_host_keys()
-        self._ssh.set_missing_host_key_policy(paramiko.WarningPolicy())
-        pybreeze_logger.warning(
-            f"SFTP connecting to {host}:{port} — host key will be accepted without verification"
-        )
+        apply_host_key_policy(self._ssh, parent_widget)
+        pybreeze_logger.info("SFTP connecting to %s:%s", host, port)
         if use_key and key_path:
             pkey = None
             for KeyType in (paramiko.RSAKey, paramiko.Ed25519Key, paramiko.ECDSAKey):
@@ -216,7 +215,7 @@ class SSHFileTreeManager(QWidget):
                 self.word_dict.get("ssh_file_viewer_dialog_message_missing_input"))
             return
         try:
-            self.client.connect(host, port, user, pwd, use_key, key_path)
+            self.client.connect(host, port, user, pwd, use_key, key_path, parent_widget=self)
             self.load_root("/")
         except Exception as e:
             QMessageBox.critical(

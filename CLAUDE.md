@@ -113,7 +113,7 @@ All code must follow secure-by-default principles. Review every change against t
 
 ### Network requests (TLS / SSH)
 - All HTTPS requests must use default TLS verification — never set `verify=False`
-- SSH connections: `paramiko.AutoAddPolicy()` accepts any host key and is vulnerable to MITM. Document it as a known limitation in the SSH GUI. Prefer `paramiko.RejectPolicy()` or `paramiko.WarningPolicy()` when non-interactive verification is possible; at minimum, warn the user on first connection to an unknown host
+- SSH connections: never use `paramiko.AutoAddPolicy()` or `paramiko.WarningPolicy()` — both silently accept unknown host keys and are vulnerable to MITM. Use `InteractiveHostKeyPolicy` from `pybreeze.pybreeze_ui.connect_gui.ssh.ssh_host_key_policy` (via `apply_host_key_policy(client, parent_widget)`), which prompts the user with the SHA256 fingerprint on first connection and persists confirmed keys to `~/.pybreeze/ssh_known_hosts`
 
 ### Subprocess execution
 - Always pass argument lists to `subprocess.Popen` / `subprocess.run` — never `shell=True`

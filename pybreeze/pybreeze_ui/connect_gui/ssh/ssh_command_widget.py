@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_host_key_policy import apply_host_key_policy
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_login_widget import LoginWidget
 from pybreeze.utils.logging.logger import pybreeze_logger
 
@@ -139,11 +140,8 @@ class SSHCommandWidget(QWidget):
 
         try:
             self.ssh_client = paramiko.SSHClient()
-            self.ssh_client.load_system_host_keys()
-            self.ssh_client.set_missing_host_key_policy(paramiko.WarningPolicy())
-            pybreeze_logger.warning(
-                f"SSH connecting to {host}:{port} — host key will be accepted without verification"
-            )
+            apply_host_key_policy(self.ssh_client, self)
+            pybreeze_logger.info("SSH connecting to %s:%s", host, port)
 
             if use_key:
                 if not os.path.exists(key_path):
