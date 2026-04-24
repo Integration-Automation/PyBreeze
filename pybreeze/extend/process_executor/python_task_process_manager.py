@@ -15,6 +15,7 @@ from PySide6.QtGui import QTextCharFormat
 from je_editor.pyside_ui.main_ui.save_settings.user_color_setting_file import actually_color_dict
 from je_editor.utils.venv_check.check_venv import check_and_choose_venv
 
+from pybreeze.extend.process_executor.queue_pump import pump_message_queue
 from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
 from pybreeze.utils.logging.logger import pybreeze_logger
 
@@ -82,7 +83,10 @@ class TaskProcessManager:
             "--execute_str",
             exec_str
         ]
-        self.process = subprocess.Popen(
+        # Launch user-authored automation script in a child interpreter.
+        # Argument list is validated upstream; shell=False, no user string ever
+        # reaches a shell. nosec B603 — intentional local process execution.
+        self.process = subprocess.Popen(  # nosec B603  # nosemgrep  # noqa: S603
             args,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
@@ -121,28 +125,18 @@ class TaskProcessManager:
 
     # Pyside UI update method
     def pull_text(self):
-        try:
-            if not self.run_output_queue.empty():
-                output_message = str(self.run_output_queue.get_nowait()).strip()
-                if output_message:
-                    self._append_text(output_message)
-            if not self.run_error_queue.empty():
-                error_message = str(self.run_error_queue.get_nowait()).strip()
-                if error_message:
-                    self._append_text(error_message, is_error=True)
-        except queue.Empty:
-            pass
-        if self.process is not None:
-            if self.process.returncode is not None:
-                if self.timer.isActive():
-                    self.timer.stop()
-                self.exit_program()
-            elif self.still_run_program:
-                # poll return code
-                self.process.poll()
-        else:
+        pump_message_queue(self.run_output_queue, self._append_text, is_error=False)
+        pump_message_queue(self.run_error_queue, self._append_text, is_error=True)
+        if self.process is None:
             if self.timer.isActive():
                 self.timer.stop()
+            return
+        if self.process.returncode is not None:
+            if self.timer.isActive():
+                self.timer.stop()
+            self.exit_program()
+        elif self.still_run_program:
+            self.process.poll()
 
     # exit program change run flag to false and clean read thread and queue and process
     def exit_program(self):

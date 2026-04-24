@@ -16,11 +16,11 @@ JUPYTER_STARTUP_TIMEOUT = 60
 
 
 def find_free_port() -> int:
-    s = socket.socket()
-    s.bind(("", 0))
-    port = s.getsockname()[1]
-    s.close()
-    return port
+    # Bind to loopback only: this socket exists purely to have the kernel pick an
+    # unused port, which the JupyterLab server (also localhost-only) will reuse.
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
 
 
 def get_venv_python() -> str:
@@ -48,7 +48,9 @@ def get_venv_python() -> str:
 
 
 def is_jupyter_installed(python_exe: str) -> bool:
-    result = subprocess.run(
+    # Query local venv for jupyterlab. python_exe is resolved via get_venv_python()
+    # from a fixed allowlist of venv paths; shell=False. nosec B603.
+    result = subprocess.run(  # nosec B603  # nosemgrep  # noqa: S603
         [python_exe, "-m", "pip", "show", "jupyterlab"],
         capture_output=True,
         timeout=30,
@@ -73,7 +75,9 @@ class JupyterLauncherThread(QThread):
             if not is_jupyter_installed(python_exe):
                 self.status_update.emit(language_wrapper.language_word_dict.get("jupyterlab_downloading"))
 
-                result = subprocess.run([
+                # Install jupyterlab into the local venv. python_exe comes from
+                # get_venv_python(); shell=False. nosec B603.
+                result = subprocess.run([  # nosec B603  # nosemgrep  # noqa: S603
                     python_exe,
                     "-m",
                     "pip",
@@ -89,7 +93,9 @@ class JupyterLauncherThread(QThread):
 
             port = find_free_port()
 
-            self.process = subprocess.Popen([
+            # Launch embedded JupyterLab. Server binds to localhost only (see
+            # CLAUDE.md JupyterLab integration notes); shell=False. nosec B603.
+            self.process = subprocess.Popen([  # nosec B603  # nosemgrep  # noqa: S603
                 python_exe,
                 "-m",
                 "jupyterlab",

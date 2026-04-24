@@ -33,7 +33,7 @@ class PyBreezeMainWindow(EditorMain):
         # which auto-discovers jeditor_plugins/ in the current working directory.
         # Third-party plugins placed there will be loaded automatically.
 
-        self.current_run_code_window: list[QWidget] = list()
+        self.current_run_code_window: list[QWidget] = []
         # Project compiler if user not choose this will use which to find
         self.python_compiler = None
         # Delete JEditor help

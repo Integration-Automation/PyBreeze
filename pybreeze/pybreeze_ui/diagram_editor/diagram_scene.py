@@ -163,68 +163,68 @@ class DiagramScene(QGraphicsScene):
 
         pos = event.scenePos()
 
-        # Node creation modes
         shape = _MODE_SHAPE_MAP.get(self._mode)
         if shape is not None:
-            with self.undo_scope("Add Node"):
-                node = DiagramNode(x=pos.x() - 70, y=pos.y() - 30, shape=shape)
-                self.addItem(node)
-            self.item_count_changed.emit()
-            self.mode = ToolMode.SELECT
+            self._add_shape_node(pos, shape)
             return
 
-        # Text-only node
         if self._mode == ToolMode.ADD_TEXT:
-            with self.undo_scope("Add Text"):
-                node = DiagramNode(
-                    x=pos.x() - 70, y=pos.y() - 20,
-                    w=140, h=40, text="Text",
-                    shape=NodeShape.RECTANGLE,
-                )
-                self.addItem(node)
-            self.item_count_changed.emit()
-            self.mode = ToolMode.SELECT
+            self._add_text_node(pos)
             return
 
-        # Connection mode
         if self._mode == ToolMode.ADD_CONNECTION:
-            target_node = self._node_at(pos)
-            if target_node is not None:
-                if self._connection_source is None:
-                    # First click — pick source
-                    self._connection_source = target_node
-                    self._temp_line = QGraphicsLineItem()
-                    self._temp_line.setPen(QPen(QColor("#90a4ae"), 1.5, Qt.PenStyle.DashLine))
-                    self._temp_line.setZValue(-100)
-                    self._temp_line.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
-                    center = target_node.center_pos()
-                    self._temp_line.setLine(center.x(), center.y(), pos.x(), pos.y())
-                    self.addItem(self._temp_line)
-                else:
-                    # Second click — create connection
-                    if target_node is not self._connection_source:
-                        with self.undo_scope("Add Connection"):
-                            conn = DiagramConnection(self._connection_source, target_node)
-                            self.addItem(conn)
-                        self.item_count_changed.emit()
-                    self._cancel_connection()
-                    self.mode = ToolMode.SELECT
-                return
-            # Clicked empty area — cancel current connection attempt
-            if self._connection_source is not None:
-                self._cancel_connection()
-                return
+            self._handle_connection_click(pos)
             return
 
-        # SELECT mode — track for move undo
         if self._mode == ToolMode.SELECT:
             super().mousePressEvent(event)
-            selected_nodes = [i for i in self.selectedItems() if isinstance(i, DiagramNode)]
-            if selected_nodes:
+            if any(isinstance(i, DiagramNode) for i in self.selectedItems()):
                 self.begin_undo("Move")
             return
 
         super().mousePressEvent(event)
+
+    def _add_shape_node(self, pos: QPointF, shape: NodeShape) -> None:
+        with self.undo_scope("Add Node"):
+            self.addItem(DiagramNode(x=pos.x() - 70, y=pos.y() - 30, shape=shape))
+        self.item_count_changed.emit()
+        self.mode = ToolMode.SELECT
+
+    def _add_text_node(self, pos: QPointF) -> None:
+        with self.undo_scope("Add Text"):
+            self.addItem(DiagramNode(
+                x=pos.x() - 70, y=pos.y() - 20,
+                w=140, h=40, text="Text",
+                shape=NodeShape.RECTANGLE,
+            ))
+        self.item_count_changed.emit()
+        self.mode = ToolMode.SELECT
+
+    def _handle_connection_click(self, pos: QPointF) -> None:
+        target_node = self._node_at(pos)
+        if target_node is None:
+            if self._connection_source is not None:
+                self._cancel_connection()
+            return
+        if self._connection_source is None:
+            self._start_connection_drag(target_node, pos)
+            return
+        if target_node is not self._connection_source:
+            with self.undo_scope("Add Connection"):
+                self.addItem(DiagramConnection(self._connection_source, target_node))
+            self.item_count_changed.emit()
+        self._cancel_connection()
+        self.mode = ToolMode.SELECT
+
+    def _start_connection_drag(self, source: DiagramNode, pos: QPointF) -> None:
+        self._connection_source = source
+        self._temp_line = QGraphicsLineItem()
+        self._temp_line.setPen(QPen(QColor("#90a4ae"), 1.5, Qt.PenStyle.DashLine))
+        self._temp_line.setZValue(-100)
+        self._temp_line.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
+        center = source.center_pos()
+        self._temp_line.setLine(center.x(), center.y(), pos.x(), pos.y())
+        self.addItem(self._temp_line)
 
     def mouseMoveEvent(self, event) -> None:
         if self._temp_line is not None and self._connection_source is not None:
@@ -341,13 +341,14 @@ class DiagramScene(QGraphicsScene):
         if not selected:
             return
         with self.undo_scope("Delete"):
-            for item in list(selected):
+            for item in selected:
                 if isinstance(item, DiagramConnection):
                     item.detach()
                     self.removeItem(item)
-            for item in list(selected):
+            for item in selected:
                 if isinstance(item, DiagramNode):
-                    for conn in list(item.connections):
+                    # snapshot: detach() mutates item.connections during iteration
+                    for conn in tuple(item.connections):
                         conn.detach()
                         self.removeItem(conn)
                     self.removeItem(item)
@@ -545,7 +546,8 @@ class DiagramScene(QGraphicsScene):
 
     def _clear_items(self) -> None:
         """Remove all diagram items without clearing the scene entirely."""
-        for item in list(self.items()):
+        # snapshot: removeItem() mutates scene items during iteration
+        for item in tuple(self.items()):
             if isinstance(item, (DiagramNode, DiagramConnection, DiagramImage)):
                 if isinstance(item, DiagramConnection):
                     item.detach()
@@ -592,7 +594,7 @@ class DiagramScene(QGraphicsScene):
             if not pix.isNull():
                 img.set_pixmap(pix, source)
                 return
-        if source.startswith(("http://", "https://")):
+        if source.startswith(("http://", "https://")):  # NOSONAR S5332 — scheme detection; actual fetch goes through safe_download_image with SSRF validation
             try:
                 data = safe_download_image(source)
                 pix = QPixmap()

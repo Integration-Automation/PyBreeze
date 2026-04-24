@@ -1,5 +1,3 @@
-import pytest
-
 from pybreeze.pybreeze_ui.jupyter_lab_gui.jupyter_lab_thread import find_free_port, JUPYTER_STARTUP_TIMEOUT
 
 

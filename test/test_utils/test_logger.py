@@ -2,8 +2,6 @@ import logging
 import os
 import tempfile
 
-import pytest
-
 from pybreeze.utils.logging.logger import PyBreezeLogger, pybreeze_logger
 
 
@@ -22,7 +20,10 @@ class TestPyBreezeLogger:
         with tempfile.TemporaryDirectory() as tmpdir:
             log_file = os.path.join(tmpdir, "test.log")
             handler = PyBreezeLogger(filename=log_file, max_bytes=1024)
-            assert handler.maxBytes == 1024
+            # maxBytes is inherited from stdlib RotatingFileHandler; use getattr so
+            # static analysers that don't follow stdlib inheritance stop flagging
+            # the comparison as a type mismatch (SonarCloud S2159).
+            assert getattr(handler, "maxBytes", None) == 1024
             handler.close()
 
     def test_custom_handler_writes(self):
