@@ -144,50 +144,63 @@ class SSHCommandWidget(QWidget):
             pybreeze_logger.info("SSH connecting to %s:%s", host, port)
 
             if use_key:
-                if not os.path.exists(key_path):
-                    QMessageBox.warning(
-                        self,
-                        self.word_dict.get("ssh_command_widget_dialog_title_key_error"),
-                        self.word_dict.get("ssh_command_widget_dialog_message_key_file_not_exist"))
+                if not self._authenticate_with_key(host, port, user, key_path, password):
                     return
-                try:
-                    pkey = None
-                    for KeyType in (paramiko.RSAKey, paramiko.Ed25519Key, paramiko.ECDSAKey):
-                        try:
-                            pkey = KeyType.from_private_key_file(key_path, password if password else None)
-                            break
-                        except Exception as error:
-                            pybreeze_logger.debug(f"SSH key type failed: {error}")
-                            continue
-                    if pkey is None:
-                        raise ValueError(
-                            self.word_dict.get(
-                                "ssh_command_widget_error_message_unsupported_private_key"
-                            ))
-                    self.ssh_client.connect(hostname=host, port=port, username=user, pkey=pkey, timeout=10)
-                except Exception as e:
-                    raise RuntimeError(
-                        f"{self.word_dict.get('ssh_command_widget_error_message_key_auth_failed')} {e}") from e
             else:
                 self.ssh_client.connect(
                     hostname=host, port=port, username=user, password=password, timeout=10
                 )
 
-            self.shell_channel = self.ssh_client.invoke_shell(term='xterm', width=120, height=32)
-            self.shell_channel.settimeout(0.0)
-            self.reader_thread = SSHReaderThread(self.shell_channel)
-            self.reader_thread.data_received.connect(self._on_data)
-            self.reader_thread.closed.connect(self._on_closed)
-            self.reader_thread.start()
-            self.login_widget.status_label.setText(
-                self.word_dict.get("ssh_command_widget_log_message_connected"))
-            self.append_text(f"{self.word_dict.get('ssh_command_widget_log_message_connected')}"
-                             f" {host}:{port} as {user}\n")
+            self._start_shell(host, port, user)
         except Exception as e:
             self.login_widget.status_label.setText(
                 self.word_dict.get('ssh_command_widget_status_label_disconnected'))
             self.append_text(f"{self.word_dict.get('ssh_command_widget_log_message_error')} {e}\n")
             self._cleanup()
+
+    def _authenticate_with_key(self, host: str, port: int, user: str, key_path: str, password: str) -> bool:
+        """Perform key-based auth. Returns True on success; False if the key file is missing."""
+        if not os.path.exists(key_path):
+            QMessageBox.warning(
+                self,
+                self.word_dict.get("ssh_command_widget_dialog_title_key_error"),
+                self.word_dict.get("ssh_command_widget_dialog_message_key_file_not_exist"))
+            return False
+        try:
+            pkey = self._load_private_key(key_path, password)
+            if pkey is None:
+                raise ValueError(
+                    self.word_dict.get(
+                        "ssh_command_widget_error_message_unsupported_private_key"
+                    ))
+            self.ssh_client.connect(hostname=host, port=port, username=user, pkey=pkey, timeout=10)
+        except Exception as e:
+            raise RuntimeError(
+                f"{self.word_dict.get('ssh_command_widget_error_message_key_auth_failed')} {e}") from e
+        return True
+
+    @staticmethod
+    def _load_private_key(key_path: str, password: str) -> paramiko.PKey | None:
+        """Try each supported key type; return the first that parses."""
+        passphrase = password if password else None
+        for key_cls in (paramiko.RSAKey, paramiko.Ed25519Key, paramiko.ECDSAKey):
+            try:
+                return key_cls.from_private_key_file(key_path, passphrase)
+            except (paramiko.SSHException, ValueError, OSError) as error:
+                pybreeze_logger.debug("SSH key type %s rejected: %s", key_cls.__name__, error)
+        return None
+
+    def _start_shell(self, host: str, port: int, user: str) -> None:
+        self.shell_channel = self.ssh_client.invoke_shell(term='xterm', width=120, height=32)
+        self.shell_channel.settimeout(0.0)
+        self.reader_thread = SSHReaderThread(self.shell_channel)
+        self.reader_thread.data_received.connect(self._on_data)
+        self.reader_thread.closed.connect(self._on_closed)
+        self.reader_thread.start()
+        self.login_widget.status_label.setText(
+            self.word_dict.get("ssh_command_widget_log_message_connected"))
+        self.append_text(f"{self.word_dict.get('ssh_command_widget_log_message_connected')}"
+                         f" {host}:{port} as {user}\n")
 
     def _on_data(self, data: bytes):
         try:

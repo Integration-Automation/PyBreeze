@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import queue
 import subprocess
-import sys
 import threading
-from pathlib import Path
 from queue import Queue
 from typing import TYPE_CHECKING
 
@@ -54,7 +52,10 @@ class TestPioneerProcess:
             "-e",
             executable_path
         ]
-        self._process: subprocess.Popen | None = subprocess.Popen(
+        # Launch the test_pioneer CLI in the user's configured Python interpreter.
+        # Argument list is assembled from a curated template + an executable path the
+        # user selected via file dialog. shell=False. nosec B603.
+        self._process: subprocess.Popen | None = subprocess.Popen(  # nosec B603  # noqa: S603
             args,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
@@ -70,30 +71,30 @@ class TestPioneerProcess:
         text_cursor.insertText(text, text_format)
         text_cursor.insertBlock()
 
-    # Pyside UI update method
-    def pull_text(self):
+    def _pump_one(self, q: Queue, is_error: bool) -> None:
         try:
-            if not self._run_output_queue.empty():
-                output_message = str(self._run_output_queue.get_nowait()).strip()
-                if output_message:
-                    self._append_text(output_message)
-            if not self._run_error_queue.empty():
-                error_message = str(self._run_error_queue.get_nowait()).strip()
-                if error_message:
-                    self._append_text(error_message, is_error=True)
+            if q.empty():
+                return
+            message = str(q.get_nowait()).strip()
+            if message:
+                self._append_text(message, is_error=is_error)
         except queue.Empty:
             pass
-        if self._process is not None:
-            if self._process.returncode is not None:
-                if self._timer.isActive():
-                    self._timer.stop()
-                self.exit_program()
-            elif self._still_run_program:
-                # poll return code
-                self._process.poll()
-        else:
+
+    # Pyside UI update method
+    def pull_text(self):
+        self._pump_one(self._run_output_queue, is_error=False)
+        self._pump_one(self._run_error_queue, is_error=True)
+        if self._process is None:
             if self._timer.isActive():
                 self._timer.stop()
+            return
+        if self._process.returncode is not None:
+            if self._timer.isActive():
+                self._timer.stop()
+            self.exit_program()
+        elif self._still_run_program:
+            self._process.poll()
 
     # exit program change run flag to false and clean read thread and queue and process
     def exit_program(self):

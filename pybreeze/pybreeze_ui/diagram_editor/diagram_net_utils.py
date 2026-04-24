@@ -36,7 +36,7 @@ def safe_download_image(url: str) -> bytes:
     url = _validate_url(url)
 
     req = Request(url, headers={"User-Agent": "PyBreeze-DiagramEditor/1.0"})
-    resp = urlopen(req, timeout=TIMEOUT_SECONDS)  # noqa: S310 — URL validated above
+    resp = urlopen(req, timeout=TIMEOUT_SECONDS)  # nosec B310 # noqa: S310 — URL validated above by _validate_url
 
     # Check Content-Length header if available
     content_length = resp.headers.get("Content-Length")

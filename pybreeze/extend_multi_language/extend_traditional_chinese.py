@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from je_editor import traditional_chinese_word_dict
 
+_COT_PROMPT_EDITOR = "CoT 提示詞編輯器"
+_SKILL_PROMPT_EDITOR = "Skill 提示詞編輯器"
+
 # PyBreeze-specific Traditional Chinese translations
 pybreeze_traditional_chinese_word_dict = {
     # application name
@@ -236,10 +239,10 @@ pybreeze_traditional_chinese_word_dict = {
     "extend_tools_menu_ssh_client_tab_label": "SSH 用戶端",
     "extend_tools_menu_ai_code_review_tab_action": "AI 程式碼審查分頁",
     "extend_tools_menu_ai_code_review_tab_label": "AI 程式碼審查",
-    "extend_tools_menu_cot_prompt_editor_tab_action": "CoT 提示詞編輯器",
-    "extend_tools_menu_cot_prompt_editor_tab_label": "CoT 提示詞編輯器",
-    "extend_tools_menu_skill_prompt_editor_tab_action": "Skill 提示詞編輯器",
-    "extend_tools_menu_skill_prompt_editor_tab_label": "Skill 提示詞編輯器",
+    "extend_tools_menu_cot_prompt_editor_tab_action": _COT_PROMPT_EDITOR,
+    "extend_tools_menu_cot_prompt_editor_tab_label": _COT_PROMPT_EDITOR,
+    "extend_tools_menu_skill_prompt_editor_tab_action": _SKILL_PROMPT_EDITOR,
+    "extend_tools_menu_skill_prompt_editor_tab_label": _SKILL_PROMPT_EDITOR,
     "extend_tools_menu_skill_prompt_send_tab_label": "Skill 提示詞傳送 GUI",
     "extend_tools_menu_dock_ssh_menu": "SSH",
     "extend_tools_menu_dock_ai_menu": "AI",
@@ -249,8 +252,8 @@ pybreeze_traditional_chinese_word_dict = {
     "extend_tools_menu_skill_prompt_editor_dock_action": "Skill 提示詞編輯器停駐窗格",
     "extend_tools_menu_ssh_client_dock_title": "SSH 用戶端",
     "extend_tools_menu_ai_code_review_dock_title": "AI 程式碼審查",
-    "extend_tools_menu_cot_prompt_editor_dock_title": "CoT 提示詞編輯器",
-    "extend_tools_menu_skill_prompt_editor_dock_title": "Skill 提示詞編輯器",
+    "extend_tools_menu_cot_prompt_editor_dock_title": _COT_PROMPT_EDITOR,
+    "extend_tools_menu_skill_prompt_editor_dock_title": _SKILL_PROMPT_EDITOR,
     "extend_tools_menu_skill_prompt_send_dock_action": "Skill Prompt 傳送停駐窗格",
     "extend_tools_menu_skill_prompt_send_dock_title": "Skill 提示詞傳送 GUI",
     # CoT code-review GUI
