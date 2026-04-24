@@ -77,7 +77,7 @@ class FileRunnerProcess:
         try:
             # Runs the plugin-configured compiler against a file the user opened.
             # shell=False, bounded timeout. nosec B603.
-            result = subprocess.run(  # nosec B603  # noqa: S603
+            result = subprocess.run(  # nosec B603  # nosemgrep  # noqa: S603
                 compile_cmd,
                 capture_output=True,
                 timeout=60,
@@ -111,7 +111,7 @@ class FileRunnerProcess:
         try:
             # Run the user's plugin-configured command. shell=False is explicit;
             # argv comes from a plugin run_config + user-opened file path. nosec B603.
-            self.process = subprocess.Popen(  # nosec B603  # noqa: S603
+            self.process = subprocess.Popen(  # nosec B603  # nosemgrep  # noqa: S603
                 command,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,

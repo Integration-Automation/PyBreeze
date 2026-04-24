@@ -256,8 +256,8 @@ def _action_reveal_in_explorer(path: Path | None) -> None:
     # "Reveal in file explorer" — platform file-manager invocation on a path the
     # user already selected in our tree. shell=False, fixed argv[0]. nosec B603/B606/B607.
     if sys.platform == "win32":
-        os.startfile(str(target))  # nosec B606 — intentional user-triggered reveal  # noqa: S606
+        os.startfile(str(target))  # nosec B606  # nosemgrep  # noqa: S606
     elif sys.platform == "darwin":
-        subprocess.Popen(["open", str(target)])  # nosec B603 B607  # noqa: S603,S607
+        subprocess.Popen(["open", str(target)])  # nosec B603 B607  # nosemgrep  # noqa: S603,S607
     else:
-        subprocess.Popen(["xdg-open", str(target)])  # nosec B603 B607  # noqa: S603,S607
+        subprocess.Popen(["xdg-open", str(target)])  # nosec B603 B607  # nosemgrep  # noqa: S603,S607

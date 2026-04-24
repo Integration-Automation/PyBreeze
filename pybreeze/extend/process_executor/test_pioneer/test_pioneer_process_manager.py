@@ -11,8 +11,9 @@ from PySide6.QtGui import QTextCharFormat
 from je_editor.pyside_ui.main_ui.save_settings.user_color_setting_file import actually_color_dict
 from je_editor.utils.venv_check.check_venv import check_and_choose_venv
 
-from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
 from pybreeze.extend.process_executor.python_task_process_manager import find_venv_path
+from pybreeze.extend.process_executor.queue_pump import pump_message_queue
+from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
 
 if TYPE_CHECKING:
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
@@ -55,7 +56,7 @@ class TestPioneerProcess:
         # Launch the test_pioneer CLI in the user's configured Python interpreter.
         # Argument list is assembled from a curated template + an executable path the
         # user selected via file dialog. shell=False. nosec B603.
-        self._process: subprocess.Popen | None = subprocess.Popen(  # nosec B603  # noqa: S603
+        self._process: subprocess.Popen | None = subprocess.Popen(  # nosec B603  # nosemgrep  # noqa: S603
             args,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
@@ -71,20 +72,10 @@ class TestPioneerProcess:
         text_cursor.insertText(text, text_format)
         text_cursor.insertBlock()
 
-    def _pump_one(self, q: Queue, is_error: bool) -> None:
-        try:
-            if q.empty():
-                return
-            message = str(q.get_nowait()).strip()
-            if message:
-                self._append_text(message, is_error=is_error)
-        except queue.Empty:
-            pass
-
     # Pyside UI update method
     def pull_text(self):
-        self._pump_one(self._run_output_queue, is_error=False)
-        self._pump_one(self._run_error_queue, is_error=True)
+        pump_message_queue(self._run_output_queue, self._append_text, is_error=False)
+        pump_message_queue(self._run_error_queue, self._append_text, is_error=True)
         if self._process is None:
             if self._timer.isActive():
                 self._timer.stop()

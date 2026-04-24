@@ -152,7 +152,7 @@ def _assign_layers(
     in_deg: dict[str, int],
 ) -> dict[str, int]:
     roots = [nid for nid, deg in in_deg.items() if deg == 0] or [next(iter(nodes))]
-    layers: dict[str, int] = {r: 0 for r in roots}
+    layers: dict[str, int] = dict.fromkeys(roots, 0)
     queue: deque[str] = deque(roots)
     while queue:
         nid = queue.popleft()

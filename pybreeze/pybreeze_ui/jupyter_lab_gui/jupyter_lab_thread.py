@@ -50,7 +50,7 @@ def get_venv_python() -> str:
 def is_jupyter_installed(python_exe: str) -> bool:
     # Query local venv for jupyterlab. python_exe is resolved via get_venv_python()
     # from a fixed allowlist of venv paths; shell=False. nosec B603.
-    result = subprocess.run(  # nosec B603  # noqa: S603
+    result = subprocess.run(  # nosec B603  # nosemgrep  # noqa: S603
         [python_exe, "-m", "pip", "show", "jupyterlab"],
         capture_output=True,
         timeout=30,
@@ -77,7 +77,7 @@ class JupyterLauncherThread(QThread):
 
                 # Install jupyterlab into the local venv. python_exe comes from
                 # get_venv_python(); shell=False. nosec B603.
-                result = subprocess.run([  # nosec B603  # noqa: S603
+                result = subprocess.run([  # nosec B603  # nosemgrep  # noqa: S603
                     python_exe,
                     "-m",
                     "pip",
@@ -95,7 +95,7 @@ class JupyterLauncherThread(QThread):
 
             # Launch embedded JupyterLab. Server binds to localhost only (see
             # CLAUDE.md JupyterLab integration notes); shell=False. nosec B603.
-            self.process = subprocess.Popen([  # nosec B603  # noqa: S603
+            self.process = subprocess.Popen([  # nosec B603  # nosemgrep  # noqa: S603
                 python_exe,
                 "-m",
                 "jupyterlab",

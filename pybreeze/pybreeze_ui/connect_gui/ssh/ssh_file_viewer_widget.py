@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_host_key_policy import apply_host_key_policy
+from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_key_loader import load_private_key
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_login_widget import LoginWidget
 from pybreeze.utils.logging.logger import pybreeze_logger
 
@@ -41,7 +42,7 @@ class SFTPClientWrapper:
         apply_host_key_policy(self._ssh, parent_widget)
         pybreeze_logger.info("SFTP connecting to %s:%s", host, port)
         if use_key and key_path:
-            pkey = self._load_private_key(key_path, password)
+            pkey = load_private_key(key_path, password, context="SFTP")
             if pkey is None:
                 raise ValueError(
                     self.word_dict.get("ssh_command_widget_error_message_unsupported_private_key")
@@ -50,17 +51,6 @@ class SFTPClientWrapper:
         else:
             self._ssh.connect(hostname=host, port=port, username=username, password=password, timeout=10)
         self._sftp = self._ssh.open_sftp()
-
-    @staticmethod
-    def _load_private_key(key_path: str, password: str) -> paramiko.PKey | None:
-        """Try each supported key type; return the first that parses."""
-        passphrase = password if password else None
-        for key_cls in (paramiko.RSAKey, paramiko.Ed25519Key, paramiko.ECDSAKey):
-            try:
-                return key_cls.from_private_key_file(key_path, passphrase)
-            except (paramiko.SSHException, ValueError, OSError) as error:
-                pybreeze_logger.debug("SFTP key type %s rejected: %s", key_cls.__name__, error)
-        return None
 
     def close(self):
         """

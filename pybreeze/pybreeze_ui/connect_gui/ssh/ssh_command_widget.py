@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_host_key_policy import apply_host_key_policy
+from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_key_loader import load_private_key
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_login_widget import LoginWidget
 from pybreeze.utils.logging.logger import pybreeze_logger
 
@@ -167,7 +168,7 @@ class SSHCommandWidget(QWidget):
                 self.word_dict.get("ssh_command_widget_dialog_message_key_file_not_exist"))
             return False
         try:
-            pkey = self._load_private_key(key_path, password)
+            pkey = load_private_key(key_path, password, context="SSH")
             if pkey is None:
                 raise ValueError(
                     self.word_dict.get(
@@ -178,17 +179,6 @@ class SSHCommandWidget(QWidget):
             raise RuntimeError(
                 f"{self.word_dict.get('ssh_command_widget_error_message_key_auth_failed')} {e}") from e
         return True
-
-    @staticmethod
-    def _load_private_key(key_path: str, password: str) -> paramiko.PKey | None:
-        """Try each supported key type; return the first that parses."""
-        passphrase = password if password else None
-        for key_cls in (paramiko.RSAKey, paramiko.Ed25519Key, paramiko.ECDSAKey):
-            try:
-                return key_cls.from_private_key_file(key_path, passphrase)
-            except (paramiko.SSHException, ValueError, OSError) as error:
-                pybreeze_logger.debug("SSH key type %s rejected: %s", key_cls.__name__, error)
-        return None
 
     def _start_shell(self, host: str, port: int, user: str) -> None:
         self.shell_channel = self.ssh_client.invoke_shell(term='xterm', width=120, height=32)
