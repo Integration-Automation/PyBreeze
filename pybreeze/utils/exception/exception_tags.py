@@ -24,7 +24,6 @@ not_install_exception: str = "please install the package first; can't find the p
 # ui exception
 wrong_test_data_format_exception_tag: str = "incorrect test data format"
 
-# exec exception
 exec_error: str = "AutomationEditor execution error"
 file_not_fond_error: str = "File not found"
 compiler_not_found_error: str = "Compiler not found"

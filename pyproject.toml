@@ -1,7 +1,7 @@
 # Rename to build stable version
 # This is stable version
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=82.0.1"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -38,3 +38,11 @@ content-type = "text/markdown"
 
 [tool.setuptools.packages]
 find = { namespaces = false }
+
+[tool.bandit]
+# Codacy / SonarCloud run Bandit across the tree; tests use `assert` intentionally
+# (pytest relies on it), and subprocess is a required dependency of the IDE's
+# process-executor layer. Callsites that genuinely need per-line review carry an
+# inline `# nosec` annotation with justification.
+exclude_dirs = ["test", "tests"]
+skips = ["B101", "B404"]

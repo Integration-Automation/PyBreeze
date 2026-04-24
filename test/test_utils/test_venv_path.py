@@ -4,8 +4,6 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 from pybreeze.extend.process_executor.python_task_process_manager import find_venv_path
 
 

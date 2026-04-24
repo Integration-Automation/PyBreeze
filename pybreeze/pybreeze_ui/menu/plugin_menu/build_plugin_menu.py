@@ -45,79 +45,65 @@ def set_plugin_menu(ui_we_want_to_set: PyBreezeMainWindow) -> None:
     ui_we_want_to_set.plugin_menu.addSeparator()
 
     for meta in metadata_list:
-        plugin_name = meta.get("name", "Unknown")
-        plugin_author = meta.get("author", "")
-        plugin_version = meta.get("version", "")
-        run_config = meta.get("run_config")
+        _add_plugin_entry(ui_we_want_to_set, meta)
 
-        if run_config is not None:
-            suffixes = run_config.get("suffixes", ())
-            config_name = run_config.get("name", plugin_name)
 
-            if len(suffixes) > 1:
-                # 多種副檔名：建立子選單
-                # Multiple suffixes: create a submenu
-                sub_menu = ui_we_want_to_set.plugin_menu.addMenu(config_name)
+def _add_plugin_entry(ui_we_want_to_set: PyBreezeMainWindow, meta: dict) -> None:
+    """Add one plugin's menu entries (submenu with run actions, or a bare About action)."""
+    plugin_name = meta.get("name", "Unknown")
+    plugin_author = meta.get("author", "")
+    plugin_version = meta.get("version", "")
+    run_config = meta.get("run_config")
 
-                # 「關於」動作
-                # "About" action
-                about_action = QAction(
-                    language_wrapper.language_word_dict.get("plugin_menu_about", "About"),
-                    sub_menu,
-                )
-                about_action.triggered.connect(
-                    _make_about_callback(plugin_name, plugin_version, plugin_author)
-                )
-                sub_menu.addAction(about_action)
-                sub_menu.addSeparator()
+    if run_config is None:
+        # 沒有執行設定的插件（如翻譯插件），只顯示關於
+        # Plugins without run config (e.g. translation), show about only
+        about_action = QAction(plugin_name, ui_we_want_to_set.plugin_menu)
+        about_action.triggered.connect(
+            _make_about_callback(plugin_name, plugin_version, plugin_author)
+        )
+        ui_we_want_to_set.plugin_menu.addAction(about_action)
+        return
 
-                # 每個副檔名一個執行動作
-                # One run action per suffix
-                for suffix in suffixes:
-                    run_action = QAction(
-                        language_wrapper.language_word_dict.get(
-                            "plugin_menu_run_with", "Run with {name}"
-                        ).format(name=f"{config_name} ({suffix})"),
-                        sub_menu,
-                    )
-                    run_action.triggered.connect(
-                        _make_run_callback(ui_we_want_to_set, run_config, suffix)
-                    )
-                    sub_menu.addAction(run_action)
-            else:
-                # 單一副檔名：建立子選單含關於與執行
-                # Single suffix: submenu with about and run
-                sub_menu = ui_we_want_to_set.plugin_menu.addMenu(config_name)
+    suffixes = run_config.get("suffixes", ())
+    config_name = run_config.get("name", plugin_name)
+    sub_menu = ui_we_want_to_set.plugin_menu.addMenu(config_name)
 
-                about_action = QAction(
-                    language_wrapper.language_word_dict.get("plugin_menu_about", "About"),
-                    sub_menu,
-                )
-                about_action.triggered.connect(
-                    _make_about_callback(plugin_name, plugin_version, plugin_author)
-                )
-                sub_menu.addAction(about_action)
-                sub_menu.addSeparator()
+    about_action = QAction(
+        language_wrapper.language_word_dict.get("plugin_menu_about", "About"),
+        sub_menu,
+    )
+    about_action.triggered.connect(
+        _make_about_callback(plugin_name, plugin_version, plugin_author)
+    )
+    sub_menu.addAction(about_action)
+    sub_menu.addSeparator()
 
-                suffix = suffixes[0] if suffixes else ""
-                run_action = QAction(
-                    language_wrapper.language_word_dict.get(
-                        "plugin_menu_run_with", "Run with {name}"
-                    ).format(name=config_name),
-                    sub_menu,
-                )
-                run_action.triggered.connect(
-                    _make_run_callback(ui_we_want_to_set, run_config, suffix)
-                )
-                sub_menu.addAction(run_action)
-        else:
-            # 沒有執行設定的插件（如翻譯插件），只顯示關於
-            # Plugins without run config (e.g. translation), show about only
-            about_action = QAction(plugin_name, ui_we_want_to_set.plugin_menu)
-            about_action.triggered.connect(
-                _make_about_callback(plugin_name, plugin_version, plugin_author)
-            )
-            ui_we_want_to_set.plugin_menu.addAction(about_action)
+    if len(suffixes) > 1:
+        # 多種副檔名：每個副檔名一個執行動作
+        # Multiple suffixes: one run action per suffix
+        for suffix in suffixes:
+            _add_run_action(ui_we_want_to_set, sub_menu, run_config, suffix,
+                            label_name=f"{config_name} ({suffix})")
+    else:
+        # 單一副檔名：一個執行動作
+        # Single suffix: one run action
+        suffix = suffixes[0] if suffixes else ""
+        _add_run_action(ui_we_want_to_set, sub_menu, run_config, suffix, label_name=config_name)
+
+
+def _add_run_action(ui_we_want_to_set: PyBreezeMainWindow, parent_menu,
+                    run_config: dict, suffix: str, label_name: str) -> None:
+    run_action = QAction(
+        language_wrapper.language_word_dict.get(
+            "plugin_menu_run_with", "Run with {name}"
+        ).format(name=label_name),
+        parent_menu,
+    )
+    run_action.triggered.connect(
+        _make_run_callback(ui_we_want_to_set, run_config, suffix)
+    )
+    parent_menu.addAction(run_action)
 
 
 def _open_plugin_browser(ui_we_want_to_set: PyBreezeMainWindow) -> None:

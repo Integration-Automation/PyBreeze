@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from je_editor import english_word_dict
 
+_COT_PROMPT_EDITOR = "CoT Prompt Editor"
+_SKILL_PROMPT_EDITOR = "Skill Prompt Editor"
+
 # PyBreeze-specific English translations
 pybreeze_english_word_dict = {
     # application name
@@ -201,7 +204,7 @@ pybreeze_english_word_dict = {
     "ai_code_review_gui_status_rejected": "[Rejected]",
     "ai_code_review_gui_status_save_failed": "Save failed",
     # CoT Prompt Editor
-    "cot_prompt_editor_window_title": "CoT Prompt Editor",
+    "cot_prompt_editor_window_title": _COT_PROMPT_EDITOR,
     "cot_prompt_editor_groupbox_edit_file_content": "Edit File Content",
     "cot_prompt_editor_button_create_file": "Create File",
     "cot_prompt_editor_button_save_file": "Save",
@@ -215,7 +218,7 @@ pybreeze_english_word_dict = {
     "cot_prompt_editor_msgbox_no_file_selected": "No file selected",
     "cot_prompt_editor_file_not_exist": "(File {filename} does not exist)",
     # Skill Prompt Editor
-    "skill_prompt_editor_window_title": "Skill Prompt Editor",
+    "skill_prompt_editor_window_title": _SKILL_PROMPT_EDITOR,
     "skill_prompt_editor_groupbox_edit_file_content": "Edit File Content",
     "skill_prompt_editor_button_create_file": "Create File",
     "skill_prompt_editor_button_save_file": "Save",
@@ -236,10 +239,10 @@ pybreeze_english_word_dict = {
     "extend_tools_menu_ssh_client_tab_label": "SSH Client",
     "extend_tools_menu_ai_code_review_tab_action": "AI Code-Review Tab",
     "extend_tools_menu_ai_code_review_tab_label": "AI Code-Review",
-    "extend_tools_menu_cot_prompt_editor_tab_action": "CoT Prompt Editor",
-    "extend_tools_menu_cot_prompt_editor_tab_label": "CoT Prompt Editor",
-    "extend_tools_menu_skill_prompt_editor_tab_action": "Skill Prompt Editor",
-    "extend_tools_menu_skill_prompt_editor_tab_label": "Skill Prompt Editor",
+    "extend_tools_menu_cot_prompt_editor_tab_action": _COT_PROMPT_EDITOR,
+    "extend_tools_menu_cot_prompt_editor_tab_label": _COT_PROMPT_EDITOR,
+    "extend_tools_menu_skill_prompt_editor_tab_action": _SKILL_PROMPT_EDITOR,
+    "extend_tools_menu_skill_prompt_editor_tab_label": _SKILL_PROMPT_EDITOR,
     "extend_tools_menu_skill_prompt_send_tab_label": "Skill Send GUI",
     "extend_tools_menu_dock_ssh_menu": "SSH",
     "extend_tools_menu_dock_ai_menu": "AI",

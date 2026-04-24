@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_host_key_policy import apply_host_key_policy
+from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_key_loader import load_private_key
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_login_widget import LoginWidget
 from pybreeze.utils.logging.logger import pybreeze_logger
 
@@ -41,13 +42,7 @@ class SFTPClientWrapper:
         apply_host_key_policy(self._ssh, parent_widget)
         pybreeze_logger.info("SFTP connecting to %s:%s", host, port)
         if use_key and key_path:
-            pkey = None
-            for KeyType in (paramiko.RSAKey, paramiko.Ed25519Key, paramiko.ECDSAKey):
-                try:
-                    pkey = KeyType.from_private_key_file(key_path, password if password else None)
-                    break
-                except Exception:
-                    continue
+            pkey = load_private_key(key_path, password, context="SFTP")
             if pkey is None:
                 raise ValueError(
                     self.word_dict.get("ssh_command_widget_error_message_unsupported_private_key")
@@ -298,32 +293,36 @@ class SSHFileTreeManager(QWidget):
         path = parent_item.text(3)
         try:
             entries = self.client.list_dir(path)
-            # Sort: dirs first, then files
-            dirs = []
-            files = []
-            for e in entries:
-                name = e.filename
-                full_path = os.path.join(path if path != "/" else "", name)
-                full_path = full_path if full_path.startswith("/") else f"/{full_path}"
-                is_dir = stat.S_ISDIR(e.st_mode)
-                if is_dir:
-                    dirs.append((name, e))
-                else:
-                    files.append((name, e))
-            for name, e in dirs + files:
-                full_path = os.path.join(path if path != "/" else "", name)
-                full_path = full_path if full_path.startswith("/") else f"/{full_path}"
-                typ = "dir" if stat.S_ISDIR(e.st_mode) else "file"
-                size = e.st_size if typ == "file" else 0
-                child = self.make_item(name, typ, size, full_path)
-                parent_item.addChild(child)
-                if typ == "dir":
-                    self.add_placeholder(child)
         except Exception as ex:
             QMessageBox.critical(
                 self,
                 self.word_dict.get("ssh_file_viewer_dialog_title_list_error"),
                 f"{self.word_dict.get('ssh_file_viewer_dialog_message_list_failed')} '{path}': {ex}")
+            return
+        for name, entry in self._sort_entries(entries):
+            self._add_entry_row(parent_item, path, name, entry)
+
+    @staticmethod
+    def _sort_entries(entries):
+        """Return ``[(name, entry)]`` with directories before files."""
+        dirs: list = []
+        files: list = []
+        for entry in entries:
+            bucket = dirs if stat.S_ISDIR(entry.st_mode) else files
+            bucket.append((entry.filename, entry))
+        return dirs + files
+
+    def _add_entry_row(self, parent_item: QTreeWidgetItem, path: str, name: str, entry) -> None:
+        base = "" if path == "/" else path
+        full_path = os.path.join(base, name)
+        if not full_path.startswith("/"):
+            full_path = f"/{full_path}"
+        typ = "dir" if stat.S_ISDIR(entry.st_mode) else "file"
+        size = entry.st_size if typ == "file" else 0
+        child = self.make_item(name, typ, size, full_path)
+        parent_item.addChild(child)
+        if typ == "dir":
+            self.add_placeholder(child)
 
     def on_context_menu(self, pos):
         """

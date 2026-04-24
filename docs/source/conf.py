@@ -17,7 +17,7 @@ sys.path.insert(2, str(Path(__file__).parent.parent))
 # -- Project information -----------------------------------------------------
 
 project = "PyBreeze"
-copyright = "2020 ~ Now, JE-Chen"
+copyright = "2020 ~ Now, JE-Chen"  # noqa: A001 — Sphinx requires this exact variable name
 author = "JE-Chen"
 
 # -- General configuration ---------------------------------------------------

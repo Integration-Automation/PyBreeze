@@ -103,9 +103,8 @@ def safe_create_project(import_name: str) -> Callable:
     """Create a safe project creation function that handles ImportError."""
     def _create():
         try:
-            package = importlib.import_module(import_name)
-            if package is not None:
-                package.create_project_dir()
+            package = importlib.import_module(import_name)  # nosec  # nosemgrep  # plugin registry uses a curated whitelist of automation packages (build_process)
+            package.create_project_dir()
         except ImportError as error:
             pybreeze_logger.error(f"Failed to import {import_name}: {error}")
     return _create
