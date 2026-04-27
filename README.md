@@ -69,6 +69,14 @@ PyBreeze is not just a code editor — it is a command center for the automation
   - Password and private key authentication
   - Interactive command execution
   - Remote file tree viewer with CRUD operations (create folder, rename, delete, upload, download)
+  - Interactive TOFU host-key verification with confirmed keys persisted to `~/.pybreeze/ssh_known_hosts`
+- **Diagram Editor** — Built-in WYSIWYG architecture-diagram editor:
+  - Rectangle, rounded rectangle, ellipse, diamond nodes, connection lines, and free text
+  - Image insertion from local files or URLs (URL fetches are SSRF-validated and size-capped)
+  - Mermaid `flowchart` / `graph` import
+  - Save/Open as `.diagram.json`, export to PNG or SVG
+  - Undo/redo, align, distribute, grid, snap, and zoom controls
+- **File Tree Context Menu** — Right-click any file or folder in the project tree to create files/folders, rename, delete, copy absolute or relative paths, or reveal the item in your platform file manager. Renaming or deleting a file that is currently open in an editor tab keeps the tab in sync.
 - **Package Manager** — Install automation modules and build tools directly from the IDE menu without leaving the editor.
 - **Integrated Documentation** — Quick access to documentation and GitHub pages for each automation module directly from the menu bar.
 
@@ -82,6 +90,7 @@ PyBreeze is not just a code editor — it is a command center for the automation
   - Step-by-step analysis
   - Summary generation
 - **Skill Prompt Editor** — Define and manage reusable skill-based prompts (code explanation, code review templates) that can be sent to LLM APIs.
+- **Skill Send GUI** — Pick a skill prompt template, optionally edit the prompt text, send it to an LLM API endpoint, and view the response — all in a dedicated tab or dock.
 
 ### Plugin System
 
@@ -148,7 +157,9 @@ flowchart TB
         T2["AI Code Review"]
         T3["CoT Prompt Editor"]
         T4["Skill Prompt Editor"]
-        T5["JupyterLab"]
+        T5["Skill Send GUI"]
+        T6["Diagram Editor"]
+        T7["JupyterLab"]
     end
 
     subgraph Install["Install Menu"]
@@ -193,6 +204,8 @@ PyBreeze UI (PySide6)
 │   ├── AI Code Review Client
 │   ├── CoT Prompt Editor
 │   ├── Skill Prompt Editor
+│   ├── Skill Send GUI
+│   ├── Diagram Editor (WYSIWYG, Mermaid import, PNG/SVG export)
 │   └── JupyterLab Integration
 └── Install Menu
     ├── Automation Module Installers
@@ -334,8 +347,9 @@ PyBreeze/
 │   │   └── process_executor/python_task_process_manager.py
 │   ├── extend_multi_language/      # Built-in translations (English, Traditional Chinese)
 │   ├── pybreeze_ui/
-│   │   ├── editor_main/            # Main window (extends JEditor)
-│   │   ├── connect_gui/ssh/        # SSH client widgets
+│   │   ├── editor_main/            # Main window (extends JEditor) + file tree context menu
+│   │   ├── connect_gui/ssh/        # SSH client widgets (TOFU host-key verification)
+│   │   ├── diagram_editor/         # WYSIWYG architecture-diagram editor
 │   │   ├── extend_ai_gui/          # AI code review & prompt editors
 │   │   ├── jupyter_lab_gui/        # JupyterLab integration
 │   │   ├── menu/                   # Menu bar construction
