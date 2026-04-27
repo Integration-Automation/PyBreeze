@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
 
     steps:
     - uses: actions/checkout@v4
@@ -41,3 +41,72 @@ jobs:
       run: python ./test/unit_test/start_automation/extend_automation_test.py
       env:
         PYTHONPATH: .
+
+  publish:
+    needs: unit-tests
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+    - name: Bump patch version
+      id: bump
+      run: |
+        python - <<'PY'
+        import os
+        import pathlib
+        import re
+
+        path = pathlib.Path("pyproject.toml")
+        text = path.read_text(encoding="utf-8")
+        match = re.search(r'^version = "(\d+)\.(\d+)\.(\d+)"', text, re.M)
+        if match is None:
+            raise SystemExit("version line not found in pyproject.toml")
+        major, minor, patch = map(int, match.groups())
+        new_version = f"{major}.{minor}.{patch + 1}"
+        new_text = re.sub(
+            r'^version = "\d+\.\d+\.\d+"',
+            f'version = "{new_version}"',
+            text,
+            count=1,
+            flags=re.M,
+        )
+        path.write_text(new_text, encoding="utf-8")
+        with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
+            fh.write(f"new_version={new_version}\n")
+        PY
+    - name: Install build tools
+      run: python -m pip install --upgrade pip build twine
+    - name: Build package
+      run: python -m build
+    - name: Publish to PyPI
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+      run: python -m twine upload dist/*
+    - name: Commit and tag version bump
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git add pyproject.toml
+        git commit -m "Bump stable version to ${{ steps.bump.outputs.new_version }}"
+        git tag "v${{ steps.bump.outputs.new_version }}"
+        git push origin HEAD:main
+        git push origin "v${{ steps.bump.outputs.new_version }}"
+    - name: Create GitHub Release
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh release create "v${{ steps.bump.outputs.new_version }}" \
+          --title "v${{ steps.bump.outputs.new_version }}" \
+          --generate-notes \
+          --latest \
+          dist/*
