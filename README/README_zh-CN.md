@@ -107,7 +107,68 @@ IDE 界面支持多种语言：
 
 ## 架构设计
 
-![架构图](../architecture_diagram/AutomationEditorArchitectureDiagram.drawio.png)
+```mermaid
+flowchart TB
+    UI["PyBreeze UI · PySide6"]
+
+    subgraph Editor["JEditor 基础编辑器"]
+        direction LR
+        E1["代码编辑器 + 标签页"]
+        E2["文件树"]
+        E3["语法高亮"]
+        E4["插件系统"]
+    end
+
+    subgraph Automation["自动化菜单"]
+        direction LR
+        A1["APITestka"]
+        A2["AutoControl"]
+        A3["WebRunner"]
+        A4["LoadDensity"]
+        A5["FileAutomation"]
+        A6["MailThunder"]
+        A7["TestPioneer"]
+    end
+
+    subgraph Executors["子进程执行器 · TaskProcessManager"]
+        direction LR
+        X1["je_api_testka"]
+        X2["je_auto_control"]
+        X3["je_web_runner"]
+        X4["je_load_density"]
+        X5["automation-file"]
+        X6["je-mail-thunder"]
+        X7["test_pioneer"]
+    end
+
+    subgraph Tools["工具"]
+        direction LR
+        T1["SSH · paramiko"]
+        T2["AI 代码审查"]
+        T3["CoT 提示词编辑器"]
+        T4["Skill 提示词编辑器"]
+        T5["JupyterLab"]
+    end
+
+    subgraph Install["安装菜单"]
+        direction LR
+        I1["模块安装器"]
+        I2["构建工具"]
+    end
+
+    UI --> Editor
+    UI --> Automation
+    UI --> Tools
+    UI --> Install
+
+    A1 --> X1
+    A2 --> X2
+    A3 --> X3
+    A4 --> X4
+    A5 --> X5
+    A6 --> X6
+    A7 --> X7
+```
 
 PyBreeze 采用模块化架构：
 

@@ -108,7 +108,68 @@ The IDE interface supports multiple languages:
 
 ## Architecture
 
-![Architecture Diagram](architecture_diagram/AutomationEditorArchitectureDiagram.drawio.png)
+```mermaid
+flowchart TB
+    UI["PyBreeze UI · PySide6"]
+
+    subgraph Editor["JEditor (Base Editor)"]
+        direction LR
+        E1["Code Editor + Tabs"]
+        E2["File Tree"]
+        E3["Syntax Highlighting"]
+        E4["Plugin System"]
+    end
+
+    subgraph Automation["Automation Menu"]
+        direction LR
+        A1["APITestka"]
+        A2["AutoControl"]
+        A3["WebRunner"]
+        A4["LoadDensity"]
+        A5["FileAutomation"]
+        A6["MailThunder"]
+        A7["TestPioneer"]
+    end
+
+    subgraph Executors["Subprocess Executors · TaskProcessManager"]
+        direction LR
+        X1["je_api_testka"]
+        X2["je_auto_control"]
+        X3["je_web_runner"]
+        X4["je_load_density"]
+        X5["automation-file"]
+        X6["je-mail-thunder"]
+        X7["test_pioneer"]
+    end
+
+    subgraph Tools["Tools"]
+        direction LR
+        T1["SSH · paramiko"]
+        T2["AI Code Review"]
+        T3["CoT Prompt Editor"]
+        T4["Skill Prompt Editor"]
+        T5["JupyterLab"]
+    end
+
+    subgraph Install["Install Menu"]
+        direction LR
+        I1["Module Installers"]
+        I2["Build Tools"]
+    end
+
+    UI --> Editor
+    UI --> Automation
+    UI --> Tools
+    UI --> Install
+
+    A1 --> X1
+    A2 --> X2
+    A3 --> X3
+    A4 --> X4
+    A5 --> X5
+    A6 --> X6
+    A7 --> X7
+```
 
 PyBreeze follows a modular architecture:
 
