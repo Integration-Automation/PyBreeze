@@ -1,22 +1,92 @@
 from __future__ import annotations
 
 api_testka_keys: list = [
-    "AT_test_api_method", "AT_delegate_async_httpx", "AT_test_api_method_httpx",
-    "AT_generate_html", "AT_generate_html_report", "AT_generate_json",
-    "AT_generate_json_report", "AT_generate_xml", "AT_generate_xml_report", "AT_execute_action",
-    "AT_execute_files", "AT_add_package_to_executor", "AT_add_package_to_callback_executor",
-    "AT_flask_mock_server_add_router", "AT_start_flask_mock_server", "AT_scheduler_event_trigger",
+    # ===== Executor AT_* commands (mirrors je_api_testka executor.event_dict) =====
+    # Core HTTP / executor / package
+    "AT_test_api_method", "AT_test_api_method_httpx", "AT_delegate_async_httpx",
+    "AT_execute_action", "AT_execute_files",
+    "AT_add_package_to_executor", "AT_add_package_to_callback_executor",
+    # Scheduler (legacy, still tolerated)
+    "AT_scheduler_event_trigger",
     "AT_remove_blocking_scheduler_job", "AT_remove_nonblocking_scheduler_job",
     "AT_start_blocking_scheduler", "AT_start_nonblocking_scheduler",
-    "AT_start_all_scheduler", "AT_shutdown_blocking_scheduler", "AT_shutdown_nonblocking_scheduler",
-    "test_api_method", "add_command_to_executor", "execute_action", "execute_files", "executor",
-    "get_dir_files_as_list", "generate_html", "generate_html_report", "read_action_json",
-    "write_action_json", "reformat_json", "generate_json", "generate_json_report",
+    "AT_start_all_scheduler",
+    "AT_shutdown_blocking_scheduler", "AT_shutdown_nonblocking_scheduler",
+    # Reports (HTML / JSON / XML / Markdown / JUnit / Allure / Badge / Trend / Diff)
+    "AT_generate_html", "AT_generate_html_report",
+    "AT_generate_json", "AT_generate_json_report",
+    "AT_generate_xml", "AT_generate_xml_report",
+    "AT_render_markdown", "AT_generate_markdown_report",
+    "AT_generate_junit_report", "AT_generate_allure_report",
+    "AT_generate_badge", "AT_diff_runs",
+    "AT_record_current_run", "AT_list_trend_rows",
+    # Variables / templating / fake data / env profile
+    "AT_set_variable", "AT_get_variable", "AT_clear_variables",
+    "AT_extract_and_store", "AT_render_template",
+    "AT_fake_uuid", "AT_fake_email", "AT_fake_word",
+    "AT_load_env_profile",
+    # Diff / contract / SLA
+    "AT_diff_payloads", "AT_diff_openapi_specs", "AT_assert_sla",
+    "AT_openapi_changelog",
+    # Cassette (record-replay)
+    "AT_cassette_lookup", "AT_cassette_record",
+    # Schema / JSONPath / snapshot assertions
+    "AT_check_json_schema", "AT_check_jsonpath", "AT_assert_snapshot",
+    # Auth helpers
+    "AT_basic_auth_header", "AT_bearer_token_header", "AT_build_jwt",
+    "AT_aws_sigv4_headers",
+    # Security probes / scans / fuzz
+    "AT_scan_security_headers", "AT_cors_preflight",
+    "AT_probe_rate_limit", "AT_probe_ssrf",
+    "AT_fuzz_string_inputs", "AT_run_pip_audit",
+    # Spec inference
+    "AT_infer_schema", "AT_records_to_openapi",
+    # AI integrations (deterministic fallback)
+    "AT_classify_failures", "AT_generate_fake_payload",
+    "AT_generate_tests_from_openapi",
+    # Extra protocol backends
+    "AT_test_api_method_websocket", "AT_test_api_method_sse",
+    "AT_test_api_method_graphql",
+    # Mock server (basic + advanced)
+    "AT_flask_mock_server_add_router", "AT_start_flask_mock_server",
+    "AT_mock_add_dynamic_route", "AT_mock_add_template_route",
+    "AT_mock_add_webhook", "AT_mock_add_proxy", "AT_mock_load_openapi",
+    # Runner (parallel / tag / dependency)
+    "AT_run_actions_parallel", "AT_filter_actions_by_tag", "AT_order_actions",
+    # Integrations
+    "AT_notify_via_webhook", "AT_post_pr_comment",
+    "AT_curl_to_action", "AT_convert_har",
+
+    # ===== Python public API (je_api_testka.__all__) =====
+    # HTTP / protocol backends
+    "test_api_method", "test_api_method_requests",
+    "test_api_method_httpx", "test_api_method_httpx_async",
+    "test_api_method_websocket", "test_api_method_websocket_async",
+    "test_api_method_sse", "iter_sse_events",
+    "test_api_method_graphql", "test_api_method_graphql_async",
+    # Executor
+    "add_command_to_executor", "execute_action", "execute_files", "executor",
+    # Reports / records
+    "generate_html", "generate_html_report",
+    "generate_json", "generate_json_report",
+    "generate_xml", "generate_xml_report",
+    "test_record_instance",
+    # File / JSON / XML utilities
+    "read_action_json", "write_action_json", "reformat_json",
+    "get_dir_files_as_list",
+    "XMLParser", "reformat_xml_file",
+    "dict_to_elements_tree", "elements_tree_to_dict",
+    # Project / mock / socket / callback / Flask helpers
+    "create_project_dir",
+    "flask_mock_server_instance",
     "start_apitestka_socket_server",
-    "test_record_instance", "dict_to_elements_tree", "elements_tree_to_dict",
-    "XMLParser", "reformat_xml_file", "generate_xml", "generate_xml_report",
-    "callback_executor", "create_project_dir", "flask_mock_server_instance",
-    "request", "redirect", "SchedulerManager"
+    "callback_executor",
+    "request", "redirect",
+    # Schema / snapshot / retry
+    "check_json_schema", "check_jsonpath", "assert_snapshot",
+    "RetryPolicy", "retry_call",
+    # Scheduler (legacy)
+    "SchedulerManager",
 ]
 
 auto_control_keys: list = [
@@ -356,23 +426,60 @@ web_runner_keys: list = [
 ]
 
 load_density_keys: list = [
-    "LD_start_test", "LD_generate_html", "LD_generate_html_report", "LD_generate_json", "LD_generate_json_report",
-    "LD_generate_xml", "LD_generate_xml_report", "LD_execute_action", "LD_execute_files",
-    "LD_add_package_to_executor", "LD_scheduler_event_trigger", "LD_remove_blocking_scheduler_job",
-    "LD_remove_nonblocking_scheduler_job", "LD_start_blocking_scheduler", "LD_start_nonblocking_scheduler",
-    "LD_start_all_scheduler", "LD_shutdown_blocking_scheduler", "LD_shutdown_nonblocking_scheduler",
-    "create_env", "SchedulerManager",
-    "locust_wrapper_proxy",
-    "prepare_env",
-    "test_record_instance",
+    # ===== Executor LD_* commands (mirrors je_load_density executor.event_dict) =====
+    # Core
+    "LD_start_test", "LD_execute_action", "LD_execute_files",
+    "LD_add_package_to_executor", "LD_start_socket_server",
+    # Reports (HTML / JSON / XML / CSV / JUnit / Summary)
+    "LD_generate_html", "LD_generate_html_report",
+    "LD_generate_json", "LD_generate_json_report",
+    "LD_generate_xml", "LD_generate_xml_report",
+    "LD_generate_csv_report", "LD_generate_junit_report",
+    "LD_generate_summary_report", "LD_summary",
+    # Test record persistence (SQLite)
+    "LD_persist_records", "LD_list_runs", "LD_fetch_run_records",
+    "LD_clear_records",
+    # Parameter resolver / data parameterisation
+    "LD_register_variable", "LD_register_variables",
+    "LD_register_csv_source", "LD_register_csv_sources",
+    "LD_clear_resolver",
+    # Recording / replay
+    "LD_load_har", "LD_har_to_tasks", "LD_har_to_action_json",
+    # Metrics exporters
+    "LD_start_prometheus_exporter", "LD_stop_prometheus_exporter",
+    "LD_start_influxdb_sink", "LD_stop_influxdb_sink",
+    "LD_start_opentelemetry_exporter", "LD_stop_opentelemetry_exporter",
+
+    # ===== Python public API (je_load_density.__all__) =====
+    # Locust env / runner
+    "create_env", "prepare_env", "start_test", "locust_wrapper_proxy",
+    # Executor
     "execute_action", "execute_files", "executor", "add_command_to_executor",
-    "get_dir_files_as_list",
+    # Test records
+    "test_record_instance",
+    "persist_records", "list_runs", "fetch_run_records",
+    # Reports
     "generate_html", "generate_html_report",
-    "generate_json", "generate_json_report", "read_action_json",
+    "generate_json", "generate_json_report",
     "generate_xml", "generate_xml_report",
-    "start_load_density_socket_server",
-    "SequentialTaskSet", "task", "TaskSet",
-    "callback_executor", "create_project_dir"
+    "generate_csv_report", "generate_junit_report",
+    "generate_summary_report", "build_summary",
+    # File / JSON utilities
+    "read_action_json", "get_dir_files_as_list",
+    # Parameter resolver
+    "parameter_resolver", "resolve",
+    "register_variable", "register_variables",
+    "register_csv_source", "register_csv_sources",
+    # HAR import
+    "har_to_action_json", "har_to_tasks", "load_har",
+    # Metrics exporters
+    "start_prometheus_exporter", "stop_prometheus_exporter",
+    "start_influxdb_sink", "stop_influxdb_sink",
+    "start_opentelemetry_exporter", "stop_opentelemetry_exporter",
+    # Project / socket / callback / Locust re-exports
+    "create_project_dir", "start_load_density_socket_server",
+    "callback_executor",
+    "SequentialTaskSet", "TaskSet", "task",
 ]
 
 automation_file_keys: list = [
