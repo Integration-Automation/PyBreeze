@@ -25,7 +25,7 @@ The menu bar includes these top-level menus (from left to right):
 - **UI Style** -- Theme switching
 - **Automation** -- All automation module menus (AutoControl, APITestka, WebRunner, etc.)
 - **Install** -- Install automation packages and build tools
-- **Tools** -- SSH client, AI tools
+- **Tools** -- SSH client, AI tools, diagram editor
 - **Plugins** -- Plugin browser and loaded plugins
 - **Run With** -- Run files with different compilers/interpreters
 
@@ -37,7 +37,38 @@ directory. You can:
 
 - Browse files and folders
 - Double-click to open files in the editor
-- Right-click for context menu options
+- Right-click any file or folder to access the context menu (see below)
+
+File Tree Context Menu
+""""""""""""""""""""""
+
+Right-clicking the file tree opens a context menu with the following actions:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 75
+
+   * - Action
+     - Description
+   * - **New File**
+     - Prompts for a name and creates an empty file in the clicked directory
+       (or the directory containing the clicked file).
+   * - **New Folder**
+     - Prompts for a name and creates a new directory.
+   * - **Rename**
+     - Renames the selected file or folder. If the file is currently open in
+       an editor tab, the tab title and the editor's stored path are updated
+       to match.
+   * - **Delete**
+     - Deletes the selected file or folder after a confirmation dialog. If
+       the file is open in an editor tab, the tab is closed first.
+   * - **Copy Path**
+     - Copies the absolute path of the selected item to the clipboard.
+   * - **Copy Relative Path**
+     - Copies the path relative to the file tree's root directory.
+   * - **Reveal in Explorer**
+     - Opens the selected item's containing folder in the platform file
+       manager (Explorer on Windows, Finder on macOS, ``xdg-open`` on Linux).
 
 Code Editor (Tab Widget)
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -82,6 +113,7 @@ arrange them freely around the main window:
 - CoT Prompt Editor Dock
 - Skill Prompt Editor Dock
 - Skill Send GUI Dock
+- Diagram Editor Dock
 
 Dock widgets can be dragged, resized, and snapped to any edge of the main window.
 

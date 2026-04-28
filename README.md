@@ -69,6 +69,14 @@ PyBreeze is not just a code editor — it is a command center for the automation
   - Password and private key authentication
   - Interactive command execution
   - Remote file tree viewer with CRUD operations (create folder, rename, delete, upload, download)
+  - Interactive TOFU host-key verification with confirmed keys persisted to `~/.pybreeze/ssh_known_hosts`
+- **Diagram Editor** — Built-in WYSIWYG architecture-diagram editor:
+  - Rectangle, rounded rectangle, ellipse, diamond nodes, connection lines, and free text
+  - Image insertion from local files or URLs (URL fetches are SSRF-validated and size-capped)
+  - Mermaid `flowchart` / `graph` import
+  - Save/Open as `.diagram.json`, export to PNG or SVG
+  - Undo/redo, align, distribute, grid, snap, and zoom controls
+- **File Tree Context Menu** — Right-click any file or folder in the project tree to create files/folders, rename, delete, copy absolute or relative paths, or reveal the item in your platform file manager. Renaming or deleting a file that is currently open in an editor tab keeps the tab in sync.
 - **Package Manager** — Install automation modules and build tools directly from the IDE menu without leaving the editor.
 - **Integrated Documentation** — Quick access to documentation and GitHub pages for each automation module directly from the menu bar.
 
@@ -82,6 +90,7 @@ PyBreeze is not just a code editor — it is a command center for the automation
   - Step-by-step analysis
   - Summary generation
 - **Skill Prompt Editor** — Define and manage reusable skill-based prompts (code explanation, code review templates) that can be sent to LLM APIs.
+- **Skill Send GUI** — Pick a skill prompt template, optionally edit the prompt text, send it to an LLM API endpoint, and view the response — all in a dedicated tab or dock.
 
 ### Plugin System
 
@@ -108,7 +117,70 @@ The IDE interface supports multiple languages:
 
 ## Architecture
 
-![Architecture Diagram](architecture_diagram/AutomationEditorArchitectureDiagram.drawio.png)
+```mermaid
+flowchart TB
+    UI["PyBreeze UI · PySide6"]
+
+    subgraph Editor["JEditor (Base Editor)"]
+        direction LR
+        E1["Code Editor + Tabs"]
+        E2["File Tree"]
+        E3["Syntax Highlighting"]
+        E4["Plugin System"]
+    end
+
+    subgraph Automation["Automation Menu"]
+        direction LR
+        A1["APITestka"]
+        A2["AutoControl"]
+        A3["WebRunner"]
+        A4["LoadDensity"]
+        A5["FileAutomation"]
+        A6["MailThunder"]
+        A7["TestPioneer"]
+    end
+
+    subgraph Executors["Subprocess Executors · TaskProcessManager"]
+        direction LR
+        X1["je_api_testka"]
+        X2["je_auto_control"]
+        X3["je_web_runner"]
+        X4["je_load_density"]
+        X5["automation-file"]
+        X6["je-mail-thunder"]
+        X7["test_pioneer"]
+    end
+
+    subgraph Tools["Tools"]
+        direction LR
+        T1["SSH · paramiko"]
+        T2["AI Code Review"]
+        T3["CoT Prompt Editor"]
+        T4["Skill Prompt Editor"]
+        T5["Skill Send GUI"]
+        T6["Diagram Editor"]
+        T7["JupyterLab"]
+    end
+
+    subgraph Install["Install Menu"]
+        direction LR
+        I1["Module Installers"]
+        I2["Build Tools"]
+    end
+
+    UI --> Editor
+    UI --> Automation
+    UI --> Tools
+    UI --> Install
+
+    A1 --> X1
+    A2 --> X2
+    A3 --> X3
+    A4 --> X4
+    A5 --> X5
+    A6 --> X6
+    A7 --> X7
+```
 
 PyBreeze follows a modular architecture:
 
@@ -132,6 +204,8 @@ PyBreeze UI (PySide6)
 │   ├── AI Code Review Client
 │   ├── CoT Prompt Editor
 │   ├── Skill Prompt Editor
+│   ├── Skill Send GUI
+│   ├── Diagram Editor (WYSIWYG, Mermaid import, PNG/SVG export)
 │   └── JupyterLab Integration
 └── Install Menu
     ├── Automation Module Installers
@@ -273,8 +347,9 @@ PyBreeze/
 │   │   └── process_executor/python_task_process_manager.py
 │   ├── extend_multi_language/      # Built-in translations (English, Traditional Chinese)
 │   ├── pybreeze_ui/
-│   │   ├── editor_main/            # Main window (extends JEditor)
-│   │   ├── connect_gui/ssh/        # SSH client widgets
+│   │   ├── editor_main/            # Main window (extends JEditor) + file tree context menu
+│   │   ├── connect_gui/ssh/        # SSH client widgets (TOFU host-key verification)
+│   │   ├── diagram_editor/         # WYSIWYG architecture-diagram editor
 │   │   ├── extend_ai_gui/          # AI code review & prompt editors
 │   │   ├── jupyter_lab_gui/        # JupyterLab integration
 │   │   ├── menu/                   # Menu bar construction

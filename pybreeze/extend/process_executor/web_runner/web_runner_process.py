@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pybreeze.extend.process_executor.process_executor_utils import build_process
+from pybreeze.extend.process_executor.process_executor_utils import (
+    build_process, build_process_from_file,
+)
 
 if TYPE_CHECKING:
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
@@ -35,12 +37,10 @@ def call_web_runner_test_multi_file(
         need_to_execute_list = ask_and_get_dir_files_as_list(main_window)
         if need_to_execute_list is not None and len(need_to_execute_list) > 0:
             for execute_file in need_to_execute_list:
-                with open(execute_file, encoding="utf-8") as test_script_json:
-                    call_web_runner_test(
-                        main_window,
-                        test_script_json.read(),
-                        program_buffer
-                    )
+                build_process_from_file(
+                    main_window, "je_web_runner", execute_file,
+                    False, program_buffer,
+                )
     except Exception as error:
         pybreeze_logger.error(f"web runner multi file error: {error}")
 
@@ -53,11 +53,9 @@ def call_web_runner_test_multi_file_and_send(
         need_to_execute_list = ask_and_get_dir_files_as_list(main_window)
         if need_to_execute_list is not None and len(need_to_execute_list) > 0:
             for execute_file in need_to_execute_list:
-                with open(execute_file, encoding="utf-8") as test_script_json:
-                    call_web_runner_test_with_send(
-                        main_window,
-                        test_script_json.read(),
-                        program_buffer
-                    )
+                build_process_from_file(
+                    main_window, "je_web_runner", execute_file,
+                    True, program_buffer,
+                )
     except Exception as error:
         pybreeze_logger.error(f"web runner multi file and send error: {error}")

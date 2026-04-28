@@ -43,25 +43,50 @@ def start_process(
         send_mail: bool = False,
         program_buffer: int = 1024000
 ):
-    # Code window init
-    code_window = CodeWindow()
-    main_window.current_run_code_window.append(code_window)
-    main_window.clear_code_result()
-    # Process init
-    if send_mail:
-        process = TaskProcessManager(
-            main_window=code_window,
-            task_done_trigger_function=send_after_test,
-            program_buffer_size=program_buffer,
-            program_encoding=main_window.encoding
-        )
-    else:
-        process = TaskProcessManager(
-            code_window,
-            program_buffer_size=program_buffer,
-            program_encoding=main_window.encoding
-        )
+    process = _build_task_process(main_window, send_mail, program_buffer)
     process.start_test_process(
         package,
         exec_str=test_format_code,
+    )
+
+
+def build_process_from_file(
+        main_window: PyBreezeMainWindow,
+        package: str,
+        file_path: str,
+        send_mail: bool = False,
+        program_buffer: int = 1024000,
+):
+    """Run ``package`` against an action JSON file path.
+
+    Bypasses the ``--execute_str`` cmdline path so large scripts cannot trip
+    the Windows ~32K argv limit. Useful for batch / multi-file flows where
+    the file is already on disk.
+    """
+    try:
+        process = _build_task_process(main_window, send_mail, program_buffer)
+        process.start_test_process_file(package, file_path)
+    except ITETestExecutorException as error:
+        pybreeze_logger.error(repr(error))
+
+
+def _build_task_process(
+        main_window: PyBreezeMainWindow,
+        send_mail: bool,
+        program_buffer: int,
+) -> TaskProcessManager:
+    code_window = CodeWindow()
+    main_window.current_run_code_window.append(code_window)
+    main_window.clear_code_result()
+    if send_mail:
+        return TaskProcessManager(
+            main_window=code_window,
+            task_done_trigger_function=send_after_test,
+            program_buffer_size=program_buffer,
+            program_encoding=main_window.encoding,
+        )
+    return TaskProcessManager(
+        code_window,
+        program_buffer_size=program_buffer,
+        program_encoding=main_window.encoding,
     )

@@ -1,7 +1,7 @@
 Tools 選單
 ==========
 
-**Tools** 選單提供 SSH 用戶端和 AI 開發工具的存取。
+**Tools** 選單提供 SSH 用戶端、AI 開發工具，以及內建的 WYSIWYG 架構圖編輯器。
 每個工具都可以作為 **分頁**（在主分頁元件中）或 **停靠面板**（浮動/可停靠面板）開啟。
 
 SSH
@@ -43,6 +43,60 @@ Skill Send GUI Tab / Dock
 
 開啟技能提示詞傳送介面，用於將提示詞發送到 LLM API 並查看回應。
 詳細資訊請參閱 :doc:`ai_tools`。
+
+架構圖編輯器
+------------
+
+Diagram Editor Tab / Dock
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+開啟內建的 WYSIWYG 架構圖編輯器，可直接在 PyBreeze 中繪製流程圖與架構圖，
+不需要切換到外部工具。
+
+繪圖工具
+""""""""
+
+- **選取（Select）** -- 點選、搬移、橡皮筋多選
+- **矩形 / 圓角矩形 / 橢圓 / 菱形** -- 節點形狀
+- **連線（Connection）** -- 將兩個節點以可加標籤的連線串接
+- **文字（Text）** -- 浮動文字註記
+- **圖片（檔案）** -- 插入本地圖片檔
+- **圖片（URL）** -- 從 URL 下載並插入圖片（會驗證
+  目標 IP 不在 private/loopback 範圍，並限制 20 MB 上限以防止 SSRF）
+
+檔案操作
+""""""""
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 75
+
+   * - 操作
+     - 說明
+   * - **New**
+     - 清除目前圖形（畫布非空時會跳出確認）。
+   * - **Open**
+     - 載入先前儲存的 ``.diagram.json`` 檔案。
+   * - **Save / Save As** (``Ctrl+S`` / ``Ctrl+Shift+S``)
+     - 將圖形儲存為 ``.diagram.json``。
+   * - **Import Mermaid**
+     - 貼上 Mermaid ``flowchart`` / ``graph`` 原始碼，轉換為可編輯的節點與邊。
+   * - **Export PNG / SVG**
+     - 將畫布輸出為點陣圖（PNG）或向量圖（SVG）。
+
+編輯輔助
+""""""""
+
+- **Undo / Redo** (``Ctrl+Z`` / ``Ctrl+Y``) -- 完整的 undo stack，含具名指令
+  （新增、搬移、刪除、Import 等）
+- **Copy / Paste / Duplicate / Select All** -- 標準快捷鍵；``Ctrl+D`` 可複製選取項目
+- **對齊（Align）** -- 將選取項目以左、右、上、下、水平置中、垂直置中對齊
+- **分佈（Distribute）** -- 三個以上選取項目可水平或垂直平均分佈
+- **Grid** -- 切換背景格線
+- **Snap** -- 拖曳節點時對齊格線
+- **屬性面板（右側）** -- 編輯選取項目的文字、顏色、線寬、形狀、連線樣式
+- **Zoom** -- 放大/縮小 (``Ctrl+=`` / ``Ctrl+-``)、重設 100%
+  (``Ctrl+0``)、Fit-to-content
 
 分頁 vs. 停靠面板
 ------------------

@@ -68,6 +68,14 @@ PyBreeze 不仅仅是一个代码编辑器——它是自动化生命周期的�
   - 密码与私钥认证
   - 交互式命令执行
   - 远程文件树查看器，支持 CRUD 操作（创建文件夹、重命名、删除、上传、下载）
+  - 交互式 TOFU host key 验证，已确认的密钥会持久化到 `~/.pybreeze/ssh_known_hosts`
+- **架构图编辑器** — 内置的 WYSIWYG 架构图编辑器：
+  - 矩形、圆角矩形、椭圆、菱形节点、连线、自由文本
+  - 从本地文件或 URL 插入图片（URL 下载会做 SSRF 验证并有大小上限）
+  - 支持 Mermaid `flowchart` / `graph` 导入
+  - 保存/打开为 `.diagram.json`，导出为 PNG 或 SVG
+  - Undo/redo、对齐、分布、Grid、Snap、Zoom 控制
+- **文件树右键菜单** — 在项目文件树中对任何文件或文件夹右键，可创建文件/文件夹、重命名、删除、复制绝对或相对路径、在系统文件管理器中打开。重命名或删除当前已在编辑器标签页中打开的文件时，标签页会同步更新。
 - **包管理器** — 直接从 IDE 菜单安装自动化模块和构建工具，无需离开编辑器。
 - **集成文档** — 从菜单栏快速访问每个自动化模块的文档和 GitHub 页面。
 
@@ -81,6 +89,7 @@ PyBreeze 不仅仅是一个代码编辑器——它是自动化生命周期的�
   - 逐步分析
   - 摘要生成
 - **Skill 提示词编辑器** — 定义和管理可重复使用的技能型提示词（代码解说、代码审查模板），可发送至 LLM API。
+- **Skill Send GUI** — 在独立的标签页或停靠面板中选择技能提示词模板、按需编辑提示词内容、发送到 LLM API 端点并查看响应。
 
 ### 插件系统
 
@@ -107,7 +116,70 @@ IDE 界面支持多种语言：
 
 ## 架构设计
 
-![架构图](../architecture_diagram/AutomationEditorArchitectureDiagram.drawio.png)
+```mermaid
+flowchart TB
+    UI["PyBreeze UI · PySide6"]
+
+    subgraph Editor["JEditor 基础编辑器"]
+        direction LR
+        E1["代码编辑器 + 标签页"]
+        E2["文件树"]
+        E3["语法高亮"]
+        E4["插件系统"]
+    end
+
+    subgraph Automation["自动化菜单"]
+        direction LR
+        A1["APITestka"]
+        A2["AutoControl"]
+        A3["WebRunner"]
+        A4["LoadDensity"]
+        A5["FileAutomation"]
+        A6["MailThunder"]
+        A7["TestPioneer"]
+    end
+
+    subgraph Executors["子进程执行器 · TaskProcessManager"]
+        direction LR
+        X1["je_api_testka"]
+        X2["je_auto_control"]
+        X3["je_web_runner"]
+        X4["je_load_density"]
+        X5["automation-file"]
+        X6["je-mail-thunder"]
+        X7["test_pioneer"]
+    end
+
+    subgraph Tools["工具"]
+        direction LR
+        T1["SSH · paramiko"]
+        T2["AI 代码审查"]
+        T3["CoT 提示词编辑器"]
+        T4["Skill 提示词编辑器"]
+        T5["Skill Send GUI"]
+        T6["架构图编辑器"]
+        T7["JupyterLab"]
+    end
+
+    subgraph Install["安装菜单"]
+        direction LR
+        I1["模块安装器"]
+        I2["构建工具"]
+    end
+
+    UI --> Editor
+    UI --> Automation
+    UI --> Tools
+    UI --> Install
+
+    A1 --> X1
+    A2 --> X2
+    A3 --> X3
+    A4 --> X4
+    A5 --> X5
+    A6 --> X6
+    A7 --> X7
+```
 
 PyBreeze 采用模块化架构：
 
@@ -131,6 +203,8 @@ PyBreeze UI (PySide6)
 │   ├── AI 代码审查客户端
 │   ├── CoT 提示词编辑器
 │   ├── Skill 提示词编辑器
+│   ├── Skill Send GUI
+│   ├── 架构图编辑器（WYSIWYG、Mermaid 导入、PNG/SVG 导出）
 │   └── JupyterLab 集成
 └── 安装菜单
     ├── 自动化模块安装器
@@ -272,8 +346,9 @@ PyBreeze/
 │   │   └── process_executor/python_task_process_manager.py
 │   ├── extend_multi_language/      # 内置翻译（英语、繁体中文）
 │   ├── pybreeze_ui/
-│   │   ├── editor_main/            # 主窗口（扩展 JEditor）
-│   │   ├── connect_gui/ssh/        # SSH 客户端组件
+│   │   ├── editor_main/            # 主窗口（扩展 JEditor）+ 文件树右键菜单
+│   │   ├── connect_gui/ssh/        # SSH 客户端组件（TOFU host key 验证）
+│   │   ├── diagram_editor/         # WYSIWYG 架构图编辑器
 │   │   ├── extend_ai_gui/          # AI 代码审查与提示词编辑器
 │   │   ├── jupyter_lab_gui/        # JupyterLab 集成
 │   │   ├── menu/                   # 菜单栏构建

@@ -83,30 +83,41 @@ class TaskProcessManager:
             "--execute_str",
             exec_str
         ]
+        self._spawn_and_pump(package, args)
+
+    def start_test_process_file(self, package: str, file_path: str):
+        # Pass the action JSON as a path so we never hit the Windows ~32K
+        # command-line cap when scripts are large. Caller owns the file.
+        self.renew_path()
+        args = [
+            str(self.compiler_path),
+            "-m",
+            package,
+            "--execute_file",
+            str(file_path),
+        ]
+        self._spawn_and_pump(package, args)
+
+    def _spawn_and_pump(self, package: str, args: list) -> None:
         # Launch user-authored automation script in a child interpreter.
         # Argument list is validated upstream; shell=False, no user string ever
         # reaches a shell. nosec B603 — intentional local process execution.
         self.process = subprocess.Popen(  # nosec B603  # nosemgrep  # noqa: S603
             args,
-            stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
         self.still_run_program = True
-        # program output message queue thread
         self.read_program_output_from_thread = Thread(
             target=self.read_program_output_from_process,
             daemon=True
         )
         self.read_program_output_from_thread.start()
-        # program error message queue thread
         self.read_program_error_output_from_thread = Thread(
             target=self.read_program_error_output_from_process,
             daemon=True
         )
         self.read_program_error_output_from_thread.start()
-        # start Pyside update
-        # start timer
         self.main_window.setWindowTitle(package)
         self.main_window.show()
         self.timer = QTimer(self.main_window)
