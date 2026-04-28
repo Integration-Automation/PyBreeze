@@ -426,23 +426,60 @@ web_runner_keys: list = [
 ]
 
 load_density_keys: list = [
-    "LD_start_test", "LD_generate_html", "LD_generate_html_report", "LD_generate_json", "LD_generate_json_report",
-    "LD_generate_xml", "LD_generate_xml_report", "LD_execute_action", "LD_execute_files",
-    "LD_add_package_to_executor", "LD_scheduler_event_trigger", "LD_remove_blocking_scheduler_job",
-    "LD_remove_nonblocking_scheduler_job", "LD_start_blocking_scheduler", "LD_start_nonblocking_scheduler",
-    "LD_start_all_scheduler", "LD_shutdown_blocking_scheduler", "LD_shutdown_nonblocking_scheduler",
-    "create_env", "SchedulerManager",
-    "locust_wrapper_proxy",
-    "prepare_env",
-    "test_record_instance",
+    # ===== Executor LD_* commands (mirrors je_load_density executor.event_dict) =====
+    # Core
+    "LD_start_test", "LD_execute_action", "LD_execute_files",
+    "LD_add_package_to_executor", "LD_start_socket_server",
+    # Reports (HTML / JSON / XML / CSV / JUnit / Summary)
+    "LD_generate_html", "LD_generate_html_report",
+    "LD_generate_json", "LD_generate_json_report",
+    "LD_generate_xml", "LD_generate_xml_report",
+    "LD_generate_csv_report", "LD_generate_junit_report",
+    "LD_generate_summary_report", "LD_summary",
+    # Test record persistence (SQLite)
+    "LD_persist_records", "LD_list_runs", "LD_fetch_run_records",
+    "LD_clear_records",
+    # Parameter resolver / data parameterisation
+    "LD_register_variable", "LD_register_variables",
+    "LD_register_csv_source", "LD_register_csv_sources",
+    "LD_clear_resolver",
+    # Recording / replay
+    "LD_load_har", "LD_har_to_tasks", "LD_har_to_action_json",
+    # Metrics exporters
+    "LD_start_prometheus_exporter", "LD_stop_prometheus_exporter",
+    "LD_start_influxdb_sink", "LD_stop_influxdb_sink",
+    "LD_start_opentelemetry_exporter", "LD_stop_opentelemetry_exporter",
+
+    # ===== Python public API (je_load_density.__all__) =====
+    # Locust env / runner
+    "create_env", "prepare_env", "start_test", "locust_wrapper_proxy",
+    # Executor
     "execute_action", "execute_files", "executor", "add_command_to_executor",
-    "get_dir_files_as_list",
+    # Test records
+    "test_record_instance",
+    "persist_records", "list_runs", "fetch_run_records",
+    # Reports
     "generate_html", "generate_html_report",
-    "generate_json", "generate_json_report", "read_action_json",
+    "generate_json", "generate_json_report",
     "generate_xml", "generate_xml_report",
-    "start_load_density_socket_server",
-    "SequentialTaskSet", "task", "TaskSet",
-    "callback_executor", "create_project_dir"
+    "generate_csv_report", "generate_junit_report",
+    "generate_summary_report", "build_summary",
+    # File / JSON utilities
+    "read_action_json", "get_dir_files_as_list",
+    # Parameter resolver
+    "parameter_resolver", "resolve",
+    "register_variable", "register_variables",
+    "register_csv_source", "register_csv_sources",
+    # HAR import
+    "har_to_action_json", "har_to_tasks", "load_har",
+    # Metrics exporters
+    "start_prometheus_exporter", "stop_prometheus_exporter",
+    "start_influxdb_sink", "stop_influxdb_sink",
+    "start_opentelemetry_exporter", "stop_opentelemetry_exporter",
+    # Project / socket / callback / Locust re-exports
+    "create_project_dir", "start_load_density_socket_server",
+    "callback_executor",
+    "SequentialTaskSet", "TaskSet", "task",
 ]
 
 automation_file_keys: list = [
