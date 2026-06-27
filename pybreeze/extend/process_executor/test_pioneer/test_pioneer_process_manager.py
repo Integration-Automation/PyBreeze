@@ -14,6 +14,7 @@ from je_editor.utils.venv_check.check_venv import check_and_choose_venv
 from pybreeze.extend.process_executor.python_task_process_manager import find_venv_path
 from pybreeze.extend.process_executor.queue_pump import pump_message_queue
 from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
+from pybreeze.utils.subprocess_util import no_window_creationflags, utf8_subprocess_env
 
 if TYPE_CHECKING:
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
@@ -61,6 +62,8 @@ class TestPioneerProcess:
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            creationflags=no_window_creationflags(),
+            env=utf8_subprocess_env(self._program_encoding),
         )
 
     def _append_text(self, text: str, is_error: bool = False) -> None:
@@ -119,27 +122,34 @@ class TestPioneerProcess:
             except queue.Empty:
                 break
 
-    def read_program_output_from_process(self):
+    def _read_stream_into_queue(self, stream_name: str, target_queue: Queue) -> None:
+        # Block on readline until a line arrives or the pipe hits EOF. Stopping on
+        # EOF (empty read) is essential: without it the loop spins at 100% CPU
+        # re-reading a closed pipe until the QTimer notices the process exited.
         while self._still_run_program:
             proc = self._process
             if proc is None:
                 break
-            program_output_data = proc.stdout.readline(self._program_buffer_size)
-            if isinstance(program_output_data, bytes):
-                program_output_data = program_output_data.decode(self._program_encoding, "replace")
-            if program_output_data.strip():
-                self._run_output_queue.put(program_output_data)
+            stream = getattr(proc, stream_name)
+            if stream is None:
+                break
+            try:
+                line = stream.readline(self._program_buffer_size)
+            except (ValueError, OSError):
+                # Pipe closed underneath us during shutdown.
+                break
+            if not line:
+                break
+            if isinstance(line, bytes):
+                line = line.decode(self._program_encoding, "replace")
+            if line.strip():
+                target_queue.put(line)
+
+    def read_program_output_from_process(self):
+        self._read_stream_into_queue("stdout", self._run_output_queue)
 
     def read_program_error_output_from_process(self):
-        while self._still_run_program:
-            proc = self._process
-            if proc is None:
-                break
-            program_error_output_data = proc.stderr.readline(self._program_buffer_size)
-            if isinstance(program_error_output_data, bytes):
-                program_error_output_data = program_error_output_data.decode(self._program_encoding, "replace")
-            if program_error_output_data.strip():
-                self._run_error_queue.put(program_error_output_data)
+        self._read_stream_into_queue("stderr", self._run_error_queue)
 
     def start_test_pioneer_process(self):
         self._still_run_program = True
