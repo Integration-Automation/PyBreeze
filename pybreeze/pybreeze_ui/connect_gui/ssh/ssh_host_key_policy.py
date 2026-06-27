@@ -17,6 +17,7 @@ import paramiko
 from je_editor import language_wrapper
 from PySide6.QtWidgets import QMessageBox
 
+from pybreeze.utils.app_dirs import pybreeze_data_dir
 from pybreeze.utils.logging.logger import pybreeze_logger
 
 if TYPE_CHECKING:
@@ -25,9 +26,7 @@ if TYPE_CHECKING:
 
 def _known_hosts_path() -> Path:
     """Return the PyBreeze-managed known_hosts file path, ensuring the parent dir exists."""
-    home_dir = Path.home() / ".pybreeze"
-    home_dir.mkdir(parents=True, exist_ok=True)
-    return home_dir / "ssh_known_hosts"
+    return pybreeze_data_dir() / "ssh_known_hosts"
 
 
 def _fingerprint_sha256(key: paramiko.PKey) -> str:

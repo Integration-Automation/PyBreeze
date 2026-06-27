@@ -17,7 +17,22 @@ from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_key_loader import load_private_key
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_login_widget import LoginWidget
 from pybreeze.utils.logging.logger import pybreeze_logger
 
-ANSI_ESCAPE_PATTERN = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+ANSI_ESCAPE_PATTERN = re.compile(
+    r'\x1B(?:'
+    r'\][^\x07\x1B]*(?:\x07|\x1B\\)'  # OSC (terminal title / hyperlink), BEL- or ST-terminated
+    r'|[@-Z\\-_]'                      # other two-character C1 Fe sequences
+    r'|\[[0-?]*[ -/]*[@-~]'           # CSI (colours, cursor movement)
+    r')'
+)
+
+# Bound the terminal scrollback so an endless stream (``tail -f``, ``yes``)
+# cannot grow the document without limit; oldest lines drop once exceeded.
+TERMINAL_MAX_BLOCKS = 10000
+
+# Send a keepalive packet after this many idle seconds so an idle session is not
+# dropped by the TCP stack, a NAT/firewall, or the SSH server (≈ OpenSSH's
+# ServerAliveInterval).
+SSH_KEEPALIVE_SECONDS = 30
 
 
 class SSHReaderThread(QThread):
@@ -30,29 +45,31 @@ class SSHReaderThread(QThread):
         self._running = True
         self.word_dict = language_wrapper.language_word_dict
 
+    def _pump_once(self) -> bool:
+        """Forward any ready stdout/stderr; return False once the channel closes."""
+        if self.chan.recv_ready():
+            data = self.chan.recv(4096)
+            if data:
+                self.data_received.emit(data)
+        if self.chan.recv_stderr_ready():
+            err = self.chan.recv_stderr(4096)
+            if err:
+                self.data_received.emit(err)
+        return not (self.chan.closed or self.chan.exit_status_ready())
+
     def run(self):
+        error_msg = None
         try:
-            while self._running:
-                if self.chan.recv_ready():
-                    data = self.chan.recv(4096)
-                    if data:
-                        self.data_received.emit(data)
-
-                if self.chan.recv_stderr_ready():
-                    err = self.chan.recv_stderr(4096)
-                    if err:
-                        self.data_received.emit(err)
-
-                if self.chan.closed or self.chan.exit_status_ready():
-                    break
-
+            while self._running and self._pump_once():
                 self.msleep(10)
-        except Exception as e:
-            self.closed.emit(
-                f"{self.word_dict.get('ssh_command_widget_error_message_reader_failed')} {e}")
+        except Exception as e:  # noqa: BLE001 — any reader failure must surface to the UI
+            pybreeze_logger.debug("SSH reader thread error: %r", e)
+            error_msg = f"{self.word_dict.get('ssh_command_widget_error_message_reader_failed')} {e}"
         finally:
+            # Emit exactly once: the error when one occurred, otherwise the
+            # normal close notice (previously the error path emitted twice).
             self.closed.emit(
-                self.word_dict.get("ssh_command_widget_log_message_reader_closed"))
+                error_msg or self.word_dict.get("ssh_command_widget_log_message_reader_closed"))
 
     def stop(self):
         self._running = False
@@ -83,6 +100,7 @@ class SSHCommandWidget(QWidget):
         # 其他 UI 控制元件
         self.terminal = QPlainTextEdit()
         self.terminal.setReadOnly(True)
+        self.terminal.setMaximumBlockCount(TERMINAL_MAX_BLOCKS)
         self.command_input_edit = QLineEdit()
         self.command_send_button = QPushButton(
             self.word_dict.get("ssh_command_widget_button_label_send_command"))
@@ -181,6 +199,9 @@ class SSHCommandWidget(QWidget):
         return True
 
     def _start_shell(self, host: str, port: int, user: str) -> None:
+        transport = self.ssh_client.get_transport()
+        if transport is not None:
+            transport.set_keepalive(SSH_KEEPALIVE_SECONDS)
         self.shell_channel = self.ssh_client.invoke_shell(term='xterm', width=120, height=32)
         self.shell_channel.settimeout(0.0)
         self.reader_thread = SSHReaderThread(self.shell_channel)
@@ -233,6 +254,9 @@ class SSHCommandWidget(QWidget):
     def _cleanup(self):
         try:
             if self.reader_thread:
+                # Block the thread's signals before tearing down so a data/closed
+                # signal emitted mid-shutdown can't land in a half-cleaned widget.
+                self.reader_thread.blockSignals(True)
                 self.reader_thread.stop()
                 self.reader_thread.wait(1000)
         except Exception as error:

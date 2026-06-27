@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import os
+import posixpath
+import re
 import stat
-from pathlib import Path
 
 import paramiko
 from PySide6.QtCore import Qt, QEvent
@@ -16,6 +17,52 @@ from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_host_key_policy import apply_host_
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_key_loader import load_private_key
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_login_widget import LoginWidget
 from pybreeze.utils.logging.logger import pybreeze_logger
+
+
+_SIZE_UNITS = ("B", "KB", "MB", "GB", "TB", "PB")
+
+
+def format_size(num_bytes: int) -> str:
+    """Format a byte count for display, e.g. ``1536 -> '1.5 KB'`` (1024-based)."""
+    if num_bytes < 0:
+        return ""
+    size = float(num_bytes)
+    for unit in _SIZE_UNITS:
+        if size < 1024 or unit == _SIZE_UNITS[-1]:
+            return f"{int(size)} {unit}" if unit == "B" else f"{size:.1f} {unit}"
+        size /= 1024
+    return ""
+
+
+# Keepalive interval (seconds) so an idle SFTP session is not dropped by the
+# TCP stack, a NAT/firewall, or the SSH server (≈ OpenSSH ServerAliveInterval).
+SSH_KEEPALIVE_SECONDS = 30
+
+
+def natural_key(name: str) -> list:
+    """Sort key giving natural (human) order, e.g. ``img2`` before ``img10``.
+
+    Embedded digit runs compare as integers and text compares case-insensitively,
+    matching how Windows Explorer and most file managers order file listings.
+    """
+    # isdecimal (not isdigit): a part like "²³" or "①" is isdigit() but int()
+    # rejects it, which would crash sorting a file named with such characters.
+    return [
+        int(part) if part.isdecimal() else part.lower()
+        for part in re.split(r"(\d+)", name)
+    ]
+
+
+def remote_join(directory: str, name: str) -> str:
+    """Join *name* under a remote POSIX *directory* into an absolute path.
+
+    Remote SFTP paths are always POSIX: ``os.path.join`` would emit ``\\`` on a
+    Windows client and break navigation/transfers on the server. The result
+    always uses ``/`` separators and has a leading slash.
+    """
+    base = "" if directory == "/" else directory
+    joined = posixpath.join(base, name)
+    return joined if joined.startswith("/") else f"/{joined}"
 
 
 class SFTPClientWrapper:
@@ -50,6 +97,9 @@ class SFTPClientWrapper:
             self._ssh.connect(hostname=host, port=port, username=username, pkey=pkey, timeout=10)
         else:
             self._ssh.connect(hostname=host, port=port, username=username, password=password, timeout=10)
+        transport = self._ssh.get_transport()
+        if transport is not None:
+            transport.set_keepalive(SSH_KEEPALIVE_SECONDS)
         self._sftp = self._ssh.open_sftp()
 
     def close(self):
@@ -244,7 +294,8 @@ class SSHFileTreeManager(QWidget):
         Create a tree item with metadata.
         建立帶有中繼資料的樹狀項目。
         """
-        item = QTreeWidgetItem([name, typ, str(size), full_path])
+        size_text = "" if typ == "dir" else format_size(size)
+        item = QTreeWidgetItem([name, typ, size_text, full_path])
         if typ == "dir":
             # Use QStyle enum for standard icons
             # 使用 QStyle 列舉取得標準資料夾圖示
@@ -304,19 +355,18 @@ class SSHFileTreeManager(QWidget):
 
     @staticmethod
     def _sort_entries(entries):
-        """Return ``[(name, entry)]`` with directories before files."""
+        """Return ``[(name, entry)]`` with directories first, each in natural order."""
         dirs: list = []
         files: list = []
         for entry in entries:
             bucket = dirs if stat.S_ISDIR(entry.st_mode) else files
             bucket.append((entry.filename, entry))
+        dirs.sort(key=lambda item: natural_key(item[0]))
+        files.sort(key=lambda item: natural_key(item[0]))
         return dirs + files
 
     def _add_entry_row(self, parent_item: QTreeWidgetItem, path: str, name: str, entry) -> None:
-        base = "" if path == "/" else path
-        full_path = os.path.join(base, name)
-        if not full_path.startswith("/"):
-            full_path = f"/{full_path}"
+        full_path = remote_join(path, name)
         typ = "dir" if stat.S_ISDIR(entry.st_mode) else "file"
         size = entry.st_size if typ == "file" else 0
         child = self.make_item(name, typ, size, full_path)
@@ -389,14 +439,13 @@ class SSHFileTreeManager(QWidget):
             return
         base_path = item.text(3)
         if item.text(1) != "dir":
-            base_path = os.path.dirname(base_path)
+            base_path = posixpath.dirname(base_path)
         name, ok = self.get_text(
             self.word_dict.get("ssh_file_viewer_dialog_title_create_folder"),
             self.word_dict.get("ssh_file_viewer_dialog_label_folder_name"))
         if not ok or not name.strip():
             return
-        new_path = os.path.join(base_path if base_path != "/" else "", name.strip())
-        new_path = new_path if new_path.startswith("/") else f"/{new_path}"
+        new_path = remote_join(base_path, name.strip())
         self.client.mkdir(new_path)
         self.action_refresh(item)
 
@@ -413,9 +462,8 @@ class SSHFileTreeManager(QWidget):
             f"{self.word_dict.get('ssh_file_viewer_dialog_label_new_name_for_item')}: {item.text(0)}")
         if not ok or not new_name.strip():
             return
-        base = os.path.dirname(old_path) or "/"
-        new_path = os.path.join(base if base != "/" else "", new_name.strip())
-        new_path = new_path if new_path.startswith("/") else f"/{new_path}"
+        base = posixpath.dirname(old_path) or "/"
+        new_path = remote_join(base, new_name.strip())
         self.client.rename(old_path, new_path)
         # Update item display
         item.setText(0, new_name.strip())
@@ -460,7 +508,7 @@ class SSHFileTreeManager(QWidget):
                 self.word_dict.get("ssh_file_viewer_dialog_message_select_file_to_download"))
             return
         remote_path = item.text(3)
-        suggested = Path(remote_path).name
+        suggested = posixpath.basename(remote_path)  # remote path uses POSIX separators
         local_path, _ = QFileDialog.getSaveFileName(
             self,
             self.word_dict.get("ssh_file_viewer_dialog_title_save_as"),
@@ -480,14 +528,13 @@ class SSHFileTreeManager(QWidget):
         """
         if item is None:
             return
-        target_dir = item.text(3) if item.text(1) == "dir" else os.path.dirname(item.text(3))
+        target_dir = item.text(3) if item.text(1) == "dir" else posixpath.dirname(item.text(3))
         local_path, _ = QFileDialog.getOpenFileName(
             self, self.word_dict.get("ssh_file_viewer_dialog_title_select_local_file"), "")
         if not local_path:
             return
-        filename = os.path.basename(local_path)
-        remote_path = os.path.join(target_dir if target_dir != "/" else "", filename)
-        remote_path = remote_path if remote_path.startswith("/") else f"/{remote_path}"
+        filename = os.path.basename(local_path)  # local path: OS-native separator is correct
+        remote_path = remote_join(target_dir, filename)
         self.client.upload(local_path, remote_path)
         QMessageBox.information(
             self,
