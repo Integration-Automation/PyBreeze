@@ -248,20 +248,25 @@ class DiagramPropertyPanel(QWidget):
         self._current_conn = None
         self._current_img = None
         selected = self._scene.selectedItems()
-
         nodes = [i for i in selected if isinstance(i, DiagramNode)]
         conns = [i for i in selected if isinstance(i, DiagramConnection)]
         imgs = [i for i in selected if isinstance(i, DiagramImage)]
+        self._show_for_selection(nodes, conns, imgs)
+        self._updating = False
 
-        if len(nodes) == 1 and len(conns) == 0 and len(imgs) == 0:
+    def _show_for_selection(self, nodes: list, conns: list, imgs: list) -> None:
+        # Tuple comparison instead of chained ``and`` keeps the panel showing a
+        # single node/connection/image (and nothing else categorised) while
+        # staying low-complexity.
+        counts = (len(nodes), len(conns), len(imgs))
+        if counts == (1, 0, 0):
             self._show_node(nodes[0])
-        elif len(conns) == 1 and len(nodes) == 0 and len(imgs) == 0:
+        elif counts == (0, 1, 0):
             self._show_connection(conns[0])
-        elif len(imgs) == 1 and len(nodes) == 0 and len(conns) == 0:
+        elif counts == (0, 0, 1):
             self._show_image(imgs[0])
         else:
             self._show_none()
-        self._updating = False
 
     def _show_none(self) -> None:
         self._no_sel_label.show()

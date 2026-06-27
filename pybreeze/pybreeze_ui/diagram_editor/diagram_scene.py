@@ -24,6 +24,13 @@ from pybreeze.pybreeze_ui.diagram_editor.diagram_net_utils import (
 )
 from pybreeze.utils.logging.logger import pybreeze_logger
 
+# Allowlist of image extensions that a saved diagram may reference on disk.
+# Defined once at module scope because it is a security boundary (only these
+# local files are read back when reloading a ``.diagram.json``).
+_VALID_IMAGE_SUFFIXES = frozenset(
+    {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".svg", ".webp", ".ico"}
+)
+
 
 class ToolMode(Enum):
     """State pattern: each mode defines how mouse events behave on the canvas."""
@@ -84,7 +91,10 @@ class DiagramScene(QGraphicsScene):
     @grid_enabled.setter
     def grid_enabled(self, value: bool) -> None:
         self._grid_enabled = value
+        # Both item types snap independently, so keep their class flags in sync —
+        # otherwise images ignore the grid while nodes honour it.
         DiagramNode.grid_enabled = value
+        DiagramImage.grid_enabled = value
 
     @property
     def grid_size(self) -> int:
@@ -94,6 +104,7 @@ class DiagramScene(QGraphicsScene):
     def grid_size(self, value: int) -> None:
         self._grid_size = max(5, value)
         DiagramNode.grid_size = self._grid_size
+        DiagramImage.grid_size = self._grid_size
 
     # ------------------------------------------------------------------
     # State management
@@ -400,7 +411,7 @@ class DiagramScene(QGraphicsScene):
                         label=cd.get("label", ""),
                         line_color=cd.get("line_color"),
                         line_width=cd.get("line_width", 2.0),
-                        style=ConnectionStyle[cd.get("style", "SOLID")],
+                        style=ConnectionStyle.__members__.get(cd.get("style", "SOLID"), ConnectionStyle.SOLID),
                     )
                     self.addItem(conn)
         self.item_count_changed.emit()
@@ -554,26 +565,53 @@ class DiagramScene(QGraphicsScene):
                 self.removeItem(item)
 
     def _load_items(self, data: dict) -> None:
-        """Add items from serialised data."""
+        """Add items from serialised data, skipping any malformed entry.
+
+        A single corrupt node/connection/image must not abort the whole load
+        and lose the valid items alongside it (saved diagrams can be hand-edited
+        or partially written), so each entry is loaded defensively.
+        """
+        id_to_node = self._load_nodes(data.get("nodes", []))
+        self._load_connections(data.get("connections", []), id_to_node)
+        self._load_images(data.get("images", []))
+
+    def _load_nodes(self, node_dicts: list) -> dict[int, DiagramNode]:
         id_to_node: dict[int, DiagramNode] = {}
-        for nd in data.get("nodes", []):
-            node = DiagramNode.from_dict(nd)
+        for nd in node_dicts:
+            try:
+                node = DiagramNode.from_dict(nd)
+            except (KeyError, ValueError, TypeError) as err:
+                pybreeze_logger.debug("Skipping malformed diagram node %r: %s", nd, err)
+                continue
             self.addItem(node)
-            id_to_node[nd["id"]] = node
-        for cd in data.get("connections", []):
-            src = id_to_node.get(cd["source"])
-            tgt = id_to_node.get(cd["target"])
-            if src is not None and tgt is not None:
-                conn = DiagramConnection(
-                    src, tgt,
-                    label=cd.get("label", ""),
-                    line_color=cd.get("line_color"),
-                    line_width=cd.get("line_width", 2.0),
-                    style=ConnectionStyle[cd.get("style", "SOLID")],
-                )
-                self.addItem(conn)
-        for img_d in data.get("images", []):
-            img = DiagramImage.from_dict(img_d)
+            node_id = nd.get("id")
+            if node_id is not None:
+                id_to_node[node_id] = node
+        return id_to_node
+
+    def _load_connections(self, conn_dicts: list, id_to_node: dict[int, DiagramNode]) -> None:
+        for cd in conn_dicts:
+            src = id_to_node.get(cd.get("source"))
+            tgt = id_to_node.get(cd.get("target"))
+            if src is None or tgt is None:
+                continue
+            style = ConnectionStyle.__members__.get(cd.get("style", "SOLID"), ConnectionStyle.SOLID)
+            conn = DiagramConnection(
+                src, tgt,
+                label=cd.get("label", ""),
+                line_color=cd.get("line_color"),
+                line_width=cd.get("line_width", 2.0),
+                style=style,
+            )
+            self.addItem(conn)
+
+    def _load_images(self, image_dicts: list) -> None:
+        for img_d in image_dicts:
+            try:
+                img = DiagramImage.from_dict(img_d)
+            except (KeyError, ValueError, TypeError) as err:
+                pybreeze_logger.debug("Skipping malformed diagram image %r: %s", img_d, err)
+                continue
             self.addItem(img)
             # Try to reload pixmap from source
             source = img_d.get("source", "")
@@ -587,9 +625,8 @@ class DiagramScene(QGraphicsScene):
         URLs are validated and size-limited via ``safe_download_image``.
         """
         path = Path(source)
-        # Only load if the file actually exists and has an image extension
-        _IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".svg", ".webp", ".ico"}
-        if path.is_file() and path.suffix.lower() in _IMAGE_SUFFIXES:
+        # Only load if the file actually exists and has an allowlisted extension.
+        if path.is_file() and path.suffix.lower() in _VALID_IMAGE_SUFFIXES:
             pix = QPixmap(str(path))
             if not pix.isNull():
                 img.set_pixmap(pix, source)
