@@ -14,7 +14,7 @@ def utf8_subprocess_env(encoding: str = "utf-8") -> dict[str, str]:
     in the process managers and show up garbled. Pinning ``PYTHONIOENCODING``
     makes the child emit the same encoding the manager decodes with.
     """
-    env = dict(os.environ)
+    env = os.environ.copy()
     env["PYTHONIOENCODING"] = encoding
     return env
 

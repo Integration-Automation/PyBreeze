@@ -167,5 +167,5 @@ class JupyterLauncherThread(QThread):
         if self.process is not None:
             try:
                 self.process.terminate()
-            except OSError:
-                pass
+            except OSError as error:
+                pybreeze_logger.debug("JupyterLab terminate failed: %r", error)

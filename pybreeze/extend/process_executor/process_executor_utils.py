@@ -32,7 +32,7 @@ def build_process(
             test_format_code = exec_str
         start_process(main_window, package, test_format_code, send_mail, program_buffer)
     except json.decoder.JSONDecodeError as error:
-        pybreeze_logger.error(f"{repr(error)}\n{wrong_test_data_format_exception_tag}")
+        pybreeze_logger.error(f"{error!r}\n{wrong_test_data_format_exception_tag}")
     except ITETestExecutorException as error:
         pybreeze_logger.error(repr(error))
 

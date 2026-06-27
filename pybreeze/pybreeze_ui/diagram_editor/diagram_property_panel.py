@@ -391,7 +391,7 @@ class DiagramPropertyPanel(QWidget):
 
         self._img_caption.setText(img.text())
         src = img.source()
-        self._img_source.setText(src if src else "")
+        self._img_source.setText(src or "")
         self._img_w.setValue(int(img.img_w))
         self._img_h.setValue(int(img.img_h))
 
