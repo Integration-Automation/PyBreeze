@@ -27,6 +27,11 @@ class TestAnsiEscapeStripping:
         ("\x1b]8;;http://example.com\x1b\\link\x1b]8;;\x1b\\ done", "link done"),
         # OSC mixed with colour.
         ("\x1b]0;title\x07\x1b[32mok\x1b[0m", "ok"),
+        # Unterminated OSC ended by the next ESC (a CSI), not BEL/ST: the body
+        # used to leak as "8;;https://..." text; it must be consumed whole.
+        ("\x1b]8;;https://api.github.com/repos\x1b[0mtext", "text"),
+        # Unterminated OSC ended by end-of-stream.
+        ("before\x1b]0;unterminated title", "before"),
     ])
     def test_osc_sequences_are_stripped(self, raw, expected):
         # Regression: OSC bodies (e.g. "0;title") used to leak through as garbage.

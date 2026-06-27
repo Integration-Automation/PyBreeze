@@ -19,7 +19,7 @@ from pybreeze.utils.logging.logger import pybreeze_logger
 
 ANSI_ESCAPE_PATTERN = re.compile(
     r'\x1B(?:'
-    r'\][^\x07\x1B]*(?:\x07|\x1B\\)'  # OSC (terminal title / hyperlink), BEL- or ST-terminated
+    r'\][^\x07\x1B]*(?:\x07|\x1B\\)?'  # OSC; BEL/ST-terminated or implicitly ended by the next ESC / EOF
     r'|[@-Z\\-_]'                      # other two-character C1 Fe sequences
     r'|\[[0-?]*[ -/]*[@-~]'           # CSI (colours, cursor movement)
     r')'
