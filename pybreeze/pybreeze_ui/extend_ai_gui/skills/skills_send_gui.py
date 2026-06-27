@@ -9,7 +9,11 @@ from PySide6.QtCore import QThread, Signal
 from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.extend_ai_gui.ai_gui_global_variable import SKILLS_TEMPLATE_FILES
-from pybreeze.utils.network.url_validation import validate_url
+from pybreeze.utils.logging.logger import pybreeze_logger
+from pybreeze.utils.network.http_client import (
+    ResponseTooLargeError, read_capped_text, CONNECT_TIMEOUT, truncate_for_display,
+)
+from pybreeze.utils.network.url_validation import UnsafeURLError, validate_url
 
 
 class RequestThread(QThread):
@@ -24,16 +28,20 @@ class RequestThread(QThread):
     def run(self):
         try:
             validate_url(self.api_url)
-            response = requests.post(self.api_url, json={"code": self.code_text}, timeout=30, allow_redirects=False)
+            response = requests.post(
+                self.api_url, json={"code": self.code_text},
+                timeout=(CONNECT_TIMEOUT, 30), allow_redirects=False, stream=True,
+            )
+            body = read_capped_text(response)
             if response.ok:
-                self.finished.emit(response.text)
+                self.finished.emit(body)
             elif response.is_redirect:
                 self.finished.emit(
                     language_wrapper.language_word_dict.get(
                         "skills_error_status").format(
                         status_code=response.status_code,
                         text=f"Redirect to {response.headers.get('Location', 'unknown')}"))
-            elif response.status_code == 401 or response.status_code == 403:
+            elif response.status_code in (401, 403):
                 self.error.emit(
                     language_wrapper.language_word_dict.get(
                         "skills_error_status").format(
@@ -44,12 +52,14 @@ class RequestThread(QThread):
                     language_wrapper.language_word_dict.get(
                         "skills_error_status").format(
                         status_code=response.status_code,
-                        text=f"Server error: {response.text}"))
+                        text=f"Server error: {truncate_for_display(body)}"))
             else:
                 self.finished.emit(
                     language_wrapper.language_word_dict.get(
-                        "skills_error_status").format(status_code=response.status_code, text=response.text))
-        except Exception as e:
+                        "skills_error_status").format(
+                        status_code=response.status_code, text=truncate_for_display(body)))
+        except (requests.RequestException, ResponseTooLargeError, UnsafeURLError) as e:
+            pybreeze_logger.error("Skills send request failed: %r", e)
             self.error.emit(language_wrapper.language_word_dict.get("skills_exception").format(error=str(e)))
 
 
@@ -96,6 +106,12 @@ class SkillsSendGUI(QWidget):
         self.thread = None  # 保存執行緒
 
     def send_prompt(self):
+        # Ignore re-submits while a request is in flight: reassigning self.thread
+        # here would drop a still-running QThread (risking "destroyed while
+        # running") and let a stale worker overwrite the panel.
+        if self.thread is not None and self.thread.isRunning():
+            return
+
         api_url = self.api_url_input.text().strip()
         prompt_text = self.prompt_input.toPlainText().strip()
 
@@ -107,6 +123,7 @@ class SkillsSendGUI(QWidget):
         self.response_output.setPlainText(language_wrapper.language_word_dict.get("skills_generating"))
 
         # 啟動 QThread
+        self.send_button.setEnabled(False)
         self.thread = RequestThread(api_url, prompt_text)
         self.thread.finished.connect(self.on_finished)
         self.thread.error.connect(self.on_error)
@@ -114,6 +131,8 @@ class SkillsSendGUI(QWidget):
 
     def on_finished(self, result):
         self.response_output.setPlainText(result)
+        self.send_button.setEnabled(True)
 
     def on_error(self, error_msg):
         self.response_output.setPlainText(error_msg)
+        self.send_button.setEnabled(True)
