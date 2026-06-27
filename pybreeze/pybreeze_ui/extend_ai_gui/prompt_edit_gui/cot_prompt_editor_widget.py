@@ -23,7 +23,7 @@ class CoTPromptEditor(QWidget):
         self.templates = COT_TEMPLATE_RELATION
 
         self.setWindowTitle(language_wrapper.language_word_dict.get(
-            "cot_cot_prompt_editor_window_title"
+            "cot_prompt_editor_window_title"
         ))  # 視窗標題：Prompt 編輯器
 
         # --- Layouts (版面配置) ---
@@ -129,7 +129,7 @@ class CoTPromptEditor(QWidget):
             QMessageBox.warning(
                 self,
                 language_wrapper.language_word_dict.get("cot_prompt_editor_msgbox_error_title"),
-                language_wrapper.language_word_dict.get("cot_cot_prompt_editor_msgbox_no_file_selected"))
+                language_wrapper.language_word_dict.get("cot_prompt_editor_msgbox_no_file_selected"))
             return
 
         content = self.middle_editor.toPlainText()
