@@ -63,15 +63,25 @@ class TestGetDirFilesAsList:
             assert os.path.isabs(path)
 
     def test_case_insensitive_extension(self, temp_dir_with_files):
-        # Create a file with uppercase extension
+        # A file with an uppercase extension must still match a lowercase query
+        # (Windows-primary IDE; filesystem is case-insensitive).
         with open(os.path.join(temp_dir_with_files, "upper.JSON"), "w") as f:
             f.write("{}")
         result = get_dir_files_as_list(temp_dir_with_files, ".json")
-        # .json should match files with .json extension
-        # The function uses file.endswith(ext.lower()) so it checks lowercase ext
-        # But the file "upper.JSON" won't match ".json" because endswith is case-sensitive
-        json_files = [f for f in result if f.endswith(".json")]
-        assert len(json_files) == 3  # only lowercase .json files
+        assert len(result) == 4  # test1/test2/nested + upper.JSON
+        assert any(f.endswith("upper.JSON") for f in result)
+
+    def test_case_insensitive_query_extension(self, temp_dir_with_files):
+        # An uppercase query extension must match lowercase files too.
+        result = get_dir_files_as_list(temp_dir_with_files, ".JSON")
+        assert len(result) == 3  # test1.json, test2.json, nested.json
+
+    def test_default_dir_is_resolved_at_call_time(self, temp_dir_with_files, monkeypatch):
+        # The default must reflect the cwd when called, not when imported.
+        monkeypatch.chdir(temp_dir_with_files)
+        result = get_dir_files_as_list()
+        assert len(result) == 3
+        assert all(os.path.isabs(path) for path in result)
 
     def test_walks_subdirectories(self, temp_dir_with_files):
         result = get_dir_files_as_list(temp_dir_with_files, ".json")

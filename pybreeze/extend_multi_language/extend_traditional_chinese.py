@@ -125,7 +125,7 @@ pybreeze_traditional_chinese_word_dict = {
     "ssh_command_widget_status_label_disconnected": "已斷線",
     "ssh_command_widget_log_message_connected": "已連線至",
     "ssh_command_widget_log_message_error": "[錯誤]",
-    "ssh_command_widget_error_message_decode_failed": "<解碼錯誤> {error}",
+    "ssh_command_widget_error_message_decode_failed": "<解碼錯誤> ",
     "ssh_command_widget_log_message_channel_closed": "[通道已關閉]",
     "ssh_command_widget_error_message_reader_failed": "讀取錯誤",
     "ssh_command_widget_log_message_reader_closed": "讀取已關閉",

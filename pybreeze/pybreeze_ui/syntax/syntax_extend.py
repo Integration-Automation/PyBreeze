@@ -17,8 +17,10 @@ def syntax_extend_package(main_window: PyBreezeMainWindow) -> None:
     # Register JSON syntax keywords for each automation package
     json_syntax_words = {}
     for package in package_manager.syntax_check_list:
+        # Default to an empty list so a package without a keyword list registers
+        # no words instead of crashing syntax setup with set(None).
         json_syntax_words[package] = {
-            "words": set(package_keyword_list.get(package)),
+            "words": set(package_keyword_list.get(package, [])),
             "color": QColor(255, 255, 0),
         }
     register_programming_language(".json", json_syntax_words)
@@ -26,7 +28,7 @@ def syntax_extend_package(main_window: PyBreezeMainWindow) -> None:
     # Register YAML syntax keywords for test_pioneer
     yml_syntax_words = {
         "test_pioneer": {
-            "words": set(package_keyword_list.get("test_pioneer")),
+            "words": set(package_keyword_list.get("test_pioneer", [])),
             "color": QColor(255, 153, 0),
         }
     }

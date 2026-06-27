@@ -4,8 +4,10 @@ import logging
 import os
 from logging.handlers import RotatingFileHandler
 
-# 設定 root logger 等級 Set root logger level
-logging.root.setLevel(logging.DEBUG)
+# A library must not reconfigure the root logger: forcing it to DEBUG makes
+# every third-party logger verbose and robs the host application of control
+# over log levels. PyBreeze logs only through its own named logger below, which
+# carries its own DEBUG level and file handler.
 
 # 建立 AutoControlGUI 專用 logger Create dedicated logger
 pybreeze_logger = logging.getLogger("Pybreeze")

@@ -16,6 +16,17 @@ class TestPyBreezeLogger:
     def test_logger_has_handler(self):
         assert len(pybreeze_logger.handlers) > 0
 
+    def test_does_not_reconfigure_root_logger(self):
+        # A library must not force the root logger level or call basicConfig;
+        # that would override the host application's logging configuration.
+        import inspect
+
+        from pybreeze.utils.logging import logger as logger_module
+
+        source = inspect.getsource(logger_module)
+        assert "root.setLevel" not in source
+        assert "basicConfig" not in source
+
     def test_custom_handler_creation(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             log_file = os.path.join(tmpdir, "test.log")

@@ -83,17 +83,16 @@ def _add_plugin_entry(ui_we_want_to_set: PyBreezeMainWindow, meta: dict) -> None
         # 多種副檔名：每個副檔名一個執行動作
         # Multiple suffixes: one run action per suffix
         for suffix in suffixes:
-            _add_run_action(ui_we_want_to_set, sub_menu, run_config, suffix,
+            _add_run_action(ui_we_want_to_set, sub_menu, run_config,
                             label_name=f"{config_name} ({suffix})")
     else:
         # 單一副檔名：一個執行動作
         # Single suffix: one run action
-        suffix = suffixes[0] if suffixes else ""
-        _add_run_action(ui_we_want_to_set, sub_menu, run_config, suffix, label_name=config_name)
+        _add_run_action(ui_we_want_to_set, sub_menu, run_config, label_name=config_name)
 
 
 def _add_run_action(ui_we_want_to_set: PyBreezeMainWindow, parent_menu,
-                    run_config: dict, suffix: str, label_name: str) -> None:
+                    run_config: dict, label_name: str) -> None:
     run_action = QAction(
         language_wrapper.language_word_dict.get(
             "plugin_menu_run_with", "Run with {name}"
@@ -101,7 +100,7 @@ def _add_run_action(ui_we_want_to_set: PyBreezeMainWindow, parent_menu,
         parent_menu,
     )
     run_action.triggered.connect(
-        _make_run_callback(ui_we_want_to_set, run_config, suffix)
+        _make_run_callback(ui_we_want_to_set, run_config)
     )
     parent_menu.addAction(run_action)
 
@@ -135,7 +134,7 @@ def _make_about_callback(name: str, version: str, author: str):
     return callback
 
 
-def _make_run_callback(ui_we_want_to_set: PyBreezeMainWindow, run_config: dict, suffix: str):
+def _make_run_callback(ui_we_want_to_set: PyBreezeMainWindow, run_config: dict):
     """
     建立使用插件執行設定來執行程式的回呼函式。
     Create a callback to run a program using plugin run config.
@@ -155,6 +154,10 @@ def _make_run_callback(ui_we_want_to_set: PyBreezeMainWindow, run_config: dict, 
             if not choose_file_get_save_file_path(ui_we_want_to_set):
                 return
             file_path = widget.current_file
+
+        # The save dialog can be accepted without a path being set.
+        if not file_path:
+            return
 
         # 檢查副檔名是否匹配 / Check suffix match
         file_suffix = Path(file_path).suffix.lower()

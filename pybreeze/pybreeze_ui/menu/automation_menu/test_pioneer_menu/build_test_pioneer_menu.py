@@ -47,10 +47,11 @@ def set_test_pioneer_menu(ui_we_want_to_set: PyBreezeMainWindow):
 def check_file(ui_we_want_to_set: PyBreezeMainWindow):
     dialog = QFileDialog(ui_we_want_to_set)
     dialog.setNameFilter("Yaml (*.yml)")
-    file_tuple = dialog.getOpenFileName()
+    # getOpenFileName returns (filename, selected_filter); the tuple itself is
+    # always truthy, so check the filename — an empty one means the user cancelled.
+    file_path = dialog.getOpenFileName()[0]
     show_messagebox = False
-    if file_tuple:
-        file_path = file_tuple[0]
+    if file_path:
         if Path(file_path).is_file() and Path(file_path).suffix == ".yml":
             init_and_start_test_pioneer_process(ui_we_want_to_set, file_path)
         else:
@@ -59,4 +60,4 @@ def check_file(ui_we_want_to_set: PyBreezeMainWindow):
         messagebox = QMessageBox(ui_we_want_to_set)
         messagebox.setWindowTitle(language_wrapper.language_word_dict.get("test_pioneer_not_choose_yaml"))
         messagebox.setText(language_wrapper.language_word_dict.get("test_pioneer_not_choose_yaml"))
-        messagebox.exec_()
+        messagebox.exec()
