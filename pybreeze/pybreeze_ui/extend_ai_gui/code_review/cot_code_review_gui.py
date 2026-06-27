@@ -96,3 +96,14 @@ class CoTCodeReviewGUI(QWidget):
         # 自動顯示最新回覆
         self.response_selector.setCurrentText(filename)
         self.show_response(filename)
+
+    def closeEvent(self, event):
+        thread = self.thread
+        if thread is not None and thread.isRunning():
+            # Block slots so a late signal can't hit the dying widget, ask the
+            # worker to stop after its current request, then wait so the QThread
+            # is never destroyed while still running ("Destroyed while running").
+            thread.blockSignals(True)
+            thread.requestInterruption()
+            thread.wait()
+        event.accept()

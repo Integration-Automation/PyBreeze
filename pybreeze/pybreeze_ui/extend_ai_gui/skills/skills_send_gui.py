@@ -136,3 +136,12 @@ class SkillsSendGUI(QWidget):
     def on_error(self, error_msg):
         self.response_output.setPlainText(error_msg)
         self.send_button.setEnabled(True)
+
+    def closeEvent(self, event):
+        thread = self.thread
+        if thread is not None and thread.isRunning():
+            # Block slots so a late finished/error emit can't hit the dying
+            # widget, then wait so the QThread is never destroyed while running.
+            thread.blockSignals(True)
+            thread.wait()
+        event.accept()

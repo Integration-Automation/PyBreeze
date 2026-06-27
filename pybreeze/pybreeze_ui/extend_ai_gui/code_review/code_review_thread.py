@@ -45,6 +45,10 @@ class SenderThread(QThread):
         linter_result = None
         code_smell_result = None
         for file in self.files:
+            # Stop promptly if the widget is closing instead of firing off the
+            # remaining per-template POSTs.
+            if self.isInterruptionRequested():
+                return
             match file:
                 case "first_summary_prompt.md":
                     first_summary_prompt = COT_TEMPLATE_RELATION["first_summary_prompt.md"]

@@ -53,6 +53,9 @@ class JupyterLabWidget(QWidget):
 
     def closeEvent(self, event):
         if self.thread.isRunning():
+            # Block signals first so a late status/error emit can't reach a slot
+            # on the widget being torn down.
+            self.thread.blockSignals(True)
             self.thread.stop()
             self.thread.quit()
             self.thread.wait()
