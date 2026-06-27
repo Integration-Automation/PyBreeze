@@ -121,6 +121,9 @@ class JupyterLauncherThread(QThread):
 
         except Exception:
             err = traceback.format_exc()
+            # Tear down a half-started server so a startup timeout doesn't leave an
+            # orphaned JupyterLab process running and holding the port.
+            self.stop()
             self.error_occurred.emit(err)
             pybreeze_logger.error(f"JupyterLab launch failed: {err}")
 

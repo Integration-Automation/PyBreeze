@@ -64,3 +64,35 @@ class TestWaitUntilReady:
         monkeypatch.setattr(thread, "_port_open", lambda port: True)
         # Should return without raising and without sleeping.
         assert thread._wait_until_ready(59999) is None
+
+
+class TestRunCleansUpOnFailure:
+    def test_startup_failure_terminates_orphan_process(self, qt_app, monkeypatch):
+        import pybreeze.pybreeze_ui.jupyter_lab_gui.jupyter_lab_thread as mod
+
+        class _RecordingProc:
+            terminated = False
+
+            def terminate(self):
+                self.terminated = True
+
+        proc = _RecordingProc()
+        monkeypatch.setattr(mod, "get_venv_python", lambda: "python")
+        monkeypatch.setattr(mod, "is_jupyter_installed", lambda exe: True)
+        monkeypatch.setattr(mod, "find_free_port", lambda: 59999)
+        monkeypatch.setattr(mod.subprocess, "Popen", lambda *a, **k: proc)
+
+        thread = mod.JupyterLauncherThread(startup_timeout=5)
+
+        def _boom(_port):
+            raise TimeoutError("startup timeout")
+
+        monkeypatch.setattr(thread, "_wait_until_ready", _boom)
+
+        errors = []
+        thread.error_occurred.connect(errors.append)
+        thread.run()
+
+        # The half-started server must be terminated, not left holding the port.
+        assert proc.terminated is True
+        assert errors

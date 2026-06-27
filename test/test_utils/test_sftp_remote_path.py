@@ -106,3 +106,38 @@ class TestRemoteJoin:
 
     def test_result_is_always_absolute(self):
         assert remote_join("relative/dir", "f").startswith("/")
+
+
+class TestConnectIsAtomic:
+    def test_open_sftp_failure_tears_down_ssh(self, monkeypatch):
+        # If open_sftp() fails after the SSH transport is up, connect() must not
+        # leak the half-open transport: it should close it and re-raise.
+        wrapper = SFTPClientWrapper.__new__(SFTPClientWrapper)
+        wrapper.word_dict = {}
+        wrapper._ssh = None
+        wrapper._sftp = None
+        wrapper.root_path = "/"
+
+        closed = {"ssh": False}
+
+        class _SSH:
+            def connect(self, **kwargs):
+                pass
+
+            def get_transport(self):
+                return MagicMock()
+
+            def open_sftp(self):
+                raise OSError("sftp subsystem disabled")
+
+            def close(self):
+                closed["ssh"] = True
+
+        monkeypatch.setattr(sftp_mod.paramiko, "SSHClient", _SSH)
+        monkeypatch.setattr(sftp_mod, "apply_host_key_policy", lambda client, parent: None)
+
+        with pytest.raises(OSError):
+            wrapper.connect("host", 22, "user", "pw")
+
+        assert closed["ssh"] is True
+        assert wrapper._ssh is None

@@ -88,19 +88,25 @@ class SFTPClientWrapper:
         self._ssh = paramiko.SSHClient()
         apply_host_key_policy(self._ssh, parent_widget)
         pybreeze_logger.info("SFTP connecting to %s:%s", host, port)
-        if use_key and key_path:
-            pkey = load_private_key(key_path, password, context="SFTP")
-            if pkey is None:
-                raise ValueError(
-                    self.word_dict.get("ssh_command_widget_error_message_unsupported_private_key")
-                )
-            self._ssh.connect(hostname=host, port=port, username=username, pkey=pkey, timeout=10)
-        else:
-            self._ssh.connect(hostname=host, port=port, username=username, password=password, timeout=10)
-        transport = self._ssh.get_transport()
-        if transport is not None:
-            transport.set_keepalive(SSH_KEEPALIVE_SECONDS)
-        self._sftp = self._ssh.open_sftp()
+        try:
+            if use_key and key_path:
+                pkey = load_private_key(key_path, password, context="SFTP")
+                if pkey is None:
+                    raise ValueError(
+                        self.word_dict.get("ssh_command_widget_error_message_unsupported_private_key")
+                    )
+                self._ssh.connect(hostname=host, port=port, username=username, pkey=pkey, timeout=10)
+            else:
+                self._ssh.connect(hostname=host, port=port, username=username, password=password, timeout=10)
+            transport = self._ssh.get_transport()
+            if transport is not None:
+                transport.set_keepalive(SSH_KEEPALIVE_SECONDS)
+            self._sftp = self._ssh.open_sftp()
+        except Exception:
+            # A failure partway (auth, keepalive, or open_sftp) must not leak the
+            # half-open SSH transport: tear it down so connect() is all-or-nothing.
+            self.close()
+            raise
 
     def close(self):
         """
