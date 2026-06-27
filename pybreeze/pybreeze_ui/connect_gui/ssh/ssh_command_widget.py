@@ -158,6 +158,10 @@ class SSHCommandWidget(QWidget):
             return
 
         try:
+            # Tear down any prior session first: re-clicking Connect while already
+            # connected would otherwise leak the old SSH client and orphan its
+            # reader thread (which keeps appending to the terminal).
+            self._cleanup()
             self.ssh_client = paramiko.SSHClient()
             apply_host_key_policy(self.ssh_client, self)
             pybreeze_logger.info("SSH connecting to %s:%s", host, port)
