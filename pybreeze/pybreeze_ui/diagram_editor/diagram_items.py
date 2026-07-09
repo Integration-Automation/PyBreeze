@@ -103,9 +103,24 @@ _SHAPE_FACTORY: dict[NodeShape, type] = {
 
 _DEFAULT_NODE_W = 140.0
 _DEFAULT_NODE_H = 60.0
+_MIN_NODE_W = 40.0
+_MIN_NODE_H = 20.0
 _NODE_PEN_COLOR = "#455a64"
 _NODE_BRUSH_COLOR = "#e3f2fd"
 _NODE_SELECTED_COLOR = "#1565c0"
+
+
+def _safe_color(value: str | None, fallback: str) -> QColor:
+    """Return ``QColor(value)`` if it parses, else the fallback colour.
+
+    A corrupted/hand-edited diagram can carry an unparseable colour string;
+    ``QColor`` would silently produce an invalid (black) colour, so validate it.
+    """
+    if value:
+        color = QColor(value)
+        if color.isValid():
+            return color
+    return QColor(fallback)
 _LABEL_FONT_FAMILY = "Segoe UI"
 _LABEL_FONT_SIZE = 10
 _CONNECTION_COLOR = "#37474f"
@@ -222,6 +237,10 @@ class DiagramNode(QGraphicsRectItem):
         border_color: str | None = None,
         font_size: int = _LABEL_FONT_SIZE,
     ):
+        # Clamp to a positive minimum so a zero/negative size from corrupted data
+        # can't cause a divide-by-zero when computing edge intersection points.
+        w = max(_MIN_NODE_W, w)
+        h = max(_MIN_NODE_H, h)
         super().__init__(0, 0, w, h)
         self.setPen(QPen(Qt.PenStyle.NoPen))
         self.setBrush(QBrush(Qt.BrushStyle.NoBrush))
@@ -238,8 +257,8 @@ class DiagramNode(QGraphicsRectItem):
         self._resizing = False
 
         # Colors
-        self._fill_color = QColor(fill_color) if fill_color else QColor(_NODE_BRUSH_COLOR)
-        self._border_color = QColor(border_color) if border_color else QColor(_NODE_PEN_COLOR)
+        self._fill_color = _safe_color(fill_color, _NODE_BRUSH_COLOR)
+        self._border_color = _safe_color(border_color, _NODE_PEN_COLOR)
         self._font_size = font_size
 
         # Shape body (child)

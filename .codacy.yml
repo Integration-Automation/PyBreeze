@@ -1,0 +1,7 @@
+---
+# Test code legitimately exercises security-sensitive patterns (subprocess
+# execution, fake SSH credentials, cleartext URLs fed to the SSRF validator),
+# so security linters raise false positives there. Exclude tests from analysis;
+# production code under pybreeze/ is still fully scanned.
+exclude_paths:
+  - 'test/**'

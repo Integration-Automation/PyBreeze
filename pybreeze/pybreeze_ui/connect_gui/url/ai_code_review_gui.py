@@ -9,6 +9,11 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
+from pybreeze.utils.app_dirs import pybreeze_data_dir
+from pybreeze.utils.logging.logger import pybreeze_logger
+from pybreeze.utils.network.http_client import (
+    ResponseTooLargeError, read_capped_text, CONNECT_TIMEOUT,
+)
 from pybreeze.utils.network.url_validation import UnsafeURLError, validate_url
 
 
@@ -23,10 +28,11 @@ class AICodeReviewClient(QWidget):
         # 記錄接受/拒絕次數
         self.accept_count = 0
         self.reject_count = 0
-        data_dir = os.path.join(os.getcwd(), ".pybreeze")
-        os.makedirs(data_dir, exist_ok=True)
-        self.stats_file = os.path.join(data_dir, "response_stats.txt")
-        self.url_file = os.path.join(data_dir, "urls.txt")
+        # Store under the user's home (like the SSH known_hosts) so the data is
+        # stable regardless of which directory the IDE was launched from.
+        data_dir = pybreeze_data_dir()
+        self.stats_file = str(data_dir / "response_stats.txt")
+        self.url_file = str(data_dir / "urls.txt")
 
         # 主佈局 (垂直)
         main_layout = QVBoxLayout()
@@ -144,21 +150,22 @@ class AICodeReviewClient(QWidget):
 
         try:
             if method == "GET":
-                response = requests.get(url, timeout=30, allow_redirects=False)
+                response = requests.get(url, timeout=(CONNECT_TIMEOUT, 30), allow_redirects=False, stream=True)
             elif method == "POST":
-                response = requests.post(url, data={"code": code_content}, timeout=30, allow_redirects=False)
+                response = requests.post(url, data={"code": code_content}, timeout=(CONNECT_TIMEOUT, 30), allow_redirects=False, stream=True)
             elif method == "PUT":
-                response = requests.put(url, data={"code": code_content}, timeout=30, allow_redirects=False)
+                response = requests.put(url, data={"code": code_content}, timeout=(CONNECT_TIMEOUT, 30), allow_redirects=False, stream=True)
             elif method == "DELETE":
-                response = requests.delete(url, timeout=30, allow_redirects=False)
+                response = requests.delete(url, timeout=(CONNECT_TIMEOUT, 30), allow_redirects=False, stream=True)
             else:
                 self.response_panel.setPlainText(
                     self.word_dict.get("ai_code_review_gui_message_unsupported_http_method"))
                 return
 
-            self.response_panel.append(response.text)
+            self.response_panel.append(read_capped_text(response))
 
-        except Exception as e:
+        except (requests.RequestException, ResponseTooLargeError) as e:
+            pybreeze_logger.error("AI code review request failed: %r", e)
             self.response_panel.setPlainText(f"{self.word_dict.get('ai_code_review_gui_message_error')}: {e}")
 
     def accept_response(self):

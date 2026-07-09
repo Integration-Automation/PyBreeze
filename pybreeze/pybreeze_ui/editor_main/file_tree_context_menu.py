@@ -4,6 +4,7 @@ import os
 import shutil
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QModelIndex
@@ -14,6 +15,23 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 from je_editor.pyside_ui.main_ui.editor.editor_widget import EditorWidget
+
+from pybreeze.utils.logging.logger import pybreeze_logger
+
+
+def _perform_file_op(tree_view: QTreeView, operation: Callable[[], None]) -> bool:
+    """Run a filesystem mutation, surfacing failures as a dialog, not a traceback.
+
+    Returns ``True`` on success, ``False`` if the operation raised ``OSError``.
+    """
+    word = language_wrapper.language_word_dict
+    try:
+        operation()
+        return True
+    except OSError as error:
+        pybreeze_logger.error("File tree operation failed: %r", error)
+        QMessageBox.warning(tree_view, word.get("file_tree_ctx_error"), str(error))
+        return False
 
 
 def setup_file_tree_context_menu(main_window) -> None:
@@ -34,14 +52,18 @@ def setup_file_tree_context_menu(main_window) -> None:
         result = original_add_tab(*args, **kwargs)
         widget = args[0] if args else None
         if isinstance(widget, EditorWidget) and widget.project_treeview is not None:
-            if widget.project_treeview.contextMenuPolicy() != Qt.ContextMenuPolicy.CustomContextMenu:
-                _attach_context_menu(widget.project_treeview, main_window)
+            _attach_context_menu(widget.project_treeview, main_window)
         return result
 
     main_window.tab_widget.addTab = patched_add_tab
 
 
 def _attach_context_menu(tree_view: QTreeView, main_window) -> None:
+    # Idempotent: a tree view already switched to CustomContextMenu has our
+    # handler connected, so skip it — otherwise a repeated setup would connect
+    # the signal again and fire the menu multiple times per right-click.
+    if tree_view.contextMenuPolicy() == Qt.ContextMenuPolicy.CustomContextMenu:
+        return
     tree_view.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
     tree_view.customContextMenuRequested.connect(
         lambda pos, tv=tree_view, mw=main_window: _show_context_menu(pos, tv, mw)
@@ -141,8 +163,11 @@ def _action_new_file(tree_view: QTreeView, path: Path | None) -> None:
             word.get("file_tree_ctx_already_exists").format(name=str(new_path)),
         )
         return
-    new_path.parent.mkdir(parents=True, exist_ok=True)
-    new_path.touch()
+    def _create() -> None:
+        new_path.parent.mkdir(parents=True, exist_ok=True)
+        new_path.touch()
+
+    _perform_file_op(tree_view, _create)
 
 
 def _action_new_folder(tree_view: QTreeView, path: Path | None) -> None:
@@ -163,7 +188,7 @@ def _action_new_folder(tree_view: QTreeView, path: Path | None) -> None:
             word.get("file_tree_ctx_already_exists").format(name=str(new_path)),
         )
         return
-    new_path.mkdir(parents=True)
+    _perform_file_op(tree_view, lambda: new_path.mkdir(parents=True))
 
 
 def _find_editor_for_file(main_window, file_path: Path) -> EditorWidget | None:
@@ -200,7 +225,8 @@ def _action_rename(tree_view: QTreeView, main_window, path: Path | None) -> None
 
     # If this file is currently open in an editor tab, update the tab
     editor = _find_editor_for_file(main_window, path)
-    path.rename(target)
+    if not _perform_file_op(tree_view, lambda: path.rename(target)):
+        return
     if editor is not None and target.is_file():
         editor.current_file = str(target)
         editor.code_edit.current_file = str(target)
@@ -228,10 +254,13 @@ def _action_delete(tree_view: QTreeView, main_window, path: Path | None) -> None
             editor.close()
             main_window.tab_widget.removeTab(idx)
 
-    if path.is_dir():
-        shutil.rmtree(path)
-    else:
-        path.unlink()
+    def _delete() -> None:
+        if path.is_dir():
+            shutil.rmtree(path)
+        else:
+            path.unlink()
+
+    _perform_file_op(tree_view, _delete)
 
 
 def _action_copy_path(tree_view: QTreeView, path: Path | None, relative: bool = False) -> None:

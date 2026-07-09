@@ -457,6 +457,15 @@ class DiagramEditorWidget(QWidget):
         rect = self._scene.itemsBoundingRect()
         return rect.marginsAdded(QMarginsF(40, 40, 40, 40))
 
+    def _warn_export_failed(self, path: str, reason: str) -> None:
+        pybreeze_logger.error("Diagram export to %s failed: %s", path, reason)
+        QMessageBox.warning(
+            self,
+            _lang("diagram_editor_error_title", "Error"),
+            _lang("diagram_editor_export_failed", "Could not export the diagram to:\n{path}")
+            .format(path=path),
+        )
+
     def _export_png(self) -> None:
         path, _ = QFileDialog.getSaveFileName(
             self, _lang("diagram_editor_dialog_export_png", "Export PNG"),
@@ -471,6 +480,14 @@ class DiagramEditorWidget(QWidget):
                 int(rect.width() * scale), int(rect.height() * scale),
                 QImage.Format.Format_ARGB32_Premultiplied,
             )
+            if image.isNull():
+                self._warn_export_failed(path, "could not allocate image")
+                return
+            # Tag the 2x raster with matching DPI (96 base * scale) so viewers and
+            # print show it at the intended physical size instead of doubled.
+            dots_per_meter = int(scale * 96 / 0.0254)
+            image.setDotsPerMeterX(dots_per_meter)
+            image.setDotsPerMeterY(dots_per_meter)
             image.fill(Qt.GlobalColor.white)
             painter = QPainter(image)
             painter.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -479,9 +496,12 @@ class DiagramEditorWidget(QWidget):
             self._scene.clearSelection()
             self._scene.render(painter, QRectF(), rect)
             painter.end()
-            image.save(path)
-        except Exception as e:
-            pybreeze_logger.error(f"Export PNG failed: {e}")
+            # QImage.save returns False (without raising) on permission/path/format
+            # errors, so the result must be checked to avoid a silent failure.
+            if not image.save(path):
+                self._warn_export_failed(path, "QImage.save returned False")
+        except Exception as error:  # noqa: BLE001 — export must not crash the editor
+            self._warn_export_failed(path, repr(error))
 
     def _export_svg(self) -> None:
         path, _ = QFileDialog.getSaveFileName(
@@ -497,13 +517,16 @@ class DiagramEditorWidget(QWidget):
             gen.setSize(QSizeF(rect.width(), rect.height()).toSize())
             gen.setViewBox(QRectF(0, 0, rect.width(), rect.height()))
             painter = QPainter(gen)
+            if not painter.isActive():
+                self._warn_export_failed(path, "could not open SVG for writing")
+                return
             painter.setRenderHint(QPainter.RenderHint.Antialiasing)
             painter.translate(-rect.topLeft())
             self._scene.clearSelection()
             self._scene.render(painter, QRectF(), rect)
             painter.end()
-        except Exception as e:
-            pybreeze_logger.error(f"Export SVG failed: {e}")
+        except Exception as error:  # noqa: BLE001 — export must not crash the editor
+            self._warn_export_failed(path, repr(error))
 
     # ------------------------------------------------------------------
     # Image operations

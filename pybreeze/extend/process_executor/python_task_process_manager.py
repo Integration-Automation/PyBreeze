@@ -13,11 +13,13 @@ from threading import Thread
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QTextCharFormat
 from je_editor.pyside_ui.main_ui.save_settings.user_color_setting_file import actually_color_dict
+from je_editor.utils.exception.exceptions import JEditorExecException
 from je_editor.utils.venv_check.check_venv import check_and_choose_venv
 
 from pybreeze.extend.process_executor.queue_pump import pump_message_queue
 from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
 from pybreeze.utils.logging.logger import pybreeze_logger
+from pybreeze.utils.subprocess_util import no_window_creationflags, utf8_subprocess_env
 
 
 def find_venv_path() -> Path:
@@ -65,15 +67,26 @@ class TaskProcessManager:
         self.error_trigger_function: Callable = error_trigger_function
         self.program_buffer_size = program_buffer_size
 
-    def renew_path(self) -> None:
+    def renew_path(self) -> bool:
+        """Resolve the interpreter path. Returns False (without raising) when no
+        Python can be found, surfacing the error in the run window instead of
+        crashing the menu callback."""
         if self.main_window.python_compiler is None:
             venv_path = find_venv_path()
-            self.compiler_path = check_and_choose_venv(venv_path)
+            try:
+                self.compiler_path = check_and_choose_venv(venv_path)
+            except JEditorExecException as error:
+                pybreeze_logger.error("No Python interpreter found for run: %r", error)
+                self._append_text(f"[Error] No Python interpreter found: {error}", is_error=True)
+                self.main_window.show()
+                return False
         else:
             self.compiler_path = self.main_window.python_compiler
+        return True
 
     def start_test_process(self, package: str, exec_str: str):
-        self.renew_path()
+        if not self.renew_path():
+            return
         if sys.platform in ["win32", "cygwin", "msys"]:
             exec_str = json.dumps(exec_str)
         args = [
@@ -88,7 +101,8 @@ class TaskProcessManager:
     def start_test_process_file(self, package: str, file_path: str):
         # Pass the action JSON as a path so we never hit the Windows ~32K
         # command-line cap when scripts are large. Caller owns the file.
-        self.renew_path()
+        if not self.renew_path():
+            return
         args = [
             str(self.compiler_path),
             "-m",
@@ -106,6 +120,8 @@ class TaskProcessManager:
             args,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            creationflags=no_window_creationflags(),
+            env=utf8_subprocess_env(self.program_encoding),
         )
         self.still_run_program = True
         self.read_program_output_from_thread = Thread(
@@ -186,24 +202,31 @@ class TaskProcessManager:
             except queue.Empty:
                 break
 
-    def read_program_output_from_process(self):
+    def _read_stream_into_queue(self, stream_name: str, target_queue: Queue) -> None:
+        # Block on readline until a line arrives or the pipe hits EOF. Stopping on
+        # EOF (empty read) is essential: without it the loop spins at 100% CPU
+        # re-reading a closed pipe until the QTimer notices the process exited.
         while self.still_run_program:
             proc = self.process
             if proc is None:
                 break
-            program_output_data = proc.stdout.readline(self.program_buffer_size)
-            if isinstance(program_output_data, bytes):
-                program_output_data = program_output_data.decode(self.program_encoding, "replace")
-            if program_output_data.strip():
-                self.run_output_queue.put(program_output_data)
+            stream = getattr(proc, stream_name)
+            if stream is None:
+                break
+            try:
+                line = stream.readline(self.program_buffer_size)
+            except (ValueError, OSError):
+                # Pipe closed underneath us during shutdown.
+                break
+            if not line:
+                break
+            if isinstance(line, bytes):
+                line = line.decode(self.program_encoding, "replace")
+            if line.strip():
+                target_queue.put(line)
+
+    def read_program_output_from_process(self):
+        self._read_stream_into_queue("stdout", self.run_output_queue)
 
     def read_program_error_output_from_process(self):
-        while self.still_run_program:
-            proc = self.process
-            if proc is None:
-                break
-            program_error_output_data = proc.stderr.readline(self.program_buffer_size)
-            if isinstance(program_error_output_data, bytes):
-                program_error_output_data = program_error_output_data.decode(self.program_encoding, "replace")
-            if program_error_output_data.strip():
-                self.run_error_queue.put(program_error_output_data)
+        self._read_stream_into_queue("stderr", self.run_error_queue)

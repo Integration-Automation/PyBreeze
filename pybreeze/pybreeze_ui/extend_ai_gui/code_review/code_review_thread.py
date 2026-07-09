@@ -8,7 +8,11 @@ from je_editor import language_wrapper
 from pybreeze.pybreeze_ui.extend_ai_gui.ai_gui_global_variable import COT_TEMPLATE_RELATION
 from pybreeze.pybreeze_ui.extend_ai_gui.prompt_edit_gui.cot_code_review_prompt_templates.global_rule import \
     build_global_rule_template
-from pybreeze.utils.network.url_validation import validate_url
+from pybreeze.utils.logging.logger import pybreeze_logger
+from pybreeze.utils.network.http_client import (
+    ResponseTooLargeError, read_capped_text, CONNECT_TIMEOUT,
+)
+from pybreeze.utils.network.url_validation import UnsafeURLError, validate_url
 
 
 class SenderThread(QThread):
@@ -21,36 +25,53 @@ class SenderThread(QThread):
         self.url = url
 
     def run(self):
-        validate_url(self.url)
-        code = self.code
+        try:
+            validate_url(self.url)
+        except UnsafeURLError as error:
+            pybreeze_logger.error("CoT code review URL rejected: %r", error)
+            self.update_response.emit("error", str(error))
+            return
+        # One session reuses a single TCP/TLS connection across all the
+        # sequential per-template POSTs to the same endpoint.
+        session = requests.Session()
+        try:
+            self._run_templates(session, self.code)
+        finally:
+            session.close()
+
+    def _run_templates(self, session: requests.Session, code: str) -> None:
         first_code_review_result = None
         first_summary_result = None
         linter_result = None
         code_smell_result = None
         for file in self.files:
+            # Stop promptly if the widget is closing instead of firing off the
+            # remaining per-template POSTs.
+            if self.isInterruptionRequested():
+                return
             match file:
                 case "first_summary_prompt.md":
-                    first_summary_prompt = COT_TEMPLATE_RELATION.get("first_summary_prompt.md")
+                    first_summary_prompt = COT_TEMPLATE_RELATION["first_summary_prompt.md"]
                     prompt = build_global_rule_template(
                         prompt=first_summary_prompt.format(code_diff=code)
                     )
                 case "first_code_review.md":
-                    first_code_review_prompt = COT_TEMPLATE_RELATION.get("first_code_review.md")
+                    first_code_review_prompt = COT_TEMPLATE_RELATION["first_code_review.md"]
                     prompt = build_global_rule_template(
                         prompt=first_code_review_prompt.format(code_diff=code)
                     )
                 case "linter.md":
-                    linter_prompt = COT_TEMPLATE_RELATION.get("linter.md")
+                    linter_prompt = COT_TEMPLATE_RELATION["linter.md"]
                     prompt = build_global_rule_template(
                         prompt=linter_prompt.format(code_diff=code)
                     )
                 case "code_smell_detector.md":
-                    code_smell_detector_prompt = COT_TEMPLATE_RELATION.get("code_smell_detector.md")
+                    code_smell_detector_prompt = COT_TEMPLATE_RELATION["code_smell_detector.md"]
                     prompt = build_global_rule_template(
                         prompt=code_smell_detector_prompt.format(code_diff=code)
                     )
                 case "total_summary.md":
-                    total_summary_prompt = COT_TEMPLATE_RELATION.get("total_summary.md")
+                    total_summary_prompt = COT_TEMPLATE_RELATION["total_summary.md"]
                     prompt = build_global_rule_template(
                         prompt=total_summary_prompt.format(
                             first_code_review=first_code_review_result,
@@ -64,9 +85,12 @@ class SenderThread(QThread):
                     continue
 
             try:
-                # 傳送到指定 URL
-                resp = requests.post(self.url, json={"prompt": prompt}, timeout=60, allow_redirects=False)
-                reply_text = resp.text
+                # 傳送到指定 URL（重用 session 連線）
+                resp = session.post(
+                    self.url, json={"prompt": prompt},
+                    timeout=(CONNECT_TIMEOUT, 60), allow_redirects=False, stream=True,
+                )
+                reply_text = read_capped_text(resp)
                 match file:
                     case "first_summary_prompt.md":
                         first_summary_result = reply_text
@@ -77,8 +101,12 @@ class SenderThread(QThread):
                     case "code_smell_detector.md":
                         code_smell_result = reply_text
                     case _:
-                        continue
-            except Exception as e:
+                        # total_summary.md has no intermediate result to store but
+                        # must still be emitted — `continue` here previously
+                        # dropped the final summary before it reached the UI.
+                        pass
+            except (requests.RequestException, ResponseTooLargeError) as e:
+                pybreeze_logger.error("CoT code review send failed for %s: %r", file, e)
                 reply_text = f"{language_wrapper.language_word_dict.get('cot_gui_error_sending')} {file} {e}"
 
             # 發送訊號更新 UI

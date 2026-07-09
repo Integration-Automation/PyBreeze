@@ -3,14 +3,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from pybreeze.extend.process_executor.process_executor_utils import (
-    build_process, build_process_from_file,
+    build_process, run_dir_files_with_package,
 )
 
 if TYPE_CHECKING:
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
 
-from pybreeze.utils.file_process.get_dir_file_list import ask_and_get_dir_files_as_list
-from pybreeze.utils.logging.logger import pybreeze_logger
+_PACKAGE = "je_web_runner"
 
 
 def call_web_runner_test(
@@ -18,7 +17,7 @@ def call_web_runner_test(
         exec_str: str | None = None,
         program_buffer: int = 1024000
 ):
-    build_process(main_window, "je_web_runner", exec_str, False, program_buffer)
+    build_process(main_window, _PACKAGE, exec_str, False, program_buffer)
 
 
 def call_web_runner_test_with_send(
@@ -26,36 +25,18 @@ def call_web_runner_test_with_send(
         exec_str: str | None = None,
         program_buffer: int = 1024000
 ):
-    build_process(main_window, "je_web_runner", exec_str, True, program_buffer)
+    build_process(main_window, _PACKAGE, exec_str, True, program_buffer)
 
 
 def call_web_runner_test_multi_file(
         main_window: PyBreezeMainWindow,
         program_buffer: int = 1024000
 ):
-    try:
-        need_to_execute_list = ask_and_get_dir_files_as_list(main_window)
-        if need_to_execute_list is not None and len(need_to_execute_list) > 0:
-            for execute_file in need_to_execute_list:
-                build_process_from_file(
-                    main_window, "je_web_runner", execute_file,
-                    False, program_buffer,
-                )
-    except Exception as error:
-        pybreeze_logger.error(f"web runner multi file error: {error}")
+    run_dir_files_with_package(main_window, _PACKAGE, False, program_buffer)
 
 
 def call_web_runner_test_multi_file_and_send(
         main_window: PyBreezeMainWindow,
         program_buffer: int = 1024000
 ):
-    try:
-        need_to_execute_list = ask_and_get_dir_files_as_list(main_window)
-        if need_to_execute_list is not None and len(need_to_execute_list) > 0:
-            for execute_file in need_to_execute_list:
-                build_process_from_file(
-                    main_window, "je_web_runner", execute_file,
-                    True, program_buffer,
-                )
-    except Exception as error:
-        pybreeze_logger.error(f"web runner multi file and send error: {error}")
+    run_dir_files_with_package(main_window, _PACKAGE, True, program_buffer)

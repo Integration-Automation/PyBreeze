@@ -21,6 +21,8 @@ from PySide6.QtGui import QTextCharFormat
 from je_editor.pyside_ui.main_ui.save_settings.user_color_setting_file import actually_color_dict
 
 from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
+from pybreeze.utils.logging.logger import pybreeze_logger
+from pybreeze.utils.subprocess_util import no_window_creationflags, utf8_subprocess_env
 
 
 class FileRunnerProcess:
@@ -81,6 +83,7 @@ class FileRunnerProcess:
                 compile_cmd,
                 capture_output=True,
                 timeout=60,
+                creationflags=no_window_creationflags(),
             )
         except FileNotFoundError:
             self._append_text(f"[Error] Compiler not found: {compiler}\n", is_error=True)
@@ -117,6 +120,8 @@ class FileRunnerProcess:
                 stderr=subprocess.PIPE,
                 stdin=subprocess.PIPE,
                 shell=False,
+                creationflags=no_window_creationflags(),
+                env=utf8_subprocess_env(self.program_encoding),
             )
         except FileNotFoundError:
             self._append_text(f"[Error] Command not found: {command[0]}\n", is_error=True)
@@ -189,8 +194,8 @@ class FileRunnerProcess:
         if self._cleanup_binary:
             try:
                 os.remove(self._cleanup_binary)
-            except OSError:
-                pass
+            except OSError as error:
+                pybreeze_logger.debug("Could not remove compiled binary %s: %s", self._cleanup_binary, error)
 
     def _drain_queues(self) -> None:
         """Drain all remaining messages from output/error queues to UI."""
@@ -211,37 +216,29 @@ class FileRunnerProcess:
             except queue.Empty:
                 break
 
-    def _read_stdout(self) -> None:
+    def _read_stream(self, stream_name: str, target_queue: Queue) -> None:
+        # Empty read from readline means the pipe reached EOF (the child closed
+        # the stream), so stop immediately rather than spinning on a closed pipe
+        # until the process is reaped.
         try:
             while self.still_running:
                 proc = self.process
                 if proc is None:
                     break
-                data = proc.stdout.readline(self.program_buffer_size)
-                if not data and proc.poll() is not None:
+                data = getattr(proc, stream_name).readline(self.program_buffer_size)
+                if not data:
                     break
                 if isinstance(data, bytes):
                     data = data.decode(self.program_encoding, "replace")
-                if data:
-                    self.output_queue.put(data)
-        except (OSError, ValueError):
-            pass
+                target_queue.put(data)
+        except (OSError, ValueError) as error:
+            pybreeze_logger.debug("Reader for %s stopped: %s", stream_name, error)
+
+    def _read_stdout(self) -> None:
+        self._read_stream("stdout", self.output_queue)
 
     def _read_stderr(self) -> None:
-        try:
-            while self.still_running:
-                proc = self.process
-                if proc is None:
-                    break
-                data = proc.stderr.readline(self.program_buffer_size)
-                if not data and proc.poll() is not None:
-                    break
-                if isinstance(data, bytes):
-                    data = data.decode(self.program_encoding, "replace")
-                if data:
-                    self.error_queue.put(data)
-        except (OSError, ValueError):
-            pass
+        self._read_stream("stderr", self.error_queue)
 
     def _append_text(self, text: str, is_error: bool) -> None:
         """Append text to the code result widget."""

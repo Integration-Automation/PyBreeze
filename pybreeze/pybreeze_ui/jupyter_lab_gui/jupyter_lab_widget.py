@@ -32,7 +32,10 @@ class JupyterLabWidget(QWidget):
         self.thread.start()
 
     def update_status(self, text):
-        self.status_label.setText(text)
+        # status_label is removed once the lab loads; a late status/error signal
+        # could still arrive, so guard against the None it leaves behind.
+        if self.status_label:
+            self.status_label.setText(text)
 
     def load_lab(self, url):
         if self.status_label:
@@ -44,11 +47,15 @@ class JupyterLabWidget(QWidget):
         self.browser.show()
 
     def show_error(self, msg):
-        self.status_label.setText(language_wrapper.language_word_dict.get("jupyterlab_init_failed"))
+        if self.status_label:
+            self.status_label.setText(language_wrapper.language_word_dict.get("jupyterlab_init_failed"))
         pybreeze_logger.error(msg)
 
     def closeEvent(self, event):
         if self.thread.isRunning():
+            # Block signals first so a late status/error emit can't reach a slot
+            # on the widget being torn down.
+            self.thread.blockSignals(True)
             self.thread.stop()
             self.thread.quit()
             self.thread.wait()

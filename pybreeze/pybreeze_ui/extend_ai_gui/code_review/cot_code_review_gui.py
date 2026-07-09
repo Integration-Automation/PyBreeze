@@ -59,6 +59,7 @@ class CoTCodeReviewGUI(QWidget):
 
         # 儲存回覆
         self.responses = {}
+        self.thread = None
 
     def show_response(self, filename):
         if filename in self.responses:
@@ -76,9 +77,16 @@ class CoTCodeReviewGUI(QWidget):
             QMessageBox.warning(self, "Warning", str(e))
             return
 
+        # Ignore re-submits while a run is in flight so we never drop a running
+        # QThread or interleave two review passes into the same response store.
+        if self.thread is not None and self.thread.isRunning():
+            return
+
         # 啟動傳送 Thread
+        self.send_button.setEnabled(False)
         self.thread = SenderThread(files=self.files, code=self.code_paste_area.toPlainText(), url=url)
         self.thread.update_response.connect(self.handle_response)
+        self.thread.finished.connect(lambda: self.send_button.setEnabled(True))
         self.thread.start()
 
     def handle_response(self, filename, response):
@@ -88,3 +96,14 @@ class CoTCodeReviewGUI(QWidget):
         # 自動顯示最新回覆
         self.response_selector.setCurrentText(filename)
         self.show_response(filename)
+
+    def closeEvent(self, event):
+        thread = self.thread
+        if thread is not None and thread.isRunning():
+            # Block slots so a late signal can't hit the dying widget, ask the
+            # worker to stop after its current request, then wait so the QThread
+            # is never destroyed while still running ("Destroyed while running").
+            thread.blockSignals(True)
+            thread.requestInterruption()
+            thread.wait()
+        event.accept()

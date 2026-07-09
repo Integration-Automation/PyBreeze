@@ -35,8 +35,10 @@ class TestReformatJson:
         parsed = json.loads(result)
         assert parsed == [1, 2, 3]
 
-    def test_invalid_json_raises_error(self):
-        with pytest.raises((json.JSONDecodeError, ITEJsonException)):
+    def test_invalid_json_raises_ite_exception(self):
+        # reformat_json must surface a single documented exception type, not a
+        # raw json.JSONDecodeError leaking through.
+        with pytest.raises(ITEJsonException):
             reformat_json("not valid json {{{")
 
     def test_empty_object(self):

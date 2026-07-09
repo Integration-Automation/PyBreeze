@@ -11,6 +11,7 @@ from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.extend_ai_gui.ai_gui_global_variable import COT_TEMPLATE_FILES, \
     COT_TEMPLATE_RELATION
+from pybreeze.pybreeze_ui.extend_ai_gui.prompt_edit_gui.prompt_file_io import save_prompt_text
 
 
 class CoTPromptEditor(QWidget):
@@ -22,7 +23,7 @@ class CoTPromptEditor(QWidget):
         self.templates = COT_TEMPLATE_RELATION
 
         self.setWindowTitle(language_wrapper.language_word_dict.get(
-            "cot_cot_prompt_editor_window_title"
+            "cot_prompt_editor_window_title"
         ))  # 視窗標題：Prompt 編輯器
 
         # --- Layouts (版面配置) ---
@@ -105,8 +106,11 @@ class CoTPromptEditor(QWidget):
             return
 
         template_content = self.templates.get(filename, "")
-        with open(filename, "w", encoding="utf-8") as f:
-            f.write(template_content)
+        if not save_prompt_text(
+            self, filename, template_content,
+            language_wrapper.language_word_dict.get("cot_prompt_editor_msgbox_error_title"),
+        ):
+            return
 
         QMessageBox.information(
             self,
@@ -125,12 +129,15 @@ class CoTPromptEditor(QWidget):
             QMessageBox.warning(
                 self,
                 language_wrapper.language_word_dict.get("cot_prompt_editor_msgbox_error_title"),
-                language_wrapper.language_word_dict.get("cot_cot_prompt_editor_msgbox_no_file_selected"))
+                language_wrapper.language_word_dict.get("cot_prompt_editor_msgbox_no_file_selected"))
             return
 
         content = self.middle_editor.toPlainText()
-        with open(self.current_file, "w", encoding="utf-8") as f:
-            f.write(content)
+        if not save_prompt_text(
+            self, self.current_file, content,
+            language_wrapper.language_word_dict.get("cot_prompt_editor_msgbox_error_title"),
+        ):
+            return
         QMessageBox.information(
             self,
             language_wrapper.language_word_dict.get("cot_prompt_editor_msgbox_success_title"),
