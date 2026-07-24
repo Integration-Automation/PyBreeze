@@ -4,25 +4,19 @@ Handy for building or checking automation fixtures: content checksums, cache
 keys, ETag comparisons, and the like. This is a general-purpose digest tool, not
 a password or signature facility.
 
-MD5 and SHA-1 are offered for interoperability with existing systems only. They
-are constructed with ``usedforsecurity=False`` so static analysis knows they are
-never used for a security decision here.
+MD5 and SHA-1 are offered for interoperability with existing systems only. Every
+digest is built through ``hashlib.new(name, ..., usedforsecurity=False)`` so the
+weak algorithms are never used for a security decision here.
 """
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Callable
 
 # Text encoding used before hashing
 _ENCODING = "utf-8"
 
-# Ordered so the strong algorithms appear first in any UI listing.
-_ALGORITHMS: dict[str, Callable[[bytes], "hashlib._Hash"]] = {
-    "sha256": hashlib.sha256,
-    "sha512": hashlib.sha512,
-    "sha1": lambda data: hashlib.sha1(data, usedforsecurity=False),
-    "md5": lambda data: hashlib.md5(data, usedforsecurity=False),
-}
+# Supported algorithm names, strongest first (drives any UI listing).
+_ALGORITHMS: tuple[str, ...] = ("sha256", "sha512", "sha1", "md5")
 
 
 def available_algorithms() -> list[str]:
@@ -38,10 +32,12 @@ def hash_text(text: str, algorithm: str) -> str:
     :return: the lower-case hex digest
     :raises ValueError: when *algorithm* is not supported
     """
-    constructor = _ALGORITHMS.get(algorithm)
-    if constructor is None:
+    if algorithm not in _ALGORITHMS:
         raise ValueError(f"unsupported hash algorithm: {algorithm}")
-    return constructor(text.encode(_ENCODING)).hexdigest()
+    # md5/sha1 are non-security interop digests only; usedforsecurity=False.
+    digest = hashlib.new(  # nosemgrep
+        algorithm, text.encode(_ENCODING), usedforsecurity=False)
+    return digest.hexdigest()
 
 
 def hash_all(text: str) -> dict[str, str]:

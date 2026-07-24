@@ -34,7 +34,10 @@ class TestHashText:
             hash_text("x", "crc32")
 
     def test_is_deterministic(self):
-        assert hash_text("repeat", "sha256") == hash_text("repeat", "sha256")
+        # Hashing the same input twice must yield the same digest.
+        first = hash_text("repeat", "sha256")
+        second = hash_text("repeat", "sha256")
+        assert first == second
 
 
 class TestAvailableAlgorithms:

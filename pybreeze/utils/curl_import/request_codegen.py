@@ -11,6 +11,9 @@ import json
 from pybreeze.utils.curl_import.curl_parser import CurlRequest
 from pybreeze.utils.curl_import.request_body import body_kind, form_parts
 
+# Keyword argument passing the request body to ``requests.request``.
+_DATA_KWARG = "data=data"
+
 
 def _format_dict(name: str, mapping: dict[str, str]) -> str | None:
     """Render ``name = { ... }`` with one entry per line, or ``None`` if empty."""
@@ -69,21 +72,21 @@ def payload_python_parts(request: CurlRequest) -> tuple[list[str], list[str]]:
         data_block = _format_dict("data", data_fields)
         if data_block is not None:
             sections.append(data_block)
-            kwargs.append("data=data")
+            kwargs.append(_DATA_KWARG)
         if file_fields:
             sections.append(_format_files(file_fields))
             kwargs.append("files=files")
         return sections, kwargs
 
     if request.data_file_refs:
-        return [f"data = {data_from_file_expr(request)}"], ["data=data"]
+        return [f"data = {data_from_file_expr(request)}"], [_DATA_KWARG]
 
     kind = body_kind(request)
     if kind is None:
         return [], []
     if kind[0] == "json":
         return [f"json_body = {json.dumps(kind[1], indent=4)}"], ["json=json_body"]
-    return [f"data = {json.dumps(kind[1])}"], ["data=data"]
+    return [f"data = {json.dumps(kind[1])}"], [_DATA_KWARG]
 
 
 def _call_keyword_arguments(request: CurlRequest, payload_kwargs: list[str]) -> list[str]:

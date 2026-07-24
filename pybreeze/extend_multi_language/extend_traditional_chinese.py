@@ -325,7 +325,7 @@ pybreeze_traditional_chinese_word_dict = {
     "extend_tools_menu_jwt_decoder_dock_title": "JWT 解碼器",
     # JWT 解碼器 — 介面
     "jwt_decoder_input_label": "貼上 JWT（header.payload.signature）：",
-    "jwt_decoder_input_placeholder": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjMifQ.signature",
+    "jwt_decoder_input_placeholder": "<base64-header>.<base64-payload>.<signature>",
     "jwt_decoder_decode_button": "解碼（不驗證簽章）",
     "jwt_decoder_output_label": "解碼結果：",
     "jwt_decoder_header_label": "== 標頭 Header ==",

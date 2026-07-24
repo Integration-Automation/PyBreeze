@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from PySide6.QtGui import QAction, Qt
@@ -330,6 +331,37 @@ def extend_dock_menu(ui_we_want_to_set: PyBreezeMainWindow):
         lambda: add_dock(ui_we_want_to_set, "ResponseInspector"))
     ui_we_want_to_set.dock_menu.addAction(ui_we_want_to_set.tools_response_dock_action)
 
+# widget_type -> (dock-title language key, factory taking the main window).
+# A dispatch table keeps ``add_dock`` flat instead of a long if/elif chain.
+_DOCK_WIDGETS: dict[str, tuple[str, Callable[[PyBreezeMainWindow], object]]] = {
+    "SSH": ("extend_tools_menu_ssh_client_dock_title", lambda _win: SSHMainWidget()),
+    "AICodeReview": (
+        "extend_tools_menu_ai_code_review_dock_title", lambda _win: AICodeReviewClient()),
+    "CoTPromptEditor": (
+        "extend_tools_menu_cot_prompt_editor_dock_title", lambda _win: CoTPromptEditor()),
+    "SkillPromptEditor": (
+        "extend_tools_menu_skill_prompt_editor_dock_title", lambda _win: SkillPromptEditor()),
+    "SkillSendGUI": (
+        "extend_tools_menu_skill_prompt_send_dock_title", lambda _win: SkillsSendGUI()),
+    "DiagramEditor": (
+        "extend_tools_menu_diagram_editor_dock_title", lambda _win: DiagramEditorWidget()),
+    "CurlImport": (
+        "extend_tools_menu_curl_import_dock_title", lambda win: CurlImportGUI(win)),
+    "JwtDecoder": (
+        "extend_tools_menu_jwt_decoder_dock_title", lambda win: JwtDecoderGUI(main_window=win)),
+    "Timestamp": ("extend_tools_menu_timestamp_dock_title", lambda win: TimestampGUI(win)),
+    "Hash": ("extend_tools_menu_hash_dock_title", lambda win: HashGUI(win)),
+    "QueryJson": ("extend_tools_menu_query_json_dock_title", lambda win: QueryJsonGUI(win)),
+    "Regex": ("extend_tools_menu_regex_dock_title", lambda win: RegexGUI(win)),
+    "HttpStatus": (
+        "extend_tools_menu_http_status_dock_title", lambda win: HttpStatusGUI(main_window=win)),
+    "Diff": ("extend_tools_menu_diff_dock_title", lambda win: DiffGUI(win)),
+    "JsonFormat": ("extend_tools_menu_json_format_dock_title", lambda win: JsonFormatGUI(win)),
+    "ResponseInspector": (
+        "extend_tools_menu_response_dock_title", lambda win: ResponseInspectorGUI(win)),
+}
+
+
 def add_dock(ui_we_want_to_set: PyBreezeMainWindow, widget_type: str | None = None):
     jeditor_logger.info("build_dock_menu.py add_dock_widget "
                         f"ui_we_want_to_set: {ui_we_want_to_set} "
@@ -339,86 +371,11 @@ def add_dock(ui_we_want_to_set: PyBreezeMainWindow, widget_type: str | None = No
     # Create a destroyable dock container
     dock_widget = DestroyDock()
 
-    if widget_type == "SSH":
-        dock_widget.setWindowTitle(language_wrapper.language_word_dict.get(
-            "extend_tools_menu_ssh_client_dock_title"
-        ))
-        dock_widget.setWidget(SSHMainWidget())
-    elif widget_type == "AICodeReview":
-        dock_widget.setWindowTitle(language_wrapper.language_word_dict.get(
-            "extend_tools_menu_ai_code_review_dock_title"
-        ))
-        dock_widget.setWidget(AICodeReviewClient())
-    elif widget_type == "CoTPromptEditor":
-        dock_widget.setWindowTitle(language_wrapper.language_word_dict.get(
-            "extend_tools_menu_cot_prompt_editor_dock_title"
-        ))
-        dock_widget.setWidget(CoTPromptEditor())
-    elif widget_type == "SkillPromptEditor":
-        dock_widget.setWindowTitle(language_wrapper.language_word_dict.get(
-            "extend_tools_menu_skill_prompt_editor_dock_title"
-        ))
-        dock_widget.setWidget(SkillPromptEditor())
-    elif widget_type == "SkillSendGUI":
-        dock_widget.setWindowTitle(language_wrapper.language_word_dict.get(
-            "extend_tools_menu_skill_prompt_send_dock_title"
-        ))
-        dock_widget.setWidget(SkillsSendGUI())
-    elif widget_type == "DiagramEditor":
-        dock_widget.setWindowTitle(language_wrapper.language_word_dict.get(
-            "extend_tools_menu_diagram_editor_dock_title"
-        ))
-        dock_widget.setWidget(DiagramEditorWidget())
-    elif widget_type == "CurlImport":
-        dock_widget.setWindowTitle(language_wrapper.language_word_dict.get(
-            "extend_tools_menu_curl_import_dock_title"
-        ))
-        dock_widget.setWidget(CurlImportGUI(ui_we_want_to_set))
-    elif widget_type == "JwtDecoder":
-        dock_widget.setWindowTitle(language_wrapper.language_word_dict.get(
-            "extend_tools_menu_jwt_decoder_dock_title"
-        ))
-        dock_widget.setWidget(JwtDecoderGUI(main_window=ui_we_want_to_set))
-    elif widget_type == "Timestamp":
-        dock_widget.setWindowTitle(language_wrapper.language_word_dict.get(
-            "extend_tools_menu_timestamp_dock_title"
-        ))
-        dock_widget.setWidget(TimestampGUI(ui_we_want_to_set))
-    elif widget_type == "Hash":
-        dock_widget.setWindowTitle(language_wrapper.language_word_dict.get(
-            "extend_tools_menu_hash_dock_title"
-        ))
-        dock_widget.setWidget(HashGUI(ui_we_want_to_set))
-    elif widget_type == "QueryJson":
-        dock_widget.setWindowTitle(language_wrapper.language_word_dict.get(
-            "extend_tools_menu_query_json_dock_title"
-        ))
-        dock_widget.setWidget(QueryJsonGUI(ui_we_want_to_set))
-    elif widget_type == "Regex":
-        dock_widget.setWindowTitle(language_wrapper.language_word_dict.get(
-            "extend_tools_menu_regex_dock_title"
-        ))
-        dock_widget.setWidget(RegexGUI(ui_we_want_to_set))
-    elif widget_type == "HttpStatus":
-        dock_widget.setWindowTitle(language_wrapper.language_word_dict.get(
-            "extend_tools_menu_http_status_dock_title"
-        ))
-        dock_widget.setWidget(HttpStatusGUI(main_window=ui_we_want_to_set))
-    elif widget_type == "Diff":
-        dock_widget.setWindowTitle(language_wrapper.language_word_dict.get(
-            "extend_tools_menu_diff_dock_title"
-        ))
-        dock_widget.setWidget(DiffGUI(ui_we_want_to_set))
-    elif widget_type == "JsonFormat":
-        dock_widget.setWindowTitle(language_wrapper.language_word_dict.get(
-            "extend_tools_menu_json_format_dock_title"
-        ))
-        dock_widget.setWidget(JsonFormatGUI(ui_we_want_to_set))
-    elif widget_type == "ResponseInspector":
-        dock_widget.setWindowTitle(language_wrapper.language_word_dict.get(
-            "extend_tools_menu_response_dock_title"
-        ))
-        dock_widget.setWidget(ResponseInspectorGUI(ui_we_want_to_set))
+    entry = _DOCK_WIDGETS.get(widget_type)
+    if entry is not None:
+        title_key, widget_factory = entry
+        dock_widget.setWindowTitle(language_wrapper.language_word_dict.get(title_key))
+        dock_widget.setWidget(widget_factory(ui_we_want_to_set))
 
     # 如果成功建立了 widget，將其加到主視窗右側 Dock 區域
     # If widget is created, add it to the right dock area of the main window

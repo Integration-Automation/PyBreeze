@@ -72,7 +72,8 @@ def json_to_query(json_text: str) -> str:
     """
     try:
         parsed = json.loads(json_text)
-    except (json.JSONDecodeError, ValueError) as error:
+    # json.JSONDecodeError derives from ValueError.
+    except ValueError as error:
         pybreeze_logger.error(invalid_json_for_query_error)
         raise QueryConvertException(invalid_json_for_query_error) from error
     if not isinstance(parsed, dict):

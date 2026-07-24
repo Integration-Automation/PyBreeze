@@ -347,7 +347,7 @@ pybreeze_english_word_dict = {
     "extend_tools_menu_jwt_decoder_dock_title": "JWT Decoder",
     # JWT Decoder — Widget
     "jwt_decoder_input_label": "Paste a JWT (header.payload.signature):",
-    "jwt_decoder_input_placeholder": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjMifQ.signature",
+    "jwt_decoder_input_placeholder": "<base64-header>.<base64-payload>.<signature>",
     "jwt_decoder_decode_button": "Decode (no signature check)",
     "jwt_decoder_output_label": "Decoded token:",
     "jwt_decoder_header_label": "== Header ==",

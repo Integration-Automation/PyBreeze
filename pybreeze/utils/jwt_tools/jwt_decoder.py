@@ -11,7 +11,6 @@ token for any security decision.
 from __future__ import annotations
 
 import base64
-import binascii
 import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -57,7 +56,8 @@ def _decode_segment(segment: str) -> dict:
     try:
         raw = base64.urlsafe_b64decode(segment + padding)
         decoded = json.loads(raw.decode("utf-8"))
-    except (binascii.Error, ValueError, UnicodeDecodeError) as error:
+    # binascii.Error and UnicodeDecodeError both derive from ValueError.
+    except ValueError as error:
         pybreeze_logger.error(jwt_segment_decode_error)
         raise JwtDecodeException(jwt_segment_decode_error) from error
     if not isinstance(decoded, dict):
