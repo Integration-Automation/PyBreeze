@@ -1,8 +1,6 @@
 """Tests for the cURL command parser and requests-code generator."""
 from __future__ import annotations
 
-import json
-
 import pytest
 
 from pybreeze.utils.curl_import.curl_parser import (
@@ -168,6 +166,58 @@ class TestParseCurlFlagArity:
         assert request.method == "POST"
         assert request.headers == {"X": "1"}
         assert request.body == "a=1"
+
+
+class TestParseCurlShortFlagClusters:
+    def test_attached_method_value(self):
+        # Regression: '-XPOST' used to leave the method as GET.
+        request = parse_curl("curl -XPOST https://x")
+        assert request.method == "POST"
+        assert request.url == "https://x"
+
+    def test_bundled_valueless_then_value_flag(self):
+        # Regression: '-sX POST' used to make the URL "POST".
+        request = parse_curl("curl -sX POST https://x/api")
+        assert request.method == "POST"
+        assert request.url == "https://x/api"
+
+    def test_all_valueless_cluster(self):
+        request = parse_curl("curl -fsSL https://x")
+        assert request.url == "https://x"
+        assert request.method == "GET"
+
+    def test_attached_data_value(self):
+        request = parse_curl("curl -d'a=1' https://x")
+        assert request.body == "a=1"
+        assert request.method == "POST"
+
+    def test_attached_header_value(self):
+        request = parse_curl("curl -H'Accept: application/json' https://x")
+        assert request.headers["Accept"] == "application/json"
+
+    def test_attached_auth_value(self):
+        request = parse_curl("curl -uuser:pass https://x")
+        assert request.username == "user"
+        assert request.password == "pass"
+
+    def test_cluster_with_attached_ignored_value(self):
+        # '-oout.txt' must consume the filename, not leak it to the URL.
+        request = parse_curl("curl -oout.txt https://x")
+        assert request.url == "https://x"
+
+    def test_cluster_ending_in_ignored_value_flag(self):
+        request = parse_curl("curl -sSL -o /dev/null https://x/api")
+        assert request.url == "https://x/api"
+
+    def test_unknown_short_cluster_left_untouched(self):
+        # An unrecognised short flag must not corrupt the URL.
+        request = parse_curl("curl -Wx https://x")
+        assert request.url == "https://x"
+
+    def test_cluster_feeds_code_generation(self):
+        code = to_requests_code(parse_curl("curl -XPOST -d'a=1' https://x/api"))
+        assert '"POST"' in code
+        assert "data=data" in code
 
 
 class TestParseCurlJsonFlag:

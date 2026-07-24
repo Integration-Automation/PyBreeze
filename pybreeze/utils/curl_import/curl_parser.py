@@ -103,6 +103,7 @@ _GET_FLAGS = frozenset({"-G", "--get"})
 # Value-less flags to accept and skip (they do not affect the generated request).
 _VALUELESS_FLAGS = frozenset({
     "--compressed", "-L", "--location", "-k", "--insecure", "-s", "--silent",
+    "-S", "--show-error", "-q", "--disable",
     "-v", "--verbose", "-i", "--include", "-I", "--head", "-f", "--fail",
     "--fail-with-body", "-g", "--globoff", "-O", "--remote-name",
     "-J", "--remote-header-name", "-#", "--progress-bar", "-N", "--no-buffer",
@@ -124,7 +125,61 @@ _IGNORED_VALUE_FLAGS = frozenset({
     "-r", "--range", "-c", "--cookie-jar", "--resolve", "--interface",
     "--dns-servers", "--local-port", "--ciphers", "-y", "--speed-time",
     "-Y", "--speed-limit", "--keepalive-time", "--oauth2-bearer", "--aws-sigv4",
+    "-C", "--continue-at", "-z", "--time-cond", "-D", "--dump-header",
+    "-K", "--config",
 })
+
+
+def _short_flags(*tables: object) -> frozenset[str]:
+    """Collect the single-dash, single-letter flags found in *tables*."""
+    return frozenset(
+        flag for table in tables for flag in table
+        if len(flag) == 2 and flag[0] == "-" and flag[1] != "-"
+    )
+
+
+# Short flags derived from the tables above so a bundled cluster like
+# ``-sXPOST`` can split into ``-s`` and ``-X`` + ``POST`` without a second list.
+_SHORT_VALUE_FLAGS = _short_flags(_VALUE_FLAGS, _IGNORED_VALUE_FLAGS)
+_SHORT_VALUELESS_FLAGS = _short_flags(_VALUELESS_FLAGS, _GET_FLAGS)
+
+
+def _is_short_flag_cluster(token: str) -> bool:
+    """Whether *token* is a single-dash flag bundling more than one character."""
+    return len(token) > 2 and token[0] == "-" and token[1] != "-"
+
+
+def _expand_short_flag_cluster(token: str) -> list[str] | None:
+    """Split a bundled short-flag token into canonical tokens.
+
+    ``-sXPOST`` becomes ``["-s", "-X", "POST"]`` and ``-fsSL`` becomes
+    ``["-f", "-s", "-S", "-L"]``. A value-taking flag ends the cluster: anything
+    glued after it is that flag's value. Returns ``None`` when an unknown short
+    flag is met, so the caller keeps the original token untouched.
+    """
+    expanded: list[str] = []
+    body = token[1:]
+    for position, letter in enumerate(body):
+        flag = f"-{letter}"
+        if flag in _SHORT_VALUE_FLAGS:
+            expanded.append(flag)
+            attached = body[position + 1:]
+            if attached:  # value glued to the flag, e.g. the POST in -XPOST
+                expanded.append(attached)
+            return expanded
+        if flag not in _SHORT_VALUELESS_FLAGS:
+            return None  # an unknown short flag: do not rewrite the cluster
+        expanded.append(flag)
+    return expanded
+
+
+def _expand_short_flags(tokens: list[str]) -> list[str]:
+    """Expand bundled/attached short-flag tokens; pass everything else through."""
+    expanded: list[str] = []
+    for token in tokens:
+        cluster = _expand_short_flag_cluster(token) if _is_short_flag_cluster(token) else None
+        expanded.extend(cluster if cluster is not None else [token])
+    return expanded
 
 
 def _normalise_command(command: str) -> str:
@@ -268,6 +323,6 @@ def parse_curl(command: str) -> CurlRequest:
         raise CurlParseException(not_a_curl_command_error)
 
     request = CurlRequest()
-    _consume_tokens(tokens[1:], request)
+    _consume_tokens(_expand_short_flags(tokens[1:]), request)
     _finalise_method(request)
     return request
