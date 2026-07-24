@@ -68,7 +68,7 @@ class TestParseCurlHeaders:
 
     def test_cookie_flag(self):
         request = parse_curl("curl -b 'session=1' https://x")
-        assert request.headers["Cookie"] == "session=1"
+        assert request.cookies == {"session": "1"}
 
 
 class TestParseCurlBodyAndAuth:
@@ -291,6 +291,39 @@ class TestParseCurlUrlQuery:
         assert 'url = "https://x/api"' in code
         assert "params=params" in code
         compile(code, "<generated>", "exec")
+
+
+class TestParseCurlCookies:
+    def test_single_cookie(self):
+        request = parse_curl("curl -b 'session=1' https://x")
+        assert request.cookies == {"session": "1"}
+        assert "Cookie" not in request.headers
+
+    def test_multiple_cookies(self):
+        request = parse_curl("curl -b 'sessionid=abc; csrftoken=xyz' https://x")
+        assert request.cookies == {"sessionid": "abc", "csrftoken": "xyz"}
+
+    def test_long_cookie_flag(self):
+        request = parse_curl("curl --cookie 'a=1' https://x")
+        assert request.cookies == {"a": "1"}
+
+    def test_cookie_file_falls_back_to_header(self):
+        # A bare token with no '=' is a cookie file curl would read, not pairs.
+        request = parse_curl("curl -b cookies.txt https://x")
+        assert request.cookies == {}
+        assert request.headers["Cookie"] == "cookies.txt"
+
+    def test_no_cookies_by_default(self):
+        assert parse_curl("curl https://x").cookies == {}
+
+    def test_cookies_emitted_in_requests_code(self):
+        code = to_requests_code(parse_curl("curl -b 'a=1; b=2' https://x"))
+        assert "cookies = {" in code
+        assert "cookies=cookies" in code
+        compile(code, "<generated>", "exec")
+
+    def test_no_cookies_kwarg_when_absent(self):
+        assert "cookies=cookies" not in to_requests_code(parse_curl("curl https://x"))
 
 
 class TestParseCurlJsonFlag:

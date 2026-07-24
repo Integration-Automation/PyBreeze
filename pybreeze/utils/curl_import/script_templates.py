@@ -71,6 +71,8 @@ def to_apitestka_python(request: CurlRequest) -> str:
         lines.append(f"    headers={_inline_json(request.headers)},")
     if request.params:
         lines.append(f"    params={_inline_json(request.params)},")
+    if request.cookies:
+        lines.append(f"    cookies={_inline_json(request.cookies)},")
     lines.extend(_apitestka_payload_lines(request))
     if request.username is not None:
         lines.append(
@@ -118,6 +120,8 @@ def _apitestka_action_params(request: CurlRequest) -> dict:
         params["headers"] = request.headers
     if request.params:
         params["params"] = request.params
+    if request.cookies:
+        params["cookies"] = request.cookies
     _apply_action_payload(request, params)
     if request.username is not None:
         params["auth"] = [request.username, request.password or ""]

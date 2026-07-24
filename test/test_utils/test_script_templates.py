@@ -122,6 +122,10 @@ class TestApitestkaPython:
         code = to_apitestka_python(parse_curl("curl -u user:pass https://x"))
         assert "auth=(" in code
 
+    def test_cookies(self):
+        code = to_apitestka_python(parse_curl("curl -b 'a=1; b=2' https://x"))
+        assert "cookies=" in code
+
     def test_params(self):
         code = to_apitestka_python(parse_curl("curl -G https://x -d 'a=1'"))
         assert "params=" in code
@@ -165,6 +169,10 @@ class TestApitestkaActionJson:
     def test_auth_as_list(self):
         action = json.loads(to_apitestka_action_json(parse_curl("curl -u user:pass https://x")))
         assert action[0][1]["auth"] == ["user", "pass"]
+
+    def test_cookies_included(self):
+        action = json.loads(to_apitestka_action_json(parse_curl("curl -b 'a=1' https://x")))
+        assert action[0][1]["cookies"] == {"a": "1"}
 
     def test_get_flag_params(self):
         action = json.loads(to_apitestka_action_json(parse_curl("curl -G https://x -d 'a=1'")))

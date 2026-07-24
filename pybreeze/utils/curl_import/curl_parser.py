@@ -48,6 +48,7 @@ class CurlRequest:
     :param data_file_refs: filenames whose content forms the body (``-d @file``)
     :param timeout: request timeout in seconds from ``--max-time`` / ``-m``, or
         ``None`` when the command sets none
+    :param cookies: cookies parsed from ``-b`` / ``--cookie`` name=value pairs
     """
 
     method: str = _DEFAULT_METHOD
@@ -61,6 +62,7 @@ class CurlRequest:
     form_fields: list[str] = field(default_factory=list)
     data_file_refs: list[str] = field(default_factory=list)
     timeout: str | None = None
+    cookies: dict[str, str] = field(default_factory=dict)
 
     @property
     def has_body(self) -> bool:
@@ -255,6 +257,21 @@ def _apply_data_or_file(request: CurlRequest, value: str) -> None:
         request.data_parts.append(value)
 
 
+def _apply_cookie(request: CurlRequest, value: str) -> None:
+    """Parse a ``-b`` cookie string into ``name=value`` pairs.
+
+    ``curl -b 'a=1; b=2'`` yields inline cookies; a value with no ``=`` is a
+    cookie *file* curl would read, which we keep as a ``Cookie`` header instead.
+    """
+    if "=" not in value:
+        request.headers.setdefault("Cookie", value)
+        return
+    for segment in value.split(";"):
+        name, separator, cookie_value = segment.strip().partition("=")
+        if separator and name:
+            request.cookies[name] = cookie_value
+
+
 def _apply_value_flag(request: CurlRequest, kind: str, value: str) -> None:
     """Apply one value-taking flag to *request* according to its *kind*."""
     if kind == "method":
@@ -275,7 +292,7 @@ def _apply_value_flag(request: CurlRequest, kind: str, value: str) -> None:
     elif kind == "form":
         request.form_fields.append(value)
     elif kind == "cookie":
-        request.headers.setdefault("Cookie", value)
+        _apply_cookie(request, value)
     elif kind == "user_agent":
         request.headers.setdefault("User-Agent", value)
     elif kind == "referer":

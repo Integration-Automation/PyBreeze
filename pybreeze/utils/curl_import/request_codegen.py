@@ -96,6 +96,8 @@ def _call_keyword_arguments(request: CurlRequest, payload_kwargs: list[str]) -> 
         arguments.append("headers=headers")
     if request.params:
         arguments.append("params=params")
+    if request.cookies:
+        arguments.append("cookies=cookies")
     arguments.extend(payload_kwargs)
     if request.username is not None:
         arguments.append("auth=auth")
@@ -123,6 +125,9 @@ def request_statements(request: CurlRequest) -> list[str]:
     params_block = _format_dict("params", request.params)
     if params_block is not None:
         statements.append(params_block)
+    cookies_block = _format_dict("cookies", request.cookies)
+    if cookies_block is not None:
+        statements.append(cookies_block)
     statements.extend(payload_sections)
     if request.username is not None:
         statements.append(
