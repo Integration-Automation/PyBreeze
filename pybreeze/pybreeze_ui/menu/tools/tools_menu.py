@@ -14,6 +14,16 @@ from pybreeze.pybreeze_ui.extend_ai_gui.prompt_edit_gui.cot_prompt_editor_widget
 from pybreeze.pybreeze_ui.extend_ai_gui.prompt_edit_gui.skills_prompt_editor_widget import \
     SkillPromptEditor
 from pybreeze.pybreeze_ui.extend_ai_gui.skills.skills_send_gui import SkillsSendGUI
+from pybreeze.pybreeze_ui.tools_gui.curl_import_gui import CurlImportGUI
+from pybreeze.pybreeze_ui.tools_gui.diff_gui import DiffGUI
+from pybreeze.pybreeze_ui.tools_gui.json_format_gui import JsonFormatGUI
+from pybreeze.pybreeze_ui.tools_gui.jwt_decoder_gui import JwtDecoderGUI
+from pybreeze.pybreeze_ui.tools_gui.hash_gui import HashGUI
+from pybreeze.pybreeze_ui.tools_gui.http_status_gui import HttpStatusGUI
+from pybreeze.pybreeze_ui.tools_gui.query_json_gui import QueryJsonGUI
+from pybreeze.pybreeze_ui.tools_gui.regex_gui import RegexGUI
+from pybreeze.pybreeze_ui.tools_gui.response_inspector_gui import ResponseInspectorGUI
+from pybreeze.pybreeze_ui.tools_gui.timestamp_gui import TimestampGUI
 
 if TYPE_CHECKING:
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
@@ -90,6 +100,116 @@ def build_tools_menu(ui_we_want_to_set: PyBreezeMainWindow):
     ))
     ui_we_want_to_set.tools_menu.addAction(ui_we_want_to_set.tools_diagram_editor_action)
 
+    # cURL Import
+    ui_we_want_to_set.tools_curl_import_action = QAction(language_wrapper.language_word_dict.get(
+        "extend_tools_menu_curl_import_tab_action"
+    ))
+    ui_we_want_to_set.tools_curl_import_action.triggered.connect(lambda: ui_we_want_to_set.tab_widget.addTab(
+        CurlImportGUI(ui_we_want_to_set), language_wrapper.language_word_dict.get(
+            "extend_tools_menu_curl_import_tab_label"
+        )
+    ))
+    ui_we_want_to_set.tools_menu.addAction(ui_we_want_to_set.tools_curl_import_action)
+
+    # JWT Decoder
+    ui_we_want_to_set.tools_jwt_decoder_action = QAction(language_wrapper.language_word_dict.get(
+        "extend_tools_menu_jwt_decoder_tab_action"
+    ))
+    ui_we_want_to_set.tools_jwt_decoder_action.triggered.connect(lambda: ui_we_want_to_set.tab_widget.addTab(
+        JwtDecoderGUI(main_window=ui_we_want_to_set), language_wrapper.language_word_dict.get(
+            "extend_tools_menu_jwt_decoder_tab_label"
+        )
+    ))
+    ui_we_want_to_set.tools_menu.addAction(ui_we_want_to_set.tools_jwt_decoder_action)
+
+    # Timestamp Converter
+    ui_we_want_to_set.tools_timestamp_action = QAction(language_wrapper.language_word_dict.get(
+        "extend_tools_menu_timestamp_tab_action"
+    ))
+    ui_we_want_to_set.tools_timestamp_action.triggered.connect(lambda: ui_we_want_to_set.tab_widget.addTab(
+        TimestampGUI(ui_we_want_to_set), language_wrapper.language_word_dict.get(
+            "extend_tools_menu_timestamp_tab_label"
+        )
+    ))
+    ui_we_want_to_set.tools_menu.addAction(ui_we_want_to_set.tools_timestamp_action)
+
+    # Hash Generator
+    ui_we_want_to_set.tools_hash_action = QAction(language_wrapper.language_word_dict.get(
+        "extend_tools_menu_hash_tab_action"
+    ))
+    ui_we_want_to_set.tools_hash_action.triggered.connect(lambda: ui_we_want_to_set.tab_widget.addTab(
+        HashGUI(ui_we_want_to_set), language_wrapper.language_word_dict.get(
+            "extend_tools_menu_hash_tab_label"
+        )
+    ))
+    ui_we_want_to_set.tools_menu.addAction(ui_we_want_to_set.tools_hash_action)
+
+    # Query <-> JSON
+    ui_we_want_to_set.tools_query_json_action = QAction(language_wrapper.language_word_dict.get(
+        "extend_tools_menu_query_json_tab_action"
+    ))
+    ui_we_want_to_set.tools_query_json_action.triggered.connect(lambda: ui_we_want_to_set.tab_widget.addTab(
+        QueryJsonGUI(ui_we_want_to_set), language_wrapper.language_word_dict.get(
+            "extend_tools_menu_query_json_tab_label"
+        )
+    ))
+    ui_we_want_to_set.tools_menu.addAction(ui_we_want_to_set.tools_query_json_action)
+
+    # Regex Tester
+    ui_we_want_to_set.tools_regex_action = QAction(language_wrapper.language_word_dict.get(
+        "extend_tools_menu_regex_tab_action"
+    ))
+    ui_we_want_to_set.tools_regex_action.triggered.connect(lambda: ui_we_want_to_set.tab_widget.addTab(
+        RegexGUI(ui_we_want_to_set), language_wrapper.language_word_dict.get(
+            "extend_tools_menu_regex_tab_label"
+        )
+    ))
+    ui_we_want_to_set.tools_menu.addAction(ui_we_want_to_set.tools_regex_action)
+
+    # HTTP Status Reference
+    ui_we_want_to_set.tools_http_status_action = QAction(language_wrapper.language_word_dict.get(
+        "extend_tools_menu_http_status_tab_action"
+    ))
+    ui_we_want_to_set.tools_http_status_action.triggered.connect(lambda: ui_we_want_to_set.tab_widget.addTab(
+        HttpStatusGUI(main_window=ui_we_want_to_set), language_wrapper.language_word_dict.get(
+            "extend_tools_menu_http_status_tab_label"
+        )
+    ))
+    ui_we_want_to_set.tools_menu.addAction(ui_we_want_to_set.tools_http_status_action)
+
+    # Text Diff
+    ui_we_want_to_set.tools_diff_action = QAction(language_wrapper.language_word_dict.get(
+        "extend_tools_menu_diff_tab_action"
+    ))
+    ui_we_want_to_set.tools_diff_action.triggered.connect(lambda: ui_we_want_to_set.tab_widget.addTab(
+        DiffGUI(ui_we_want_to_set), language_wrapper.language_word_dict.get(
+            "extend_tools_menu_diff_tab_label"
+        )
+    ))
+    ui_we_want_to_set.tools_menu.addAction(ui_we_want_to_set.tools_diff_action)
+
+    # JSON Format
+    ui_we_want_to_set.tools_json_format_action = QAction(language_wrapper.language_word_dict.get(
+        "extend_tools_menu_json_format_tab_action"
+    ))
+    ui_we_want_to_set.tools_json_format_action.triggered.connect(lambda: ui_we_want_to_set.tab_widget.addTab(
+        JsonFormatGUI(ui_we_want_to_set), language_wrapper.language_word_dict.get(
+            "extend_tools_menu_json_format_tab_label"
+        )
+    ))
+    ui_we_want_to_set.tools_menu.addAction(ui_we_want_to_set.tools_json_format_action)
+
+    # Response Inspector
+    ui_we_want_to_set.tools_response_action = QAction(language_wrapper.language_word_dict.get(
+        "extend_tools_menu_response_tab_action"
+    ))
+    ui_we_want_to_set.tools_response_action.triggered.connect(lambda: ui_we_want_to_set.tab_widget.addTab(
+        ResponseInspectorGUI(ui_we_want_to_set), language_wrapper.language_word_dict.get(
+            "extend_tools_menu_response_tab_label"
+        )
+    ))
+    ui_we_want_to_set.tools_menu.addAction(ui_we_want_to_set.tools_response_action)
+
 
 def extend_dock_menu(ui_we_want_to_set: PyBreezeMainWindow):
     # Sub menu
@@ -140,6 +260,76 @@ def extend_dock_menu(ui_we_want_to_set: PyBreezeMainWindow):
         lambda: add_dock(ui_we_want_to_set, "DiagramEditor"))
     ui_we_want_to_set.dock_menu.addAction(ui_we_want_to_set.tools_diagram_editor_dock_action)
 
+    # cURL Import Dock
+    ui_we_want_to_set.tools_curl_import_dock_action = QAction(language_wrapper.language_word_dict.get(
+        "extend_tools_menu_curl_import_dock_action"))
+    ui_we_want_to_set.tools_curl_import_dock_action.triggered.connect(
+        lambda: add_dock(ui_we_want_to_set, "CurlImport"))
+    ui_we_want_to_set.dock_menu.addAction(ui_we_want_to_set.tools_curl_import_dock_action)
+
+    # JWT Decoder Dock
+    ui_we_want_to_set.tools_jwt_decoder_dock_action = QAction(language_wrapper.language_word_dict.get(
+        "extend_tools_menu_jwt_decoder_dock_action"))
+    ui_we_want_to_set.tools_jwt_decoder_dock_action.triggered.connect(
+        lambda: add_dock(ui_we_want_to_set, "JwtDecoder"))
+    ui_we_want_to_set.dock_menu.addAction(ui_we_want_to_set.tools_jwt_decoder_dock_action)
+
+    # Timestamp Converter Dock
+    ui_we_want_to_set.tools_timestamp_dock_action = QAction(language_wrapper.language_word_dict.get(
+        "extend_tools_menu_timestamp_dock_action"))
+    ui_we_want_to_set.tools_timestamp_dock_action.triggered.connect(
+        lambda: add_dock(ui_we_want_to_set, "Timestamp"))
+    ui_we_want_to_set.dock_menu.addAction(ui_we_want_to_set.tools_timestamp_dock_action)
+
+    # Hash Generator Dock
+    ui_we_want_to_set.tools_hash_dock_action = QAction(language_wrapper.language_word_dict.get(
+        "extend_tools_menu_hash_dock_action"))
+    ui_we_want_to_set.tools_hash_dock_action.triggered.connect(
+        lambda: add_dock(ui_we_want_to_set, "Hash"))
+    ui_we_want_to_set.dock_menu.addAction(ui_we_want_to_set.tools_hash_dock_action)
+
+    # Query <-> JSON Dock
+    ui_we_want_to_set.tools_query_json_dock_action = QAction(language_wrapper.language_word_dict.get(
+        "extend_tools_menu_query_json_dock_action"))
+    ui_we_want_to_set.tools_query_json_dock_action.triggered.connect(
+        lambda: add_dock(ui_we_want_to_set, "QueryJson"))
+    ui_we_want_to_set.dock_menu.addAction(ui_we_want_to_set.tools_query_json_dock_action)
+
+    # Regex Tester Dock
+    ui_we_want_to_set.tools_regex_dock_action = QAction(language_wrapper.language_word_dict.get(
+        "extend_tools_menu_regex_dock_action"))
+    ui_we_want_to_set.tools_regex_dock_action.triggered.connect(
+        lambda: add_dock(ui_we_want_to_set, "Regex"))
+    ui_we_want_to_set.dock_menu.addAction(ui_we_want_to_set.tools_regex_dock_action)
+
+    # HTTP Status Reference Dock
+    ui_we_want_to_set.tools_http_status_dock_action = QAction(language_wrapper.language_word_dict.get(
+        "extend_tools_menu_http_status_dock_action"))
+    ui_we_want_to_set.tools_http_status_dock_action.triggered.connect(
+        lambda: add_dock(ui_we_want_to_set, "HttpStatus"))
+    ui_we_want_to_set.dock_menu.addAction(ui_we_want_to_set.tools_http_status_dock_action)
+
+    # Text Diff Dock
+    ui_we_want_to_set.tools_diff_dock_action = QAction(language_wrapper.language_word_dict.get(
+        "extend_tools_menu_diff_dock_action"))
+    ui_we_want_to_set.tools_diff_dock_action.triggered.connect(
+        lambda: add_dock(ui_we_want_to_set, "Diff"))
+    ui_we_want_to_set.dock_menu.addAction(ui_we_want_to_set.tools_diff_dock_action)
+
+    # JSON Format Dock
+    ui_we_want_to_set.tools_json_format_dock_action = QAction(language_wrapper.language_word_dict.get(
+        "extend_tools_menu_json_format_dock_action"))
+    ui_we_want_to_set.tools_json_format_dock_action.triggered.connect(
+        lambda: add_dock(ui_we_want_to_set, "JsonFormat"))
+    ui_we_want_to_set.dock_menu.addAction(ui_we_want_to_set.tools_json_format_dock_action)
+
+    # Response Inspector Dock
+    ui_we_want_to_set.tools_response_dock_action = QAction(language_wrapper.language_word_dict.get(
+        "extend_tools_menu_response_dock_action"))
+    ui_we_want_to_set.tools_response_dock_action.triggered.connect(
+        lambda: add_dock(ui_we_want_to_set, "ResponseInspector"))
+    ui_we_want_to_set.dock_menu.addAction(ui_we_want_to_set.tools_response_dock_action)
+
 def add_dock(ui_we_want_to_set: PyBreezeMainWindow, widget_type: str | None = None):
     jeditor_logger.info("build_dock_menu.py add_dock_widget "
                         f"ui_we_want_to_set: {ui_we_want_to_set} "
@@ -179,6 +369,56 @@ def add_dock(ui_we_want_to_set: PyBreezeMainWindow, widget_type: str | None = No
             "extend_tools_menu_diagram_editor_dock_title"
         ))
         dock_widget.setWidget(DiagramEditorWidget())
+    elif widget_type == "CurlImport":
+        dock_widget.setWindowTitle(language_wrapper.language_word_dict.get(
+            "extend_tools_menu_curl_import_dock_title"
+        ))
+        dock_widget.setWidget(CurlImportGUI(ui_we_want_to_set))
+    elif widget_type == "JwtDecoder":
+        dock_widget.setWindowTitle(language_wrapper.language_word_dict.get(
+            "extend_tools_menu_jwt_decoder_dock_title"
+        ))
+        dock_widget.setWidget(JwtDecoderGUI(main_window=ui_we_want_to_set))
+    elif widget_type == "Timestamp":
+        dock_widget.setWindowTitle(language_wrapper.language_word_dict.get(
+            "extend_tools_menu_timestamp_dock_title"
+        ))
+        dock_widget.setWidget(TimestampGUI(ui_we_want_to_set))
+    elif widget_type == "Hash":
+        dock_widget.setWindowTitle(language_wrapper.language_word_dict.get(
+            "extend_tools_menu_hash_dock_title"
+        ))
+        dock_widget.setWidget(HashGUI(ui_we_want_to_set))
+    elif widget_type == "QueryJson":
+        dock_widget.setWindowTitle(language_wrapper.language_word_dict.get(
+            "extend_tools_menu_query_json_dock_title"
+        ))
+        dock_widget.setWidget(QueryJsonGUI(ui_we_want_to_set))
+    elif widget_type == "Regex":
+        dock_widget.setWindowTitle(language_wrapper.language_word_dict.get(
+            "extend_tools_menu_regex_dock_title"
+        ))
+        dock_widget.setWidget(RegexGUI(ui_we_want_to_set))
+    elif widget_type == "HttpStatus":
+        dock_widget.setWindowTitle(language_wrapper.language_word_dict.get(
+            "extend_tools_menu_http_status_dock_title"
+        ))
+        dock_widget.setWidget(HttpStatusGUI(main_window=ui_we_want_to_set))
+    elif widget_type == "Diff":
+        dock_widget.setWindowTitle(language_wrapper.language_word_dict.get(
+            "extend_tools_menu_diff_dock_title"
+        ))
+        dock_widget.setWidget(DiffGUI(ui_we_want_to_set))
+    elif widget_type == "JsonFormat":
+        dock_widget.setWindowTitle(language_wrapper.language_word_dict.get(
+            "extend_tools_menu_json_format_dock_title"
+        ))
+        dock_widget.setWidget(JsonFormatGUI(ui_we_want_to_set))
+    elif widget_type == "ResponseInspector":
+        dock_widget.setWindowTitle(language_wrapper.language_word_dict.get(
+            "extend_tools_menu_response_dock_title"
+        ))
+        dock_widget.setWidget(ResponseInspectorGUI(ui_we_want_to_set))
 
     # 如果成功建立了 widget，將其加到主視窗右側 Dock 區域
     # If widget is created, add it to the right dock area of the main window

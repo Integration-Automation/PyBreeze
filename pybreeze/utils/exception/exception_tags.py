@@ -36,3 +36,26 @@ wrong_json_data_error: str = "can't parse JSON"
 # XML
 cant_read_xml_error: str = "can't read XML"
 xml_type_error: str = "XML type error"
+
+# cURL import
+empty_curl_command_error: str = "no curl command provided"
+not_a_curl_command_error: str = "the command does not look like a curl command"
+malformed_curl_command_error: str = "can't parse the curl command: check quoting"
+no_url_in_curl_error: str = "no URL found in the curl command"
+
+# JWT decode
+empty_jwt_error: str = "no token provided"
+malformed_jwt_error: str = "a JWT must have three dot-separated parts"
+jwt_segment_decode_error: str = "can't decode a JWT segment: invalid base64url or JSON"
+
+# Timestamp conversion
+empty_timestamp_error: str = "no value provided"
+unrecognized_timestamp_error: str = "not a recognized epoch number or ISO-8601 date-time"
+
+# Query <-> JSON conversion
+invalid_json_object_error: str = "the input must be a JSON object of key/value pairs"
+invalid_json_for_query_error: str = "can't parse the input as JSON"
+
+# Regex testing
+empty_regex_pattern_error: str = "no pattern provided"
+invalid_regex_pattern_error: str = "invalid regular expression: {detail}"

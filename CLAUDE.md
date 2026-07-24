@@ -229,6 +229,8 @@ All code must satisfy common static-analysis rules enforced by SonarQube and Cod
 ## Commit & PR rules
 
 - Commit messages: short imperative sentence (e.g., "Update stable version", "Fix github actions")
-- Do not mention any AI tools, assistants, or co-authors in commit messages or PR descriptions
-- Do not add `Co-Authored-By` headers referencing any AI
+- **No AI attribution (mandatory)**: Never mention any AI tool, assistant, agent, model name, or vendor in commit messages, commit trailers, branch names, PR titles, PR descriptions, issue text, code comments, or documentation
+  - Do not add `Co-Authored-By` headers referencing any AI
+  - No "Generated with ...", "Created by ...", or similar footers in commits or PR bodies
+  - PR titles and bodies describe **what changed and why** — nothing about how the change was authored
 - PR target: `dev` for development work, `main` for stable releases
