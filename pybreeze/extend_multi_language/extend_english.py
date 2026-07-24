@@ -393,6 +393,20 @@ pybreeze_english_word_dict = {
     "query_json_output_label": "Result:",
     "query_json_error": "Could not convert: {error}",
     "query_json_empty_hint": "Enter a query string or a JSON object above.",
+    # URL Parser / Builder — Menu
+    "extend_tools_menu_url_builder_tab_action": "URL Parser / Builder Tab",
+    "extend_tools_menu_url_builder_tab_label": "URL Parser / Builder",
+    "extend_tools_menu_url_builder_dock_action": "URL Parser / Builder Dock",
+    "extend_tools_menu_url_builder_dock_title": "URL Parser / Builder",
+    # URL Parser / Builder — Widget
+    "url_builder_input_label": "A URL, or a JSON object of URL parts:",
+    "url_builder_input_placeholder":
+        "https://user@host:8080/path?a=1#frag   or   {\"scheme\": \"https\", \"host\": \"host\"}",
+    "url_builder_to_json_button": "URL → JSON",
+    "url_builder_to_url_button": "JSON → URL",
+    "url_builder_output_label": "Result:",
+    "url_builder_error": "Could not build URL: {error}",
+    "url_builder_empty_hint": "Enter a URL or a JSON object of URL parts above.",
     # Regex Tester — Menu
     "extend_tools_menu_regex_tab_action": "Regex Tester Tab",
     "extend_tools_menu_regex_tab_label": "Regex",

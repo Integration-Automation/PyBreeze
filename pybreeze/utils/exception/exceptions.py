@@ -80,3 +80,9 @@ class QueryConvertException(ITEException):
 
 class RegexTesterException(ITEException):
     pass
+
+
+# URL parse / build
+
+class UrlConvertException(ITEException):
+    pass

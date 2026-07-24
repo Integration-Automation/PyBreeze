@@ -371,6 +371,20 @@ pybreeze_traditional_chinese_word_dict = {
     "query_json_output_label": "結果：",
     "query_json_error": "無法轉換：{error}",
     "query_json_empty_hint": "請在上方輸入查詢字串或 JSON 物件。",
+    # URL 解析／組建器 — 選單
+    "extend_tools_menu_url_builder_tab_action": "URL 解析／組建器分頁",
+    "extend_tools_menu_url_builder_tab_label": "URL 解析／組建器",
+    "extend_tools_menu_url_builder_dock_action": "URL 解析／組建器停駐窗格",
+    "extend_tools_menu_url_builder_dock_title": "URL 解析／組建器",
+    # URL 解析／組建器 — 介面
+    "url_builder_input_label": "一個 URL，或描述 URL 各部分的 JSON 物件：",
+    "url_builder_input_placeholder":
+        "https://user@host:8080/path?a=1#frag   或   {\"scheme\": \"https\", \"host\": \"host\"}",
+    "url_builder_to_json_button": "URL → JSON",
+    "url_builder_to_url_button": "JSON → URL",
+    "url_builder_output_label": "結果：",
+    "url_builder_error": "無法組建 URL：{error}",
+    "url_builder_empty_hint": "請在上方輸入 URL 或描述 URL 各部分的 JSON 物件。",
     # 正規表示式測試器 — 選單
     "extend_tools_menu_regex_tab_action": "正規表示式測試器分頁",
     "extend_tools_menu_regex_tab_label": "Regex",
