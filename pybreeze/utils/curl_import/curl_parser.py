@@ -46,6 +46,8 @@ class CurlRequest:
     :param send_data_as_params: ``True`` when ``-G`` moves the body to the query
     :param form_fields: multipart form fragments from ``-F`` / ``--form``
     :param data_file_refs: filenames whose content forms the body (``-d @file``)
+    :param timeout: request timeout in seconds from ``--max-time`` / ``-m``, or
+        ``None`` when the command sets none
     """
 
     method: str = _DEFAULT_METHOD
@@ -58,6 +60,7 @@ class CurlRequest:
     send_data_as_params: bool = False
     form_fields: list[str] = field(default_factory=list)
     data_file_refs: list[str] = field(default_factory=list)
+    timeout: str | None = None
 
     @property
     def has_body(self) -> bool:
@@ -95,6 +98,7 @@ _VALUE_FLAGS: dict[str, str] = {
     "-A": "user_agent", "--user-agent": "user_agent",
     "-e": "referer", "--referer": "referer",
     "--url": "url",
+    "-m": "timeout", "--max-time": "timeout",
 }
 
 # Value-less flags that still change behaviour.
@@ -118,7 +122,7 @@ _VALUELESS_FLAGS = frozenset({
 # Flags that take a value we do not use; the value is consumed so it cannot be
 # mistaken for the URL (this is what makes ``--max-time 30 https://x`` parse right).
 _IGNORED_VALUE_FLAGS = frozenset({
-    "-o", "--output", "--max-time", "-m", "--connect-timeout", "--retry",
+    "-o", "--output", "--connect-timeout", "--retry",
     "--retry-delay", "--retry-max-time", "-w", "--write-out", "-x", "--proxy",
     "--proxy-user", "-U", "--cacert", "--capath", "-E", "--cert", "--key",
     "--cert-type", "--key-type", "--pass", "-T", "--upload-file", "--limit-rate",
@@ -221,6 +225,15 @@ def _urlencode_data_part(value: str) -> str:
     return quote(value, safe="")
 
 
+def _apply_timeout(request: CurlRequest, value: str) -> None:
+    """Record a numeric timeout (seconds); ignore a non-numeric value."""
+    try:
+        float(value)
+    except ValueError:
+        return
+    request.timeout = value
+
+
 def _apply_value_flag(request: CurlRequest, kind: str, value: str) -> None:
     """Apply one value-taking flag to *request* according to its *kind*."""
     if kind == "method":
@@ -251,6 +264,8 @@ def _apply_value_flag(request: CurlRequest, kind: str, value: str) -> None:
         request.headers.setdefault("Referer", value)
     elif kind == "url":
         request.url = value
+    elif kind == "timeout":
+        _apply_timeout(request, value)
     elif kind == "user":
         request.username, _sep, request.password = value.partition(":")
 

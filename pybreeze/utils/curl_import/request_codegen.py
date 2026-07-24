@@ -99,6 +99,9 @@ def _call_keyword_arguments(request: CurlRequest, payload_kwargs: list[str]) -> 
     arguments.extend(payload_kwargs)
     if request.username is not None:
         arguments.append("auth=auth")
+    if request.timeout is not None:
+        # timeout is validated as numeric by the parser, so it is safe inline.
+        arguments.append(f"timeout={request.timeout}")
     return arguments
 
 

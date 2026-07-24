@@ -220,6 +220,37 @@ class TestParseCurlShortFlagClusters:
         assert "data=data" in code
 
 
+class TestParseCurlTimeout:
+    def test_max_time_captured(self):
+        request = parse_curl("curl --max-time 30 https://x")
+        assert request.timeout == "30"
+        assert request.url == "https://x"
+
+    def test_short_max_time_flag(self):
+        request = parse_curl("curl -m 5 https://x")
+        assert request.timeout == "5"
+
+    def test_attached_short_max_time(self):
+        request = parse_curl("curl -m2.5 https://x")
+        assert request.timeout == "2.5"
+
+    def test_non_numeric_timeout_ignored(self):
+        request = parse_curl("curl --max-time soon https://x")
+        assert request.timeout is None
+        assert request.url == "https://x"  # the value is still consumed
+
+    def test_no_timeout_by_default(self):
+        assert parse_curl("curl https://x").timeout is None
+
+    def test_timeout_emitted_in_code(self):
+        code = to_requests_code(parse_curl("curl --max-time 30 https://x"))
+        assert "timeout=30" in code
+        compile(code, "<generated>", "exec")
+
+    def test_no_timeout_kwarg_when_absent(self):
+        assert "timeout=" not in to_requests_code(parse_curl("curl https://x"))
+
+
 class TestParseCurlJsonFlag:
     def test_json_flag_does_not_leak_to_url(self):
         # Regression: '--json {...}' must not become the URL.
