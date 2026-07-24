@@ -12,7 +12,7 @@ from __future__ import annotations
 import re
 import shlex
 from dataclasses import dataclass, field
-from urllib.parse import quote
+from urllib.parse import parse_qsl, quote, urlencode
 
 from pybreeze.utils.exception.exception_tags import (
     empty_curl_command_error,
@@ -71,6 +71,19 @@ class CurlRequest:
     def body(self) -> str:
         """Return the body fragments joined the way ``curl`` sends them."""
         return "&".join(self.data_parts)
+
+    @property
+    def full_url(self) -> str:
+        """The URL with any collected query params reattached, as curl sends it.
+
+        After parsing, a query string embedded in the URL is moved into
+        :attr:`params`; this rebuilds the original address for consumers (such as
+        the load-test template) that drive purely by URL.
+        """
+        if not self.params:
+            return self.url
+        joiner = "&" if "?" in self.url else "?"
+        return f"{self.url}{joiner}{urlencode(self.params)}"
 
     def header_value(self, name: str) -> str | None:
         """Return a header's value by case-insensitive *name*, or ``None``."""
@@ -310,6 +323,22 @@ def _finalise_method(request: CurlRequest) -> None:
         request.data_parts = []
 
 
+def _split_url_query(request: CurlRequest) -> None:
+    """Move a query string embedded in the URL into ``params``.
+
+    Browser "copy as cURL" keeps the query in the URL; splitting it out lets it
+    show up alongside ``-G`` / ``-d`` query pairs, while
+    :attr:`CurlRequest.full_url` can still rebuild the original address. Values
+    are URL-decoded, and existing params are not overwritten.
+    """
+    base, separator, query = request.url.partition("?")
+    if not separator:
+        return
+    request.url = base
+    for key, value in parse_qsl(query, keep_blank_values=True):
+        request.params.setdefault(key, value)
+
+
 def parse_query_pairs(parts: list[str]) -> dict[str, str]:
     """Parse ``key=value`` fragments into a dict, ignoring pieces without ``=``.
 
@@ -345,4 +374,5 @@ def parse_curl(command: str) -> CurlRequest:
     request = CurlRequest()
     _consume_tokens(_expand_short_flags(tokens[1:]), request)
     _finalise_method(request)
+    _split_url_query(request)
     return request

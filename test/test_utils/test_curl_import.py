@@ -251,6 +251,48 @@ class TestParseCurlTimeout:
         assert "timeout=" not in to_requests_code(parse_curl("curl https://x"))
 
 
+class TestParseCurlUrlQuery:
+    def test_query_moved_to_params(self):
+        request = parse_curl("curl 'https://x/api?a=1&b=2'")
+        assert request.url == "https://x/api"
+        assert request.params == {"a": "1", "b": "2"}
+
+    def test_query_values_are_url_decoded(self):
+        request = parse_curl("curl 'https://x?q=hello%20world'")
+        assert request.params["q"] == "hello world"
+
+    def test_blank_query_value_kept(self):
+        request = parse_curl("curl 'https://x?flag='")
+        assert request.params == {"flag": ""}
+
+    def test_no_query_leaves_url_untouched(self):
+        request = parse_curl("curl https://x/api")
+        assert request.url == "https://x/api"
+        assert request.params == {}
+
+    def test_full_url_reconstructs_query(self):
+        request = parse_curl("curl 'https://x/api?a=1&b=2'")
+        assert request.full_url == "https://x/api?a=1&b=2"
+
+    def test_full_url_without_params_is_url(self):
+        assert parse_curl("curl https://x/api").full_url == "https://x/api"
+
+    def test_full_url_includes_get_flag_params(self):
+        # -G params never sat in the URL, but full_url should surface them.
+        request = parse_curl("curl -G https://x/api -d 'a=1'")
+        assert request.full_url == "https://x/api?a=1"
+
+    def test_explicit_params_not_overwritten_by_url_query(self):
+        request = parse_curl("curl -G 'https://x?a=fromurl' -d 'a=fromdata'")
+        assert request.params["a"] == "fromdata"
+
+    def test_url_query_feeds_requests_params(self):
+        code = to_requests_code(parse_curl("curl 'https://x/api?a=1'"))
+        assert 'url = "https://x/api"' in code
+        assert "params=params" in code
+        compile(code, "<generated>", "exec")
+
+
 class TestParseCurlJsonFlag:
     def test_json_flag_does_not_leak_to_url(self):
         # Regression: '--json {...}' must not become the URL.

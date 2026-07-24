@@ -194,6 +194,14 @@ class TestLoadDensityPython:
     def test_is_valid_python(self):
         compile(to_loaddensity_python(parse_curl("curl https://x")), "<generated>", "exec")
 
+    def test_url_query_kept_in_request_url(self):
+        code = to_loaddensity_python(parse_curl("curl 'https://x/api?a=1&b=2'"))
+        assert '"request_url": "https://x/api?a=1&b=2"' in code
+
+    def test_get_flag_params_kept_in_request_url(self):
+        code = to_loaddensity_python(parse_curl("curl -G https://x/api -d 'a=1'"))
+        assert '"request_url": "https://x/api?a=1"' in code
+
 
 class TestTestFunctionName:
     def test_from_path(self):
