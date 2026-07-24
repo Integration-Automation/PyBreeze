@@ -234,6 +234,14 @@ def _apply_timeout(request: CurlRequest, value: str) -> None:
     request.timeout = value
 
 
+def _apply_data_or_file(request: CurlRequest, value: str) -> None:
+    """Record a ``-d`` value as an ``@file`` reference or an inline body part."""
+    if value.startswith("@"):
+        request.data_file_refs.append(value[1:])
+    else:
+        request.data_parts.append(value)
+
+
 def _apply_value_flag(request: CurlRequest, kind: str, value: str) -> None:
     """Apply one value-taking flag to *request* according to its *kind*."""
     if kind == "method":
@@ -245,10 +253,7 @@ def _apply_value_flag(request: CurlRequest, kind: str, value: str) -> None:
     elif kind == "data_urlencode":
         request.data_parts.append(_urlencode_data_part(value))
     elif kind == "data_file":
-        if value.startswith("@"):
-            request.data_file_refs.append(value[1:])
-        else:
-            request.data_parts.append(value)
+        _apply_data_or_file(request, value)
     elif kind == "json_flag":
         # curl --json is shorthand for --data + JSON Content-Type and Accept.
         request.data_parts.append(value)
