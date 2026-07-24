@@ -76,6 +76,16 @@ PyBreeze is not just a code editor — it is a command center for the automation
   - Mermaid `flowchart` / `graph` import
   - Save/Open as `.diagram.json`, export to PNG or SVG
   - Undo/redo, align, distribute, grid, snap, and zoom controls
+- **cURL Import** — Paste a `curl` command copied from your browser's dev tools and generate a ready-to-run script for the target of your choice: **Python `requests`**, an **APITestka Python** snippet (`test_api_method_requests(...)`), an **APITestka JSON action** (`[["AT_test_api_method", {...}]]`) that `execute_files` runs directly, or a **LoadDensity** Locust load-test (`start_test(...)`). (These are the HTTP-oriented modules; a curl request has no meaningful mapping to the browser or desktop-GUI automation modules.) Parses the method, URL, headers, body, basic auth, `-G` query parameters, `-F` multipart form fields (file uploads become `files=open(...)`), the `--json` shortcut (which also sets the JSON `Content-Type`/`Accept`), and `-d @file` bodies (which become `open(...).read()`, while `--data-raw` stays literal) — all with multi-line `\` / `^` continuations. It knows the arity of curl's common flags, so value-taking options like `--max-time 30` or `-o out.json` never leak into the URL; it URL-encodes `--data-urlencode` values the way curl does; and it infers `POST` when a body or form is present and sends JSON bodies as JSON. Targets include Python `requests`, a ready-to-run **pytest test** (a named `test_...` function that sends the request and asserts the status), APITestka (Python and JSON action), and a LoadDensity load test. Pick one from the dropdown, then copy the result, **open it straight into a new editor tab**, or **save it to a `.py` / `.json` file** (the extension follows the chosen target). The parser is pure logic and never executes the command.
+- **JWT Decoder** — Paste a JSON Web Token and read its header and payload as pretty-printed JSON, with standard timestamp claims (`exp`, `iat`, `nbf`, `auth_time`) rendered as readable UTC times. Inspection only — the signature is never verified and the token is never trusted.
+- **Timestamp Converter** — Enter a Unix epoch value (seconds or milliseconds, auto-detected) or an ISO-8601 date-time (with `Z` or an offset) and get every representation back in UTC. Deterministic and independent of the local time zone.
+- **Hash Generator** — Compute SHA-256, SHA-512, SHA-1 and MD5 digests of any text at once. A general-purpose checksum tool (MD5/SHA-1 are provided for interoperability with `usedforsecurity=False`, never for security decisions).
+- **Query ⇄ JSON** — Convert an `application/x-www-form-urlencoded` query string to pretty JSON and back, URL-decoding and -encoding as needed. Repeated keys become JSON arrays and vice versa. Copy the result, open it in an editor tab, or save it to a file.
+- **Regex Tester** — Try a regular expression against sample text with `IGNORECASE` / `MULTILINE` / `DOTALL` / `VERBOSE` flags, and see every match with its offsets, numbered groups and named groups. Invalid patterns report a friendly error instead of crashing.
+- **HTTP Status Reference** — Search the full HTTP status code table (sourced from the standard library, so it stays current) by code prefix or keyword, with the reason phrase, description and status class for each.
+- **Text Diff** — Compare two pieces of text (for example an expected vs. actual API response) side by side and get a unified diff plus a one-line summary of how many lines were added or removed. Copy the diff, open it in an editor tab, or save it to a file.
+- **JSON Format** — Pretty-print or minify a JSON payload, with a clear validation error when the input is not valid JSON. Copy the result, open it in a new editor tab, or save it to a file.
+- **Response Inspector** — Paste a raw HTTP response and get a decoded summary in one step: the status code is looked up in the HTTP reference, headers are parsed, a JSON body is pretty-printed, and any JWTs anywhere in the text (for example an `Authorization: Bearer` header) are decoded with their timestamp claims shown in UTC. Ties the HTTP-status, JSON-format and JWT tools together, and can open a found status code or JWT directly in its dedicated tool tab, pre-filled.
 - **File Tree Context Menu** — Right-click any file or folder in the project tree to create files/folders, rename, delete, copy absolute or relative paths, or reveal the item in your platform file manager. Renaming or deleting a file that is currently open in an editor tab keeps the tab in sync.
 - **Package Manager** — Install automation modules and build tools directly from the IDE menu without leaving the editor.
 - **Integrated Documentation** — Quick access to documentation and GitHub pages for each automation module directly from the menu bar.
@@ -206,6 +216,16 @@ PyBreeze UI (PySide6)
 │   ├── Skill Prompt Editor
 │   ├── Skill Send GUI
 │   ├── Diagram Editor (WYSIWYG, Mermaid import, PNG/SVG export)
+│   ├── cURL Import (curl → Python requests code)
+│   ├── JWT Decoder (header/payload inspection)
+│   ├── Timestamp Converter (epoch ⇄ ISO-8601)
+│   ├── Hash Generator (SHA-256/512, SHA-1, MD5)
+│   ├── Query ⇄ JSON Converter
+│   ├── Regex Tester
+│   ├── HTTP Status Reference
+│   ├── Text Diff
+│   ├── JSON Format (pretty / minify)
+│   ├── Response Inspector (status + JSON + JWT)
 │   └── JupyterLab Integration
 └── Install Menu
     ├── Automation Module Installers

@@ -50,3 +50,33 @@ class XMLException(ITEException):
 
 class XMLTypeException(XMLException):
     pass
+
+
+# cURL import
+
+class CurlParseException(ITEException):
+    pass
+
+
+# JWT decode
+
+class JwtDecodeException(ITEException):
+    pass
+
+
+# Timestamp conversion
+
+class TimestampParseException(ITEException):
+    pass
+
+
+# Query <-> JSON conversion
+
+class QueryConvertException(ITEException):
+    pass
+
+
+# Regex testing
+
+class RegexTesterException(ITEException):
+    pass
