@@ -71,6 +71,47 @@ class TestParseCurlHeaders:
         assert request.cookies == {"session": "1"}
 
 
+class TestParseCurlRepeatedHeaders:
+    def test_repeated_header_values_are_combined(self):
+        request = parse_curl(
+            "curl -H 'Accept: text/html' -H 'Accept: application/json' https://x")
+        assert request.headers == {"Accept": "text/html, application/json"}
+
+    def test_repeat_with_different_casing_keeps_one_entry(self):
+        request = parse_curl("curl -H 'Accept: text/html' -H 'accept: application/xml' https://x")
+        # The first spelling is kept; a second entry would send the header twice.
+        assert request.headers == {"Accept": "text/html, application/xml"}
+
+    def test_repeated_cookie_header_uses_cookie_separator(self):
+        request = parse_curl("curl -H 'Cookie: a=1' -H 'Cookie: b=2' https://x")
+        assert request.headers == {"Cookie": "a=1; b=2"}
+
+    def test_repeat_with_empty_value_keeps_previous(self):
+        request = parse_curl("curl -H 'Accept: text/html' -H 'Accept:' https://x")
+        assert request.headers == {"Accept": "text/html"}
+
+    def test_empty_first_value_is_replaced_by_the_repeat(self):
+        request = parse_curl("curl -H 'Accept:' -H 'Accept: text/html' https://x")
+        assert request.headers == {"Accept": "text/html"}
+
+    def test_header_with_empty_name_is_ignored(self):
+        request = parse_curl("curl -H ': value' https://x")
+        assert request.headers == {}
+
+    def test_explicit_header_wins_over_user_agent_flag_case_insensitively(self):
+        request = parse_curl("curl -H 'user-agent: mine' -A 'flag-agent' https://x")
+        assert request.headers == {"user-agent": "mine"}
+
+    def test_explicit_lowercase_content_type_wins_over_json_flag(self):
+        request = parse_curl("curl -H 'content-type: text/plain' --json '{}' https://x")
+        assert request.headers["content-type"] == "text/plain"
+        assert "Content-Type" not in request.headers
+
+    def test_cookie_file_does_not_add_a_second_cookie_header(self):
+        request = parse_curl("curl -H 'cookie: a=1' -b cookies.txt https://x")
+        assert request.headers == {"cookie": "a=1"}
+
+
 class TestParseCurlBodyAndAuth:
     def test_multiple_data_joined(self):
         request = parse_curl("curl https://x -d 'a=1' -d 'b=2'")

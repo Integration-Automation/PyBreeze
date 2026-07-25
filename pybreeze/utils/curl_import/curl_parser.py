@@ -28,6 +28,11 @@ _DEFAULT_METHOD = "GET"
 _METHOD_WITH_BODY = "POST"
 # Header name that carries a request body's media type
 _CONTENT_TYPE_HEADER = "content-type"
+# Header whose repeated values are joined with "; " instead of ", "
+_COOKIE_HEADER = "cookie"
+# How repeated header lines are combined into one value (RFC 9110 field order)
+_HEADER_JOINER = ", "
+_COOKIE_JOINER = "; "
 # Matches a backslash or caret line continuation before a newline
 _LINE_CONTINUATION_RE = re.compile(r"[\\^]\r?\n")
 
@@ -89,11 +94,8 @@ class CurlRequest:
 
     def header_value(self, name: str) -> str | None:
         """Return a header's value by case-insensitive *name*, or ``None``."""
-        lowered = name.lower()
-        for key, value in self.headers.items():
-            if key.lower() == lowered:
-                return value
-        return None
+        stored = _stored_header_name(self, name)
+        return None if stored is None else self.headers[stored]
 
 
 # Flags that take a value and how each value is applied to the request.
@@ -215,11 +217,53 @@ def _tokenize(command: str) -> list[str]:
         raise CurlParseException(malformed_curl_command_error) from error
 
 
+def _stored_header_name(request: CurlRequest, name: str) -> str | None:
+    """Return the already-stored spelling of *name*, matched case-insensitively."""
+    lowered = name.lower()
+    for stored in request.headers:
+        if stored.lower() == lowered:
+            return stored
+    return None
+
+
+def _set_default_header(request: CurlRequest, name: str, value: str) -> None:
+    """Set a header only when no header of that name is present.
+
+    Case-insensitive, so an explicit ``-H 'content-type: ...'`` still wins over a
+    default implied by another flag instead of producing a second header line.
+    """
+    if _stored_header_name(request, name) is None:
+        request.headers[name] = value
+
+
+def _join_header_values(name: str, previous: str, value: str) -> str:
+    """Combine a repeated header's values the way HTTP combines field lines."""
+    if not previous:
+        return value
+    if not value:
+        return previous
+    joiner = _COOKIE_JOINER if name.lower() == _COOKIE_HEADER else _HEADER_JOINER
+    return f"{previous}{joiner}{value}"
+
+
 def _apply_header(request: CurlRequest, raw_header: str) -> None:
-    """Record a ``Name: Value`` header, ignoring malformed fragments."""
+    """Record a ``Name: Value`` header, combining repeats of the same name.
+
+    curl sends every ``-H`` it is given, so a repeated name is not a mistake: the
+    receiver combines those field lines into one comma-separated value (cookies
+    use ``; ``), which is what the generated code should carry. Names are matched
+    case-insensitively, as HTTP header names are. Fragments with no colon or an
+    empty name are ignored.
+    """
     name, separator, value = raw_header.partition(":")
-    if separator:
-        request.headers[name.strip()] = value.strip()
+    name, value = name.strip(), value.strip()
+    if not separator or not name:
+        return
+    stored = _stored_header_name(request, name)
+    if stored is None:
+        request.headers[name] = value
+        return
+    request.headers[stored] = _join_header_values(stored, request.headers[stored], value)
 
 
 def _urlencode_data_part(value: str) -> str:
@@ -264,7 +308,7 @@ def _apply_cookie(request: CurlRequest, value: str) -> None:
     cookie *file* curl would read, which we keep as a ``Cookie`` header instead.
     """
     if "=" not in value:
-        request.headers.setdefault("Cookie", value)
+        _set_default_header(request, "Cookie", value)
         return
     for segment in value.split(";"):
         name, separator, cookie_value = segment.strip().partition("=")
@@ -287,16 +331,16 @@ def _apply_value_flag(request: CurlRequest, kind: str, value: str) -> None:
     elif kind == "json_flag":
         # curl --json is shorthand for --data + JSON Content-Type and Accept.
         request.data_parts.append(value)
-        request.headers.setdefault("Content-Type", "application/json")
-        request.headers.setdefault("Accept", "application/json")
+        _set_default_header(request, "Content-Type", "application/json")
+        _set_default_header(request, "Accept", "application/json")
     elif kind == "form":
         request.form_fields.append(value)
     elif kind == "cookie":
         _apply_cookie(request, value)
     elif kind == "user_agent":
-        request.headers.setdefault("User-Agent", value)
+        _set_default_header(request, "User-Agent", value)
     elif kind == "referer":
-        request.headers.setdefault("Referer", value)
+        _set_default_header(request, "Referer", value)
     elif kind == "url":
         request.url = value
     elif kind == "timeout":
