@@ -243,7 +243,7 @@ def _join_header_values(name: str, previous: str, value: str) -> str:
     if not value:
         return previous
     joiner = _COOKIE_JOINER if name.lower() == _COOKIE_HEADER else _HEADER_JOINER
-    return f"{previous}{joiner}{value}"
+    return joiner.join((previous, value))
 
 
 def _apply_header(request: CurlRequest, raw_header: str) -> None:
