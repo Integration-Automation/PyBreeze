@@ -81,11 +81,12 @@ PyBreeze is not just a code editor — it is a command center for the automation
 - **Timestamp Converter** — Enter a Unix epoch value (seconds or milliseconds, auto-detected) or an ISO-8601 date-time (with `Z` or an offset) and get every representation back in UTC. Deterministic and independent of the local time zone.
 - **Hash Generator** — Compute SHA-256, SHA-512, SHA-1 and MD5 digests of any text at once. A general-purpose checksum tool (MD5/SHA-1 are provided for interoperability with `usedforsecurity=False`, never for security decisions).
 - **Query ⇄ JSON** — Convert an `application/x-www-form-urlencoded` query string to pretty JSON and back, URL-decoding and -encoding as needed. Repeated keys become JSON arrays and vice versa. Copy the result, open it in an editor tab, or save it to a file.
+- **HTTP Header Analyzer** — Paste a request or response header block (from dev tools, `curl -i`, or a proxy log) and read back every field plus what is worth knowing about it: names sent more than once, `Set-Cookie` entries missing `Secure` / `HttpOnly` / `SameSite`, a wildcard CORS policy (and the wildcard-plus-credentials combination browsers reject outright), an HSTS `max-age` too short to survive a restart, CSP `unsafe-inline` / `unsafe-eval`, product banners, deprecated headers, and — for responses — the security headers that are absent. Headers carrying credentials are reported by name only; their values are never copied into the report. The Response Inspector hands its headers here in one click.
 - **Regex Tester** — Try a regular expression against sample text with `IGNORECASE` / `MULTILINE` / `DOTALL` / `VERBOSE` flags, and see every match with its offsets, numbered groups and named groups. Invalid patterns report a friendly error instead of crashing.
 - **HTTP Status Reference** — Search the full HTTP status code table (sourced from the standard library, so it stays current) by code prefix or keyword, with the reason phrase, description and status class for each.
 - **Text Diff** — Compare two pieces of text (for example an expected vs. actual API response) side by side and get a unified diff plus a one-line summary of how many lines were added or removed. Copy the diff, open it in an editor tab, or save it to a file.
 - **JSON Format** — Pretty-print or minify a JSON payload, with a clear validation error when the input is not valid JSON. Copy the result, open it in a new editor tab, or save it to a file.
-- **Response Inspector** — Paste a raw HTTP response and get a decoded summary in one step: the status code is looked up in the HTTP reference, headers are parsed, a JSON body is pretty-printed, and any JWTs anywhere in the text (for example an `Authorization: Bearer` header) are decoded with their timestamp claims shown in UTC. Ties the HTTP-status, JSON-format and JWT tools together, and can open a found status code or JWT directly in its dedicated tool tab, pre-filled.
+- **Response Inspector** — Paste a raw HTTP response and get a decoded summary in one step: the status code is looked up in the HTTP reference, headers are parsed, a JSON body is pretty-printed, and any JWTs anywhere in the text (for example an `Authorization: Bearer` header) are decoded with their timestamp claims shown in UTC. Ties the HTTP-status, JSON-format and JWT tools together, and can open a found status code, JWT, or the whole header block directly in its dedicated tool tab, pre-filled.
 - **File Tree Context Menu** — Right-click any file or folder in the project tree to create files/folders, rename, delete, copy absolute or relative paths, or reveal the item in your platform file manager. Renaming or deleting a file that is currently open in an editor tab keeps the tab in sync.
 - **Package Manager** — Install automation modules and build tools directly from the IDE menu without leaving the editor.
 - **Integrated Documentation** — Quick access to documentation and GitHub pages for each automation module directly from the menu bar.
@@ -221,6 +222,7 @@ PyBreeze UI (PySide6)
 │   ├── Timestamp Converter (epoch ⇄ ISO-8601)
 │   ├── Hash Generator (SHA-256/512, SHA-1, MD5)
 │   ├── Query ⇄ JSON Converter
+│   ├── HTTP Header Analyzer (duplicates, cookie flags, security headers)
 │   ├── Regex Tester
 │   ├── HTTP Status Reference
 │   ├── Text Diff
