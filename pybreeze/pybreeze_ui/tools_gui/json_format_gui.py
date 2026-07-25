@@ -15,9 +15,10 @@ from pybreeze.utils.logging.logger import pybreeze_logger
 class JsonFormatGUI(QWidget):
     """Paste JSON, then format it, minify it, or read its validation error."""
 
-    def __init__(self, main_window=None) -> None:
+    def __init__(self, main_window=None, initial_json: str | None = None) -> None:
         """
         :param main_window: window whose ``tab_widget`` "open in editor" uses
+        :param initial_json: JSON to pre-fill and format on open, if given
         """
         super().__init__()
         # The last valid result (not an error/hint), gating open/save.
@@ -55,6 +56,10 @@ class JsonFormatGUI(QWidget):
         layout.addWidget(self.output_edit)
         layout.addLayout(self.actions.button_row())
         self.setLayout(layout)
+
+        if initial_json:
+            self.input_edit.setPlainText(initial_json)
+            self.format_json()
 
     def _run(self, transform) -> None:
         """Apply a JSON transform, showing the result or a friendly error."""

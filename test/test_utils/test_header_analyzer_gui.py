@@ -95,6 +95,77 @@ class TestHeaderAnalyzerGUI:
         assert widget.actions.save_to_file() is None
 
 
+class _FakeTabWidget:
+    def __init__(self):
+        self.added = []
+        self.current = None
+
+    def addTab(self, widget, label):
+        self.added.append((widget, label))
+
+    def setCurrentWidget(self, widget):
+        self.current = widget
+
+
+class _FakeMainWindow:
+    def __init__(self):
+        self.tab_widget = _FakeTabWidget()
+
+
+def _jwt(payload: dict) -> str:
+    import base64
+    import json as json_module
+
+    def seg(obj):
+        raw = json_module.dumps(obj).encode("utf-8")
+        return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
+    return f"{seg({'alg': 'HS256'})}.{seg(payload)}.sig"
+
+
+class TestHeaderAnalyzerJwtHandOff:
+    def test_button_disabled_without_a_token(self, widget):
+        widget.input_edit.setPlainText(_RESPONSE)
+        widget.analyze()
+        assert not widget.open_jwt_button.isEnabled()
+
+    def test_button_enabled_when_a_header_carries_a_token(self, widget):
+        widget.input_edit.setPlainText(f"Authorization: Bearer {_jwt({'sub': '42'})}")
+        widget.analyze()
+        assert widget.open_jwt_button.isEnabled()
+
+    def test_token_is_found_in_any_header(self, widget):
+        token = _jwt({"sub": "7"})
+        widget.input_edit.setPlainText(f"X-Custom-Auth: {token}")
+        widget.analyze()
+        assert widget.header_tokens() == [token]
+
+    def test_open_jwt_opens_prefilled_decoder(self, app):
+        from pybreeze.pybreeze_ui.tools_gui.header_analyzer_gui import HeaderAnalyzerGUI
+        from pybreeze.pybreeze_ui.tools_gui.jwt_decoder_gui import JwtDecoderGUI
+        window = _FakeMainWindow()
+        gui = HeaderAnalyzerGUI(main_window=window)
+        gui.input_edit.setPlainText(f"Authorization: Bearer {_jwt({'sub': '99'})}")
+        gui.analyze()
+        gui.open_jwt_in_decoder()
+        opened = window.tab_widget.added[0][0]
+        assert isinstance(opened, JwtDecoderGUI)
+        assert '"sub": "99"' in opened.output_edit.toPlainText()
+        gui.close()
+        gui.deleteLater()
+
+    def test_open_without_a_token_is_noop(self, widget):
+        widget.input_edit.setPlainText(_RESPONSE)
+        widget.analyze()
+        assert widget.open_jwt_in_decoder() is None
+
+    def test_button_goes_inactive_when_input_is_cleared(self, widget):
+        widget.input_edit.setPlainText(f"Authorization: Bearer {_jwt({'sub': '1'})}")
+        widget.analyze()
+        widget.input_edit.setPlainText("   ")
+        widget.analyze()
+        assert not widget.open_jwt_button.isEnabled()
+
+
 class TestEveryFindingCodeIsTranslated:
     def test_report_never_falls_back_to_a_code(self, app):
         # Any finding code without a language key would leak the slug into the UI.

@@ -201,3 +201,40 @@ class TestResponseInspectorHeaderHandOff:
         gui, window = widget_with_window
         assert gui.open_headers_in_analyzer() is None
         assert window.tab_widget.added == []
+
+
+class TestResponseInspectorBodyHandOff:
+    def test_body_button_disabled_for_a_non_json_body(self, widget_with_window):
+        gui, _window = widget_with_window
+        gui.input_edit.setPlainText("HTTP/1.1 200 OK\n\nplain text body")
+        gui.analyze()
+        assert not gui.open_body_button.isEnabled()
+
+    def test_body_button_enabled_for_a_json_body(self, widget_with_window):
+        gui, _window = widget_with_window
+        gui.input_edit.setPlainText('HTTP/1.1 200 OK\n\n{"a": 1}')
+        gui.analyze()
+        assert gui.open_body_button.isEnabled()
+
+    def test_open_body_opens_prefilled_json_format(self, widget_with_window):
+        from pybreeze.pybreeze_ui.tools_gui.json_format_gui import JsonFormatGUI
+        gui, window = widget_with_window
+        gui.input_edit.setPlainText('HTTP/1.1 200 OK\n\n{"a":[1,2],"b":"x"}')
+        gui.analyze()
+        gui.open_body_in_json_format()
+        opened = window.tab_widget.added[0][0]
+        assert isinstance(opened, JsonFormatGUI)
+        formatted = opened.output_edit.toPlainText()
+        assert '"a": [' in formatted  # arrived already pretty-printed
+        assert '"b": "x"' in formatted
+
+    def test_open_body_without_json_is_noop(self, widget_with_window):
+        gui, window = widget_with_window
+        gui.input_edit.setPlainText("HTTP/1.1 500 Server Error\n\nboom")
+        gui.analyze()
+        assert gui.open_body_in_json_format() is None
+        assert window.tab_widget.added == []
+
+    def test_open_body_before_analyze_is_noop(self, widget_with_window):
+        gui, _window = widget_with_window
+        assert gui.open_body_in_json_format() is None

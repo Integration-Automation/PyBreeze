@@ -10,10 +10,11 @@ URL parser/builder tool for further editing.
 from __future__ import annotations
 
 from PySide6.QtWidgets import (
-    QComboBox, QLabel, QPushButton, QTextEdit, QVBoxLayout, QWidget
+    QComboBox, QHBoxLayout, QLabel, QPushButton, QTextEdit, QVBoxLayout, QWidget
 )
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.tools_gui.header_analyzer_gui import HeaderAnalyzerGUI
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.pybreeze_ui.tools_gui.tool_tabs import open_tool_tab
 from pybreeze.pybreeze_ui.tools_gui.url_builder_gui import UrlBuilderGUI
@@ -60,10 +61,18 @@ class CurlImportGUI(QWidget):
         self.output_edit = QTextEdit()
         self.output_edit.setReadOnly(True)
 
-        # Cross-tool action: send the parsed URL to the URL parser/builder.
+        # Cross-tool actions: hand the parsed parts to the tool that specialises
+        # in them, rather than making the user copy them across.
         self.open_url_button = QPushButton(word.get("curl_import_open_url_button"))
         self.open_url_button.clicked.connect(self.open_url_in_builder)
         self.open_url_button.setEnabled(False)
+        self.open_headers_button = QPushButton(word.get("curl_import_open_headers_button"))
+        self.open_headers_button.clicked.connect(self.open_headers_in_analyzer)
+        self.open_headers_button.setEnabled(False)
+
+        cross_tool = QHBoxLayout()
+        cross_tool.addWidget(self.open_url_button)
+        cross_tool.addWidget(self.open_headers_button)
 
         # Shared copy / open-in-editor / save actions. The extension and basename
         # follow the selected target; open/save are no-ops until a valid template.
@@ -77,9 +86,10 @@ class CurlImportGUI(QWidget):
         for widget in (
             self.input_label, self.input_edit,
             self.target_label, self.target_select, self.convert_button,
-            self.output_label, self.output_edit, self.open_url_button,
+            self.output_label, self.output_edit,
         ):
             layout.addWidget(widget)
+        layout.addLayout(cross_tool)
         layout.addLayout(self.actions.button_row())
         self.setLayout(layout)
 
@@ -97,6 +107,7 @@ class CurlImportGUI(QWidget):
         self._generated_code = None
         self._request = None
         self.open_url_button.setEnabled(False)
+        self.open_headers_button.setEnabled(False)
 
     def convert(self) -> None:
         """Parse the input command and show the template for the chosen target."""
@@ -118,6 +129,7 @@ class CurlImportGUI(QWidget):
         self._generated_code = code
         self._request = request
         self.open_url_button.setEnabled(bool(request.url))
+        self.open_headers_button.setEnabled(bool(request.headers))
         self.output_edit.setPlainText(code)
 
     def open_url_in_builder(self) -> QWidget | None:
@@ -132,3 +144,14 @@ class CurlImportGUI(QWidget):
             self._main_window,
             UrlBuilderGUI(main_window=self._main_window, initial_url=self._request.full_url),
             "extend_tools_menu_url_builder_tab_label")
+
+    def open_headers_in_analyzer(self) -> QWidget | None:
+        """Open the command's headers in the header analyzer, already analysed."""
+        if self._request is None or not self._request.headers:
+            return None
+        block = "\n".join(
+            f"{name}: {value}" for name, value in self._request.headers.items())
+        return open_tool_tab(
+            self._main_window,
+            HeaderAnalyzerGUI(main_window=self._main_window, initial_headers=block),
+            "extend_tools_menu_header_analyzer_tab_label")
