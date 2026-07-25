@@ -1,6 +1,7 @@
 """Tests for the cURL import tool widget."""
 from __future__ import annotations
 
+import json
 import os
 from unittest.mock import patch
 
@@ -196,3 +197,53 @@ class TestCurlImportActions:
         widget.input_edit.setPlainText("wget https://x")
         widget.convert()
         assert widget.actions.save_to_file() is None
+
+
+class TestCurlImportOpenUrlInBuilder:
+    def test_button_disabled_before_convert(self, widget):
+        assert not widget.open_url_button.isEnabled()
+
+    def test_button_enabled_after_convert(self, widget):
+        widget.input_edit.setPlainText("curl https://example.com/api")
+        widget.convert()
+        assert widget.open_url_button.isEnabled()
+
+    def test_button_disabled_again_after_parse_error(self, widget):
+        widget.input_edit.setPlainText("curl https://example.com/api")
+        widget.convert()
+        widget.input_edit.setPlainText("wget https://example.com")
+        widget.convert()
+        assert not widget.open_url_button.isEnabled()
+
+    def test_open_url_opens_prefilled_builder_tab(self, widget_with_window):
+        from pybreeze.pybreeze_ui.tools_gui.url_builder_gui import UrlBuilderGUI
+        gui, window = widget_with_window
+        gui.input_edit.setPlainText("curl 'https://example.com/api?a=1' -H 'Accept: */*'")
+        gui.convert()
+        gui.open_url_in_builder()
+        assert len(window.tab_widget.added) == 1
+        opened = window.tab_widget.added[0][0]
+        assert isinstance(opened, UrlBuilderGUI)
+        parsed = json.loads(opened.output_edit.toPlainText())
+        assert parsed["host"] == "example.com"
+        assert parsed["path"] == "/api"
+
+    def test_query_string_survives_the_hand_off(self, widget_with_window):
+        # The curl parser moves a URL's query into params; the builder must still
+        # receive the address as curl would send it.
+        gui, window = widget_with_window
+        gui.input_edit.setPlainText("curl 'https://example.com/api?a=1&b=2'")
+        gui.convert()
+        gui.open_url_in_builder()
+        opened = window.tab_widget.added[0][0]
+        assert json.loads(opened.output_edit.toPlainText())["query"] == {"a": "1", "b": "2"}
+
+    def test_open_before_convert_is_noop(self, widget_with_window):
+        gui, window = widget_with_window
+        assert gui.open_url_in_builder() is None
+        assert window.tab_widget.added == []
+
+    def test_open_without_window_is_safe(self, widget):
+        widget.input_edit.setPlainText("curl https://example.com/api")
+        widget.convert()
+        assert widget.open_url_in_builder() is None

@@ -62,3 +62,25 @@ class TestUrlBuilderGUI:
         widget.convert_to_json()
         widget.actions.copy()
         assert "example.com" in QApplication.clipboard().text()
+
+
+class TestUrlBuilderInitialUrl:
+    def test_initial_url_is_parsed_on_open(self, app):
+        from pybreeze.pybreeze_ui.tools_gui.url_builder_gui import UrlBuilderGUI
+        gui = UrlBuilderGUI(initial_url="https://example.com:8443/api?a=1#frag")
+        data = json.loads(gui.output_edit.toPlainText())
+        assert data["host"] == "example.com"
+        assert data["port"] == 8443
+        assert data["fragment"] == "frag"
+        gui.close()
+        gui.deleteLater()
+
+    def test_initial_url_is_kept_in_the_input(self, app):
+        from pybreeze.pybreeze_ui.tools_gui.url_builder_gui import UrlBuilderGUI
+        gui = UrlBuilderGUI(initial_url="https://example.com/api")
+        assert gui.input_edit.toPlainText() == "https://example.com/api"
+        gui.close()
+        gui.deleteLater()
+
+    def test_without_initial_url_the_output_stays_empty(self, widget):
+        assert widget.output_edit.toPlainText() == ""

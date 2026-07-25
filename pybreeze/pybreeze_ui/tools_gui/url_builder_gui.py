@@ -15,9 +15,10 @@ from pybreeze.utils.url_tools.url_convert import json_to_url, url_to_json
 class UrlBuilderGUI(QWidget):
     """Parse a URL into its JSON parts and build a URL back from them."""
 
-    def __init__(self, main_window=None) -> None:
+    def __init__(self, main_window=None, initial_url: str | None = None) -> None:
         """
         :param main_window: window whose ``tab_widget`` "open in editor" uses
+        :param initial_url: a URL to pre-fill and parse on open, if given
         """
         super().__init__()
         self._valid_output = False
@@ -53,6 +54,10 @@ class UrlBuilderGUI(QWidget):
         layout.addWidget(self.output_edit)
         layout.addLayout(self.actions.button_row())
         self.setLayout(layout)
+
+        if initial_url:
+            self.input_edit.setPlainText(initial_url)
+            self.convert_to_json()
 
     def convert_to_json(self) -> None:
         """Parse the input URL into its JSON parts."""
