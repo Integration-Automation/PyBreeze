@@ -310,6 +310,24 @@ pybreeze_traditional_chinese_word_dict = {
     "curl_import_target_apitestka_action": "APITestka（JSON action）",
     "curl_import_target_loaddensity_python": "LoadDensity（Python）",
     "curl_import_open_url_button": "在 URL 解析／組建器開啟網址",
+    # HAR 匯入 — 選單
+    "extend_tools_menu_har_import_tab_action": "HAR 匯入分頁",
+    "extend_tools_menu_har_import_tab_label": "HAR 匯入",
+    "extend_tools_menu_har_import_dock_action": "HAR 匯入停駐窗格",
+    "extend_tools_menu_har_import_dock_title": "HAR 匯入",
+    # HAR 匯入 — 介面
+    "har_import_open_button": "開啟 .har 檔...",
+    "har_import_file_dialog_title": "開啟 HAR 匯出檔",
+    "har_import_file_filter": "HAR 匯出檔 (*.har *.json)",
+    "har_import_api_only": "只列出像 API 的請求",
+    "har_import_summary": "{total} 個請求，其中 {api} 個像 API — {hosts}",
+    "har_import_generate_selected": "為選取項產生",
+    "har_import_generate_all": "為列出的全部產生",
+    "har_import_no_selection": "請選取一個以上的請求，或改用「為列出的全部產生」。",
+    "har_import_empty_hint":
+        "請開啟從瀏覽器開發者工具存出的 .har 檔（Network → Save all as HAR）。",
+    "har_import_error": "無法讀取這份 HAR 匯出檔：{error}",
+    "har_import_read_error": "無法開啟檔案：{error}",
     # 共用輸出動作（複製 / 開成分頁 / 存檔）
     "output_actions_copy": "複製",
     "output_actions_open_editor": "開成編輯器分頁",

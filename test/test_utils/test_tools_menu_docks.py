@@ -14,6 +14,7 @@ from pybreeze.extend_multi_language.update_language_dict import update_language_
 from pybreeze.pybreeze_ui.menu.tools.tools_menu import add_dock
 from pybreeze.pybreeze_ui.tools_gui.curl_import_gui import CurlImportGUI
 from pybreeze.pybreeze_ui.tools_gui.diff_gui import DiffGUI
+from pybreeze.pybreeze_ui.tools_gui.har_import_gui import HarImportGUI
 from pybreeze.pybreeze_ui.tools_gui.hash_gui import HashGUI
 from pybreeze.pybreeze_ui.tools_gui.header_analyzer_gui import HeaderAnalyzerGUI
 from pybreeze.pybreeze_ui.tools_gui.http_status_gui import HttpStatusGUI
@@ -37,6 +38,7 @@ def app():
     "widget_type,widget_class",
     [
         ("CurlImport", CurlImportGUI),
+        ("HarImport", HarImportGUI),
         ("JwtDecoder", JwtDecoderGUI),
         ("Timestamp", TimestampGUI),
         ("Hash", HashGUI),

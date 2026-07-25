@@ -1,6 +1,8 @@
 """Property-based fuzzing: pure-logic helpers must never crash on hostile input."""
 from __future__ import annotations
 
+import json
+
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
@@ -14,7 +16,8 @@ from pybreeze.pybreeze_ui.diagram_editor.diagram_net_utils import (
     _is_text_content_type,
     _parse_content_length,
 )
-from pybreeze.utils.exception.exceptions import ITEJsonException
+from pybreeze.utils.exception.exceptions import HarParseException, ITEJsonException
+from pybreeze.utils.har_import.har_parser import parse_har
 from pybreeze.utils.header_tools.header_analyzer import (
     LEVEL_INFO,
     LEVEL_WARNING,
@@ -110,6 +113,32 @@ class TestHeaderAnalyzerNeverCrashes:
         for name, count in analysis.duplicates.items():
             assert count > 1
             assert sum(1 for f in analysis.fields if f.name.lower() == name) == count
+
+
+class TestHarParserNeverCrashes:
+    @_FUZZ
+    @given(st.text())
+    def test_arbitrary_text(self, text):
+        # Must return entries or raise the documented HarParseException — never a
+        # bare KeyError/TypeError from a HAR field being an unexpected shape.
+        try:
+            assert isinstance(parse_har(text), list)
+        except HarParseException:
+            pass
+
+    @_FUZZ
+    @given(st.recursive(
+        st.none() | st.booleans() | st.integers() | st.text(),
+        lambda children: st.lists(children, max_size=3) | st.dictionaries(
+            st.text(max_size=8), children, max_size=3),
+        max_leaves=12))
+    def test_arbitrary_json_document(self, document):
+        # A HAR whose fields hold the wrong types must still be handled.
+        try:
+            for entry in parse_har(json.dumps({"log": {"entries": [document]}})):
+                assert isinstance(entry.summary(), str)
+        except HarParseException:
+            pass
 
 
 class TestSsrfLogicNeverCrashes:
