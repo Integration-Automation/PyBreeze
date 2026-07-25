@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import base64
 import json
+import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
@@ -27,6 +28,9 @@ from pybreeze.utils.logging.logger import pybreeze_logger
 _JWT_SEGMENT_COUNT = 3
 # Standard claim names that hold Unix timestamps, shown as readable dates
 _TIMESTAMP_CLAIMS = ("exp", "iat", "nbf", "auth_time")
+# Matches a JWT-looking token anywhere in a larger text, such as the value of an
+# ``Authorization: Bearer ...`` header. The signature segment may be empty.
+JWT_TOKEN_RE = re.compile(r"eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*")
 
 
 @dataclass
@@ -86,6 +90,23 @@ def decode_jwt(token: str) -> DecodedJwt:
     header = _decode_segment(segments[0])
     payload = _decode_segment(segments[1])
     return DecodedJwt(header=header, payload=payload, signature=segments[2])
+
+
+def find_tokens(text: str) -> list[str]:
+    """Find every JWT-looking token in *text*, in order and without repeats.
+
+    Used to spot a token inside something larger — a response body, an
+    ``Authorization`` header — so it can be handed to the decoder. A match only
+    *looks* like a JWT; decoding it may still fail.
+
+    :param text: the text to scan
+    :return: the distinct tokens found, in the order they appeared
+    """
+    tokens: list[str] = []
+    for token in JWT_TOKEN_RE.findall(text):
+        if token not in tokens:
+            tokens.append(token)
+    return tokens
 
 
 def format_timestamp_claim(value: object) -> str | None:

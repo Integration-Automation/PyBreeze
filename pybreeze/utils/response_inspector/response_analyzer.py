@@ -16,13 +16,11 @@ from dataclasses import dataclass, field
 
 from pybreeze.utils.header_tools.header_analyzer import HEADER_LINE_RE
 from pybreeze.utils.http_reference.status_codes import StatusInfo, lookup
-from pybreeze.utils.jwt_tools.jwt_decoder import DecodedJwt, decode_jwt
+from pybreeze.utils.jwt_tools.jwt_decoder import DecodedJwt, decode_jwt, find_tokens
 from pybreeze.utils.exception.exceptions import JwtDecodeException
 
 # Matches the response status line, e.g. "HTTP/1.1 200 OK"
 _STATUS_LINE_RE = re.compile(r"^HTTP/\d(?:\.\d)?\s+(\d{3})\b")
-# Matches a JWT-looking token (three base64url segments; the signature may be empty)
-_JWT_RE = re.compile(r"eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*")
 
 
 @dataclass
@@ -101,13 +99,9 @@ def _pretty_json(body: str) -> str | None:
 
 
 def _find_jwts(text: str) -> list[JwtFinding]:
-    """Find and decode every JWT-looking token in *text* (deduplicated)."""
+    """Find and decode every JWT-looking token in *text*."""
     findings: list[JwtFinding] = []
-    seen: set[str] = set()
-    for token in _JWT_RE.findall(text):
-        if token in seen:
-            continue
-        seen.add(token)
+    for token in find_tokens(text):
         try:
             findings.append(JwtFinding(token=token, decoded=decode_jwt(token)))
         except JwtDecodeException:
