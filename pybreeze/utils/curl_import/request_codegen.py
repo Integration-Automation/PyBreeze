@@ -13,6 +13,8 @@ from pybreeze.utils.curl_import.request_body import body_kind, form_parts
 
 # Keyword argument passing the request body to ``requests.request``.
 _DATA_KWARG = "data=data"
+# Import line every generated ``requests`` script starts with
+REQUESTS_IMPORT = "import requests"
 
 
 def _format_dict(name: str, mapping: dict[str, str]) -> str | None:
@@ -145,7 +147,7 @@ def to_requests_code(request: CurlRequest) -> str:
     :param request: the parsed curl request
     :return: Python source using the ``requests`` library
     """
-    lines = ["import requests", ""]
+    lines = [REQUESTS_IMPORT, ""]
     lines.extend(request_statements(request))
     lines.append("print(response.status_code)")
     lines.append("print(response.text)")
