@@ -71,6 +71,8 @@ def to_apitestka_python(request: CurlRequest) -> str:
         lines.append(f"    headers={_inline_json(request.headers)},")
     if request.params:
         lines.append(f"    params={_inline_json(request.params)},")
+    if request.cookies:
+        lines.append(f"    cookies={_inline_json(request.cookies)},")
     lines.extend(_apitestka_payload_lines(request))
     if request.username is not None:
         lines.append(
@@ -92,7 +94,8 @@ def to_loaddensity_python(request: CurlRequest) -> str:
     :return: Python source calling ``start_test``
     """
     method_key = request.method.lower()
-    task = f"{{{_inline_json(method_key)}: {{\"request_url\": {_inline_json(request.url)}}}}}"
+    # Drive by the full URL so query params (from the URL or -G) are not lost.
+    task = f"{{{_inline_json(method_key)}: {{\"request_url\": {_inline_json(request.full_url)}}}}}"
     lines = [
         "from je_load_density import start_test",
         "",
@@ -117,6 +120,8 @@ def _apitestka_action_params(request: CurlRequest) -> dict:
         params["headers"] = request.headers
     if request.params:
         params["params"] = request.params
+    if request.cookies:
+        params["cookies"] = request.cookies
     _apply_action_payload(request, params)
     if request.username is not None:
         params["auth"] = [request.username, request.password or ""]

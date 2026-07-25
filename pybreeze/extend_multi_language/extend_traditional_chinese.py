@@ -309,6 +309,7 @@ pybreeze_traditional_chinese_word_dict = {
     "curl_import_target_apitestka_python": "APITestka（Python）",
     "curl_import_target_apitestka_action": "APITestka（JSON action）",
     "curl_import_target_loaddensity_python": "LoadDensity（Python）",
+    "curl_import_open_url_button": "在 URL 解析／組建器開啟網址",
     # 共用輸出動作（複製 / 開成分頁 / 存檔）
     "output_actions_copy": "複製",
     "output_actions_open_editor": "開成編輯器分頁",
@@ -371,6 +372,20 @@ pybreeze_traditional_chinese_word_dict = {
     "query_json_output_label": "結果：",
     "query_json_error": "無法轉換：{error}",
     "query_json_empty_hint": "請在上方輸入查詢字串或 JSON 物件。",
+    # URL 解析／組建器 — 選單
+    "extend_tools_menu_url_builder_tab_action": "URL 解析／組建器分頁",
+    "extend_tools_menu_url_builder_tab_label": "URL 解析／組建器",
+    "extend_tools_menu_url_builder_dock_action": "URL 解析／組建器停駐窗格",
+    "extend_tools_menu_url_builder_dock_title": "URL 解析／組建器",
+    # URL 解析／組建器 — 介面
+    "url_builder_input_label": "一個 URL，或描述 URL 各部分的 JSON 物件：",
+    "url_builder_input_placeholder":
+        "https://user@host:8080/path?a=1#frag   或   {\"scheme\": \"https\", \"host\": \"host\"}",
+    "url_builder_to_json_button": "URL → JSON",
+    "url_builder_to_url_button": "JSON → URL",
+    "url_builder_output_label": "結果：",
+    "url_builder_error": "無法組建 URL：{error}",
+    "url_builder_empty_hint": "請在上方輸入 URL 或描述 URL 各部分的 JSON 物件。",
     # 正規表示式測試器 — 選單
     "extend_tools_menu_regex_tab_action": "正規表示式測試器分頁",
     "extend_tools_menu_regex_tab_label": "Regex",
@@ -431,11 +446,66 @@ pybreeze_traditional_chinese_word_dict = {
     "response_output_label": "分析結果：",
     "response_open_jwt_button": "在解碼器開啟 JWT",
     "response_open_status_button": "在參考開啟狀態碼",
+    "response_open_headers_button": "在分析器開啟標頭",
     "response_empty_hint": "請先在上方貼上回應，再按分析。",
     "response_status_label": "== 狀態 Status ==",
     "response_headers_label": "== 標頭 Headers ==",
     "response_jwt_label": "== 找到的 JWT ==",
     "response_body_label": "== 內容 Body ==",
+    # HTTP 標頭分析器 — 選單
+    "extend_tools_menu_header_analyzer_tab_action": "HTTP 標頭分析器分頁",
+    "extend_tools_menu_header_analyzer_tab_label": "標頭分析器",
+    "extend_tools_menu_header_analyzer_dock_action": "HTTP 標頭分析器停駐窗格",
+    "extend_tools_menu_header_analyzer_dock_title": "標頭分析器",
+    # HTTP 標頭分析器 — 介面
+    "header_analyzer_input_label": "貼上請求或回應的標頭：",
+    "header_analyzer_input_placeholder":
+        "HTTP/1.1 200 OK\nContent-Type: text/html\nSet-Cookie: sid=abc; Path=/",
+    "header_analyzer_analyze_button": "分析標頭",
+    "header_analyzer_output_label": "分析結果：",
+    "header_analyzer_headers_label": "== 標頭（{count}）==",
+    "header_analyzer_duplicates_label": "== 重複出現的名稱 ==",
+    "header_analyzer_findings_label": "== 分析發現 ==",
+    "header_analyzer_no_findings": "沒有需要注意的項目。",
+    "header_analyzer_no_headers": "這段文字中找不到標頭。",
+    "header_analyzer_empty_hint": "請先在上方貼上標頭，再按分析。",
+    "header_analyzer_level_warning": "警告",
+    "header_analyzer_level_info": "資訊",
+    # HTTP 標頭分析器 — 發現（{header} 為標頭名稱，{detail} 為其值）
+    "header_finding_duplicate_header":
+        "{header}：送出 {detail} 次，接收端會把這些值合併成一個。",
+    "header_finding_content_type_options_not_nosniff":
+        "{header}：'{detail}' 沒有作用，只有 'nosniff' 能阻止 MIME 探測。",
+    "header_finding_hsts_weak_max_age":
+        "{header}：max-age={detail} 太短，一般至少要 15552000（180 天）。",
+    "header_finding_csp_unsafe_directive":
+        "{header}：含有 '{detail}'，等於把此政策原本要擋下的行為又放行了。",
+    "header_finding_cors_wildcard_origin": "{header}：允許任何來源（*）。",
+    "header_finding_cors_wildcard_with_credentials":
+        "{header}：'*' 搭配 Access-Control-Allow-Credentials: true，瀏覽器會直接拒絕。",
+    "header_finding_cookie_not_secure":
+        "{header}：cookie '{detail}' 沒有 Secure 屬性，可能以純 HTTP 傳送。",
+    "header_finding_cookie_not_httponly":
+        "{header}：cookie '{detail}' 沒有 HttpOnly 屬性，指令碼可以讀取。",
+    "header_finding_cookie_no_samesite":
+        "{header}：cookie '{detail}' 沒有 SameSite 屬性，瀏覽器會預設為 Lax。",
+    "header_finding_content_type_no_charset":
+        "{header}：'{detail}' 沒有指定 charset，用戶端只能自行猜測編碼。",
+    "header_finding_server_banner": "{header}：'{detail}' 洩漏了所使用的軟體。",
+    "header_finding_deprecated_header":
+        "{header}：'{detail}' 已淘汰，現行瀏覽器不再處理。",
+    "header_finding_sensitive_header":
+        "{header}：內含憑證，分享這份輸出前請先遮蔽。",
+    "header_finding_missing_hsts":
+        "{header}：未設定，瀏覽器可能退回純 HTTP。",
+    "header_finding_missing_csp":
+        "{header}：未設定，沒有任何規則限制指令碼的載入來源。",
+    "header_finding_missing_content_type_options":
+        "{header}：未設定，瀏覽器可能對回應做 MIME 探測。",
+    "header_finding_missing_frame_options":
+        "{header}：未設定；此標頭（或 CSP frame-ancestors）決定誰能將頁面內嵌成框架。",
+    "header_finding_missing_referrer_policy":
+        "{header}：未設定，完整網址可能外洩給其他網站。",
     # Diagram Editor — 工具
     "diagram_editor_tool_select": "選取",
     "diagram_editor_tool_rect": "矩形",

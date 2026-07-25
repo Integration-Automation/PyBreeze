@@ -12,7 +12,7 @@ from __future__ import annotations
 import re
 import shlex
 from dataclasses import dataclass, field
-from urllib.parse import quote
+from urllib.parse import parse_qsl, quote, urlencode
 
 from pybreeze.utils.exception.exception_tags import (
     empty_curl_command_error,
@@ -28,6 +28,11 @@ _DEFAULT_METHOD = "GET"
 _METHOD_WITH_BODY = "POST"
 # Header name that carries a request body's media type
 _CONTENT_TYPE_HEADER = "content-type"
+# Header whose repeated values are joined with "; " instead of ", "
+_COOKIE_HEADER = "cookie"
+# How repeated header lines are combined into one value (RFC 9110 field order)
+_HEADER_JOINER = ", "
+_COOKIE_JOINER = "; "
 # Matches a backslash or caret line continuation before a newline
 _LINE_CONTINUATION_RE = re.compile(r"[\\^]\r?\n")
 
@@ -46,6 +51,9 @@ class CurlRequest:
     :param send_data_as_params: ``True`` when ``-G`` moves the body to the query
     :param form_fields: multipart form fragments from ``-F`` / ``--form``
     :param data_file_refs: filenames whose content forms the body (``-d @file``)
+    :param timeout: request timeout in seconds from ``--max-time`` / ``-m``, or
+        ``None`` when the command sets none
+    :param cookies: cookies parsed from ``-b`` / ``--cookie`` name=value pairs
     """
 
     method: str = _DEFAULT_METHOD
@@ -58,6 +66,8 @@ class CurlRequest:
     send_data_as_params: bool = False
     form_fields: list[str] = field(default_factory=list)
     data_file_refs: list[str] = field(default_factory=list)
+    timeout: str | None = None
+    cookies: dict[str, str] = field(default_factory=dict)
 
     @property
     def has_body(self) -> bool:
@@ -69,13 +79,23 @@ class CurlRequest:
         """Return the body fragments joined the way ``curl`` sends them."""
         return "&".join(self.data_parts)
 
+    @property
+    def full_url(self) -> str:
+        """The URL with any collected query params reattached, as curl sends it.
+
+        After parsing, a query string embedded in the URL is moved into
+        :attr:`params`; this rebuilds the original address for consumers (such as
+        the load-test template) that drive purely by URL.
+        """
+        if not self.params:
+            return self.url
+        joiner = "&" if "?" in self.url else "?"
+        return f"{self.url}{joiner}{urlencode(self.params)}"
+
     def header_value(self, name: str) -> str | None:
         """Return a header's value by case-insensitive *name*, or ``None``."""
-        lowered = name.lower()
-        for key, value in self.headers.items():
-            if key.lower() == lowered:
-                return value
-        return None
+        stored = _stored_header_name(self, name)
+        return None if stored is None else self.headers[stored]
 
 
 # Flags that take a value and how each value is applied to the request.
@@ -95,6 +115,7 @@ _VALUE_FLAGS: dict[str, str] = {
     "-A": "user_agent", "--user-agent": "user_agent",
     "-e": "referer", "--referer": "referer",
     "--url": "url",
+    "-m": "timeout", "--max-time": "timeout",
 }
 
 # Value-less flags that still change behaviour.
@@ -103,6 +124,7 @@ _GET_FLAGS = frozenset({"-G", "--get"})
 # Value-less flags to accept and skip (they do not affect the generated request).
 _VALUELESS_FLAGS = frozenset({
     "--compressed", "-L", "--location", "-k", "--insecure", "-s", "--silent",
+    "-S", "--show-error", "-q", "--disable",
     "-v", "--verbose", "-i", "--include", "-I", "--head", "-f", "--fail",
     "--fail-with-body", "-g", "--globoff", "-O", "--remote-name",
     "-J", "--remote-header-name", "-#", "--progress-bar", "-N", "--no-buffer",
@@ -117,14 +139,68 @@ _VALUELESS_FLAGS = frozenset({
 # Flags that take a value we do not use; the value is consumed so it cannot be
 # mistaken for the URL (this is what makes ``--max-time 30 https://x`` parse right).
 _IGNORED_VALUE_FLAGS = frozenset({
-    "-o", "--output", "--max-time", "-m", "--connect-timeout", "--retry",
+    "-o", "--output", "--connect-timeout", "--retry",
     "--retry-delay", "--retry-max-time", "-w", "--write-out", "-x", "--proxy",
     "--proxy-user", "-U", "--cacert", "--capath", "-E", "--cert", "--key",
     "--cert-type", "--key-type", "--pass", "-T", "--upload-file", "--limit-rate",
     "-r", "--range", "-c", "--cookie-jar", "--resolve", "--interface",
     "--dns-servers", "--local-port", "--ciphers", "-y", "--speed-time",
     "-Y", "--speed-limit", "--keepalive-time", "--oauth2-bearer", "--aws-sigv4",
+    "-C", "--continue-at", "-z", "--time-cond", "-D", "--dump-header",
+    "-K", "--config",
 })
+
+
+def _short_flags(*tables: object) -> frozenset[str]:
+    """Collect the single-dash, single-letter flags found in *tables*."""
+    return frozenset(
+        flag for table in tables for flag in table
+        if len(flag) == 2 and flag[0] == "-" and flag[1] != "-"
+    )
+
+
+# Short flags derived from the tables above so a bundled cluster like
+# ``-sXPOST`` can split into ``-s`` and ``-X`` + ``POST`` without a second list.
+_SHORT_VALUE_FLAGS = _short_flags(_VALUE_FLAGS, _IGNORED_VALUE_FLAGS)
+_SHORT_VALUELESS_FLAGS = _short_flags(_VALUELESS_FLAGS, _GET_FLAGS)
+
+
+def _is_short_flag_cluster(token: str) -> bool:
+    """Whether *token* is a single-dash flag bundling more than one character."""
+    return len(token) > 2 and token[0] == "-" and token[1] != "-"
+
+
+def _expand_short_flag_cluster(token: str) -> list[str] | None:
+    """Split a bundled short-flag token into canonical tokens.
+
+    ``-sXPOST`` becomes ``["-s", "-X", "POST"]`` and ``-fsSL`` becomes
+    ``["-f", "-s", "-S", "-L"]``. A value-taking flag ends the cluster: anything
+    glued after it is that flag's value. Returns ``None`` when an unknown short
+    flag is met, so the caller keeps the original token untouched.
+    """
+    expanded: list[str] = []
+    body = token[1:]
+    for position, letter in enumerate(body):
+        flag = f"-{letter}"
+        if flag in _SHORT_VALUE_FLAGS:
+            expanded.append(flag)
+            attached = body[position + 1:]
+            if attached:  # value glued to the flag, e.g. the POST in -XPOST
+                expanded.append(attached)
+            return expanded
+        if flag not in _SHORT_VALUELESS_FLAGS:
+            return None  # an unknown short flag: do not rewrite the cluster
+        expanded.append(flag)
+    return expanded
+
+
+def _expand_short_flags(tokens: list[str]) -> list[str]:
+    """Expand bundled/attached short-flag tokens; pass everything else through."""
+    expanded: list[str] = []
+    for token in tokens:
+        cluster = _expand_short_flag_cluster(token) if _is_short_flag_cluster(token) else None
+        expanded.extend(cluster if cluster is not None else [token])
+    return expanded
 
 
 def _normalise_command(command: str) -> str:
@@ -141,11 +217,53 @@ def _tokenize(command: str) -> list[str]:
         raise CurlParseException(malformed_curl_command_error) from error
 
 
+def _stored_header_name(request: CurlRequest, name: str) -> str | None:
+    """Return the already-stored spelling of *name*, matched case-insensitively."""
+    lowered = name.lower()
+    for stored in request.headers:
+        if stored.lower() == lowered:
+            return stored
+    return None
+
+
+def _set_default_header(request: CurlRequest, name: str, value: str) -> None:
+    """Set a header only when no header of that name is present.
+
+    Case-insensitive, so an explicit ``-H 'content-type: ...'`` still wins over a
+    default implied by another flag instead of producing a second header line.
+    """
+    if _stored_header_name(request, name) is None:
+        request.headers[name] = value
+
+
+def _join_header_values(name: str, previous: str, value: str) -> str:
+    """Combine a repeated header's values the way HTTP combines field lines."""
+    if not previous:
+        return value
+    if not value:
+        return previous
+    joiner = _COOKIE_JOINER if name.lower() == _COOKIE_HEADER else _HEADER_JOINER
+    return joiner.join((previous, value))
+
+
 def _apply_header(request: CurlRequest, raw_header: str) -> None:
-    """Record a ``Name: Value`` header, ignoring malformed fragments."""
+    """Record a ``Name: Value`` header, combining repeats of the same name.
+
+    curl sends every ``-H`` it is given, so a repeated name is not a mistake: the
+    receiver combines those field lines into one comma-separated value (cookies
+    use ``; ``), which is what the generated code should carry. Names are matched
+    case-insensitively, as HTTP header names are. Fragments with no colon or an
+    empty name are ignored.
+    """
     name, separator, value = raw_header.partition(":")
-    if separator:
-        request.headers[name.strip()] = value.strip()
+    name, value = name.strip(), value.strip()
+    if not separator or not name:
+        return
+    stored = _stored_header_name(request, name)
+    if stored is None:
+        request.headers[name] = value
+        return
+    request.headers[stored] = _join_header_values(stored, request.headers[stored], value)
 
 
 def _urlencode_data_part(value: str) -> str:
@@ -166,6 +284,38 @@ def _urlencode_data_part(value: str) -> str:
     return quote(value, safe="")
 
 
+def _apply_timeout(request: CurlRequest, value: str) -> None:
+    """Record a numeric timeout (seconds); ignore a non-numeric value."""
+    try:
+        float(value)
+    except ValueError:
+        return
+    request.timeout = value
+
+
+def _apply_data_or_file(request: CurlRequest, value: str) -> None:
+    """Record a ``-d`` value as an ``@file`` reference or an inline body part."""
+    if value.startswith("@"):
+        request.data_file_refs.append(value[1:])
+    else:
+        request.data_parts.append(value)
+
+
+def _apply_cookie(request: CurlRequest, value: str) -> None:
+    """Parse a ``-b`` cookie string into ``name=value`` pairs.
+
+    ``curl -b 'a=1; b=2'`` yields inline cookies; a value with no ``=`` is a
+    cookie *file* curl would read, which we keep as a ``Cookie`` header instead.
+    """
+    if "=" not in value:
+        _set_default_header(request, "Cookie", value)
+        return
+    for segment in value.split(";"):
+        name, separator, cookie_value = segment.strip().partition("=")
+        if separator and name:
+            request.cookies[name] = cookie_value
+
+
 def _apply_value_flag(request: CurlRequest, kind: str, value: str) -> None:
     """Apply one value-taking flag to *request* according to its *kind*."""
     if kind == "method":
@@ -177,25 +327,24 @@ def _apply_value_flag(request: CurlRequest, kind: str, value: str) -> None:
     elif kind == "data_urlencode":
         request.data_parts.append(_urlencode_data_part(value))
     elif kind == "data_file":
-        if value.startswith("@"):
-            request.data_file_refs.append(value[1:])
-        else:
-            request.data_parts.append(value)
+        _apply_data_or_file(request, value)
     elif kind == "json_flag":
         # curl --json is shorthand for --data + JSON Content-Type and Accept.
         request.data_parts.append(value)
-        request.headers.setdefault("Content-Type", "application/json")
-        request.headers.setdefault("Accept", "application/json")
+        _set_default_header(request, "Content-Type", "application/json")
+        _set_default_header(request, "Accept", "application/json")
     elif kind == "form":
         request.form_fields.append(value)
     elif kind == "cookie":
-        request.headers.setdefault("Cookie", value)
+        _apply_cookie(request, value)
     elif kind == "user_agent":
-        request.headers.setdefault("User-Agent", value)
+        _set_default_header(request, "User-Agent", value)
     elif kind == "referer":
-        request.headers.setdefault("Referer", value)
+        _set_default_header(request, "Referer", value)
     elif kind == "url":
         request.url = value
+    elif kind == "timeout":
+        _apply_timeout(request, value)
     elif kind == "user":
         request.username, _sep, request.password = value.partition(":")
 
@@ -235,6 +384,22 @@ def _finalise_method(request: CurlRequest) -> None:
         request.data_parts = []
 
 
+def _split_url_query(request: CurlRequest) -> None:
+    """Move a query string embedded in the URL into ``params``.
+
+    Browser "copy as cURL" keeps the query in the URL; splitting it out lets it
+    show up alongside ``-G`` / ``-d`` query pairs, while
+    :attr:`CurlRequest.full_url` can still rebuild the original address. Values
+    are URL-decoded, and existing params are not overwritten.
+    """
+    base, separator, query = request.url.partition("?")
+    if not separator:
+        return
+    request.url = base
+    for key, value in parse_qsl(query, keep_blank_values=True):
+        request.params.setdefault(key, value)
+
+
 def parse_query_pairs(parts: list[str]) -> dict[str, str]:
     """Parse ``key=value`` fragments into a dict, ignoring pieces without ``=``.
 
@@ -268,6 +433,7 @@ def parse_curl(command: str) -> CurlRequest:
         raise CurlParseException(not_a_curl_command_error)
 
     request = CurlRequest()
-    _consume_tokens(tokens[1:], request)
+    _consume_tokens(_expand_short_flags(tokens[1:]), request)
     _finalise_method(request)
+    _split_url_query(request)
     return request

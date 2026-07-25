@@ -15,6 +15,11 @@ from pybreeze.pybreeze_ui.diagram_editor.diagram_net_utils import (
     _parse_content_length,
 )
 from pybreeze.utils.exception.exceptions import ITEJsonException
+from pybreeze.utils.header_tools.header_analyzer import (
+    LEVEL_INFO,
+    LEVEL_WARNING,
+    analyze_headers,
+)
 from pybreeze.utils.json_format.json_process import reformat_json
 from pybreeze.utils.network.http_client import truncate_for_display
 from pybreeze.utils.network.url_validation import _embedded_ipv4, _is_blocked_ip
@@ -84,6 +89,27 @@ class TestHelpersNeverCrash:
     @given(st.text())
     def test_is_text_content_type(self, raw):
         assert isinstance(_is_text_content_type(raw), bool)
+
+
+class TestHeaderAnalyzerNeverCrashes:
+    @_FUZZ
+    @given(st.text())
+    def test_arbitrary_text(self, text):
+        analysis = analyze_headers(text)
+        assert isinstance(analysis.duplicates, dict)
+        # Every finding must be renderable by the UI: a code and a known level.
+        for finding in analysis.findings:
+            assert finding.code
+            assert finding.level in {LEVEL_WARNING, LEVEL_INFO}
+
+    @_FUZZ
+    @given(st.text(alphabet="ABab-:;=,*/ \r\n\"'", max_size=120))
+    def test_header_like_text(self, text):
+        analysis = analyze_headers(text)
+        # A name counted as duplicated must really appear that often.
+        for name, count in analysis.duplicates.items():
+            assert count > 1
+            assert sum(1 for f in analysis.fields if f.name.lower() == name) == count
 
 
 class TestSsrfLogicNeverCrashes:

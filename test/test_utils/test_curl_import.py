@@ -1,8 +1,6 @@
 """Tests for the cURL command parser and requests-code generator."""
 from __future__ import annotations
 
-import json
-
 import pytest
 
 from pybreeze.utils.curl_import.curl_parser import (
@@ -70,7 +68,48 @@ class TestParseCurlHeaders:
 
     def test_cookie_flag(self):
         request = parse_curl("curl -b 'session=1' https://x")
-        assert request.headers["Cookie"] == "session=1"
+        assert request.cookies == {"session": "1"}
+
+
+class TestParseCurlRepeatedHeaders:
+    def test_repeated_header_values_are_combined(self):
+        request = parse_curl(
+            "curl -H 'Accept: text/html' -H 'Accept: application/json' https://x")
+        assert request.headers == {"Accept": "text/html, application/json"}
+
+    def test_repeat_with_different_casing_keeps_one_entry(self):
+        request = parse_curl("curl -H 'Accept: text/html' -H 'accept: application/xml' https://x")
+        # The first spelling is kept; a second entry would send the header twice.
+        assert request.headers == {"Accept": "text/html, application/xml"}
+
+    def test_repeated_cookie_header_uses_cookie_separator(self):
+        request = parse_curl("curl -H 'Cookie: a=1' -H 'Cookie: b=2' https://x")
+        assert request.headers == {"Cookie": "a=1; b=2"}
+
+    def test_repeat_with_empty_value_keeps_previous(self):
+        request = parse_curl("curl -H 'Accept: text/html' -H 'Accept:' https://x")
+        assert request.headers == {"Accept": "text/html"}
+
+    def test_empty_first_value_is_replaced_by_the_repeat(self):
+        request = parse_curl("curl -H 'Accept:' -H 'Accept: text/html' https://x")
+        assert request.headers == {"Accept": "text/html"}
+
+    def test_header_with_empty_name_is_ignored(self):
+        request = parse_curl("curl -H ': value' https://x")
+        assert request.headers == {}
+
+    def test_explicit_header_wins_over_user_agent_flag_case_insensitively(self):
+        request = parse_curl("curl -H 'user-agent: mine' -A 'flag-agent' https://x")
+        assert request.headers == {"user-agent": "mine"}
+
+    def test_explicit_lowercase_content_type_wins_over_json_flag(self):
+        request = parse_curl("curl -H 'content-type: text/plain' --json '{}' https://x")
+        assert request.headers["content-type"] == "text/plain"
+        assert "Content-Type" not in request.headers
+
+    def test_cookie_file_does_not_add_a_second_cookie_header(self):
+        request = parse_curl("curl -H 'cookie: a=1' -b cookies.txt https://x")
+        assert request.headers == {"cookie": "a=1"}
 
 
 class TestParseCurlBodyAndAuth:
@@ -168,6 +207,164 @@ class TestParseCurlFlagArity:
         assert request.method == "POST"
         assert request.headers == {"X": "1"}
         assert request.body == "a=1"
+
+
+class TestParseCurlShortFlagClusters:
+    def test_attached_method_value(self):
+        # Regression: '-XPOST' used to leave the method as GET.
+        request = parse_curl("curl -XPOST https://x")
+        assert request.method == "POST"
+        assert request.url == "https://x"
+
+    def test_bundled_valueless_then_value_flag(self):
+        # Regression: '-sX POST' used to make the URL "POST".
+        request = parse_curl("curl -sX POST https://x/api")
+        assert request.method == "POST"
+        assert request.url == "https://x/api"
+
+    def test_all_valueless_cluster(self):
+        request = parse_curl("curl -fsSL https://x")
+        assert request.url == "https://x"
+        assert request.method == "GET"
+
+    def test_attached_data_value(self):
+        request = parse_curl("curl -d'a=1' https://x")
+        assert request.body == "a=1"
+        assert request.method == "POST"
+
+    def test_attached_header_value(self):
+        request = parse_curl("curl -H'Accept: application/json' https://x")
+        assert request.headers["Accept"] == "application/json"
+
+    def test_attached_auth_value(self):
+        request = parse_curl("curl -uuser:pass https://x")
+        assert request.username == "user"
+        assert request.password == "pass"
+
+    def test_cluster_with_attached_ignored_value(self):
+        # '-oout.txt' must consume the filename, not leak it to the URL.
+        request = parse_curl("curl -oout.txt https://x")
+        assert request.url == "https://x"
+
+    def test_cluster_ending_in_ignored_value_flag(self):
+        request = parse_curl("curl -sSL -o /dev/null https://x/api")
+        assert request.url == "https://x/api"
+
+    def test_unknown_short_cluster_left_untouched(self):
+        # An unrecognised short flag must not corrupt the URL.
+        request = parse_curl("curl -Wx https://x")
+        assert request.url == "https://x"
+
+    def test_cluster_feeds_code_generation(self):
+        code = to_requests_code(parse_curl("curl -XPOST -d'a=1' https://x/api"))
+        assert '"POST"' in code
+        assert "data=data" in code
+
+
+class TestParseCurlTimeout:
+    def test_max_time_captured(self):
+        request = parse_curl("curl --max-time 30 https://x")
+        assert request.timeout == "30"
+        assert request.url == "https://x"
+
+    def test_short_max_time_flag(self):
+        request = parse_curl("curl -m 5 https://x")
+        assert request.timeout == "5"
+
+    def test_attached_short_max_time(self):
+        request = parse_curl("curl -m2.5 https://x")
+        assert request.timeout == "2.5"
+
+    def test_non_numeric_timeout_ignored(self):
+        request = parse_curl("curl --max-time soon https://x")
+        assert request.timeout is None
+        assert request.url == "https://x"  # the value is still consumed
+
+    def test_no_timeout_by_default(self):
+        assert parse_curl("curl https://x").timeout is None
+
+    def test_timeout_emitted_in_code(self):
+        code = to_requests_code(parse_curl("curl --max-time 30 https://x"))
+        assert "timeout=30" in code
+        compile(code, "<generated>", "exec")
+
+    def test_no_timeout_kwarg_when_absent(self):
+        assert "timeout=" not in to_requests_code(parse_curl("curl https://x"))
+
+
+class TestParseCurlUrlQuery:
+    def test_query_moved_to_params(self):
+        request = parse_curl("curl 'https://x/api?a=1&b=2'")
+        assert request.url == "https://x/api"
+        assert request.params == {"a": "1", "b": "2"}
+
+    def test_query_values_are_url_decoded(self):
+        request = parse_curl("curl 'https://x?q=hello%20world'")
+        assert request.params["q"] == "hello world"
+
+    def test_blank_query_value_kept(self):
+        request = parse_curl("curl 'https://x?flag='")
+        assert request.params == {"flag": ""}
+
+    def test_no_query_leaves_url_untouched(self):
+        request = parse_curl("curl https://x/api")
+        assert request.url == "https://x/api"
+        assert request.params == {}
+
+    def test_full_url_reconstructs_query(self):
+        request = parse_curl("curl 'https://x/api?a=1&b=2'")
+        assert request.full_url == "https://x/api?a=1&b=2"
+
+    def test_full_url_without_params_is_url(self):
+        assert parse_curl("curl https://x/api").full_url == "https://x/api"
+
+    def test_full_url_includes_get_flag_params(self):
+        # -G params never sat in the URL, but full_url should surface them.
+        request = parse_curl("curl -G https://x/api -d 'a=1'")
+        assert request.full_url == "https://x/api?a=1"
+
+    def test_explicit_params_not_overwritten_by_url_query(self):
+        request = parse_curl("curl -G 'https://x?a=fromurl' -d 'a=fromdata'")
+        assert request.params["a"] == "fromdata"
+
+    def test_url_query_feeds_requests_params(self):
+        code = to_requests_code(parse_curl("curl 'https://x/api?a=1'"))
+        assert 'url = "https://x/api"' in code
+        assert "params=params" in code
+        compile(code, "<generated>", "exec")
+
+
+class TestParseCurlCookies:
+    def test_single_cookie(self):
+        request = parse_curl("curl -b 'session=1' https://x")
+        assert request.cookies == {"session": "1"}
+        assert "Cookie" not in request.headers
+
+    def test_multiple_cookies(self):
+        request = parse_curl("curl -b 'sessionid=abc; csrftoken=xyz' https://x")
+        assert request.cookies == {"sessionid": "abc", "csrftoken": "xyz"}
+
+    def test_long_cookie_flag(self):
+        request = parse_curl("curl --cookie 'a=1' https://x")
+        assert request.cookies == {"a": "1"}
+
+    def test_cookie_file_falls_back_to_header(self):
+        # A bare token with no '=' is a cookie file curl would read, not pairs.
+        request = parse_curl("curl -b cookies.txt https://x")
+        assert request.cookies == {}
+        assert request.headers["Cookie"] == "cookies.txt"
+
+    def test_no_cookies_by_default(self):
+        assert parse_curl("curl https://x").cookies == {}
+
+    def test_cookies_emitted_in_requests_code(self):
+        code = to_requests_code(parse_curl("curl -b 'a=1; b=2' https://x"))
+        assert "cookies = {" in code
+        assert "cookies=cookies" in code
+        compile(code, "<generated>", "exec")
+
+    def test_no_cookies_kwarg_when_absent(self):
+        assert "cookies=cookies" not in to_requests_code(parse_curl("curl https://x"))
 
 
 class TestParseCurlJsonFlag:

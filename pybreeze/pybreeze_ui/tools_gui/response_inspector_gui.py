@@ -12,11 +12,12 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.tools_gui.header_analyzer_gui import HeaderAnalyzerGUI
 from pybreeze.pybreeze_ui.tools_gui.http_status_gui import HttpStatusGUI
 from pybreeze.pybreeze_ui.tools_gui.jwt_decoder_gui import JwtDecoderGUI
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
+from pybreeze.pybreeze_ui.tools_gui.tool_tabs import open_tool_tab
 from pybreeze.utils.jwt_tools.jwt_decoder import humanized_timestamp_claims
-from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.response_inspector.response_analyzer import (
     ResponseAnalysis, analyze_response
 )
@@ -101,6 +102,9 @@ class ResponseInspectorGUI(QWidget):
         self.open_status_button = QPushButton(word.get("response_open_status_button"))
         self.open_status_button.clicked.connect(self.open_status_in_reference)
         self.open_status_button.setEnabled(False)
+        self.open_headers_button = QPushButton(word.get("response_open_headers_button"))
+        self.open_headers_button.clicked.connect(self.open_headers_in_analyzer)
+        self.open_headers_button.setEnabled(False)
 
         # Shared copy / open-in-editor / save actions, valid once analysed.
         self.actions = OutputActions(
@@ -110,6 +114,7 @@ class ResponseInspectorGUI(QWidget):
 
         cross_tool = QHBoxLayout()
         cross_tool.addWidget(self.open_status_button)
+        cross_tool.addWidget(self.open_headers_button)
         cross_tool.addWidget(self.open_jwt_button)
 
         layout = QVBoxLayout()
@@ -130,29 +135,22 @@ class ResponseInspectorGUI(QWidget):
             self._analysis = None
             self.open_jwt_button.setEnabled(False)
             self.open_status_button.setEnabled(False)
+            self.open_headers_button.setEnabled(False)
             self.output_edit.setPlainText(word.get("response_empty_hint"))
             return
         self._analysis = analyze_response(text)
         self.output_edit.setPlainText(build_report_text(self._analysis))
         self.open_jwt_button.setEnabled(bool(self._analysis.jwt_findings))
         self.open_status_button.setEnabled(self._analysis.status is not None)
-
-    def _open_tool_tab(self, widget: QWidget, tab_label_key: str) -> QWidget | None:
-        """Add *widget* as a new tab in the main window, if there is one."""
-        tab_widget = getattr(self._main_window, "tab_widget", None)
-        if tab_widget is None:
-            pybreeze_logger.info("response_inspector_gui.py no tab_widget to open tool in")
-            return None
-        tab_widget.addTab(widget, language_wrapper.language_word_dict.get(tab_label_key))
-        tab_widget.setCurrentWidget(widget)
-        return widget
+        self.open_headers_button.setEnabled(bool(self._analysis.headers))
 
     def open_jwt_in_decoder(self) -> QWidget | None:
         """Open the first found JWT in the JWT decoder tool, pre-filled."""
         if self._analysis is None or not self._analysis.jwt_findings:
             return None
         token = self._analysis.jwt_findings[0].token
-        return self._open_tool_tab(
+        return open_tool_tab(
+            self._main_window,
             JwtDecoderGUI(initial_token=token, main_window=self._main_window),
             "extend_tools_menu_jwt_decoder_tab_label")
 
@@ -160,8 +158,24 @@ class ResponseInspectorGUI(QWidget):
         """Open the detected status code in the HTTP status reference, pre-filled."""
         if self._analysis is None or self._analysis.status is None:
             return None
-        return self._open_tool_tab(
+        return open_tool_tab(
+            self._main_window,
             HttpStatusGUI(
                 initial_search=str(self._analysis.status.code),
                 main_window=self._main_window),
             "extend_tools_menu_http_status_tab_label")
+
+    def open_headers_in_analyzer(self) -> QWidget | None:
+        """Open the response's headers in the header analyzer, pre-filled.
+
+        The pasted text is handed over as written, so repeated headers (several
+        ``Set-Cookie`` lines, say) survive the hand-off instead of being merged.
+        """
+        if self._analysis is None or not self._analysis.headers:
+            return None
+        return open_tool_tab(
+            self._main_window,
+            HeaderAnalyzerGUI(
+                main_window=self._main_window,
+                initial_headers=self.input_edit.toPlainText()),
+            "extend_tools_menu_header_analyzer_tab_label")

@@ -14,14 +14,13 @@ import json
 import re
 from dataclasses import dataclass, field
 
+from pybreeze.utils.header_tools.header_analyzer import HEADER_LINE_RE
 from pybreeze.utils.http_reference.status_codes import StatusInfo, lookup
 from pybreeze.utils.jwt_tools.jwt_decoder import DecodedJwt, decode_jwt
 from pybreeze.utils.exception.exceptions import JwtDecodeException
 
 # Matches the response status line, e.g. "HTTP/1.1 200 OK"
 _STATUS_LINE_RE = re.compile(r"^HTTP/\d(?:\.\d)?\s+(\d{3})\b")
-# Matches a header line, e.g. "Content-Type: application/json"
-_HEADER_RE = re.compile(r"^([A-Za-z0-9!#$%&'*+.^_`|~-]+):[ \t]?(.*)$")
 # Matches a JWT-looking token (three base64url segments; the signature may be empty)
 _JWT_RE = re.compile(r"eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*")
 
@@ -82,7 +81,7 @@ def _parse_head_and_body(text: str) -> tuple[int | None, dict[str, str], str]:
         if line.strip() == "":
             index += 1
             break
-        match = _HEADER_RE.match(line)
+        match = HEADER_LINE_RE.match(line)
         if match is None:
             break
         headers[match.group(1)] = match.group(2).strip()

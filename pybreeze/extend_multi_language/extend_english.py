@@ -331,6 +331,7 @@ pybreeze_english_word_dict = {
     "curl_import_target_apitestka_python": "APITestka (Python)",
     "curl_import_target_apitestka_action": "APITestka (JSON action)",
     "curl_import_target_loaddensity_python": "LoadDensity (Python)",
+    "curl_import_open_url_button": "Open URL in parser / builder",
     # Shared output actions (copy / open in editor / save to file)
     "output_actions_copy": "Copy",
     "output_actions_open_editor": "Open in editor tab",
@@ -393,6 +394,20 @@ pybreeze_english_word_dict = {
     "query_json_output_label": "Result:",
     "query_json_error": "Could not convert: {error}",
     "query_json_empty_hint": "Enter a query string or a JSON object above.",
+    # URL Parser / Builder — Menu
+    "extend_tools_menu_url_builder_tab_action": "URL Parser / Builder Tab",
+    "extend_tools_menu_url_builder_tab_label": "URL Parser / Builder",
+    "extend_tools_menu_url_builder_dock_action": "URL Parser / Builder Dock",
+    "extend_tools_menu_url_builder_dock_title": "URL Parser / Builder",
+    # URL Parser / Builder — Widget
+    "url_builder_input_label": "A URL, or a JSON object of URL parts:",
+    "url_builder_input_placeholder":
+        "https://user@host:8080/path?a=1#frag   or   {\"scheme\": \"https\", \"host\": \"host\"}",
+    "url_builder_to_json_button": "URL → JSON",
+    "url_builder_to_url_button": "JSON → URL",
+    "url_builder_output_label": "Result:",
+    "url_builder_error": "Could not build URL: {error}",
+    "url_builder_empty_hint": "Enter a URL or a JSON object of URL parts above.",
     # Regex Tester — Menu
     "extend_tools_menu_regex_tab_action": "Regex Tester Tab",
     "extend_tools_menu_regex_tab_label": "Regex",
@@ -453,11 +468,66 @@ pybreeze_english_word_dict = {
     "response_output_label": "Analysis:",
     "response_open_jwt_button": "Open JWT in decoder",
     "response_open_status_button": "Open status in reference",
+    "response_open_headers_button": "Open headers in analyzer",
     "response_empty_hint": "Paste a response above, then click analyze.",
     "response_status_label": "== Status ==",
     "response_headers_label": "== Headers ==",
     "response_jwt_label": "== JWT(s) found ==",
     "response_body_label": "== Body ==",
+    # HTTP Header Analyzer — Menu
+    "extend_tools_menu_header_analyzer_tab_action": "HTTP Header Analyzer Tab",
+    "extend_tools_menu_header_analyzer_tab_label": "Header Analyzer",
+    "extend_tools_menu_header_analyzer_dock_action": "HTTP Header Analyzer Dock",
+    "extend_tools_menu_header_analyzer_dock_title": "Header Analyzer",
+    # HTTP Header Analyzer — Widget
+    "header_analyzer_input_label": "Paste request or response headers:",
+    "header_analyzer_input_placeholder":
+        "HTTP/1.1 200 OK\nContent-Type: text/html\nSet-Cookie: sid=abc; Path=/",
+    "header_analyzer_analyze_button": "Analyze headers",
+    "header_analyzer_output_label": "Analysis:",
+    "header_analyzer_headers_label": "== Headers ({count}) ==",
+    "header_analyzer_duplicates_label": "== Repeated names ==",
+    "header_analyzer_findings_label": "== Findings ==",
+    "header_analyzer_no_findings": "Nothing worth reporting.",
+    "header_analyzer_no_headers": "No header lines found in that text.",
+    "header_analyzer_empty_hint": "Paste a header block above, then click analyze.",
+    "header_analyzer_level_warning": "WARNING",
+    "header_analyzer_level_info": "INFO",
+    # HTTP Header Analyzer — Findings ({header} is the header, {detail} its value)
+    "header_finding_duplicate_header":
+        "{header}: sent {detail} times; the receiver joins the values into one.",
+    "header_finding_content_type_options_not_nosniff":
+        "{header}: '{detail}' has no effect, only 'nosniff' stops MIME sniffing.",
+    "header_finding_hsts_weak_max_age":
+        "{header}: max-age={detail} is short; 15552000 (180 days) is the usual minimum.",
+    "header_finding_csp_unsafe_directive":
+        "{header}: contains '{detail}', which re-allows what the policy should block.",
+    "header_finding_cors_wildcard_origin": "{header}: every origin is allowed (*).",
+    "header_finding_cors_wildcard_with_credentials":
+        "{header}: '*' with Access-Control-Allow-Credentials: true is rejected by browsers.",
+    "header_finding_cookie_not_secure":
+        "{header}: cookie '{detail}' has no Secure attribute, so it can travel over plain HTTP.",
+    "header_finding_cookie_not_httponly":
+        "{header}: cookie '{detail}' has no HttpOnly attribute, so scripts can read it.",
+    "header_finding_cookie_no_samesite":
+        "{header}: cookie '{detail}' has no SameSite attribute; browsers default it to Lax.",
+    "header_finding_content_type_no_charset":
+        "{header}: '{detail}' names no charset, so the client has to guess the encoding.",
+    "header_finding_server_banner": "{header}: '{detail}' reveals the software in use.",
+    "header_finding_deprecated_header":
+        "{header}: '{detail}' is deprecated and ignored by current browsers.",
+    "header_finding_sensitive_header":
+        "{header}: carries a credential; mask it before sharing this output.",
+    "header_finding_missing_hsts":
+        "{header}: not set, so a browser may fall back to plain HTTP.",
+    "header_finding_missing_csp":
+        "{header}: not set, so nothing limits where scripts may be loaded from.",
+    "header_finding_missing_content_type_options":
+        "{header}: not set, so a browser may MIME-sniff the response.",
+    "header_finding_missing_frame_options":
+        "{header}: not set; it (or CSP frame-ancestors) controls who may frame the page.",
+    "header_finding_missing_referrer_policy":
+        "{header}: not set, so full URLs may leak to other sites.",
     # Diagram Editor — Tools
     "diagram_editor_tool_select": "Select",
     "diagram_editor_tool_rect": "Rect",

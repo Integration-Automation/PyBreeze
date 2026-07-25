@@ -161,3 +161,43 @@ class TestResponseInspectorActions:
         gui, window = widget_with_window
         assert gui.open_status_in_reference() is None
         assert window.tab_widget.added == []
+
+
+class TestResponseInspectorHeaderHandOff:
+    def test_headers_button_disabled_without_headers(self, widget_with_window):
+        gui, _window = widget_with_window
+        gui.input_edit.setPlainText('{"a": 1}')
+        gui.analyze()
+        assert not gui.open_headers_button.isEnabled()
+
+    def test_headers_button_enabled_after_headers(self, widget_with_window):
+        gui, _window = widget_with_window
+        gui.input_edit.setPlainText("HTTP/1.1 200 OK\nServer: nginx\n\n{}")
+        gui.analyze()
+        assert gui.open_headers_button.isEnabled()
+
+    def test_open_headers_opens_prefilled_analyzer(self, widget_with_window):
+        from pybreeze.pybreeze_ui.tools_gui.header_analyzer_gui import HeaderAnalyzerGUI
+        gui, window = widget_with_window
+        gui.input_edit.setPlainText("HTTP/1.1 200 OK\nServer: nginx/1.25.3\n\n{}")
+        gui.analyze()
+        gui.open_headers_in_analyzer()
+        opened = window.tab_widget.added[0][0]
+        assert isinstance(opened, HeaderAnalyzerGUI)
+        assert "nginx/1.25.3" in opened.output_edit.toPlainText()
+
+    def test_repeated_headers_survive_the_hand_off(self, widget_with_window):
+        # The inspector keeps headers in a dict; handing the raw text over is what
+        # lets the analyzer still see both Set-Cookie lines.
+        gui, window = widget_with_window
+        gui.input_edit.setPlainText(
+            "HTTP/1.1 200 OK\nSet-Cookie: a=1\nSet-Cookie: b=2\n\n{}")
+        gui.analyze()
+        gui.open_headers_in_analyzer()
+        opened = window.tab_widget.added[0][0]
+        assert "set-cookie × 2" in opened.output_edit.toPlainText()
+
+    def test_open_headers_before_analyze_is_noop(self, widget_with_window):
+        gui, window = widget_with_window
+        assert gui.open_headers_in_analyzer() is None
+        assert window.tab_widget.added == []

@@ -20,11 +20,13 @@ from pybreeze.pybreeze_ui.tools_gui.diff_gui import DiffGUI
 from pybreeze.pybreeze_ui.tools_gui.json_format_gui import JsonFormatGUI
 from pybreeze.pybreeze_ui.tools_gui.jwt_decoder_gui import JwtDecoderGUI
 from pybreeze.pybreeze_ui.tools_gui.hash_gui import HashGUI
+from pybreeze.pybreeze_ui.tools_gui.header_analyzer_gui import HeaderAnalyzerGUI
 from pybreeze.pybreeze_ui.tools_gui.http_status_gui import HttpStatusGUI
 from pybreeze.pybreeze_ui.tools_gui.query_json_gui import QueryJsonGUI
 from pybreeze.pybreeze_ui.tools_gui.regex_gui import RegexGUI
 from pybreeze.pybreeze_ui.tools_gui.response_inspector_gui import ResponseInspectorGUI
 from pybreeze.pybreeze_ui.tools_gui.timestamp_gui import TimestampGUI
+from pybreeze.pybreeze_ui.tools_gui.url_builder_gui import UrlBuilderGUI
 
 if TYPE_CHECKING:
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
@@ -156,6 +158,17 @@ def build_tools_menu(ui_we_want_to_set: PyBreezeMainWindow):
     ))
     ui_we_want_to_set.tools_menu.addAction(ui_we_want_to_set.tools_query_json_action)
 
+    # URL Parser / Builder
+    ui_we_want_to_set.tools_url_builder_action = QAction(language_wrapper.language_word_dict.get(
+        "extend_tools_menu_url_builder_tab_action"
+    ))
+    ui_we_want_to_set.tools_url_builder_action.triggered.connect(lambda: ui_we_want_to_set.tab_widget.addTab(
+        UrlBuilderGUI(ui_we_want_to_set), language_wrapper.language_word_dict.get(
+            "extend_tools_menu_url_builder_tab_label"
+        )
+    ))
+    ui_we_want_to_set.tools_menu.addAction(ui_we_want_to_set.tools_url_builder_action)
+
     # Regex Tester
     ui_we_want_to_set.tools_regex_action = QAction(language_wrapper.language_word_dict.get(
         "extend_tools_menu_regex_tab_action"
@@ -199,6 +212,17 @@ def build_tools_menu(ui_we_want_to_set: PyBreezeMainWindow):
         )
     ))
     ui_we_want_to_set.tools_menu.addAction(ui_we_want_to_set.tools_json_format_action)
+
+    # HTTP Header Analyzer
+    ui_we_want_to_set.tools_header_analyzer_action = QAction(language_wrapper.language_word_dict.get(
+        "extend_tools_menu_header_analyzer_tab_action"
+    ))
+    ui_we_want_to_set.tools_header_analyzer_action.triggered.connect(lambda: ui_we_want_to_set.tab_widget.addTab(
+        HeaderAnalyzerGUI(ui_we_want_to_set), language_wrapper.language_word_dict.get(
+            "extend_tools_menu_header_analyzer_tab_label"
+        )
+    ))
+    ui_we_want_to_set.tools_menu.addAction(ui_we_want_to_set.tools_header_analyzer_action)
 
     # Response Inspector
     ui_we_want_to_set.tools_response_action = QAction(language_wrapper.language_word_dict.get(
@@ -296,6 +320,13 @@ def extend_dock_menu(ui_we_want_to_set: PyBreezeMainWindow):
         lambda: add_dock(ui_we_want_to_set, "QueryJson"))
     ui_we_want_to_set.dock_menu.addAction(ui_we_want_to_set.tools_query_json_dock_action)
 
+    # URL Parser / Builder Dock
+    ui_we_want_to_set.tools_url_builder_dock_action = QAction(language_wrapper.language_word_dict.get(
+        "extend_tools_menu_url_builder_dock_action"))
+    ui_we_want_to_set.tools_url_builder_dock_action.triggered.connect(
+        lambda: add_dock(ui_we_want_to_set, "UrlBuilder"))
+    ui_we_want_to_set.dock_menu.addAction(ui_we_want_to_set.tools_url_builder_dock_action)
+
     # Regex Tester Dock
     ui_we_want_to_set.tools_regex_dock_action = QAction(language_wrapper.language_word_dict.get(
         "extend_tools_menu_regex_dock_action"))
@@ -323,6 +354,13 @@ def extend_dock_menu(ui_we_want_to_set: PyBreezeMainWindow):
     ui_we_want_to_set.tools_json_format_dock_action.triggered.connect(
         lambda: add_dock(ui_we_want_to_set, "JsonFormat"))
     ui_we_want_to_set.dock_menu.addAction(ui_we_want_to_set.tools_json_format_dock_action)
+
+    # HTTP Header Analyzer Dock
+    ui_we_want_to_set.tools_header_analyzer_dock_action = QAction(language_wrapper.language_word_dict.get(
+        "extend_tools_menu_header_analyzer_dock_action"))
+    ui_we_want_to_set.tools_header_analyzer_dock_action.triggered.connect(
+        lambda: add_dock(ui_we_want_to_set, "HeaderAnalyzer"))
+    ui_we_want_to_set.dock_menu.addAction(ui_we_want_to_set.tools_header_analyzer_dock_action)
 
     # Response Inspector Dock
     ui_we_want_to_set.tools_response_dock_action = QAction(language_wrapper.language_word_dict.get(
@@ -352,11 +390,14 @@ _DOCK_WIDGETS: dict[str, tuple[str, Callable[[PyBreezeMainWindow], object]]] = {
     "Timestamp": ("extend_tools_menu_timestamp_dock_title", lambda win: TimestampGUI(win)),
     "Hash": ("extend_tools_menu_hash_dock_title", lambda win: HashGUI(win)),
     "QueryJson": ("extend_tools_menu_query_json_dock_title", lambda win: QueryJsonGUI(win)),
+    "UrlBuilder": ("extend_tools_menu_url_builder_dock_title", lambda win: UrlBuilderGUI(win)),
     "Regex": ("extend_tools_menu_regex_dock_title", lambda win: RegexGUI(win)),
     "HttpStatus": (
         "extend_tools_menu_http_status_dock_title", lambda win: HttpStatusGUI(main_window=win)),
     "Diff": ("extend_tools_menu_diff_dock_title", lambda win: DiffGUI(win)),
     "JsonFormat": ("extend_tools_menu_json_format_dock_title", lambda win: JsonFormatGUI(win)),
+    "HeaderAnalyzer": (
+        "extend_tools_menu_header_analyzer_dock_title", lambda win: HeaderAnalyzerGUI(win)),
     "ResponseInspector": (
         "extend_tools_menu_response_dock_title", lambda win: ResponseInspectorGUI(win)),
 }

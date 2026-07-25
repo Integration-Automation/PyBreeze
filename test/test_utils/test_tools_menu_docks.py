@@ -15,6 +15,7 @@ from pybreeze.pybreeze_ui.menu.tools.tools_menu import add_dock
 from pybreeze.pybreeze_ui.tools_gui.curl_import_gui import CurlImportGUI
 from pybreeze.pybreeze_ui.tools_gui.diff_gui import DiffGUI
 from pybreeze.pybreeze_ui.tools_gui.hash_gui import HashGUI
+from pybreeze.pybreeze_ui.tools_gui.header_analyzer_gui import HeaderAnalyzerGUI
 from pybreeze.pybreeze_ui.tools_gui.http_status_gui import HttpStatusGUI
 from pybreeze.pybreeze_ui.tools_gui.json_format_gui import JsonFormatGUI
 from pybreeze.pybreeze_ui.tools_gui.jwt_decoder_gui import JwtDecoderGUI
@@ -22,6 +23,7 @@ from pybreeze.pybreeze_ui.tools_gui.query_json_gui import QueryJsonGUI
 from pybreeze.pybreeze_ui.tools_gui.regex_gui import RegexGUI
 from pybreeze.pybreeze_ui.tools_gui.response_inspector_gui import ResponseInspectorGUI
 from pybreeze.pybreeze_ui.tools_gui.timestamp_gui import TimestampGUI
+from pybreeze.pybreeze_ui.tools_gui.url_builder_gui import UrlBuilderGUI
 
 
 @pytest.fixture(scope="module")
@@ -39,10 +41,12 @@ def app():
         ("Timestamp", TimestampGUI),
         ("Hash", HashGUI),
         ("QueryJson", QueryJsonGUI),
+        ("UrlBuilder", UrlBuilderGUI),
         ("Regex", RegexGUI),
         ("HttpStatus", HttpStatusGUI),
         ("Diff", DiffGUI),
         ("JsonFormat", JsonFormatGUI),
+        ("HeaderAnalyzer", HeaderAnalyzerGUI),
         ("ResponseInspector", ResponseInspectorGUI),
     ],
 )
