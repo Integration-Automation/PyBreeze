@@ -43,6 +43,12 @@ not_a_curl_command_error: str = "the command does not look like a curl command"
 malformed_curl_command_error: str = "can't parse the curl command: check quoting"
 no_url_in_curl_error: str = "no URL found in the curl command"
 
+# HAR import
+empty_har_error: str = "no HAR content provided"
+invalid_har_json_error: str = "can't parse the file as JSON: it is not a valid HAR export"
+not_a_har_document_error: str = "the JSON has no log.entries list, so it is not a HAR export"
+no_entries_in_har_error: str = "the HAR export contains no requests"
+
 # JWT decode
 empty_jwt_error: str = "no token provided"
 malformed_jwt_error: str = "a JWT must have three dot-separated parts"

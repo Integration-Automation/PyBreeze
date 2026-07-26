@@ -332,6 +332,25 @@ pybreeze_english_word_dict = {
     "curl_import_target_apitestka_action": "APITestka (JSON action)",
     "curl_import_target_loaddensity_python": "LoadDensity (Python)",
     "curl_import_open_url_button": "Open URL in parser / builder",
+    "curl_import_open_headers_button": "Open headers in analyzer",
+    # HAR Import — Menu
+    "extend_tools_menu_har_import_tab_action": "HAR Import Tab",
+    "extend_tools_menu_har_import_tab_label": "HAR Import",
+    "extend_tools_menu_har_import_dock_action": "HAR Import Dock",
+    "extend_tools_menu_har_import_dock_title": "HAR Import",
+    # HAR Import — Widget
+    "har_import_open_button": "Open .har file...",
+    "har_import_file_dialog_title": "Open a HAR export",
+    "har_import_file_filter": "HAR export (*.har *.json)",
+    "har_import_api_only": "Only API-like requests",
+    "har_import_summary": "{total} request(s), {api} API-like — {hosts}",
+    "har_import_generate_selected": "Generate for selection",
+    "har_import_generate_all": "Generate for all listed",
+    "har_import_no_selection": "Select one or more requests, or generate for all listed.",
+    "har_import_empty_hint":
+        "Open a .har file saved from your browser's dev tools (Network → Save all as HAR).",
+    "har_import_error": "Could not read the HAR export: {error}",
+    "har_import_read_error": "Could not open the file: {error}",
     # Shared output actions (copy / open in editor / save to file)
     "output_actions_copy": "Copy",
     "output_actions_open_editor": "Open in editor tab",
@@ -469,6 +488,7 @@ pybreeze_english_word_dict = {
     "response_open_jwt_button": "Open JWT in decoder",
     "response_open_status_button": "Open status in reference",
     "response_open_headers_button": "Open headers in analyzer",
+    "response_open_body_button": "Open body in JSON format",
     "response_empty_hint": "Paste a response above, then click analyze.",
     "response_status_label": "== Status ==",
     "response_headers_label": "== Headers ==",
@@ -493,6 +513,7 @@ pybreeze_english_word_dict = {
     "header_analyzer_empty_hint": "Paste a header block above, then click analyze.",
     "header_analyzer_level_warning": "WARNING",
     "header_analyzer_level_info": "INFO",
+    "header_analyzer_open_jwt_button": "Open token in JWT decoder",
     # HTTP Header Analyzer — Findings ({header} is the header, {detail} its value)
     "header_finding_duplicate_header":
         "{header}: sent {detail} times; the receiver joins the values into one.",

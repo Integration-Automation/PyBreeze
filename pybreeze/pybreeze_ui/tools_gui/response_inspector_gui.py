@@ -14,6 +14,7 @@ from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.tools_gui.header_analyzer_gui import HeaderAnalyzerGUI
 from pybreeze.pybreeze_ui.tools_gui.http_status_gui import HttpStatusGUI
+from pybreeze.pybreeze_ui.tools_gui.json_format_gui import JsonFormatGUI
 from pybreeze.pybreeze_ui.tools_gui.jwt_decoder_gui import JwtDecoderGUI
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.pybreeze_ui.tools_gui.tool_tabs import open_tool_tab
@@ -105,6 +106,9 @@ class ResponseInspectorGUI(QWidget):
         self.open_headers_button = QPushButton(word.get("response_open_headers_button"))
         self.open_headers_button.clicked.connect(self.open_headers_in_analyzer)
         self.open_headers_button.setEnabled(False)
+        self.open_body_button = QPushButton(word.get("response_open_body_button"))
+        self.open_body_button.clicked.connect(self.open_body_in_json_format)
+        self.open_body_button.setEnabled(False)
 
         # Shared copy / open-in-editor / save actions, valid once analysed.
         self.actions = OutputActions(
@@ -115,6 +119,7 @@ class ResponseInspectorGUI(QWidget):
         cross_tool = QHBoxLayout()
         cross_tool.addWidget(self.open_status_button)
         cross_tool.addWidget(self.open_headers_button)
+        cross_tool.addWidget(self.open_body_button)
         cross_tool.addWidget(self.open_jwt_button)
 
         layout = QVBoxLayout()
@@ -133,16 +138,24 @@ class ResponseInspectorGUI(QWidget):
         text = self.input_edit.toPlainText().strip()
         if not text:
             self._analysis = None
-            self.open_jwt_button.setEnabled(False)
-            self.open_status_button.setEnabled(False)
-            self.open_headers_button.setEnabled(False)
+            self._set_cross_tool_enabled(jwt=False, status=False, headers=False, body=False)
             self.output_edit.setPlainText(word.get("response_empty_hint"))
             return
         self._analysis = analyze_response(text)
         self.output_edit.setPlainText(build_report_text(self._analysis))
-        self.open_jwt_button.setEnabled(bool(self._analysis.jwt_findings))
-        self.open_status_button.setEnabled(self._analysis.status is not None)
-        self.open_headers_button.setEnabled(bool(self._analysis.headers))
+        self._set_cross_tool_enabled(
+            jwt=bool(self._analysis.jwt_findings),
+            status=self._analysis.status is not None,
+            headers=bool(self._analysis.headers),
+            body=self._analysis.is_json_body)
+
+    def _set_cross_tool_enabled(
+            self, *, jwt: bool, status: bool, headers: bool, body: bool) -> None:
+        """Enable each hand-off only when the analysis has something to hand over."""
+        self.open_jwt_button.setEnabled(jwt)
+        self.open_status_button.setEnabled(status)
+        self.open_headers_button.setEnabled(headers)
+        self.open_body_button.setEnabled(body)
 
     def open_jwt_in_decoder(self) -> QWidget | None:
         """Open the first found JWT in the JWT decoder tool, pre-filled."""
@@ -179,3 +192,12 @@ class ResponseInspectorGUI(QWidget):
                 main_window=self._main_window,
                 initial_headers=self.input_edit.toPlainText()),
             "extend_tools_menu_header_analyzer_tab_label")
+
+    def open_body_in_json_format(self) -> QWidget | None:
+        """Open a JSON body in the JSON format tool, already pretty-printed."""
+        if self._analysis is None or not self._analysis.is_json_body:
+            return None
+        return open_tool_tab(
+            self._main_window,
+            JsonFormatGUI(main_window=self._main_window, initial_json=self._analysis.body),
+            "extend_tools_menu_json_format_tab_label")

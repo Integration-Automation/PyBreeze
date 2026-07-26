@@ -10,10 +10,13 @@ from __future__ import annotations
 from PySide6.QtWidgets import QLabel, QPushButton, QTextEdit, QVBoxLayout, QWidget
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.tools_gui.jwt_decoder_gui import JwtDecoderGUI
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
+from pybreeze.pybreeze_ui.tools_gui.tool_tabs import open_tool_tab
 from pybreeze.utils.header_tools.header_analyzer import (
     HeaderAnalysis, HeaderFinding, analyze_headers
 )
+from pybreeze.utils.jwt_tools.jwt_decoder import find_tokens
 
 
 def _finding_line(finding: HeaderFinding) -> str:
@@ -58,6 +61,7 @@ class HeaderAnalyzerGUI(QWidget):
         :param initial_headers: a header block to pre-fill and analyse on open
         """
         super().__init__()
+        self._main_window = main_window
         self._analysis: HeaderAnalysis | None = None
         word = language_wrapper.language_word_dict
 
@@ -73,6 +77,12 @@ class HeaderAnalyzerGUI(QWidget):
         self.output_edit = QTextEdit()
         self.output_edit.setReadOnly(True)
 
+        # Cross-tool action: a bearer token in a header is worth reading, and the
+        # decoder is the tool that reads it.
+        self.open_jwt_button = QPushButton(word.get("header_analyzer_open_jwt_button"))
+        self.open_jwt_button.clicked.connect(self.open_jwt_in_decoder)
+        self.open_jwt_button.setEnabled(False)
+
         self.actions = OutputActions(
             self, self.output_edit, main_window=main_window,
             basename="headers", extension="txt",
@@ -81,7 +91,7 @@ class HeaderAnalyzerGUI(QWidget):
         layout = QVBoxLayout()
         for widget in (
             self.input_label, self.input_edit, self.analyze_button,
-            self.output_label, self.output_edit,
+            self.output_label, self.output_edit, self.open_jwt_button,
         ):
             layout.addWidget(widget)
         layout.addLayout(self.actions.button_row())
@@ -91,18 +101,42 @@ class HeaderAnalyzerGUI(QWidget):
             self.input_edit.setPlainText(initial_headers)
             self.analyze()
 
+    def _clear_analysis(self, message: str) -> None:
+        """Forget the analysis and show *message* instead of a report."""
+        self._analysis = None
+        self.open_jwt_button.setEnabled(False)
+        self.output_edit.setPlainText(message)
+
     def analyze(self) -> None:
         """Analyse the pasted headers and show the report."""
         word = language_wrapper.language_word_dict
         text = self.input_edit.toPlainText().strip()
         if not text:
-            self._analysis = None
-            self.output_edit.setPlainText(word.get("header_analyzer_empty_hint"))
+            self._clear_analysis(word.get("header_analyzer_empty_hint"))
             return
         analysis = analyze_headers(text)
         if not analysis.fields:
-            self._analysis = None
-            self.output_edit.setPlainText(word.get("header_analyzer_no_headers"))
+            self._clear_analysis(word.get("header_analyzer_no_headers"))
             return
         self._analysis = analysis
+        self.open_jwt_button.setEnabled(bool(self.header_tokens()))
         self.output_edit.setPlainText(build_header_report(analysis))
+
+    def header_tokens(self) -> list[str]:
+        """Return the JWT-looking tokens carried by the analysed headers."""
+        if self._analysis is None:
+            return []
+        tokens: list[str] = []
+        for header in self._analysis.fields:
+            tokens.extend(token for token in find_tokens(header.value) if token not in tokens)
+        return tokens
+
+    def open_jwt_in_decoder(self) -> QWidget | None:
+        """Open the first token found in a header in the JWT decoder, decoded."""
+        tokens = self.header_tokens()
+        if not tokens:
+            return None
+        return open_tool_tab(
+            self._main_window,
+            JwtDecoderGUI(initial_token=tokens[0], main_window=self._main_window),
+            "extend_tools_menu_jwt_decoder_tab_label")

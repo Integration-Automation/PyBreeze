@@ -19,11 +19,14 @@ from urllib.parse import urlparse
 from pybreeze.utils.curl_import.curl_parser import CurlRequest
 from pybreeze.utils.curl_import.request_body import body_kind, form_parts
 from pybreeze.utils.curl_import.request_codegen import (
-    data_from_file_expr, request_statements, to_requests_code
+    REQUESTS_IMPORT, data_from_file_expr, request_statements, to_requests_code
 )
 
 # APITestka action command that performs an HTTP request
 _APITESTKA_ACTION = "AT_test_api_method"
+# Import line each generated automation-module script starts with
+APITESTKA_IMPORT = "from je_api_testka import test_api_method_requests"
+LOADDENSITY_IMPORT = "from je_load_density import start_test"
 # Default status asserted in a generated pytest test
 _DEFAULT_EXPECTED_STATUS = 200
 # Indentation for statements inside a generated test function
@@ -54,15 +57,16 @@ def _apitestka_payload_lines(request: CurlRequest) -> list[str]:
     return [f"    {kind[0]}={_inline_json(kind[1])},"] if kind is not None else []
 
 
-def to_apitestka_python(request: CurlRequest) -> str:
-    """Generate an APITestka Python snippet for *request*.
+def apitestka_call_block(request: CurlRequest) -> str:
+    """Return the ``test_api_method_requests(...)`` call for *request*.
 
-    :param request: the parsed curl request
-    :return: Python source calling ``test_api_method_requests``
+    The call is returned without the import, so several requests can be written
+    into one script.
+
+    :param request: the parsed request
+    :return: the call statement, as one block
     """
     lines = [
-        "from je_api_testka import test_api_method_requests",
-        "",
         "response = test_api_method_requests(",
         f"    {_inline_json(request.method)},",
         f"    test_url={_inline_json(request.url)},",
@@ -79,9 +83,41 @@ def to_apitestka_python(request: CurlRequest) -> str:
             f"    auth=({_inline_json(request.username)}, "
             f"{_inline_json(request.password or '')}),")
     lines.append(")")
-    lines.append("")
-    lines.append("print(response)")
+    return "\n".join(lines)
+
+
+def to_apitestka_python(request: CurlRequest) -> str:
+    """Generate an APITestka Python snippet for *request*.
+
+    :param request: the parsed curl request
+    :return: Python source calling ``test_api_method_requests``
+    """
+    lines = [APITESTKA_IMPORT, "", apitestka_call_block(request), "", "print(response)"]
     return "\n".join(lines) + "\n"
+
+
+def loaddensity_start_block(request: CurlRequest) -> str:
+    """Return the ``start_test(...)`` call that load-tests *request*.
+
+    The call is returned without the import, so several requests can be written
+    into one script.
+
+    :param request: the parsed request
+    :return: the call statement, as one block
+    """
+    method_key = request.method.lower()
+    # Drive by the full URL so query params (from the URL or -G) are not lost.
+    task = f"{{{_inline_json(method_key)}: {{\"request_url\": {_inline_json(request.full_url)}}}}}"
+    lines = [
+        "start_test(",
+        '    {"user": "fast_http_user"},',
+        "    user_count=50,",
+        "    spawn_rate=10,",
+        "    test_time=60,",
+        f"    tasks={task},",
+        ")",
+    ]
+    return "\n".join(lines)
 
 
 def to_loaddensity_python(request: CurlRequest) -> str:
@@ -93,22 +129,13 @@ def to_loaddensity_python(request: CurlRequest) -> str:
     :param request: the parsed curl request
     :return: Python source calling ``start_test``
     """
-    method_key = request.method.lower()
-    # Drive by the full URL so query params (from the URL or -G) are not lost.
-    task = f"{{{_inline_json(method_key)}: {{\"request_url\": {_inline_json(request.full_url)}}}}}"
     lines = [
-        "from je_load_density import start_test",
+        LOADDENSITY_IMPORT,
         "",
         "# Load-test the endpoint captured from the curl command.",
         "# This basic task issues the request by URL; add headers/body in a custom",
         "# Locust task if the endpoint needs them.",
-        "start_test(",
-        '    {"user": "fast_http_user"},',
-        "    user_count=50,",
-        "    spawn_rate=10,",
-        "    test_time=60,",
-        f"    tasks={task},",
-        ")",
+        loaddensity_start_block(request),
     ]
     return "\n".join(lines) + "\n"
 
@@ -144,6 +171,18 @@ def _apply_action_payload(request: CurlRequest, params: dict) -> None:
         params[kind[0]] = kind[1]
 
 
+def to_apitestka_action(request: CurlRequest) -> list:
+    """Return the single ``["AT_test_api_method", {...}]`` action for *request*.
+
+    Returned as data rather than text so several requests can be collected into
+    one action list.
+
+    :param request: the parsed request
+    :return: the action pair
+    """
+    return [_APITESTKA_ACTION, _apitestka_action_params(request)]
+
+
 def to_apitestka_action_json(request: CurlRequest) -> str:
     """Generate an APITestka JSON action list for *request*.
 
@@ -152,8 +191,7 @@ def to_apitestka_action_json(request: CurlRequest) -> str:
     :param request: the parsed curl request
     :return: a formatted JSON action list
     """
-    action = [[_APITESTKA_ACTION, _apitestka_action_params(request)]]
-    return json.dumps(action, indent=4, ensure_ascii=False) + "\n"
+    return json.dumps([to_apitestka_action(request)], indent=4, ensure_ascii=False) + "\n"
 
 
 def test_function_name(request: CurlRequest) -> str:
@@ -176,17 +214,29 @@ def _indent(block: str) -> str:
         f"{_TEST_INDENT}{line}" if line else line for line in block.split("\n"))
 
 
+def pytest_function(request: CurlRequest, name: str | None = None) -> str:
+    """Return the pytest function for *request*, without the import line.
+
+    :param request: the parsed request
+    :param name: function name to use; derived from the request when omitted,
+        which a caller writing several tests into one file overrides to keep the
+        names unique
+    :return: the function definition, as one block
+    """
+    lines = [f"def {name or test_function_name(request)}():"]
+    lines.extend(_indent(statement) for statement in request_statements(request))
+    lines.append(f"{_TEST_INDENT}assert response.status_code == {_DEFAULT_EXPECTED_STATUS}")
+    lines.append(f"{_TEST_INDENT}# Add assertions on response.json() / response.text as needed")
+    return "\n".join(lines)
+
+
 def to_pytest_test(request: CurlRequest) -> str:
     """Generate a runnable pytest test that sends *request* and asserts the status.
 
     :param request: the parsed curl request
     :return: Python source defining a ``test_...`` function
     """
-    lines = ["import requests", "", "", f"def {test_function_name(request)}():"]
-    lines.extend(_indent(statement) for statement in request_statements(request))
-    lines.append(f"{_TEST_INDENT}assert response.status_code == {_DEFAULT_EXPECTED_STATUS}")
-    lines.append(f"{_TEST_INDENT}# Add assertions on response.json() / response.text as needed")
-    return "\n".join(lines) + "\n"
+    return "\n".join([REQUESTS_IMPORT, "", "", pytest_function(request)]) + "\n"
 
 
 # Target key -> (i18n label key, generator). The first entry is the default.

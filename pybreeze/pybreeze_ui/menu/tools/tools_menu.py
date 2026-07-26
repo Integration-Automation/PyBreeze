@@ -19,6 +19,7 @@ from pybreeze.pybreeze_ui.tools_gui.curl_import_gui import CurlImportGUI
 from pybreeze.pybreeze_ui.tools_gui.diff_gui import DiffGUI
 from pybreeze.pybreeze_ui.tools_gui.json_format_gui import JsonFormatGUI
 from pybreeze.pybreeze_ui.tools_gui.jwt_decoder_gui import JwtDecoderGUI
+from pybreeze.pybreeze_ui.tools_gui.har_import_gui import HarImportGUI
 from pybreeze.pybreeze_ui.tools_gui.hash_gui import HashGUI
 from pybreeze.pybreeze_ui.tools_gui.header_analyzer_gui import HeaderAnalyzerGUI
 from pybreeze.pybreeze_ui.tools_gui.http_status_gui import HttpStatusGUI
@@ -113,6 +114,17 @@ def build_tools_menu(ui_we_want_to_set: PyBreezeMainWindow):
         )
     ))
     ui_we_want_to_set.tools_menu.addAction(ui_we_want_to_set.tools_curl_import_action)
+
+    # HAR Import
+    ui_we_want_to_set.tools_har_import_action = QAction(language_wrapper.language_word_dict.get(
+        "extend_tools_menu_har_import_tab_action"
+    ))
+    ui_we_want_to_set.tools_har_import_action.triggered.connect(lambda: ui_we_want_to_set.tab_widget.addTab(
+        HarImportGUI(ui_we_want_to_set), language_wrapper.language_word_dict.get(
+            "extend_tools_menu_har_import_tab_label"
+        )
+    ))
+    ui_we_want_to_set.tools_menu.addAction(ui_we_want_to_set.tools_har_import_action)
 
     # JWT Decoder
     ui_we_want_to_set.tools_jwt_decoder_action = QAction(language_wrapper.language_word_dict.get(
@@ -292,6 +304,13 @@ def extend_dock_menu(ui_we_want_to_set: PyBreezeMainWindow):
         lambda: add_dock(ui_we_want_to_set, "CurlImport"))
     ui_we_want_to_set.dock_menu.addAction(ui_we_want_to_set.tools_curl_import_dock_action)
 
+    # HAR Import Dock
+    ui_we_want_to_set.tools_har_import_dock_action = QAction(language_wrapper.language_word_dict.get(
+        "extend_tools_menu_har_import_dock_action"))
+    ui_we_want_to_set.tools_har_import_dock_action.triggered.connect(
+        lambda: add_dock(ui_we_want_to_set, "HarImport"))
+    ui_we_want_to_set.dock_menu.addAction(ui_we_want_to_set.tools_har_import_dock_action)
+
     # JWT Decoder Dock
     ui_we_want_to_set.tools_jwt_decoder_dock_action = QAction(language_wrapper.language_word_dict.get(
         "extend_tools_menu_jwt_decoder_dock_action"))
@@ -385,6 +404,7 @@ _DOCK_WIDGETS: dict[str, tuple[str, Callable[[PyBreezeMainWindow], object]]] = {
         "extend_tools_menu_diagram_editor_dock_title", lambda _win: DiagramEditorWidget()),
     "CurlImport": (
         "extend_tools_menu_curl_import_dock_title", lambda win: CurlImportGUI(win)),
+    "HarImport": ("extend_tools_menu_har_import_dock_title", lambda win: HarImportGUI(win)),
     "JwtDecoder": (
         "extend_tools_menu_jwt_decoder_dock_title", lambda win: JwtDecoderGUI(main_window=win)),
     "Timestamp": ("extend_tools_menu_timestamp_dock_title", lambda win: TimestampGUI(win)),

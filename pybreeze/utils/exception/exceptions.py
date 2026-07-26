@@ -58,6 +58,12 @@ class CurlParseException(ITEException):
     pass
 
 
+# HAR import
+
+class HarParseException(ITEException):
+    pass
+
+
 # JWT decode
 
 class JwtDecodeException(ITEException):

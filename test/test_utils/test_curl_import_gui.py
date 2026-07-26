@@ -247,3 +247,33 @@ class TestCurlImportOpenUrlInBuilder:
         widget.input_edit.setPlainText("curl https://example.com/api")
         widget.convert()
         assert widget.open_url_in_builder() is None
+
+
+class TestCurlImportOpenHeadersInAnalyzer:
+    def test_button_disabled_without_headers(self, widget):
+        widget.input_edit.setPlainText("curl https://example.com/api")
+        widget.convert()
+        assert not widget.open_headers_button.isEnabled()
+
+    def test_button_enabled_when_headers_were_parsed(self, widget):
+        widget.input_edit.setPlainText("curl https://x -H 'Authorization: Bearer abc'")
+        widget.convert()
+        assert widget.open_headers_button.isEnabled()
+
+    def test_open_headers_opens_prefilled_analyzer(self, widget_with_window):
+        from pybreeze.pybreeze_ui.tools_gui.header_analyzer_gui import HeaderAnalyzerGUI
+        gui, window = widget_with_window
+        gui.input_edit.setPlainText(
+            "curl https://x -H 'Accept: application/json' -H 'X-Trace: 1'")
+        gui.convert()
+        gui.open_headers_in_analyzer()
+        opened = window.tab_widget.added[0][0]
+        assert isinstance(opened, HeaderAnalyzerGUI)
+        output = opened.output_edit.toPlainText()
+        assert "Accept: application/json" in output
+        assert "X-Trace: 1" in output
+
+    def test_open_headers_before_convert_is_noop(self, widget_with_window):
+        gui, window = widget_with_window
+        assert gui.open_headers_in_analyzer() is None
+        assert window.tab_widget.added == []
