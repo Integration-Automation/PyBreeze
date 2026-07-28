@@ -112,16 +112,34 @@ class TaskProcessManager:
         ]
         self._spawn_and_pump(package, args)
 
-    def _spawn_and_pump(self, package: str, args: list) -> None:
+    def start_module_process(
+            self, package: str, arguments: list, environment: dict | None = None):
+        """Run ``python -m package`` with *arguments*, adding *environment* if given.
+
+        The general form behind the two calls above, for a package driven by
+        subcommands and flags rather than by a script to execute. A setting that
+        would be a secret on a command line -- an API key, a forge token -- goes
+        through *environment* instead, where the process list cannot show it.
+        """
+        if not self.renew_path():
+            return
+        args = [str(self.compiler_path), "-m", package, *[str(one) for one in arguments]]
+        self._spawn_and_pump(package, args, environment)
+
+    def _spawn_and_pump(
+            self, package: str, args: list, environment: dict | None = None) -> None:
         # Launch user-authored automation script in a child interpreter.
         # Argument list is validated upstream; shell=False, no user string ever
         # reaches a shell. nosec B603 — intentional local process execution.
+        child_environment = utf8_subprocess_env(self.program_encoding)
+        if environment:
+            child_environment.update(environment)
         self.process = subprocess.Popen(  # nosec B603  # nosemgrep  # noqa: S603
             args,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             creationflags=no_window_creationflags(),
-            env=utf8_subprocess_env(self.program_encoding),
+            env=child_environment,
         )
         self.still_run_program = True
         self.read_program_output_from_thread = Thread(

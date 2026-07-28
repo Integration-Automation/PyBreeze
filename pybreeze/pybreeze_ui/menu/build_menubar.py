@@ -28,6 +28,8 @@ from pybreeze.pybreeze_ui.menu.install_menu.tools_menu.build_tool_install_menu i
     build_tool_install_menu
 from pybreeze.pybreeze_ui.menu.automation_menu.test_pioneer_menu.build_test_pioneer_menu import \
     set_test_pioneer_menu
+from pybreeze.pybreeze_ui.menu.automation_menu.prthinker_menu.build_prthinker_menu import \
+    set_prthinker_menu
 
 from je_editor import language_wrapper
 
@@ -44,6 +46,7 @@ def add_menu_to_menubar(ui_we_want_to_set: PyBreezeMainWindow):
     set_mail_thunder_menu(ui_we_want_to_set=ui_we_want_to_set)
     set_web_runner_menu(ui_we_want_to_set=ui_we_want_to_set)
     set_test_pioneer_menu(ui_we_want_to_set=ui_we_want_to_set)
+    set_prthinker_menu(ui_we_want_to_set=ui_we_want_to_set)
     build_automation_install_menu(ui_we_want_to_set=ui_we_want_to_set)
     build_tool_install_menu(ui_we_want_to_set=ui_we_want_to_set)
     build_tools_menu(ui_we_want_to_set=ui_we_want_to_set)

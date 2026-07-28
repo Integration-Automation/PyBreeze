@@ -91,6 +91,7 @@ pybreeze_traditional_chinese_word_dict = {
     "install_menu_webrunner": "安裝 WebRunner",
     "install_menu_automation_file": "安裝 Automation File",
     "install_menu_mail_thunder": "安裝 MailThunder",
+    "install_menu_prthinker": "安裝 prthinker（程式碼審查）",
     "install_menu_tools_install_menu_label": "工具",
     "install_menu_tools_install_build_tools": "安裝 Build Tools",
     # Tools Menu
@@ -104,6 +105,39 @@ pybreeze_traditional_chinese_word_dict = {
     "test_pioneer_create_template_label": "建立 TestPioneer Yaml 模板",
     "test_pioneer_run_yaml": "執行 Test Pioneer Yaml",
     "test_pioneer_not_choose_yaml": "請選擇 Yaml 檔案",
+    # prthinker code review
+    "prthinker_menu_label": "程式碼審查（prthinker）",
+    "prthinker_review_current_file_label": "審查目前的檔案",
+    "prthinker_review_pull_request_label": "審查 Pull Request",
+    "prthinker_pull_request_number_label": "Pull Request 編號",
+    "prthinker_setting_label": "設定",
+    "prthinker_doc_label": "開啟 prthinker 文件",
+    "prthinker_doc_tab_label": "prthinker 文件",
+    "prthinker_github_label": "開啟 prthinker GitHub",
+    "prthinker_github_tab_label": "prthinker GitHub",
+    "prthinker_need_saved_file_message":
+        "請先開啟並存檔：審查讀的是磁碟上的檔案。",
+    "prthinker_need_repository_message":
+        "請先在 prthinker 設定裡填上儲存庫，格式為 owner/name。",
+    "prthinker_setting_dialog_title": "prthinker 設定",
+    "prthinker_setting_backend_label": "推論後端",
+    "prthinker_setting_model_name_label": "模型名稱",
+    "prthinker_setting_remote_url_label": "伺服器網址（remote 後端）",
+    "prthinker_setting_remote_api_key_label": "伺服器 API 金鑰",
+    "prthinker_setting_openai_base_url_label": "OpenAI 相容的 base URL",
+    "prthinker_setting_openai_api_key_label": "OpenAI API 金鑰",
+    "prthinker_setting_anthropic_api_key_label": "Anthropic API 金鑰",
+    "prthinker_setting_platform_label": "程式碼託管平台",
+    "prthinker_setting_platform_base_url_label": "平台 base URL（自架時填）",
+    "prthinker_setting_repository_label": "儲存庫（owner/name）",
+    "prthinker_setting_platform_token_label": "平台權杖",
+    "prthinker_setting_extra_arguments_label": "額外的命令列參數",
+    "prthinker_setting_source_path_label": "prthinker 原始碼資料夾",
+    "prthinker_setting_stored_at_label": "設定檔位置：",
+    "prthinker_choose_source_path_label": "選擇 prthinker 原始碼資料夾",
+    "prthinker_need_source_path_message":
+        "prthinker 是從原始碼安裝的。請選擇含有 pyproject.toml 的資料夾，"
+        "或在 prthinker 設定裡填上路徑。",
     # SSH host key verification
     "ssh_host_key_policy_dialog_title_verify_host": "驗證 SSH 主機金鑰",
     "ssh_host_key_policy_dialog_message_verify_host": (

@@ -96,6 +96,7 @@ PyBreeze is not just a code editor — it is a command center for the automation
 ### AI-Assisted Development
 
 - **AI Code Review** — Send code to an LLM API endpoint for automated code review. Accept or reject suggestions directly in the IDE.
+- **Chain-of-Thought Code Review (prthinker)** — Run the [prthinker](https://github.com/JE-Chen/Code-Review-Framework-Combining-Large-Language-Models-and-Chain-of-Thought-Reasoning) review pipeline over the file being edited, or over a Pull Request, with its output streaming into a run window. One settings form holds the inference backend (a review server, an OpenAI-compatible endpoint, Anthropic, or a local model), the code host and the repository. Keys and tokens are handed to the review as environment, never on a command line where a process list would show them.
 - **CoT (Chain-of-Thought) Prompt Editor** — Create and manage multi-step CoT prompts for structured code analysis, including:
   - Code review prompts
   - Code smell detection
@@ -350,6 +351,13 @@ Once launched, you can:
 
 - Automated file and directory operations
 - Batch file processing
+
+### prthinker — Chain-of-Thought Code Review
+
+- Review the file being edited, or a Pull Request on GitHub / GitLab / Gitea
+- Inference backends: a review server, an OpenAI-compatible endpoint, Anthropic, or a local model
+- Settings are kept per user in `~/.pybreeze/prthinker_setting.json`; keys travel to the review as environment
+- Installed from its own source folder (`Install ▸ Automation ▸ Install prthinker`), which needs Python 3.12 or newer
 
 ---
 
