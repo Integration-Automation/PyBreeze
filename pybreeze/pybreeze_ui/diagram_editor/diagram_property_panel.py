@@ -40,12 +40,17 @@ def _lang(key: str, fallback: str = "") -> str:
 # Color picker button
 # ---------------------------------------------------------------------------
 
+_DEFAULT_NODE_FILL = "#e3f2fd"
+
+
 class ColorButton(QPushButton):
     color_changed = Signal(QColor)
 
-    def __init__(self, color: QColor = QColor("#e3f2fd"), parent=None):
+    def __init__(self, color: QColor | None = None, parent=None):
         super().__init__(parent)
-        self._color = color
+        # Built per instance rather than as a default argument so every button
+        # owns its QColor instead of sharing one created at import time.
+        self._color = QColor(_DEFAULT_NODE_FILL) if color is None else color
         self.setFixedHeight(24)
         self.setMinimumWidth(60)
         self._update_style()
@@ -119,22 +124,43 @@ class DiagramPropertyPanel(QWidget):
         self._layout.setSpacing(8)
         self._layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        # --- Title ---
+        self._build_header()
+        self._build_node_group()
+        self._build_connection_group()
+        self._build_image_group()
+
+        self._layout.addStretch()
+        scroll.setWidget(container)
+        outer.addWidget(scroll)
+
+        # Connect to scene
+        self._scene.selectionChanged.connect(self._on_selection_changed)
+
+    # ------------------------------------------------------------------
+    # UI construction
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _make_form_layout() -> QFormLayout:
+        """Return a form layout with the spacing shared by every property group."""
+        form = QFormLayout()
+        form.setContentsMargins(8, 12, 8, 8)
+        form.setVerticalSpacing(8)
+        form.setHorizontalSpacing(10)
+        return form
+
+    def _build_header(self) -> None:
         self._title = QLabel(_lang("diagram_editor_prop_title", "Properties"))
         self._title.setStyleSheet("font-weight: bold; font-size: 13px; padding: 4px 0px;")
         self._layout.addWidget(self._title)
 
-        # --- No selection label ---
         self._no_sel_label = QLabel(_lang("diagram_editor_prop_no_selection", "No selection"))
         self._no_sel_label.setContentsMargins(0, 8, 0, 0)
         self._layout.addWidget(self._no_sel_label)
 
-        # --- Node group ---
+    def _build_node_group(self) -> None:
         self._node_group = QGroupBox(_lang("diagram_editor_prop_node_group", "Node"))
-        nf = QFormLayout()
-        nf.setContentsMargins(8, 12, 8, 8)
-        nf.setVerticalSpacing(8)
-        nf.setHorizontalSpacing(10)
+        nf = self._make_form_layout()
         self._node_text = QLineEdit()
         self._node_text.editingFinished.connect(self._on_node_text)
         nf.addRow(_lang("diagram_editor_prop_text", "Text"), self._node_text)
@@ -172,12 +198,9 @@ class DiagramPropertyPanel(QWidget):
         self._layout.addWidget(self._node_group)
         self._node_group.hide()
 
-        # --- Connection group ---
+    def _build_connection_group(self) -> None:
         self._conn_group = QGroupBox(_lang("diagram_editor_prop_conn_group", "Connection"))
-        cf = QFormLayout()
-        cf.setContentsMargins(8, 12, 8, 8)
-        cf.setVerticalSpacing(8)
-        cf.setHorizontalSpacing(10)
+        cf = self._make_form_layout()
         self._conn_label = QLineEdit()
         self._conn_label.editingFinished.connect(self._on_conn_label)
         cf.addRow(_lang("diagram_editor_prop_label", "Label"), self._conn_label)
@@ -202,12 +225,9 @@ class DiagramPropertyPanel(QWidget):
         self._layout.addWidget(self._conn_group)
         self._conn_group.hide()
 
-        # --- Image group ---
+    def _build_image_group(self) -> None:
         self._img_group = QGroupBox(_lang("diagram_editor_prop_img_group", "Image"))
-        imf = QFormLayout()
-        imf.setContentsMargins(8, 12, 8, 8)
-        imf.setVerticalSpacing(8)
-        imf.setHorizontalSpacing(10)
+        imf = self._make_form_layout()
 
         self._img_caption = QLineEdit()
         self._img_caption.editingFinished.connect(self._on_img_caption)
@@ -230,13 +250,6 @@ class DiagramPropertyPanel(QWidget):
         self._img_group.setLayout(imf)
         self._layout.addWidget(self._img_group)
         self._img_group.hide()
-
-        self._layout.addStretch()
-        scroll.setWidget(container)
-        outer.addWidget(scroll)
-
-        # Connect to scene
-        self._scene.selectionChanged.connect(self._on_selection_changed)
 
     # ------------------------------------------------------------------
     # Selection handling

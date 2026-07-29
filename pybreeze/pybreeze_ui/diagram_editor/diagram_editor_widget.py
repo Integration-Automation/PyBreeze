@@ -131,9 +131,29 @@ class DiagramEditorWidget(QWidget):
         self._view = DiagramView(self._scene, self)
         self._prop_panel = DiagramPropertyPanel(self._scene, self)
 
+        self._status_label = QLabel()
+        self._status_label.setContentsMargins(8, 4, 8, 4)
+
+        self._build_main_layout(self._build_tool_row(), self._build_action_row())
+
         # ===================================================================
-        # Row 1: Drawing tool modes
+        # Signals
         # ===================================================================
+        self._scene.mode_changed.connect(self._on_mode_changed)
+        self._view.zoom_changed.connect(lambda p: self._zoom_label.setText(f"{p}%"))
+        self._set_mode(ToolMode.SELECT)
+
+        # ===================================================================
+        # Keyboard shortcuts
+        # ===================================================================
+        self._bind_shortcuts()
+
+    # ------------------------------------------------------------------
+    # UI construction
+    # ------------------------------------------------------------------
+
+    def _build_tool_row(self) -> QHBoxLayout:
+        """Row 1: drawing tool modes and image insertion."""
         row1 = QHBoxLayout()
         row1.setContentsMargins(8, 6, 8, 2)
         row1.setSpacing(6)
@@ -166,15 +186,30 @@ class DiagramEditorWidget(QWidget):
         row1.addWidget(img_url_btn)
 
         row1.addStretch()
+        return row1
 
-        # ===================================================================
-        # Row 2: Actions, undo, align, grid, export, zoom
-        # ===================================================================
+    def _build_action_row(self) -> QHBoxLayout:
+        """Row 2: file actions, undo, align, grid, export and zoom."""
         row2 = QHBoxLayout()
         row2.setContentsMargins(8, 2, 8, 6)
         row2.setSpacing(6)
 
-        # --- File ---
+        self._add_file_buttons(row2)
+        row2.addWidget(_make_hsep())
+        self._add_undo_redo_buttons(row2)
+        row2.addWidget(_make_hsep())
+        self._add_align_menu(row2)
+        row2.addWidget(_make_hsep())
+        self._add_grid_snap_checkboxes(row2)
+        row2.addWidget(_make_hsep())
+        self._add_export_buttons(row2)
+        row2.addWidget(_make_hsep())
+        self._add_zoom_controls(row2)
+
+        row2.addStretch()
+        return row2
+
+    def _add_file_buttons(self, row2: QHBoxLayout) -> None:
         for lang_key, handler in [
             ("diagram_editor_action_new", self._new_diagram),
             ("diagram_editor_action_open", self._open_diagram),
@@ -185,9 +220,7 @@ class DiagramEditorWidget(QWidget):
             btn.clicked.connect(handler)
             row2.addWidget(btn)
 
-        row2.addWidget(_make_hsep())
-
-        # --- Undo / Redo ---
+    def _add_undo_redo_buttons(self, row2: QHBoxLayout) -> None:
         self._undo_btn = _make_action_btn(_lang("diagram_editor_action_undo", "Undo"))
         self._undo_btn.clicked.connect(self._scene.undo_stack.undo)
         self._undo_btn.setEnabled(False)
@@ -201,9 +234,7 @@ class DiagramEditorWidget(QWidget):
         self._scene.undo_stack.canUndoChanged.connect(self._undo_btn.setEnabled)
         self._scene.undo_stack.canRedoChanged.connect(self._redo_btn.setEnabled)
 
-        row2.addWidget(_make_hsep())
-
-        # --- Align menu ---
+    def _add_align_menu(self, row2: QHBoxLayout) -> None:
         align_btn = _make_tool_btn(_lang("diagram_editor_align_menu", "Align"))
         align_menu = QMenu(self)
         for lang_key, method in [
@@ -222,9 +253,7 @@ class DiagramEditorWidget(QWidget):
         align_btn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         row2.addWidget(align_btn)
 
-        row2.addWidget(_make_hsep())
-
-        # --- Grid / Snap ---
+    def _add_grid_snap_checkboxes(self, row2: QHBoxLayout) -> None:
         self._grid_cb = QCheckBox(_lang("diagram_editor_action_grid", "Grid"))
         self._grid_cb.toggled.connect(self._toggle_grid)
         row2.addWidget(self._grid_cb)
@@ -233,9 +262,7 @@ class DiagramEditorWidget(QWidget):
         self._snap_cb.toggled.connect(self._toggle_snap)
         row2.addWidget(self._snap_cb)
 
-        row2.addWidget(_make_hsep())
-
-        # --- Export ---
+    def _add_export_buttons(self, row2: QHBoxLayout) -> None:
         for lang_key, handler in [
             ("diagram_editor_action_export_png", self._export_png),
             ("diagram_editor_action_export_svg", self._export_svg),
@@ -244,9 +271,7 @@ class DiagramEditorWidget(QWidget):
             btn.clicked.connect(handler)
             row2.addWidget(btn)
 
-        row2.addWidget(_make_hsep())
-
-        # --- Zoom ---
+    def _add_zoom_controls(self, row2: QHBoxLayout) -> None:
         zoom_out_btn = _make_action_btn(" - ")
         zoom_out_btn.clicked.connect(self._view.zoom_out)
         row2.addWidget(zoom_out_btn)
@@ -264,17 +289,8 @@ class DiagramEditorWidget(QWidget):
         fit_btn.clicked.connect(self._zoom_fit)
         row2.addWidget(fit_btn)
 
-        row2.addStretch()
-
-        # ===================================================================
-        # Status bar
-        # ===================================================================
-        self._status_label = QLabel()
-        self._status_label.setContentsMargins(8, 4, 8, 4)
-
-        # ===================================================================
-        # Main layout
-        # ===================================================================
+    def _build_main_layout(self, row1: QHBoxLayout, row2: QHBoxLayout) -> None:
+        """Stack the toolbar rows above the canvas/property splitter."""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
@@ -300,18 +316,6 @@ class DiagramEditorWidget(QWidget):
         layout.addWidget(splitter, 1)
 
         layout.addWidget(self._status_label)
-
-        # ===================================================================
-        # Signals
-        # ===================================================================
-        self._scene.mode_changed.connect(self._on_mode_changed)
-        self._view.zoom_changed.connect(lambda p: self._zoom_label.setText(f"{p}%"))
-        self._set_mode(ToolMode.SELECT)
-
-        # ===================================================================
-        # Keyboard shortcuts
-        # ===================================================================
-        self._bind_shortcuts()
 
     # ------------------------------------------------------------------
     # Helpers

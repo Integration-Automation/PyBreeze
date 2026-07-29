@@ -91,6 +91,7 @@ pybreeze_english_word_dict = {
     "install_menu_webrunner": "Install WebRunner",
     "install_menu_automation_file": "Install Automation File",
     "install_menu_mail_thunder": "Install MailThunder",
+    "install_menu_prthinker": "Install prthinker (code review)",
     "install_menu_tools_install_menu_label": "Tools",
     "install_menu_tools_install_build_tools": "Install Build Tools",
     # Tools Menu
@@ -104,6 +105,39 @@ pybreeze_english_word_dict = {
     "test_pioneer_create_template_label": "Create TestPioneer Yaml template",
     "test_pioneer_run_yaml": "Execute Test Pioneer Yaml",
     "test_pioneer_not_choose_yaml": "Please choose a Yaml file",
+    # prthinker code review
+    "prthinker_menu_label": "Code Review (prthinker)",
+    "prthinker_review_current_file_label": "Review the current file",
+    "prthinker_review_pull_request_label": "Review a Pull Request",
+    "prthinker_pull_request_number_label": "Pull Request number",
+    "prthinker_setting_label": "Settings",
+    "prthinker_doc_label": "Open prthinker documentation",
+    "prthinker_doc_tab_label": "prthinker Documentation",
+    "prthinker_github_label": "Open prthinker GitHub",
+    "prthinker_github_tab_label": "prthinker GitHub",
+    "prthinker_need_saved_file_message":
+        "Open and save a file first: the review reads the file on disk.",
+    "prthinker_need_repository_message":
+        "Set the repository in the prthinker settings first, as owner/name.",
+    "prthinker_setting_dialog_title": "prthinker settings",
+    "prthinker_setting_backend_label": "Inference backend",
+    "prthinker_setting_model_name_label": "Model name",
+    "prthinker_setting_remote_url_label": "Server URL (remote backend)",
+    "prthinker_setting_remote_api_key_label": "Server API key",
+    "prthinker_setting_openai_base_url_label": "OpenAI-compatible base URL",
+    "prthinker_setting_openai_api_key_label": "OpenAI API key",
+    "prthinker_setting_anthropic_api_key_label": "Anthropic API key",
+    "prthinker_setting_platform_label": "Code host",
+    "prthinker_setting_platform_base_url_label": "Code host base URL (self-hosted)",
+    "prthinker_setting_repository_label": "Repository (owner/name)",
+    "prthinker_setting_platform_token_label": "Code host token",
+    "prthinker_setting_extra_arguments_label": "Extra command-line arguments",
+    "prthinker_setting_source_path_label": "prthinker source folder",
+    "prthinker_setting_stored_at_label": "Stored at:",
+    "prthinker_choose_source_path_label": "Choose the prthinker source folder",
+    "prthinker_need_source_path_message":
+        "prthinker is installed from source. Choose the folder holding its "
+        "pyproject.toml, or set it in the prthinker settings.",
     # SSH host key verification
     "ssh_host_key_policy_dialog_title_verify_host": "Verify SSH host key",
     "ssh_host_key_policy_dialog_message_verify_host": (

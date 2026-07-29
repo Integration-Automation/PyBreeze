@@ -82,6 +82,7 @@ PyBreeze 不仅仅是一个代码编辑器——它是自动化生命周期的�
 ### AI 辅助开发
 
 - **AI 代码审查** — 将代码发送到 LLM API 端点进行自动化代码审查。可直接在 IDE 中接受或拒绝建议。
+- **思维链代码审查（prthinker）** — 以 [prthinker](https://github.com/JE-Chen/Code-Review-Framework-Combining-Large-Language-Models-and-Chain-of-Thought-Reasoning) 的审查流程审查正在编辑的文件，或审查一个 Pull Request，输出实时流进运行窗口。一张设置表填完推理后端（审查服务器、OpenAI 兼容端点、Anthropic 或本机模型）、代码托管平台与仓库；密钥与令牌以环境变量交给审查，不会出现在命令行上——那是任务管理器看得到的地方。
 - **CoT（思维链）提示词编辑器** — 创建和管理多步骤 CoT 提示词，用于结构化代码分析，包含：
   - 代码审查提示词
   - Code Smell 检测
@@ -323,6 +324,13 @@ python exe/start_pybreeze.py
 
 - 自动化文件与目录操作
 - 批量文件处理
+
+### prthinker — 思维链代码审查
+
+- 审查正在编辑的文件，或审查 GitHub / GitLab / Gitea 上的 Pull Request
+- 推理后端可选：审查服务器、OpenAI 兼容端点、Anthropic，或本机模型
+- 设置存放在用户目录的 `~/.pybreeze/prthinker_setting.json`；密钥以环境变量交给审查
+- 从它自己的源码文件夹安装（**安装 ▸ 自动化 ▸ 安装 prthinker**），需要 Python 3.12 以上
 
 ---
 
