@@ -83,6 +83,7 @@ class FileRunnerProcess:
                 compile_cmd,
                 capture_output=True,
                 timeout=60,
+                check=False,
                 creationflags=no_window_creationflags(),
             )
         except FileNotFoundError:

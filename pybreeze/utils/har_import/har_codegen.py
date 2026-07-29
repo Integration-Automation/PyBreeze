@@ -68,7 +68,7 @@ def _pytest_script(requests: list[CurlRequest]) -> str:
     """Write every request as its own test in one pytest file."""
     functions = [
         pytest_function(request, name)
-        for request, name in zip(requests, unique_test_names(requests))
+        for request, name in zip(requests, unique_test_names(requests), strict=True)
     ]
     return "\n".join([REQUESTS_IMPORT, "", "", _BETWEEN_FUNCTIONS.join(functions)]) + "\n"
 

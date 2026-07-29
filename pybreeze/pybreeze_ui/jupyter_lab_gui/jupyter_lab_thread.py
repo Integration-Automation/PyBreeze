@@ -55,6 +55,7 @@ def is_jupyter_installed(python_exe: str) -> bool:
         [python_exe, "-m", "pip", "show", "jupyterlab"],
         capture_output=True,
         timeout=30,
+        check=False,
         creationflags=no_window_creationflags(),
     )
     return result.returncode == 0
@@ -86,7 +87,7 @@ class JupyterLauncherThread(QThread):
                     "install",
                     "jupyterlab",
                     "-U"
-                ], capture_output=True, text=True, timeout=300,
+                ], capture_output=True, text=True, timeout=300, check=False,
                     creationflags=no_window_creationflags())
 
                 if result.returncode != 0:
