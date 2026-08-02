@@ -17,7 +17,9 @@ sys.path.insert(2, str(Path(__file__).parent.parent))
 # -- Project information -----------------------------------------------------
 
 project = "PyBreeze"
-copyright = "2020 ~ Now, JE-Chen"  # noqa: A001 — Sphinx requires this exact variable name
+# ``project_copyright`` is Sphinx's official alias for ``copyright`` (3.5+),
+# provided so a conf.py need not shadow the builtin of that name.
+project_copyright = "2020 ~ Now, JE-Chen"
 author = "JE-Chen"
 
 # -- General configuration ---------------------------------------------------
