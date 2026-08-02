@@ -16,6 +16,8 @@ from pybreeze.pybreeze_ui.extend_ai_gui.ai_gui_global_variable import COT_TEMPLA
 from pybreeze.pybreeze_ui.extend_ai_gui.prompt_edit_gui.cot_code_review_prompt_templates.global_rule import (
     build_global_rule_template
 )
+from pybreeze.pybreeze_ui.extend_ai_gui.prompt_store import load_prompt
+from pybreeze.utils.logging.logger import pybreeze_logger
 
 # The key the code under review is seeded into the results under.
 CODE_DIFF = "code_diff"
@@ -74,9 +76,9 @@ def build_prompt(step: str, results: Mapping[str, str]) -> str | None:
         :data:`CODE_DIFF`
     :return: the prompt to send, or ``None`` when *step* is not part of the chain
     """
-    template = COT_TEMPLATE_RELATION.get(step)
+    built_in = COT_TEMPLATE_RELATION.get(step)
     arguments = STEP_ARGUMENTS.get(step)
-    if template is None or arguments is None:
+    if built_in is None or arguments is None:
         return None
     # A step whose input never ran quotes an empty section rather than the word
     # "None": the model should see that there is nothing there, not read a value.
@@ -84,4 +86,15 @@ def build_prompt(step: str, results: Mapping[str, str]) -> str | None:
         placeholder: results.get(key, "")
         for placeholder, key in arguments.items()
     }
-    return build_global_rule_template(prompt=template.format(**filled))
+    template = load_prompt(step, built_in)
+    try:
+        body = template.format(**filled)
+    except (KeyError, IndexError, ValueError) as error:
+        # An edited prompt that names a placeholder the chain cannot fill would
+        # otherwise take the whole review down. Fall back to the built-in and say
+        # so, rather than failing a step the user cannot debug from the UI.
+        pybreeze_logger.error(
+            "Edited prompt %s could not be filled in (%r); using the built-in",
+            step, error)
+        body = built_in.format(**filled)
+    return build_global_rule_template(prompt=body)

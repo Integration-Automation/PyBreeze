@@ -6,6 +6,8 @@ a user-facing dialog instead of an uncaught traceback.
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 from PySide6.QtWidgets import QMessageBox, QWidget
 
 from pybreeze.utils.logging.logger import pybreeze_logger
@@ -18,6 +20,9 @@ def save_prompt_text(parent: QWidget, path: str, content: str, error_title: str)
     caller can skip its success message).
     """
     try:
+        # The directory is made here rather than on every read, so a session that
+        # only looks at the built-in prompts leaves nothing behind.
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
         with open(path, "w", encoding="utf-8") as file_handle:
             file_handle.write(content)
         return True

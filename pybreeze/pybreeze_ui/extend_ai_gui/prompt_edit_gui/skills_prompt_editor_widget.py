@@ -1,17 +1,18 @@
 from __future__ import annotations
 
-import os
+from pathlib import Path
 
 from PySide6.QtCore import QFileSystemWatcher
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout,
-    QComboBox, QTextEdit, QPushButton, QGroupBox, QMessageBox
+    QComboBox, QTextEdit, QPushButton, QGroupBox, QLabel, QMessageBox
 )
 from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.extend_ai_gui.ai_gui_global_variable import SKILLS_TEMPLATE_FILES, \
     SKILLS_TEMPLATE_RELATION
 from pybreeze.pybreeze_ui.extend_ai_gui.prompt_edit_gui.prompt_file_io import save_prompt_text
+from pybreeze.pybreeze_ui.extend_ai_gui.prompt_store import prompt_dir, prompt_path
 
 
 class SkillPromptEditor(QWidget):
@@ -69,12 +70,21 @@ class SkillPromptEditor(QWidget):
         bottom_layout.addWidget(self.save_button)
         bottom_layout.addWidget(self.create_button)
 
+        # 這些檔案覆寫送出的 prompt，位置要讓人找得到
+        # These files override the prompt that is sent, so say where they are
+        where = QLabel(
+            f"{language_wrapper.language_word_dict.get('prompt_editor_stored_at_label')} "
+            f"{prompt_dir()}")
+        where.setWordWrap(True)
+
         # --- Combine layouts ---
         main_layout.addLayout(editor_layout)
+        main_layout.addWidget(where)
         main_layout.addLayout(bottom_layout)
 
         # --- FileSystemWatcher ---
-        self.watcher = QFileSystemWatcher(self.skill_files)
+        self.watcher = QFileSystemWatcher(
+            [str(prompt_path(name)) for name in self.skill_files])
         self.watcher.fileChanged.connect(self.on_file_changed)
 
         # 預設載入第一個檔案
@@ -83,11 +93,10 @@ class SkillPromptEditor(QWidget):
     def load_file_content(self, index):
         """載入選擇的檔案內容到編輯區"""
         filename = self.skill_files[index]
-        self.current_file = filename
-        if os.path.exists(filename):
-            with open(filename, encoding="utf-8") as f:
-                content = f.read()
-            self.middle_editor.setPlainText(content)
+        self.current_file = str(prompt_path(filename))
+        path = Path(self.current_file)
+        if path.is_file():
+            self.middle_editor.setPlainText(path.read_text(encoding="utf-8"))
         else:
             self.middle_editor.setPlainText(language_wrapper.language_word_dict.get(
                 "skill_prompt_editor_file_not_exist"
@@ -96,7 +105,7 @@ class SkillPromptEditor(QWidget):
     def create_file(self):
         """建立目前選擇的檔案，若不存在則用模板內容建立"""
         filename = self.current_file
-        if os.path.exists(filename):
+        if Path(filename).is_file():
             QMessageBox.information(
                 self,
                 language_wrapper.language_word_dict.get("skill_prompt_editor_msgbox_info_title"),
@@ -104,13 +113,16 @@ class SkillPromptEditor(QWidget):
                     filename=filename))
             return
 
-        template_content = self.templates.get(filename, "")
+        template_content = self.templates.get(Path(filename).name, "")
         if not save_prompt_text(
             self, filename, template_content,
             language_wrapper.language_word_dict.get("skill_prompt_editor_msgbox_error_title"),
         ):
             return
 
+        # Only now does the file exist, so only now can it be watched for the
+        # external edits this editor promises to pick up.
+        self.watcher.addPath(filename)
         QMessageBox.information(
             self,
             language_wrapper.language_word_dict.get("skill_prompt_editor_msgbox_success_title"),

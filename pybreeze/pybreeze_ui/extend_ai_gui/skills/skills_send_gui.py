@@ -8,7 +8,10 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import QThread, Signal
 from je_editor import language_wrapper
 
-from pybreeze.pybreeze_ui.extend_ai_gui.ai_gui_global_variable import SKILLS_TEMPLATE_FILES
+from pybreeze.pybreeze_ui.extend_ai_gui.ai_gui_global_variable import (
+    SKILLS_TEMPLATE_FILES, SKILLS_TEMPLATE_RELATION
+)
+from pybreeze.pybreeze_ui.extend_ai_gui.prompt_store import load_prompt
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.network.http_client import (
     ResponseTooLargeError, read_capped_text, CONNECT_TIMEOUT, truncate_for_display,
@@ -80,6 +83,7 @@ class SkillsSendGUI(QWidget):
         self.prompt_select_label = QLabel(language_wrapper.language_word_dict.get("skills_prompt_select_label"))
         self.prompt_select = QComboBox()
         self.prompt_select.addItems(SKILLS_TEMPLATE_FILES)
+        self.prompt_select.currentTextChanged.connect(self.load_selected_prompt)
         layout.addWidget(self.prompt_select_label)
         layout.addWidget(self.prompt_select)
 
@@ -104,6 +108,25 @@ class SkillsSendGUI(QWidget):
         self.setLayout(layout)
 
         self.thread = None  # 保存執行緒
+        # 開啟時就把選到的那個模板載進來，選單才不是擺著好看
+        # Load the selected template on open, so the selector does something
+        self.load_selected_prompt(self.prompt_select.currentText())
+
+    def load_selected_prompt(self, name: str) -> None:
+        """
+        把選到的 skill 模板載進編輯區
+        Put the selected skill template in the edit area.
+
+        以編輯過的檔案為準，沒有就用內建的；載進來以後仍然可以改，送出的是編輯區的內容。
+        The edited file wins over the built-in one. What lands here stays
+        editable: what is sent is whatever the edit area holds.
+
+        :param name: 模板檔名 / the template's file name
+        """
+        built_in = SKILLS_TEMPLATE_RELATION.get(name)
+        if built_in is None:
+            return
+        self.prompt_input.setPlainText(load_prompt(name, built_in))
 
     def send_prompt(self):
         # Ignore re-submits while a request is in flight: reassigning self.thread
