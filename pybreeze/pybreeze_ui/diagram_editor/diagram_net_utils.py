@@ -68,7 +68,7 @@ def _is_text_content_type(content_type: str) -> bool:
     type (``application/octet-stream``) or with no header still passes through to
     the pixmap validation.
     """
-    return content_type.split(";")[0].strip().lower().startswith("text/")
+    return content_type.split(";", maxsplit=1)[0].strip().lower().startswith("text/")
 
 
 def safe_download_image(url: str) -> bytes:
@@ -78,8 +78,10 @@ def safe_download_image(url: str) -> bytes:
     """
     url = _validate_url(url)
 
-    req = Request(url, headers={"User-Agent": "PyBreeze-DiagramEditor/1.0"})
-    with _OPENER.open(req, timeout=TIMEOUT_SECONDS) as resp:  # nosec B310 # noqa: S310 — URL + redirects validated by _ValidatingRedirectHandler
+    # URL + every redirect hop are validated by _ValidatingRedirectHandler, so the
+    # scheme can only ever be http/https by the time the request is opened.
+    req = Request(url, headers={"User-Agent": "PyBreeze-DiagramEditor/1.0"})  # nosec B310  # noqa: S310
+    with _OPENER.open(req, timeout=TIMEOUT_SECONDS) as resp:
         content_type = resp.headers.get("Content-Type", "")
         if _is_text_content_type(content_type):
             raise ImageDownloadError(

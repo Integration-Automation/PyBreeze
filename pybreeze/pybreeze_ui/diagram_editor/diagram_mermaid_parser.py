@@ -313,7 +313,7 @@ def _resolve_offsets(group: list[str], desired: list[float], offset: dict[str, f
     # positions: this preserves alignment (a lone child stays under its parent)
     # while cancelling the left-to-right spacing push.
     shift = sum(desired) / len(desired) - sum(placed) / len(placed)
-    for nid, value in zip(group, placed):
+    for nid, value in zip(group, placed, strict=True):
         offset[nid] = value + shift
 
 

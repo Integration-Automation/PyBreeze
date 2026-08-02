@@ -4,233 +4,128 @@ Automation-first Python IDE built on PySide6 + JEditor, integrating Web/API/GUI/
 
 ## Architecture
 
-**Layered architecture with Facade + Strategy patterns:**
-
 ```
 pybreeze/
-├── __init__.py                  # Public API facade (start_editor, plugin re-exports)
-├── pybreeze_ui/                 # Presentation layer (PySide6 widgets)
-│   ├── editor_main/             # Main window (extends JEditor)
-│   ├── menu/                    # Menu bar builders (automation, install, tools, plugins)
-│   ├── connect_gui/ssh/         # SSH client widgets
-│   ├── extend_ai_gui/           # LLM code review & prompt editors
-│   ├── jupyter_lab_gui/         # JupyterLab tab integration
-│   ├── syntax/                  # Automation keyword highlighting definitions
-│   └── show_code_window/        # CodeWindow - output display widget
+├── __init__.py                  # Facade: start_editor, PyBreezeMainWindow, EDITOR_EXTEND_TAB
+├── pybreeze_ui/                 # Presentation layer (PySide6)
+│   ├── editor_main/             # Main window (extends JEditor) + file tree context menu
+│   ├── menu/                    # Menu builders: automation / install / tools / plugin / dock
+│   ├── tools_gui/               # Tool tabs: cURL, HAR, JWT, diff, regex, headers, …
+│   ├── diagram_editor/          # WYSIWYG diagram editor (QGraphicsScene, Mermaid import)
+│   ├── extend_ai_gui/           # CoT code review, prompt editors, skill send
+│   ├── connect_gui/             # ssh/ (terminal + SFTP tree), url/ (AI review client)
+│   ├── jupyter_lab_gui/         # JupyterLab tab (QWebEngineView)
+│   ├── show_code_window/        # CodeWindow — subprocess output display
+│   ├── dialog/                  # prthinker settings dialog
+│   └── syntax/                  # Automation keyword highlighting definitions
 ├── extend/
-│   ├── process_executor/        # Process isolation layer (Strategy pattern)
-│   │   ├── python_task_process_manager.py  # Core: TaskProcessManager (subprocess + thread + QTimer)
-│   │   ├── process_executor_utils.py       # Factory functions: build_process / start_process
-│   │   ├── file_runner_process.py          # FileRunnerProcess for plugin run configs
-│   │   ├── api_testka/          # Each module delegates to build_process with its package name
-│   │   ├── auto_control/
-│   │   ├── web_runner/
-│   │   ├── load_density/
-│   │   ├── file_automation/
-│   │   ├── mail_thunder/
-│   │   └── test_pioneer/        # TestPioneerProcess (custom variant)
-│   └── mail_thunder_extend/     # Post-test email report hook
+│   ├── process_executor/        # Process isolation layer (Strategy)
+│   │   ├── python_task_process_manager.py  # TaskProcessManager (subprocess + threads + QTimer)
+│   │   ├── process_executor_utils.py       # build_process / start_process / run_dir_files_*
+│   │   ├── file_runner_process.py          # FileRunnerProcess — plugin run configs (any language)
+│   │   ├── queue_pump.py                   # Shared per-tick queue drain
+│   │   ├── api_testka/ auto_control/ web_runner/ load_density/
+│   │   ├── file_automation/ mail_thunder/  # Each delegates to build_process with its package name
+│   │   ├── test_pioneer/        # TestPioneerProcess (custom variant)
+│   │   └── prthinker/           # Code review via start_module_process (secrets via env)
+│   ├── mail_thunder_extend/     # Post-test email report hook
+│   └── prthinker_extend/        # prthinker settings + argument assembly (pure logic, no Qt)
 ├── extend_multi_language/       # Built-in i18n (English, Traditional Chinese)
-└── utils/
-    ├── exception/               # Exception hierarchy (ITEException base)
-    ├── logging/                 # pybreeze_logger
-    ├── file_process/            # File/directory utilities
-    ├── json_format/             # JSON processing
-    ├── network/                 # URL validation (SSRF prevention)
-    └── manager/package_manager/ # PackageManager class
+└── utils/                       # Pure logic, no Qt — unit-testable
+    ├── curl_import/ har_import/ # Request parsing + script generation
+    ├── header_tools/ jwt_tools/ hash_tools/ timestamp_tools/
+    ├── regex_tools/ query_tools/ url_tools/ diff_tools/
+    ├── http_reference/ json_format/ response_inspector/
+    ├── network/                 # url_validation (SSRF), http_client (capped reads)
+    ├── exception/               # ITEException hierarchy
+    ├── logging/ file_process/ app_dirs.py / subprocess_util.py
+    └── manager/package_manager/ # PackageManager — holds syntax_check_list
 ```
 
-**Key design patterns in use:**
-- **Facade**: `pybreeze/__init__.py` exposes `start_editor()`, `EDITOR_EXTEND_TAB`, and plugin APIs
-- **Strategy**: Each automation module (`api_testka`, `web_runner`, etc.) is a strategy that delegates to `TaskProcessManager` via `build_process()`
-- **Template Method**: `TaskProcessManager` defines the subprocess lifecycle (start -> read stdout/stderr threads -> QTimer poll -> drain -> exit)
-- **Observer**: QTimer-based polling bridges subprocess output to PySide6 UI thread via thread-safe Queues
-- **Plugin System**: Auto-discovery from `jeditor_plugins/` directory; plugins register via `register()` function
+**Patterns:** Facade (`__init__.py`) · Strategy (automation modules → `build_process`) · Template Method (`TaskProcessManager` lifecycle) · Observer (Queue + QTimer → UI thread) · Factory (`build_automation_menu`, `_WIDGET_FACTORIES`) · State (`DiagramScene.ToolMode`) · Command (`DiagramSnapshotCommand`) · Plugin (auto-discovery from `jeditor_plugins/`)
+
+**Keep `architecture_explore.md` current (mandatory).** It is the module-by-module map. Update it *in the same change* that makes it stale — whenever a module/package/class is added, removed, renamed or moved; a layer boundary, executor or threading flow changes; a menu, tool tab or dock is added or removed; persisted data or the test/CI layout changes; or one of its listed observations is fixed. Re-measure any line counts it quotes, and mirror structural edits into the tree above.
 
 ## Key types
 
-- `PyBreezeMainWindow` — main window class (extends JEditor), holds `tab_widget` and `current_run_code_window`
-- `TaskProcessManager` — core process executor; manages subprocess, I/O threads, and QTimer UI updates
-- `CodeWindow` — output display widget passed to `TaskProcessManager`
-- `PackageManager` — pip wrapper for installing automation modules
-- `EDITOR_EXTEND_TAB: dict` — registry for custom tabs (key=name, value=QWidget subclass)
+- `PyBreezeMainWindow` — main window (extends `EditorMain`); holds `tab_widget`, `current_run_code_window`, `python_compiler`
+- `TaskProcessManager` — core executor; subprocess + reader threads + QTimer UI pump
+- `FileRunnerProcess` — non-Python executor driven by plugin run configs
+- `CodeWindow` — output widget passed to the executors
+- `EDITOR_EXTEND_TAB: dict[str, type[QWidget]]` — registry for custom tabs
 
 ## Branching & CI
 
-- `main` branch: stable releases, publishes `pybreeze` to PyPI
-- `dev` branch: development, publishes `pybreeze_dev` to PyPI
+- `main`: stable, publishes `pybreeze` · `dev`: development, publishes `pybreeze_dev`
 - Version config: `pyproject.toml` (stable), `dev.toml` (dev) — keep both in sync when bumping
-- CI runs on GitHub Actions (Windows, Python 3.10/3.11/3.12)
-- CI steps: install deps -> pytest `test/test_utils/` -> start_automation_test -> extend_automation_test
+- `unit-tests` job: GitHub Actions on Windows, Python 3.10–3.14 — install deps → pytest `test/test_utils/` → `start_automation_test` → `extend_automation_test`
+- `sonarcloud` job: CI-based SonarQube Cloud analysis (`sonar-project.properties`), skipped on the nightly schedule and on fork PRs. Automatic Analysis is off — it only covers main and PRs, so `dev` went unanalysed; the two modes are mutually exclusive, so do not re-enable it
 
 ## Development
 
 ```bash
 python -m pip install -r dev_requirements.txt
-python -m pytest test/test_utils/ -v --tb=short
-python -m pybreeze                              # launch the IDE
+python -m pytest test/test_utils/ -v --tb=short   # run before submitting any change
+python -m pybreeze                                # launch the IDE
+ruff check pybreeze/                              # before committing non-trivial changes
 ```
 
-**Testing:**
-- Unit tests: `test/test_utils/` (pure logic: exceptions, JSON, logger, file utils, package manager, venv path, jupyter helpers)
-- Integration tests: `test/unit_test/start_automation/` (launches IDE in debug_mode, verifies startup and extend tab)
-- Run all tests before submitting changes: `python -m pytest test/test_utils/ -v`
+- Unit tests: `test/test_utils/` — pure logic + headless Qt widgets (`QT_QPA_PLATFORM=offscreen`), Hypothesis property tests
+- Startup tests: `test/unit_test/start_automation/` — launches the IDE in `debug_mode`, verifies startup and extend tab
 
 ## Conventions
 
-- Python 3.10+ — use `X | Y` union syntax, not `Union[X, Y]`
-- Use `from __future__ import annotations` for deferred type evaluation
-- Use `TYPE_CHECKING` guard for imports only needed by type hints (avoid circular imports)
-- PySide6 threading: never update UI from worker threads — use Queue + QTimer pattern (see `TaskProcessManager`)
-- Exception hierarchy: all custom exceptions inherit from `ITEException`
-- Logging: use `pybreeze_logger` from `pybreeze.utils.logging.logger`
-- Plugin API: `register_programming_language()` and `register_natural_language()` from `je_editor.plugins`
-- Delete all unused code — do not leave dead imports, unreachable functions, commented-out blocks, or unused variables. If code is not called by any execution path, remove it entirely. No `# TODO: remove later` or `_old_` prefixes — delete immediately.
+- Python 3.10+: `X | Y` unions, `from __future__ import annotations`, `TYPE_CHECKING` guard for hint-only imports
+- **Never update UI from a worker thread** — Queue + QTimer (see `TaskProcessManager`) or Qt Signal/Slot
+- Custom exceptions inherit from `ITEException`; log via `pybreeze_logger` (lazy `%s` formatting, never `print()`)
+- Plugin API: `register_programming_language()` / `register_natural_language()` from `je_editor.plugins`
+- A QAction built for a menu must be stored on the main window — Qt holds no reference and a GC'd action silently stops responding
+- Delete unused code immediately — no dead imports, unreachable branches, commented-out blocks, or `_old_` prefixes
+- Follow PEP 8 and standard Pythonic practice; `ruff` is the arbiter
 
 ## Security
 
-All code must follow secure-by-default principles. Review every change against the checklist below before committing.
+**General**
+- Never `eval()` / `exec()` / `pickle.loads()` on untrusted data; `json.loads` for serialisation; `yaml.safe_load` only
+- Never log or display secrets, tokens, passwords or API keys — API URLs may embed tokens, so treat them as credentials
+- Validate all input at system boundaries (file dialogs, URL inputs, network data); never leak stack traces or paths to the user
 
-### General rules
-- Never use `eval()`, `exec()`, or `pickle.loads()` on untrusted data
-- Never use `subprocess.Popen(..., shell=True)` — always pass argument lists
-- Never log or display secrets, tokens, passwords, or API keys
-- Use `json.loads()` / `json.dumps()` for serialisation — never pickle
-- Never use `yaml.load()` — always use `yaml.safe_load()`
-- Validate all user input at system boundaries (file dialogs, URL inputs, network data)
-- Handle exceptions without leaking stack traces, file paths, or internal state to the user
+**Network (SSRF)** — every outbound request to a user-supplied URL must first pass validation:
+1. `http://` / `https://` only — block `file://`, `ftp://`, `data:`, `gopher://`
+2. Resolve the hostname and reject private / loopback / link-local / reserved IPs
+3. Enforce timeouts (15 s downloads, 30 s API calls) and response size caps (20 MB binary)
+4. `allow_redirects=False`, or re-validate every redirect target
 
-### Network requests (SSRF prevention)
-- **All** outbound HTTP requests to user-specified URLs must validate the target before connecting:
-  1. Only `http://` and `https://` schemes — block `file://`, `ftp://`, `data:`, `gopher://`
-  2. Resolve the hostname and check IPs against private/loopback/link-local/reserved ranges (`ipaddress.is_private`, `is_loopback`, `is_link_local`, `is_reserved`)
-  3. Enforce connection timeouts (default: 15 s for downloads, 30 s for API calls)
-  4. Enforce response size limits where applicable (default: 20 MB for binary downloads)
-- Reference implementation: `diagram_net_utils._validate_url()` and `safe_download_image()`
-- For API-style requests (`requests.get/post`): create or reuse a URL validation helper that performs scheme + IP checks, then call it before every `requests.*` call
-- Disable automatic redirect following (`allow_redirects=False`) or re-validate the redirect target to prevent redirect-based SSRF
-- Never pass user-supplied URLs directly to `urlopen()` or `requests.*` without validation
+Reference implementations: `utils/network/url_validation.py` (`validate_url`), `utils/network/http_client.py` (`read_capped_text`), `diagram_editor/diagram_net_utils.py` (`safe_download_image`). Never pass a user URL to `urlopen()` / `requests.*` unvalidated, and never set `verify=False`.
 
-### Network requests (TLS / SSH)
-- All HTTPS requests must use default TLS verification — never set `verify=False`
-- SSH connections: never use `paramiko.AutoAddPolicy()` or `paramiko.WarningPolicy()` — both silently accept unknown host keys and are vulnerable to MITM. Use `InteractiveHostKeyPolicy` from `pybreeze.pybreeze_ui.connect_gui.ssh.ssh_host_key_policy` (via `apply_host_key_policy(client, parent_widget)`), which prompts the user with the SHA256 fingerprint on first connection and persists confirmed keys to `~/.pybreeze/ssh_known_hosts`
+**SSH** — never `paramiko.AutoAddPolicy()` or `WarningPolicy()`. Use `apply_host_key_policy(client, parent_widget)` from `connect_gui/ssh/ssh_host_key_policy.py`: it shows the SHA256 fingerprint for confirmation on first connect and persists to `~/.pybreeze/ssh_known_hosts`.
 
-### Subprocess execution
-- Always pass argument lists to `subprocess.Popen` / `subprocess.run` — never `shell=True`
-- Explicitly set `shell=False` for clarity in new code
-- Never interpolate user input into command strings — pass as separate list elements
-- Set `timeout` on all `subprocess.run()` calls to prevent hangs
-- The IDE intentionally runs user-authored scripts; this is trusted local execution, not arbitrary remote code. Subprocess hardening protects against accidental shell injection, not against malicious local files
+**Subprocess** — always argument lists, explicit `shell=False`, `timeout` on every `subprocess.run()`. Never interpolate user input into a command string. Secrets travel as `env`, never argv (see `prthinker_setting.environment_for`). The IDE intentionally runs user-authored scripts — this hardening guards against accidental shell injection, not against malicious local files.
 
-### JupyterLab integration
-- The embedded JupyterLab server binds to `localhost` only and is intended for local development
-- `--ServerApp.token=` and `--ServerApp.password=` are deliberately empty to enable seamless embedding — this is safe only because the server is localhost-only
-- Do not change `--ServerApp.ip` to `0.0.0.0` or any externally-reachable address
-- `--ServerApp.disable_check_xsrf=True` is required for the embedded QWebEngineView; do not expose the server externally with XSRF disabled
+**JupyterLab** — the embedded server is localhost-only; the empty `--ServerApp.token`/`password` and `--ServerApp.disable_check_xsrf=True` are safe *only* because of that. Never change `--ServerApp.ip` to an externally reachable address.
 
-### File I/O
-- File read/write paths from user dialogs (`QFileDialog`) are trusted (user-initiated)
-- File paths loaded from saved data (`.diagram.json`) must be validated before access:
-  - Local paths: check `path.is_file()` and verify extension is in an allowlist
-  - URLs: pass through the same SSRF validation as user-entered URLs
-- Never construct file paths by string concatenation with user input — use `pathlib.Path` with validation
-- When writing to data directories (`.pybreeze/`), create the directory with `os.makedirs(exist_ok=True)` and always use `encoding="utf-8"`
-- Never follow symlinks from untrusted sources — use `Path.resolve(strict=True)` and verify the resolved path is still within expected boundaries
+**File I/O** — dialog-chosen paths are trusted; paths loaded from saved data (`.diagram.json`) are not: check `is_file()` and an extension allowlist, or run URLs through SSRF validation. Use `pathlib`, never string concatenation. Write to `~/.pybreeze/` via `app_dirs.pybreeze_data_dir()` with `encoding="utf-8"`. Resolve symlinks with `Path.resolve(strict=True)` and verify the result stays in bounds.
 
-### Qt / UI
-- `QGraphicsTextItem` with `TextEditorInteraction` must not be enabled by default — use double-click-to-edit pattern to prevent unintended text selection issues in themed environments
-- Plugin loading (`jeditor_plugins/`) uses auto-discovery — only load `.py` files, skip files starting with `_` or `.`
-- `QWebEngineView.setUrl()` must only load trusted URLs (localhost or user-confirmed external URLs) — never load untrusted HTML or URLs without user consent
-- Never call `QWebEngineView.setHtml()` with unsanitised content — this enables XSS within the embedded browser
+**Qt** — `QGraphicsTextItem` text interaction must not be on by default (double-click to edit). Plugin loading takes only `.py` files, skipping `_`/`.` prefixes. `QWebEngineView.setUrl()` only for localhost or user-confirmed URLs; never `setHtml()` with unsanitised content.
 
-### Secrets and credentials
-- SSH passwords and private key passphrases are held in memory only during the session — never persist to disk or logs
-- Password fields must use `QLineEdit.EchoMode.Password`
-- API endpoint URLs may contain embedded tokens — treat URL strings with the same care as credentials (do not log full URLs)
-- Environment variables (`PYBREEZE_LOG_MAX_BYTES`, etc.) must never contain secrets; use dedicated secure stores for credentials
+**Secrets** — SSH passwords and passphrases stay in memory for the session only. Password fields use `QLineEdit.EchoMode.Password`.
 
-### Dependency security
-- Pin dependencies to exact versions in `requirements.txt` / `dev_requirements.txt`
-- Do not add new dependencies without reviewing their security posture (maintained? known CVEs?)
-- Avoid transitive dependency bloat — prefer stdlib solutions when the alternative is a single-function dependency
+**Dependencies** — pin exact versions in `requirements.txt` / `dev_requirements.txt`. Review any new dependency's maintenance and CVE history; prefer stdlib over a single-function package.
 
-## Code quality (SonarQube / Codacy compliance)
+## Code quality gates (SonarQube / Codacy)
 
-All code must satisfy common static-analysis rules enforced by SonarQube and Codacy. Review each change against the checklist below.
+Per function: cyclomatic and cognitive complexity ≤ 15 (hard cap 20) · ≤ 75 lines of code · ≤ 7 parameters · ≤ 4 levels of nesting. Per file: ≤ 1000 lines. Per class: split responsibilities past ~15 instance attributes.
 
-### Complexity & size
-- Cyclomatic complexity per function: ≤ 15 (hard cap 20). Break large branches into helpers
-- Cognitive complexity per function: ≤ 15. Flatten nested `if`/`for`/`try` chains with early returns or guard clauses
-- Function length: ≤ 75 lines of code (excluding docstring / blank lines). Extract helpers past that
-- Parameter count: ≤ 7 per function/method. Use a dataclass or typed dict when more are needed
-- Nesting depth: ≤ 4 levels of `if`/`for`/`while`/`try`. Refactor with early returns instead of pyramids
-- File length: ≤ 1000 lines — split modules past that
-- Class `__init__`: keep attribute count reasonable; if a class has > 15 instance attributes, split responsibilities
-
-### Exception handling
-- Never use bare `except:` — always specify exception types
-- Avoid catching `Exception` or `BaseException` unless immediately re-raising or logging and re-raising with context
-- Never `pass` silently inside `except` — log the error via `pybreeze_logger` (at minimum `.debug()`) with context
-- Do not `return` / `break` / `continue` inside a `finally` block — it swallows exceptions
-- Custom exceptions must inherit from `ITEException`; never `raise Exception(...)` directly
-- Use `raise ... from err` (or `raise ... from None`) when re-raising to preserve / suppress the chain explicitly
-
-### Pythonic correctness
-- Compare with `None` using `is` / `is not`, never `==` / `!=`
-- Type checks use `isinstance(obj, T)`, never `type(obj) == T`
-- Never use mutable default arguments (`def f(x=[])`) — use `None` and initialise inside
-- Prefer f-strings over `%` formatting or `str.format()`
-- Use context managers (`with open(...) as f:`) for every file / socket / lock — never leave resources to GC
-- Use `enumerate()` instead of `range(len(...))` when the index is needed alongside the item
-- Use `dict.get(key, default)` instead of `key in dict and dict[key]` patterns
-- Use set / dict comprehensions when clearer than manual loops; avoid comprehensions with side effects
-
-### Naming & style (PEP 8)
-- `snake_case` for functions, methods, variables, module names
-- `PascalCase` for classes
-- `UPPER_SNAKE_CASE` for module-level constants
-- `_leading_underscore` for protected / internal members; never use `__dunder__` for custom attributes
-- No single-letter names except loop indices (`i`, `j`) or conventional math (`x`, `y`)
-- Do not shadow built-ins (`id`, `type`, `list`, `dict`, `input`, `file`, `open`, etc.) — rename the local variable
-
-### Duplication & dead code
-- String literal used 3+ times in the same module → extract a module-level constant
-- Identical 6+ line blocks in 2+ places → extract a helper function
-- Remove unused imports, unused parameters, unused local variables, unreachable code after `return` / `raise`
-- No commented-out code blocks — delete them (git history is the archive)
-- No `TODO` / `FIXME` / `XXX` without an accompanying issue reference (`# TODO(#123): ...`)
-
-### Logging, printing, assertions
-- Never use `print()` for diagnostics in library / runtime code — use `pybreeze_logger`
-- Use lazy logging (`logger.debug("x=%s", x)`) — avoid eager f-string formatting inside log calls on hot paths
-- Never use `assert` for runtime validation (Python strips assertions with `-O`). Use explicit `if … raise …` instead; `assert` is only for test code
-
-### Hardcoded values & secrets
-- No hardcoded passwords, tokens, API keys, or secrets — use env vars or a config file excluded from VCS
-- No hardcoded IP addresses or hostnames outside of `localhost` / documented loopback — use config
-- Magic numbers (except 0, 1, -1) should be named constants when repeated or non-obvious
-
-### Boolean & return hygiene
-- Replace `if cond: return True else: return False` with `return bool(cond)` or `return cond`
-- Replace `if x == True` / `if x == False` with `if x` / `if not x`
-- A function should have a consistent return type — never mix `return value` and bare `return` (returns `None`) on meaningful paths unless explicitly documented
-- Do not return inside a generator function (`yield` + `return value` is a syntax pitfall)
-
-### Imports
-- One import per line for `import` statements; grouped `from x import a, b` is fine
-- Order: stdlib → third-party → first-party (`pybreeze.*`) — separated by blank lines
-- No wildcard imports (`from x import *`) outside of `__init__.py` re-exports
-- No relative imports beyond one level (`from ..pkg import x` OK, `from ...pkg import x` avoid)
-
-### Running the linters
-- Before committing any non-trivial change, run `ruff check pybreeze/` locally to catch these rules — `ruff` covers the majority of SonarQube/Codacy Python rules
-- When adding a new rule exception, justify it in a `# noqa: RULE` comment with a short reason — never blanket-disable
+- Never bare `except:`; catch `Exception` only to log-and-re-raise with context. Never `pass` silently in `except` — at minimum `pybreeze_logger.debug()` with context. Use `raise ... from err` / `from None`. No `return`/`break`/`continue` inside `finally`.
+- Never `assert` for runtime validation (stripped under `-O`) — test code only
+- A string literal used 3+ times in a module becomes a module-level constant; an identical 6+ line block in 2+ places becomes a helper
+- Magic numbers (beyond 0, 1, -1) become named constants when repeated or non-obvious
+- No hardcoded IPs or hostnames outside documented loopback
+- No `TODO` / `FIXME` without an issue reference (`# TODO(#123): ...`)
+- Justify each `# noqa: RULE` with a short reason — never blanket-disable
 
 ## Commit & PR rules
 
-- Commit messages: short imperative sentence (e.g., "Update stable version", "Fix github actions")
-- **No AI attribution (mandatory)**: Never mention any AI tool, assistant, agent, model name, or vendor in commit messages, commit trailers, branch names, PR titles, PR descriptions, issue text, code comments, or documentation
-  - Do not add `Co-Authored-By` headers referencing any AI
-  - No "Generated with ...", "Created by ...", or similar footers in commits or PR bodies
-  - PR titles and bodies describe **what changed and why** — nothing about how the change was authored
+- Commit messages: short imperative sentence ("Update stable version", "Fix github actions")
+- **No AI attribution (mandatory)** — never mention any AI tool, assistant, agent, model or vendor in commit messages, trailers, branch names, PR titles or bodies, issues, code comments or documentation. No `Co-Authored-By` referencing an AI, no "Generated with …" footers. PR text describes *what changed and why*, never how it was authored.
 - PR target: `dev` for development work, `main` for stable releases
