@@ -243,20 +243,33 @@ call_X_multi_file_and_send()   → run_dir_files_with_package(..., True)
 
 ```
 extend_ai_gui/
-├── ai_gui_global_variable.py     模板檔名清單 + 檔名→模板內容對照表
+├── ai_gui_global_variable.py     模板檔名清單 + 檔名→內建模板內容對照表
+├── prompt_store.py               編輯過的 prompt 檔案解析（~/.pybreeze/prompts/）
 ├── code_review/
-│   ├── code_review_thread.py     SenderThread(QThread)：CoT 多階段審查
+│   ├── cot_chain.py              接線表（純邏輯，無 Qt）：哪步引用哪步
+│   ├── code_review_thread.py     SenderThread(QThread)：跑八步審查鏈
 │   └── cot_code_review_gui.py    UI
 ├── prompt_edit_gui/
-│   ├── cot_prompt_editor_widget.py     編輯 5 個 CoT 模板（QFileSystemWatcher 熱更新）
-│   ├── skills_prompt_editor_widget.py  編輯 2 個 Skill 模板
+│   ├── prompt_editor_widget.py         共用編輯器（QFileSystemWatcher 熱更新）
+│   ├── cot_prompt_editor_widget.py     8 個 CoT 模板的檔案清單＋語言鍵
+│   ├── skills_prompt_editor_widget.py  2 個 Skill 模板的檔案清單＋語言鍵
 │   ├── prompt_file_io.py               共用存檔（失敗跳警告對話框）
-│   ├── cot_code_review_prompt_templates/   7 個模板常數
+│   ├── cot_code_review_prompt_templates/   8 個模板常數＋global_rule
 │   └── skills_prompt_templates/            2 個模板常數
 └── skills/skills_send_gui.py     單次 prompt 發送（RequestThread）
 ```
 
-**CoT 審查鏈**（`code_review_thread.py`）：`first_summary` → `first_code_review` → `linter` → `code_smell_detector` → `total_summary`。前四階段的結果被收集起來餵給最後的 total summary。每階段都套 `build_global_rule_template()` 包一層全域規則。
+**CoT 審查鏈**（`cot_chain.py` 定義接線，`code_review_thread.py` 執行）八個步驟：
+
+```
+first_summary → first_code_review → judge_single_review ┐（評分前一步的審查）
+              → linter → code_smell_detector → step_by_step_analysis ┐（走過每條發現）
+              → total_summary → judge（帶 linter/code smell 脈絡評分總結）
+```
+
+**編輯過的 prompt 會生效**（`prompt_store.py`）：每個模板都以程式碼常數出貨，`~/.pybreeze/prompts/<名稱>.md` 存在且非空時覆寫它。編輯器讀寫的就是這個位置，所以在編輯器裡改 prompt 會改變審查實際送出的內容 —— 這正是編輯器存在的理由。檔案缺失、空白、讀不到都退回內建版本；編輯過的 prompt 若含有鏈填不了的 placeholder，記 log 後退回內建，不讓整次審查倒在使用者無法從 UI 診斷的 `KeyError` 上。讀取不會建目錄，只有存檔才會。
+
+`cot_chain.py` 用兩張表描述接線：`STEP_RESULT_KEY`（每步答案存在哪個 key）與 `STEP_ARGUMENTS`（每步的 placeholder 由哪個 key 填）。**順序即相依順序** —— 每步只能引用它上面的步驟，`test_cot_chain.py` 有結構性測試守住這件事。步驟失敗時錯誤訊息只顯示給使用者、不會被存進 results，避免後續步驟把「傳送失敗」當成審查內容引用。每步都套 `build_global_rule_template()` 包一層全域規則。
 
 安全處理：送出前 `validate_url()`、`allow_redirects=False`、`stream=True` 搭配 `read_capped_text()` 限制回應大小、單一 `requests.Session` 重用 TCP/TLS 連線、`isInterruptionRequested()` 讓 widget 關閉時能中止。
 
@@ -387,6 +400,7 @@ extend_ai_gui/
 |---|---|
 | `ssh_known_hosts` | TOFU 確認過的 SSH host key |
 | `prthinker_setting.json` | prthinker 後端/平台/金鑰設定 |
+| `prompts/*.md` | 編輯過的 CoT / Skill prompt，覆寫內建模板 |
 | `response_stats.txt` | AI 審查接受/拒絕統計 |
 | `urls.txt` | AI 審查端點歷史 |
 
@@ -396,10 +410,10 @@ extend_ai_gui/
 
 ## 18. 測試與 CI
 
-- **單元測試** `test/test_utils/` — 60 個 `test_*.py`。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
+- **單元測試** `test/test_utils/` — 65 個 `test_*.py`、985 個測試。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
 - **整合測試** `test/unit_test/start_automation/` — 以 `debug_mode=True` 啟動 IDE，10 秒後自動關閉，驗證啟動流程與 extend tab
 - **CI** `.github/workflows/{dev,stable}.yml` — `unit-tests` job 跑 Windows runner、Python 3.10–3.14 矩陣，3.12 那一腳額外上傳 `coverage-xml` artifact；`sonarcloud` job 跑 ubuntu、`needs: unit-tests`。每日 02:00 排程 + push/PR 觸發。`stable.yml` 另有 `publish` job 負責版號遞增與 PyPI 發布
-- **覆蓋率** `.coveragerc` — `relative_files = True` 是必要的：報告在 Windows 產生、由 Linux 上的 scanner 讀取，路徑不能帶機器資訊。目前整體 57%（`utils/` 與 `tools_gui` 95–100%，UI 層 20–45% 拉低）
+- **覆蓋率** `.coveragerc` — `relative_files = True` 是必要的：報告在 Windows 產生、由 Linux 上的 scanner 讀取，路徑不能帶機器資訊。目前整體 60%（`utils/`、`tools_gui`、`dialog` 95–100%；`editor_main` 58%、`menu` 54%；仍低的是 `diagram_editor` 45%、`process_executor` 39%、`connect_gui` 28%）
 - **靜態分析** SonarCloud（`sonar-project.properties`，CI-based analysis；Automatic Analysis 已關閉且必須維持關閉，兩種模式互斥）+ Codacy（`.codacy.yml`）+ Bandit（`pyproject.toml` 中排除 test、skip B101/B404）
 - **SonarCloud 方案限制** 該組織的方案只開放 `main` 與 PR 的分析結果。非 main 分支的分析送得出去、CE 任務也會成功，但結果讀回來是 403（組織內每個專案都只有 `main` 一條分支）。因此 `dev.yml` 只在 PR 時掃描，`stable.yml` 另外掃 push to `main`
 

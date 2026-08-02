@@ -134,6 +134,8 @@ pybreeze_traditional_chinese_word_dict = {
     "prthinker_setting_extra_arguments_label": "額外的命令列參數",
     "prthinker_setting_source_path_label": "prthinker 原始碼資料夾",
     "prthinker_setting_stored_at_label": "設定檔位置：",
+    # Prompt 編輯器 —— 編輯過的 prompt 會覆寫內建版本
+    "prompt_editor_stored_at_label": "Prompt 檔案位置（會覆寫內建 prompt）：",
     "prthinker_choose_source_path_label": "選擇 prthinker 原始碼資料夾",
     "prthinker_need_source_path_message":
         "prthinker 是從原始碼安裝的。請選擇含有 pyproject.toml 的資料夾，"

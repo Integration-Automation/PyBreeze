@@ -63,6 +63,84 @@ def test_one_session_serves_all_templates():
     assert "total_summary.md" in {name for name, _ in received}
 
 
+class _FlakySession(_FakeSession):
+    """Answers every step but the *fail_on*-th, which raises."""
+
+    def __init__(self, fail_on: int):
+        super().__init__()
+        self.fail_on = fail_on
+
+    def post(self, url, **kwargs):
+        import requests
+
+        self.post_calls.append((url, kwargs))
+        if len(self.post_calls) == self.fail_on:
+            raise requests.RequestException("endpoint down")
+        return _FakeResponse(f"answer {len(self.post_calls)}".encode())
+
+
+def _prompts(session) -> list[str]:
+    return [kwargs["json"]["prompt"] for _url, kwargs in session.post_calls]
+
+
+def test_a_failed_step_is_shown_but_never_quoted_back():
+    # The linter step fails. The step-by-step analysis quotes the linter, and must
+    # quote nothing rather than feed "could not send" back as if it were findings.
+    _qt_app()
+    from pybreeze.pybreeze_ui.extend_ai_gui.ai_gui_global_variable import COT_TEMPLATE_FILES
+    from pybreeze.pybreeze_ui.extend_ai_gui.code_review.code_review_thread import SenderThread
+
+    linter_step = COT_TEMPLATE_FILES.index("linter.md")
+    thread = SenderThread(files=list(COT_TEMPLATE_FILES), code="print('x')",
+                          url="https://example.com/api")
+    received = {}
+    thread.update_response.connect(lambda name, resp: received.__setitem__(name, resp))
+
+    session = _FlakySession(fail_on=linter_step + 1)
+    thread._run_templates(session, "print('x')")
+
+    # The failure still reaches the user ...
+    assert "endpoint down" in received["linter.md"]
+    # ... every later step still runs ...
+    assert len(session.post_calls) == len(COT_TEMPLATE_FILES)
+    # ... and none of them carries the failure text into the model.
+    later = _prompts(session)[linter_step + 1:]
+    assert not any("endpoint down" in prompt for prompt in later)
+
+
+def test_an_answered_step_is_quoted_by_the_step_that_needs_it():
+    _qt_app()
+    from pybreeze.pybreeze_ui.extend_ai_gui.ai_gui_global_variable import COT_TEMPLATE_FILES
+    from pybreeze.pybreeze_ui.extend_ai_gui.code_review.code_review_thread import SenderThread
+
+    thread = SenderThread(files=list(COT_TEMPLATE_FILES), code="print('x')",
+                          url="https://example.com/api")
+    session = _FlakySession(fail_on=0)  # nothing fails
+    thread._run_templates(session, "print('x')")
+
+    prompts = _prompts(session)
+    # judge_single_review is third and quotes the second step's answer.
+    assert "answer 2" in prompts[COT_TEMPLATE_FILES.index("judge_single_review.md")]
+    # judge is last and quotes the total summary written just before it.
+    assert "answer 7" in prompts[COT_TEMPLATE_FILES.index("judge.md")]
+
+
+def test_an_interrupted_run_stops_sending():
+    _qt_app()
+    from pybreeze.pybreeze_ui.extend_ai_gui.ai_gui_global_variable import COT_TEMPLATE_FILES
+    from pybreeze.pybreeze_ui.extend_ai_gui.code_review.code_review_thread import SenderThread
+
+    thread = SenderThread(files=list(COT_TEMPLATE_FILES), code="print('x')",
+                          url="https://example.com/api")
+    session = _FlakySession(fail_on=0)
+    # Interrupt once two steps have gone out, as closing the widget would.
+    thread.isInterruptionRequested = lambda: len(session.post_calls) >= 2
+
+    thread._run_templates(session, "print('x')")
+
+    assert len(session.post_calls) == 2
+
+
 def test_run_closes_session_even_on_error(monkeypatch):
     _qt_app()
     from pybreeze.pybreeze_ui.extend_ai_gui.code_review import code_review_thread as mod

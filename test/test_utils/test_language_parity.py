@@ -61,3 +61,24 @@ class TestCodeKeysAreDefined:
         used = _code_used_keys()
         missing = {k: src for k, src in used.items() if k not in EN}
         assert not missing, f"language_word_dict.get() keys missing from the dict: {missing}"
+
+    def test_every_prompt_editor_label_key_exists(self):
+        # The prompt editors pass their keys through a dataclass, so the regex
+        # above cannot see them. Check the declared keys directly instead, or a
+        # renamed key would show up as a blank button with nothing to catch it.
+        import dataclasses
+
+        from pybreeze.pybreeze_ui.extend_ai_gui.prompt_edit_gui.cot_prompt_editor_widget import (
+            COT_LABELS
+        )
+        from pybreeze.pybreeze_ui.extend_ai_gui.prompt_edit_gui.skills_prompt_editor_widget import (
+            SKILL_LABELS
+        )
+
+        missing = [
+            key
+            for labels in (COT_LABELS, SKILL_LABELS)
+            for key in dataclasses.astuple(labels)
+            if key not in EN
+        ]
+        assert not missing, f"Prompt editor label keys missing from the dict: {missing}"
