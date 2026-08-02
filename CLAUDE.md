@@ -2,6 +2,8 @@
 
 Automation-first Python IDE built on PySide6 + JEditor, integrating Web/API/GUI/Load testing into a single environment.
 
+**This file is the only home for project rules.** Anything that constrains how work is done here — conventions, security requirements, quality gates, commit policy — belongs in this file. Do not start a `progress.md`, a scratch notes file, or any other side document to hold rules: a rule kept somewhere else is a rule nobody reads. Reference material that is not a rule (the architecture map, the plugin API) lives in its own file and is linked from here.
+
 ## Architecture
 
 ```
@@ -59,7 +61,9 @@ pybreeze/
 - `main`: stable, publishes `pybreeze` · `dev`: development, publishes `pybreeze_dev`
 - Version config: `pyproject.toml` (stable), `dev.toml` (dev) — keep both in sync when bumping
 - `unit-tests` job: GitHub Actions on Windows, Python 3.10–3.14 — install deps → pytest `test/test_utils/` → `start_automation_test` → `extend_automation_test`
-- `sonarcloud` job: CI-based SonarQube Cloud analysis (`sonar-project.properties`), skipped on the nightly schedule and on fork PRs. Automatic Analysis is off — it only covers main and PRs, so `dev` went unanalysed; the two modes are mutually exclusive, so do not re-enable it
+- `sonarcloud` job: CI-based SonarQube Cloud analysis (`sonar-project.properties`), `needs: unit-tests` so it can consume the `coverage-xml` artifact that leg uploads. Automatic Analysis is off and must stay off — the two modes are mutually exclusive and the scanner refuses to run alongside it
+- SonarCloud's plan for this organization exposes results for `main` and for pull requests only. An analysis pushed for another branch succeeds but its results read back 403, so `dev.yml` scans on pull requests only; `stable.yml` also scans pushes to `main`. Do not "fix" this by scanning every `dev` push — the numbers are not readable
+- Coverage comes from the 3.12 matrix leg (`pytest --cov`), configured by `.coveragerc`. `relative_files = True` is required: the report is produced on Windows and consumed by a Linux scanner, so it must not carry machine-specific paths
 
 ## Development
 
