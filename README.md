@@ -7,125 +7,209 @@
 
 [繁體中文](README/README_zh-TW.md) | [简体中文](README/README_zh-CN.md)
 
-![Main GUI](images/main_gui.png)
+**PyBreeze** is a Python IDE purpose-built for automation engineers. Web, API, GUI and load testing live in one window, alongside the everyday HTTP tooling that automation work actually needs — no plugin hunting, no environment archaeology.
 
-**PyBreeze** is a Python IDE purpose-built for automation engineers. It integrates Web, API, GUI, and load testing automation into a single unified environment — no plugin hunting, no complex environment setup, just open and start automating.
+![PyBreeze main window](images/main_window.png)
+
+*The main window: automation keywords highlighted in an APITestka action file, project tree on the left, run/format/debug/terminal panes below.*
 
 ---
 
 ## Table of Contents
 
-- [Features](#features)
-  - [Four-Dimensional Automation](#four-dimensional-automation)
-  - [IDE Core Capabilities](#ide-core-capabilities)
-  - [Built-in Tools](#built-in-tools)
-  - [AI-Assisted Development](#ai-assisted-development)
-  - [Plugin System](#plugin-system)
-  - [Multi-Language UI](#multi-language-ui)
+- [A Tour in Screenshots](#a-tour-in-screenshots)
+- [Four-Dimensional Automation](#four-dimensional-automation)
+- [Built-in Tools](#built-in-tools)
+- [AI-Assisted Development](#ai-assisted-development)
+- [Plugin System](#plugin-system)
+- [Multi-Language UI](#multi-language-ui)
 - [Architecture](#architecture)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [Integrated Automation Modules](#integrated-automation-modules)
 - [Project Structure](#project-structure)
 - [Dependencies](#dependencies)
+- [Testing & CI](#testing--ci)
 - [Target Audience](#target-audience)
 - [License](#license)
 
 ---
 
-## Features
+## A Tour in Screenshots
 
-### Four-Dimensional Automation
+Three menus carry most of the IDE. **Automation** runs your scripts, **Tools** opens the utility tabs, **Install** fetches the modules.
 
-PyBreeze covers the full spectrum of automation testing needs out of the box:
-
-| Dimension | Module | Description |
+| Automation | Tools | Install |
 |---|---|---|
-| **Web Automation** | [WebRunner](https://github.com/Intergration-Automation-Testing/WebRunner) | Browser-based interaction simulation and testing with deep integration of browser drivers and element locators |
-| **API Automation** | [APITestka](https://github.com/Intergration-Automation-Testing/APITestka) | RESTful API development and testing with built-in request builders, response analyzers, mock servers, and assertion verification |
-| **GUI Automation** | [AutoControl](https://github.com/Intergration-Automation-Testing/AutoControl) | Desktop application automation via image recognition, coordinate-based positioning, keyboard/mouse control, and action recording |
-| **Load & Stress Testing** | [LoadDensity](https://github.com/Intergration-Automation-Testing/LoadDensity) | High-concurrency performance testing engine for monitoring system stability under extreme pressure |
+| ![Automation menu](images/menu_automation.png) | ![Tools menu](images/menu_tools.png) | ![Install menu](images/menu_install.png) |
 
-Additionally:
+Every automation run happens in its own subprocess. Output streams back into a run window while the editor stays responsive — stdout in the normal colour, stderr in red, and the process exit code at the end:
 
-- **File Automation** — Automated file and directory operations via the [automation-file](https://github.com/Intergration-Automation-Testing/AutomationFile) module
-- **Mail Automation** — Automated email sending (e.g., test report delivery) via [MailThunder](https://github.com/Intergration-Automation-Testing/MailThunder)
-- **Test Framework** — Structured YAML-driven test execution via [TestPioneer](https://github.com/Intergration-Automation-Testing/TestPioneer)
+![Run output window](images/run_output_window.png)
 
-### IDE Core Capabilities
+*A real run: PyBreeze's own curl parser invoked through the IDE's file runner, generating a pytest test.*
 
-PyBreeze is not just a code editor — it is a command center for the automation lifecycle:
+---
 
-- **Syntax Highlighting** — Built-in Python syntax highlighting with deep keyword awareness for automation libraries (APITestka, AutoControl, WebRunner, LoadDensity, etc.). Custom syntax rules can be added via plugins.
-- **Code Editor** — Built on [JEditor](https://github.com/Intergration-Automation-Testing/JEditor), a full-featured editor with tab management, file tree navigation, and project workspace support.
-- **Script Execution** — Run automation scripts directly from the IDE with real-time output. Supports single-script and multi-script batch execution.
-- **Report Generation** — Automation modules can generate HTML, JSON, and XML reports after test execution, with optional email delivery.
-- **Integrated JupyterLab** — Launch JupyterLab directly as a tab within PyBreeze for interactive notebook-based development. Auto-installs JupyterLab if not present.
-- **Virtual Environment Awareness** — Automatically detects and uses the project's virtual environment (`.venv` or `venv`).
+## Four-Dimensional Automation
 
-### Built-in Tools
+PyBreeze covers the full spectrum of automation testing out of the box:
 
-- **SSH Client** — Full SSH terminal client with:
-  - Password and private key authentication
-  - Interactive command execution
-  - Remote file tree viewer with CRUD operations (create folder, rename, delete, upload, download)
-  - Interactive TOFU host-key verification with confirmed keys persisted to `~/.pybreeze/ssh_known_hosts`
-- **Diagram Editor** — Built-in WYSIWYG architecture-diagram editor:
-  - Rectangle, rounded rectangle, ellipse, diamond nodes, connection lines, and free text
-  - Image insertion from local files or URLs (URL fetches are SSRF-validated and size-capped)
-  - Mermaid `flowchart` / `graph` import
-  - Save/Open as `.diagram.json`, export to PNG or SVG
-  - Undo/redo, align, distribute, grid, snap, and zoom controls
-- **cURL Import** — Paste a `curl` command copied from your browser's dev tools and generate a ready-to-run script for the target of your choice: **Python `requests`**, an **APITestka Python** snippet (`test_api_method_requests(...)`), an **APITestka JSON action** (`[["AT_test_api_method", {...}]]`) that `execute_files` runs directly, or a **LoadDensity** Locust load-test (`start_test(...)`). (These are the HTTP-oriented modules; a curl request has no meaningful mapping to the browser or desktop-GUI automation modules.) Parses the method, URL, headers, body, basic auth, `-G` query parameters, `-F` multipart form fields (file uploads become `files=open(...)`), the `--json` shortcut (which also sets the JSON `Content-Type`/`Accept`), and `-d @file` bodies (which become `open(...).read()`, while `--data-raw` stays literal) — all with multi-line `\` / `^` continuations. It knows the arity of curl's common flags, so value-taking options like `--max-time 30` or `-o out.json` never leak into the URL; it URL-encodes `--data-urlencode` values the way curl does; and it infers `POST` when a body or form is present and sends JSON bodies as JSON. Targets include Python `requests`, a ready-to-run **pytest test** (a named `test_...` function that sends the request and asserts the status), APITestka (Python and JSON action), and a LoadDensity load test. Pick one from the dropdown, then copy the result, **open it straight into a new editor tab**, or **save it to a `.py` / `.json` file** (the extension follows the chosen target). A repeated `-H` is handled the way HTTP handles it — the values are combined into one header (with `; ` for cookies) rather than the last one silently winning, and names are matched case-insensitively so an explicit header always beats one implied by another flag. One click also hands the parsed parts to the tool that specialises in them: the **URL to the URL parser/builder** (query string and all) or the **headers to the header analyzer**. The parser is pure logic and never executes the command.
-- **HAR Import** — "Copy as cURL" captures one request; **Save all as HAR** captures the session. Open that `.har` export and every recorded call is listed with its method, path, status and media type — page furniture (stylesheets, images, fonts) filtered out by default so what remains is the API traffic. Select the calls you want, or take everything listed, and generate one script for the whole set using the same targets as the cURL importer: a **pytest file** with one test per call (repeated endpoints get numbered names so no test silently replaces another), an **APITestka action list** that replays the flow in capture order, a **`requests` walkthrough**, an APITestka Python script, or LoadDensity runs. Recorded headers, cookies, query parameters and bodies (raw, URL-encoded and multipart, including file uploads) all come across; HTTP/2 pseudo-headers are dropped and a `Cookie` header that duplicates the recorded cookie list is removed, so the generated code sends each value once. A single selected request produces exactly what the cURL importer would, so the two tools never disagree. HAR is JSON, so this needs nothing beyond the standard library, and nothing is ever replayed for you.
-- **JWT Decoder** — Paste a JSON Web Token and read its header and payload as pretty-printed JSON, with standard timestamp claims (`exp`, `iat`, `nbf`, `auth_time`) rendered as readable UTC times. Inspection only — the signature is never verified and the token is never trusted.
-- **Timestamp Converter** — Enter a Unix epoch value (seconds or milliseconds, auto-detected) or an ISO-8601 date-time (with `Z` or an offset) and get every representation back in UTC. Deterministic and independent of the local time zone.
-- **Hash Generator** — Compute SHA-256, SHA-512, SHA-1 and MD5 digests of any text at once. A general-purpose checksum tool (MD5/SHA-1 are provided for interoperability with `usedforsecurity=False`, never for security decisions).
-- **Query ⇄ JSON** — Convert an `application/x-www-form-urlencoded` query string to pretty JSON and back, URL-decoding and -encoding as needed. Repeated keys become JSON arrays and vice versa. Copy the result, open it in an editor tab, or save it to a file.
-- **URL Parser / Builder** — Paste a URL to see its scheme, host, port, path, query, fragment and credentials as an editable JSON object, tweak any part, and turn it back into a URL. Round-trips both ways, brackets IPv6 literals, and re-encodes query parameters for you. The cURL importer can send a request's URL straight here.
-- **HTTP Header Analyzer** — Paste a request or response header block (from dev tools, `curl -i`, or a proxy log) and read back every field plus what is worth knowing about it: names sent more than once, `Set-Cookie` entries missing `Secure` / `HttpOnly` / `SameSite`, a wildcard CORS policy (and the wildcard-plus-credentials combination browsers reject outright), an HSTS `max-age` too short to survive a restart, CSP `unsafe-inline` / `unsafe-eval`, product banners, deprecated headers, and — for responses — the security headers that are absent. Headers carrying credentials are reported by name only; their values are never copied into the report. The cURL importer and the Response Inspector both hand their headers here in one click, and a bearer token spotted in any header opens in the JWT decoder, already decoded.
-- **Regex Tester** — Try a regular expression against sample text with `IGNORECASE` / `MULTILINE` / `DOTALL` / `VERBOSE` flags, and see every match with its offsets, numbered groups and named groups. Invalid patterns report a friendly error instead of crashing.
-- **HTTP Status Reference** — Search the full HTTP status code table (sourced from the standard library, so it stays current) by code prefix or keyword, with the reason phrase, description and status class for each.
-- **Text Diff** — Compare two pieces of text (for example an expected vs. actual API response) side by side and get a unified diff plus a one-line summary of how many lines were added or removed. Copy the diff, open it in an editor tab, or save it to a file.
-- **JSON Format** — Pretty-print or minify a JSON payload, with a clear validation error when the input is not valid JSON. Copy the result, open it in a new editor tab, or save it to a file.
-- **Response Inspector** — Paste a raw HTTP response and get a decoded summary in one step: the status code is looked up in the HTTP reference, headers are parsed, a JSON body is pretty-printed, and any JWTs anywhere in the text (for example an `Authorization: Bearer` header) are decoded with their timestamp claims shown in UTC. Ties the HTTP-status, JSON-format and JWT tools together, and can open a found status code, JWT, the whole header block, or a JSON body directly in its dedicated tool tab, pre-filled.
-- **File Tree Context Menu** — Right-click any file or folder in the project tree to create files/folders, rename, delete, copy absolute or relative paths, or reveal the item in your platform file manager. Renaming or deleting a file that is currently open in an editor tab keeps the tab in sync.
-- **Package Manager** — Install automation modules and build tools directly from the IDE menu without leaving the editor.
-- **Integrated Documentation** — Quick access to documentation and GitHub pages for each automation module directly from the menu bar.
+| Dimension | Module | What it does |
+|---|---|---|
+| **API** | [APITestka](https://github.com/Intergration-Automation-Testing/APITestka) | RESTful testing with request builders, response analyzers, mock servers and assertions |
+| **Web** | [WebRunner](https://github.com/Intergration-Automation-Testing/WebRunner) | Browser-driven interaction and testing with driver and locator integration |
+| **GUI** | [AutoControl](https://github.com/Intergration-Automation-Testing/AutoControl) | Desktop automation via image recognition, coordinates, keyboard/mouse control and recording |
+| **Load** | [LoadDensity](https://github.com/Intergration-Automation-Testing/LoadDensity) | High-concurrency performance testing for stability under pressure |
 
-### AI-Assisted Development
+Plus:
 
-- **AI Code Review** — Send code to an LLM API endpoint for automated code review. Accept or reject suggestions directly in the IDE.
-- **Chain-of-Thought Code Review (prthinker)** — Run the [prthinker](https://github.com/JE-Chen/Code-Review-Framework-Combining-Large-Language-Models-and-Chain-of-Thought-Reasoning) review pipeline over the file being edited, or over a Pull Request, with its output streaming into a run window. One settings form holds the inference backend (a review server, an OpenAI-compatible endpoint, Anthropic, or a local model), the code host and the repository. Keys and tokens are handed to the review as environment, never on a command line where a process list would show them.
-- **CoT (Chain-of-Thought) Prompt Editor** — Create and manage multi-step CoT prompts for structured code analysis, including:
-  - Code review prompts
-  - Code smell detection
-  - Linting analysis
-  - Step-by-step analysis
-  - Summary generation
-- **Skill Prompt Editor** — Define and manage reusable skill-based prompts (code explanation, code review templates) that can be sent to LLM APIs.
-- **Skill Send GUI** — Pick a skill prompt template, optionally edit the prompt text, send it to an LLM API endpoint, and view the response — all in a dedicated tab or dock.
+- **File Automation** — file and directory operations via [automation-file](https://github.com/Intergration-Automation-Testing/AutomationFile)
+- **Mail Automation** — report delivery via [MailThunder](https://github.com/Intergration-Automation-Testing/MailThunder)
+- **Test Framework** — YAML-driven execution via [TestPioneer](https://github.com/Intergration-Automation-Testing/TestPioneer)
 
-### Plugin System
+Each module gets the same menu shape: **Run** (single script, batch directory, with or without an emailed report), **Help** (docs and GitHub open as in-IDE browser tabs), **Project** (scaffold a template directory), and where available a native GUI tab.
 
-PyBreeze supports an extensible plugin architecture for:
+### IDE core
 
-- **Syntax Highlighting** — Add syntax highlighting for any programming language via plugins
-- **UI Translation** — Add new interface languages via translation plugins
-- **Run Configurations** — Add "Run with..." support for compiled and interpreted languages (C, C++, Go, Java, Rust, etc.)
-- **Plugin Browser** — Browse and install plugins from remote repositories directly within the IDE
+- **Automation-aware syntax highlighting** — the `AT_*` / GUI / Web / Load keyword sets are registered for `.json`, and TestPioneer's schema for `.yml`, on top of JEditor's language support
+- **Code editor** — built on [JEditor](https://github.com/Intergration-Automation-Testing/JEditor): tabs, project tree, format checker, debugger, terminal, variable inspector and a git client pane
+- **Script execution** — single or batch; large action files are passed by path, never through the command line, so Windows' ~32 KB argv limit is never a factor
+- **Report generation** — HTML / JSON / XML after a run, with optional email delivery
+- **Integrated JupyterLab** — launches as a tab, installing JupyterLab into the project venv if it is missing
+- **Virtual environment awareness** — `venv/` and `.venv/` are detected and used automatically
 
-Plugins are auto-discovered from the `jeditor_plugins/` directory. See [PLUGIN_GUIDE.md](PLUGIN_GUIDE.md) for full documentation.
+---
 
-**Bundled plugins:** C, C++, Go, Java, Rust syntax highlighting and run support; French translation.
+## Built-in Tools
 
-### Multi-Language UI
+### cURL Import — a copied request becomes a runnable script
 
-The IDE interface supports multiple languages:
+Paste a `curl` command from your browser's dev tools and pick a target. The parser handles method, URL, headers, bodies, basic auth, `-G` query parameters, `-F` multipart fields (uploads become `files=open(...)`), the `--json` shortcut, `-d @file` bodies and multi-line continuations. Repeated `-H` values are combined the way HTTP combines them (`; ` for cookies, `, ` otherwise) instead of the last one silently winning. Nothing is ever executed — it is pure parsing.
+
+| Target: pytest | Target: APITestka JSON action |
+|---|---|
+| ![cURL import to pytest](images/tool_curl_import.png) | ![cURL import to APITestka action](images/tool_curl_import_action.png) |
+
+Targets: Python `requests`, a ready-to-run **pytest** test, **APITestka** (Python or a `[["AT_test_api_method", {...}]]` action list that `execute_files` runs directly), and a **LoadDensity** Locust load test. Copy the output, open it straight into an editor tab, or save it with the right extension. One click also hands the parsed URL to the URL parser/builder or the headers to the header analyzer.
+
+### HAR Import — a whole session becomes a test suite
+
+"Copy as cURL" captures one request; **Save all as HAR** captures the session. Open the export and every recorded call is listed with method, path, status and media type, with page furniture (CSS, images, fonts) filtered out by default.
+
+![HAR import](images/tool_har_import.png)
+
+Select what you want — or take everything listed — and generate one script using the same targets as the cURL importer. Repeated endpoints get numbered test names so no test silently replaces another; HTTP/2 pseudo-headers are dropped, and a `Cookie` header duplicating the recorded cookie list is removed so each value is sent once. A single selected request produces exactly what the cURL importer would. HAR is JSON, so this needs nothing beyond the standard library, and nothing is ever replayed for you.
+
+### Response Inspector — paste a response, read everything in it
+
+![Response Inspector](images/tool_response_inspector.png)
+
+The status code is looked up in the HTTP reference, headers are parsed, a JSON body is pretty-printed, and any JWT anywhere in the text (an `Authorization: Bearer` header, for instance) is decoded with its timestamp claims rendered in UTC. Each finding opens in its dedicated tool tab, pre-filled.
+
+### HTTP Header Analyzer — what a header block is actually saying
+
+![Header Analyzer](images/tool_header_analyzer.png)
+
+Reports names sent more than once, `Set-Cookie` entries missing `Secure` / `HttpOnly` / `SameSite`, wildcard CORS (and the wildcard-plus-credentials combination browsers reject outright), an HSTS `max-age` too short to survive a restart, CSP `unsafe-inline` / `unsafe-eval`, product banners, deprecated headers, and — for responses — the security headers that are absent. Headers carrying credentials are reported **by name only**; their values never enter the report.
+
+### Text Diff
+
+![Text Diff](images/tool_diff.png)
+
+Compare two payloads — an expected vs. actual API response, say — and get a unified diff plus a one-line added/removed summary.
+
+### The everyday utilities
+
+Each is a tab or a dock, each has the same copy / open-in-editor / save-to-file row along the bottom.
+
+![JWT decoder, regex tester, HTTP status reference, JSON format](images/tools_montage_a.png)
+
+- **JWT Decoder** — header and payload as pretty JSON, with `exp` / `iat` / `nbf` / `auth_time` as readable UTC. Inspection only: the signature is never verified and the token is never trusted.
+- **Regex Tester** — `IGNORECASE` / `MULTILINE` / `DOTALL` / `VERBOSE`, every match with offsets, numbered groups and named groups. An invalid pattern reports a friendly error instead of crashing.
+- **HTTP Status Reference** — search the full status table (sourced from the standard library, so it stays current) by code prefix or keyword.
+- **JSON Format** — pretty-print or minify, with a clear validation error when the input is not JSON.
+
+![Timestamp converter, hash generator, query/JSON, URL builder](images/tools_montage_b.png)
+
+- **Timestamp Converter** — a Unix epoch (seconds or milliseconds, auto-detected) or an ISO-8601 date-time in, every representation out in UTC. Deterministic and independent of the local time zone.
+- **Hash Generator** — SHA-256, SHA-512, SHA-1 and MD5 at once (MD5/SHA-1 for interoperability with `usedforsecurity=False`, never for security decisions).
+- **Query ⇄ JSON** — `application/x-www-form-urlencoded` to pretty JSON and back; repeated keys become arrays and vice versa.
+- **URL Parser / Builder** — scheme, host, port, path, query, fragment and credentials as an editable JSON object, and back again. Brackets IPv6 literals and re-encodes query parameters for you.
+
+### Diagram Editor — architecture diagrams without leaving the IDE
+
+![Diagram editor with an imported Mermaid flowchart](images/diagram_editor.png)
+
+*A Mermaid `flowchart` pasted into the importer and laid out automatically.*
+
+A WYSIWYG `QGraphicsScene` editor: rectangle, rounded, ellipse and diamond nodes, bezier connections with edge labels, free text and images. Mermaid `flowchart` / `graph` import runs a Sugiyama-style layout (layering, crossing reduction, cross-axis alignment). Save and open as `.diagram.json`, export to PNG or SVG, with undo/redo, align, distribute, grid, snap and zoom. Images fetched from a URL are SSRF-validated and size-capped.
+
+### SSH Client — terminal and remote file tree side by side
+
+![SSH client](images/ssh_client.png)
+
+Password or private-key authentication, an interactive shell with ANSI handling and keepalive, and a lazy-loading SFTP tree with create-folder / rename / delete / upload / download. Unknown host keys are **not** auto-accepted: the SHA256 fingerprint is shown for confirmation on first connection (trust on first use) and persisted to `~/.pybreeze/ssh_known_hosts`.
+
+### And also
+
+- **File Tree Context Menu** — right-click to create, rename, delete, copy absolute or relative paths, or reveal the item in your platform file manager. Renaming or deleting a file open in an editor tab keeps the tab in sync.
+- **Package Manager** — install automation modules and build tools from the menu, output in the shell pane.
+- **Integrated Documentation** — each module's docs and GitHub page open as in-IDE browser tabs.
+
+---
+
+## AI-Assisted Development
+
+### AI Code Review
+
+![AI code review client](images/ai_code_review.png)
+
+*Shown in the pre-send state.* Send a selection to an LLM endpoint, then accept or reject the suggestion — the tally is kept in `~/.pybreeze/response_stats.txt`. The URL is SSRF-validated, redirects are not followed, and the response body is size-capped before it reaches the panel.
+
+### Chain-of-Thought Code Review (prthinker)
+
+Run the [prthinker](https://github.com/JE-Chen/Code-Review-Framework-Combining-Large-Language-Models-and-Chain-of-Thought-Reasoning) pipeline over the file being edited or over a Pull Request, with output streaming into a run window.
+
+![prthinker settings](images/prthinker_setting.png)
+
+One settings form holds the inference backend (`remote`, `local`, OpenAI-compatible, Anthropic, Gemini, Cohere, Mistral, `claude-cli`, `codex-cli`), the code host (GitHub / GitLab / Gitea) and the repository. **Keys and tokens are handed to the review as environment variables, never on a command line** where a process list would show them — and they are masked in logs.
+
+### CoT Prompt Editor
+
+![CoT prompt editor](images/cot_prompt_editor.png)
+
+Create and manage the multi-step review chain: first summary → first code review → linter → code smell detector → total summary. Each step's result feeds the final summary. Files are watched, so an external edit shows up immediately.
+
+### Skill Prompt Editor & Skill Send
+
+| Skill prompt editor | Skill send |
+|---|---|
+| ![Skill prompt editor](images/skill_prompt_editor.png) | ![Skill send](images/skills_send.png) |
+
+Define reusable skill prompts (code explanation, code review), then pick one, edit it if needed, and send it to an LLM endpoint from a dedicated tab or dock. *Both shown in the pre-send state — no endpoint was contacted for these screenshots.*
+
+---
+
+## Plugin System
+
+PyBreeze inherits JEditor's plugin architecture, auto-discovered from a `jeditor_plugins/` directory in the working directory. A plugin can register:
+
+- **Syntax highlighting** — keyword sets and rules for any language
+- **UI translations** — new interface languages
+- **Run configurations** — "Run with…" for interpreted (`go run main.go`) and compiled (`gcc main.c -o main` then run) languages, executed through PyBreeze's `FileRunnerProcess` with the compiled artifact cleaned up afterwards
+- **Plugin Browser** — browse and install plugins from remote repositories inside the IDE
+
+Loaded plugins appear under their own **Plugins** menu with an About entry and one run action per supported suffix. See [PLUGIN_GUIDE.md](PLUGIN_GUIDE.md) for the full API and worked examples (C, C++, Go, Java, Rust, and a French translation).
+
+---
+
+## Multi-Language UI
 
 - **English** (default)
 - **Traditional Chinese** (繁體中文)
-- Additional languages can be added via plugins
+
+Both dictionaries carry the same 571 keys, and a test enforces that parity so a new string can never land in one language only. Further languages can be added via translation plugins.
 
 ---
 
@@ -169,11 +253,10 @@ flowchart TB
         direction LR
         T1["SSH · paramiko"]
         T2["AI Code Review"]
-        T3["CoT Prompt Editor"]
-        T4["Skill Prompt Editor"]
-        T5["Skill Send GUI"]
-        T6["Diagram Editor"]
-        T7["JupyterLab"]
+        T3["Prompt Editors"]
+        T4["Diagram Editor"]
+        T5["HTTP Toolbelt"]
+        T6["JupyterLab"]
     end
 
     subgraph Install["Install Menu"]
@@ -196,50 +279,9 @@ flowchart TB
     A7 --> X7
 ```
 
-PyBreeze follows a modular architecture:
+**The editor process never runs your script.** Every automation module is launched as `python -m <package>` in the project's interpreter with `shell=False`. Two daemon threads read stdout and stderr into thread-safe queues; a 100 ms `QTimer` drains them onto the UI thread in bounded batches. A crash, a hang or an infinite print loop in a script cannot take the IDE with it.
 
-```
-PyBreeze UI (PySide6)
-├── JEditor (Base Editor Engine)
-│   ├── Code Editor with Tabs
-│   ├── File Tree Navigation
-│   ├── Syntax Highlighting Engine
-│   └── Plugin System
-├── Automation Menu
-│   ├── APITestka ──→ APITestka Executor ──→ je_api_testka
-│   ├── AutoControl ──→ AutoControl Executor ──→ je_auto_control
-│   ├── WebRunner ──→ WebRunner Executor ──→ je_web_runner
-│   ├── LoadDensity ──→ LoadDensity Executor ──→ je_load_density
-│   ├── FileAutomation ──→ FileAutomation Executor ──→ automation-file
-│   ├── MailThunder ──→ MailThunder Executor ──→ je-mail-thunder
-│   └── TestPioneer ──→ TestPioneer Executor ──→ test_pioneer
-├── Tools
-│   ├── SSH Client (paramiko)
-│   ├── AI Code Review Client
-│   ├── CoT Prompt Editor
-│   ├── Skill Prompt Editor
-│   ├── Skill Send GUI
-│   ├── Diagram Editor (WYSIWYG, Mermaid import, PNG/SVG export)
-│   ├── cURL Import (curl → Python requests code)
-│   ├── HAR Import (browser session → test suite)
-│   ├── JWT Decoder (header/payload inspection)
-│   ├── Timestamp Converter (epoch ⇄ ISO-8601)
-│   ├── Hash Generator (SHA-256/512, SHA-1, MD5)
-│   ├── Query ⇄ JSON Converter
-│   ├── URL Parser / Builder (URL ⇄ JSON parts)
-│   ├── HTTP Header Analyzer (duplicates, cookie flags, security headers)
-│   ├── Regex Tester
-│   ├── HTTP Status Reference
-│   ├── Text Diff
-│   ├── JSON Format (pretty / minify)
-│   ├── Response Inspector (status + JSON + JWT)
-│   └── JupyterLab Integration
-└── Install Menu
-    ├── Automation Module Installers
-    └── Build Tools Installer
-```
-
-Each automation module runs in its own subprocess via `PythonTaskProcessManager`, providing process isolation and preventing crashes from affecting the IDE.
+For a module-by-module walkthrough of the codebase, see [architecture_explore.md](architecture_explore.md).
 
 ---
 
@@ -251,7 +293,7 @@ Each automation module runs in its own subprocess via `PythonTaskProcessManager`
 pip install pybreeze
 ```
 
-### From Source
+### From source
 
 ```bash
 git clone https://github.com/Intergration-Automation-Testing/AutomationEditor.git
@@ -259,105 +301,50 @@ cd AutomationEditor
 pip install -r requirements.txt
 ```
 
-### System Requirements
+### System requirements
 
-- **Python**: 3.10 or higher
+- **Python**: 3.10 – 3.14
 - **OS**: Windows, macOS, Linux
-- **GUI Framework**: PySide6 6.11.0 (installed automatically)
+- **GUI**: PySide6 6.11.0 (installed automatically)
 
 ---
 
 ## Quick Start
 
-### Run via command line
-
 ```bash
-python -m pybreeze
+python -m pybreeze                # command line
+python exe/start_pybreeze.py      # from the exe directory
 ```
-
-### Run via Python script
 
 ```python
 from pybreeze import start_editor
 
-start_editor()
+start_editor()                              # default dark_amber theme
+start_editor(theme="dark_teal.xml")         # any qt_material theme
 ```
 
-### Run from the exe directory
+Once launched:
 
-```bash
-python exe/start_pybreeze.py
-```
-
-Once launched, you can:
-
-1. **Write automation scripts** in the editor with syntax-aware auto-completion
-2. **Execute scripts** via `Automation` menu — choose the target module (APITestka, WebRunner, etc.)
-3. **View results** in the integrated output panel
-4. **Generate reports** in HTML/JSON/XML formats
-5. **Send reports** via email using MailThunder integration
+1. **Write** an automation script in the editor — automation keywords highlight as you type
+2. **Run** it from the `Automation` menu, picking the target module
+3. **Watch** the output stream into the run window
+4. **Generate** an HTML / JSON / XML report
+5. **Send** it by email through the MailThunder integration
 
 ---
 
 ## Integrated Automation Modules
 
-### APITestka — API Testing
-
-- HTTP method testing (GET, POST, PUT, DELETE, etc.)
-- Async HTTP support via httpx
-- Mock server creation with Flask
-- Report generation (HTML, JSON, XML)
-- Scheduler-based event triggering
-- Socket server support
-
-### AutoControl — GUI Automation
-
-- Mouse control (click, drag, scroll, position tracking)
-- Keyboard simulation (type, hotkey, key press/release)
-- Image recognition and locate-and-click
-- Screenshot capture
-- Action recording and playback
-- Shell command execution
-- Process management
-
-### WebRunner — Web Automation
-
-- Browser driver integration
-- Element location and interaction
-- Web-based test scripting
-- Report generation
-
-### LoadDensity — Load Testing
-
-- Concurrent request simulation
-- Performance metrics collection
-- Stress test scenario management
-- Report generation
-
-### MailThunder — Email Automation
-
-- SMTP email sending
-- HTML report delivery
-- Attachment support
-- Environment variable-based configuration
-
-### TestPioneer — Test Framework
-
-- YAML-based test definition
-- Template generation
-- Structured test execution
-
-### File Automation
-
-- Automated file and directory operations
-- Batch file processing
-
-### prthinker — Chain-of-Thought Code Review
-
-- Review the file being edited, or a Pull Request on GitHub / GitLab / Gitea
-- Inference backends: a review server, an OpenAI-compatible endpoint, Anthropic, or a local model
-- Settings are kept per user in `~/.pybreeze/prthinker_setting.json`; keys travel to the review as environment
-- Installed from its own source folder (`Install ▸ Automation ▸ Install prthinker`), which needs Python 3.12 or newer
+| Module | Capabilities |
+|---|---|
+| **APITestka** | HTTP methods, async via httpx, Flask mock servers, HTML/JSON/XML reports, scheduler triggers, socket server, JSON-schema and JSONPath assertions, SLA checks, record-replay cassettes |
+| **AutoControl** | Mouse (click, drag, scroll, position), keyboard (type, hotkey, press/release), image recognition and locate-and-click, screenshots, record and playback, shell and process control |
+| **WebRunner** | Browser driver integration, element location and interaction, web test scripting, reports |
+| **LoadDensity** | Concurrent request simulation, performance metrics, stress scenario management, reports |
+| **MailThunder** | SMTP sending, HTML report delivery, attachments, environment-variable configuration |
+| **TestPioneer** | YAML test definitions, template generation, structured execution |
+| **File Automation** | Automated file and directory operations, batch processing |
+| **prthinker** | Chain-of-thought code review of a file or a Pull Request; settings in `~/.pybreeze/prthinker_setting.json`; installed from its own source folder via `Install ▸ Automation ▸ Install prthinker` (needs Python 3.12+) |
 
 ---
 
@@ -366,39 +353,42 @@ Once launched, you can:
 ```
 PyBreeze/
 ├── pybreeze/
-│   ├── __init__.py                 # Public API (start_editor, plugin re-exports)
-│   ├── __main__.py                 # Entry point (python -m pybreeze)
+│   ├── __init__.py                    # Public API (start_editor, plugin re-exports)
+│   ├── __main__.py                    # Entry point (python -m pybreeze)
 │   ├── extend/
-│   │   ├── mail_thunder_extend/    # Email report sending after tests
-│   │   ├── process_executor/       # Subprocess managers for each automation module
-│   │   │   ├── api_testka/
-│   │   │   ├── auto_control/
-│   │   │   ├── file_automation/
-│   │   │   ├── load_density/
-│   │   │   ├── mail_thunder/
-│   │   │   ├── test_pioneer/
-│   │   │   └── web_runner/
-│   │   └── process_executor/python_task_process_manager.py
-│   ├── extend_multi_language/      # Built-in translations (English, Traditional Chinese)
+│   │   ├── process_executor/          # Subprocess isolation layer
+│   │   │   ├── python_task_process_manager.py   # TaskProcessManager (core)
+│   │   │   ├── process_executor_utils.py        # build_process / start_process
+│   │   │   ├── file_runner_process.py           # Plugin run configs (any language)
+│   │   │   ├── queue_pump.py                    # Shared QTimer drain
+│   │   │   ├── api_testka/ auto_control/ web_runner/
+│   │   │   ├── load_density/ file_automation/ mail_thunder/
+│   │   │   ├── test_pioneer/ prthinker/
+│   │   ├── mail_thunder_extend/       # Post-test email report hook
+│   │   └── prthinker_extend/          # prthinker settings & argument assembly
+│   ├── extend_multi_language/         # Built-in i18n (English, Traditional Chinese)
 │   ├── pybreeze_ui/
-│   │   ├── editor_main/            # Main window (extends JEditor) + file tree context menu
-│   │   ├── connect_gui/ssh/        # SSH client widgets (TOFU host-key verification)
-│   │   ├── diagram_editor/         # WYSIWYG architecture-diagram editor
-│   │   ├── extend_ai_gui/          # AI code review & prompt editors
-│   │   ├── jupyter_lab_gui/        # JupyterLab integration
-│   │   ├── menu/                   # Menu bar construction
-│   │   ├── syntax/                 # Automation keyword definitions
-│   │   └── show_code_window/       # Code display widgets
-│   └── utils/                      # Logging, exceptions, file processing, package management
-├── exe/                            # Standalone launcher & build configs
-├── docs/                           # Sphinx documentation source
-├── test/                           # Unit tests
-├── images/                         # Screenshots
-├── architecture_diagram/           # Architecture diagrams
-├── PLUGIN_GUIDE.md                 # Plugin development documentation
-├── pyproject.toml                  # Package configuration
-├── requirements.txt                # Runtime dependencies
-└── dev_requirements.txt            # Development dependencies
+│   │   ├── editor_main/               # Main window + file tree context menu
+│   │   ├── menu/                      # Automation / install / tools / plugin menus
+│   │   ├── tools_gui/                 # cURL, HAR, JWT, diff, regex, … tool tabs
+│   │   ├── diagram_editor/            # WYSIWYG diagram editor
+│   │   ├── extend_ai_gui/             # CoT review, prompt editors, skill send
+│   │   ├── connect_gui/               # SSH terminal + SFTP tree, AI review client
+│   │   ├── jupyter_lab_gui/           # JupyterLab tab
+│   │   ├── show_code_window/          # CodeWindow (run output)
+│   │   ├── dialog/                    # prthinker settings dialog
+│   │   └── syntax/                    # Automation keyword definitions
+│   └── utils/                         # curl/HAR parsing, headers, JWT, hashing,
+│                                      # URL validation, logging, exceptions, …
+├── exe/                               # Standalone launcher & build configs
+├── docs/                              # Sphinx documentation source
+├── test/                              # Unit tests (test_utils) + startup tests
+├── images/                            # Screenshots
+├── architecture_explore.md            # Module-by-module architecture notes
+├── PLUGIN_GUIDE.md                    # Plugin development documentation
+├── pyproject.toml                     # Package configuration (stable)
+├── dev.toml                           # Package configuration (dev channel)
+└── requirements.txt                   # Runtime dependencies
 ```
 
 ---
@@ -423,21 +413,37 @@ PyBreeze/
 
 ### Development
 
-`build`, `twine`, `sphinx`, `sphinx-rtd-theme`, `auto-py-to-exe`
+`build`, `twine`, `sphinx`, `sphinx-rtd-theme`, `auto-py-to-exe`, `pytest`, `hypothesis`
+
+---
+
+## Testing & CI
+
+```bash
+python -m pip install -r dev_requirements.txt
+python -m pytest test/test_utils/ -v --tb=short
+```
+
+- **Unit tests** — `test/test_utils/`, 60 modules covering the pure-logic layer (curl and HAR parsing, header analysis, SSRF validation, JWT, hashing, timestamps, diffing) plus headless Qt widget tests via `QT_QPA_PLATFORM=offscreen`, with Hypothesis property tests over the parsers
+- **Startup tests** — `test/unit_test/start_automation/` launches the IDE in debug mode and verifies it comes up and exits cleanly
+- **CI** — GitHub Actions on Windows across Python 3.10 – 3.14, on every push and PR plus a nightly run
+- **Static analysis** — SonarCloud, Codacy and Bandit
 
 ---
 
 ## Target Audience
 
-- **Python Developers** — A lightweight, dedicated environment for building automation scripts without the overhead of heavy general-purpose IDEs
-- **SDET (Software Development Engineers in Test)** — Professionals maintaining Web, API, and Performance tests simultaneously in one tool
-- **Automation Beginners** — A friendly IDE that lowers the barrier to entry for Python automation with zero-config environment setup
-- **DevOps Teams** — A platform for rapidly building and debugging integration test suites within CI/CD pipelines
+- **Python developers** — a lightweight, dedicated environment for automation scripts without the overhead of a general-purpose IDE
+- **SDETs** — one tool for Web, API and performance tests maintained side by side
+- **Automation beginners** — zero-config environment setup and a menu for every module
+- **DevOps teams** — a place to build and debug integration suites destined for CI/CD
 
 ---
 
 ## License
 
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+MIT — see [LICENSE](LICENSE). Copyright (c) 2022 JE-Chen
 
-Copyright (c) 2022 JE-Chen
+---
+
+<sub>Screenshots are rendered from the actual PyBreeze widgets on Windows 11 with the default `dark_amber` theme; the sample data in each tool is real input processed by the real code path.</sub>
