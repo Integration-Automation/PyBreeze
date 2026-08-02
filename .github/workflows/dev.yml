@@ -41,3 +41,23 @@ jobs:
       run: python ./test/unit_test/start_automation/extend_automation_test.py
       env:
         PYTHONPATH: .
+
+  sonarcloud:
+    # Automatic Analysis is off, so branch and pull-request analysis both come
+    # from here. Skipped on the nightly schedule, where re-scanning an unchanged
+    # commit adds nothing, and on fork pull requests, which cannot read the token.
+    if: >-
+      github.event_name != 'schedule' &&
+      (github.event_name != 'pull_request' ||
+       github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        # Sonar needs the full history to attribute new code to the right commits.
+        fetch-depth: 0
+    - name: SonarQube Cloud scan
+      uses: SonarSource/sonarqube-scan-action@v8.2.1
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        SONAR_HOST_URL: https://sonarcloud.io

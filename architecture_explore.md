@@ -398,8 +398,8 @@ extend_ai_gui/
 
 - **單元測試** `test/test_utils/` — 60 個 `test_*.py`。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
 - **整合測試** `test/unit_test/start_automation/` — 以 `debug_mode=True` 啟動 IDE，10 秒後自動關閉，驗證啟動流程與 extend tab
-- **CI** `.github/workflows/{dev,stable}.yml` — Windows runner，Python 3.10–3.14 矩陣，每日 02:00 排程 + push/PR 觸發
-- **靜態分析** SonarCloud（`.sonarcloud.properties`）+ Codacy（`.codacy.yml`）+ Bandit（`pyproject.toml` 中排除 test、skip B101/B404）
+- **CI** `.github/workflows/{dev,stable}.yml` — `unit-tests` job 跑 Windows runner、Python 3.10–3.14 矩陣；`sonarcloud` job 跑 ubuntu，排程與 fork PR 會跳過。每日 02:00 排程 + push/PR 觸發。`stable.yml` 另有 `publish` job 負責版號遞增與 PyPI 發布
+- **靜態分析** SonarCloud（`sonar-project.properties`，由兩個 workflow 的 `sonarcloud` job 執行 CI-based analysis；Automatic Analysis 已關閉，因為它只看 main 與 PR，`dev` 完全不會被分析）+ Codacy（`.codacy.yml`）+ Bandit（`pyproject.toml` 中排除 test、skip B101/B404）
 
 ---
 

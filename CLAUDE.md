@@ -58,7 +58,8 @@ pybreeze/
 
 - `main`: stable, publishes `pybreeze` · `dev`: development, publishes `pybreeze_dev`
 - Version config: `pyproject.toml` (stable), `dev.toml` (dev) — keep both in sync when bumping
-- GitHub Actions on Windows, Python 3.10–3.14: install deps → pytest `test/test_utils/` → `start_automation_test` → `extend_automation_test`
+- `unit-tests` job: GitHub Actions on Windows, Python 3.10–3.14 — install deps → pytest `test/test_utils/` → `start_automation_test` → `extend_automation_test`
+- `sonarcloud` job: CI-based SonarQube Cloud analysis (`sonar-project.properties`), skipped on the nightly schedule and on fork PRs. Automatic Analysis is off — it only covers main and PRs, so `dev` went unanalysed; the two modes are mutually exclusive, so do not re-enable it
 
 ## Development
 
