@@ -2,6 +2,8 @@
 
 Automation-first Python IDE built on PySide6 + JEditor, integrating Web/API/GUI/Load testing into a single environment.
 
+**This file is the only home for project rules.** Anything that constrains how work is done here — conventions, security requirements, quality gates, commit policy — belongs in this file. Do not start a `progress.md`, a scratch notes file, or any other side document to hold rules: a rule kept somewhere else is a rule nobody reads. Reference material that is not a rule (the architecture map, the plugin API) lives in its own file and is linked from here.
+
 ## Architecture
 
 ```
