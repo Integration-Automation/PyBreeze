@@ -70,8 +70,16 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: coverage-xml
+    - name: Read package version
+      # Without a version, SonarCloud's "previous version" new-code baseline has
+      # nothing to anchor to and counts the whole history as new -- which is how
+      # new_lines came to exceed the project's total line count.
+      id: version
+      run: echo "value=$(grep -m1 '^version = ' pyproject.toml | cut -d'"' -f2)" >> "$GITHUB_OUTPUT"
     - name: SonarQube Cloud scan
       uses: SonarSource/sonarqube-scan-action@v8.2.1
+      with:
+        args: -Dsonar.projectVersion=${{ steps.version.outputs.value }}
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         SONAR_HOST_URL: https://sonarcloud.io
