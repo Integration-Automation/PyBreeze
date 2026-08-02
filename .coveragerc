@@ -1,0 +1,14 @@
+# Coverage is measured on Windows and consumed by the SonarQube scanner running
+# on Linux, so the report must not carry machine-specific paths. relative_files
+# makes coverage emit repo-root-relative names (pybreeze/utils/... rather than an
+# absolute <source> plus a package-relative filename), which is what the scanner
+# resolves against.
+[run]
+relative_files = True
+source = pybreeze
+branch = True
+
+[report]
+exclude_also =
+    if TYPE_CHECKING:
+    if __name__ == .__main__.:
