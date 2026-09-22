@@ -55,10 +55,25 @@ RAG_ENVIRONMENT = {
     "remote": {"PRTHINKER_REMOTE_RAG": "true"},
 }
 
-# 每個設定項對應的環境變數 / The environment variable each setting is given through
+# 每個後端讀模型名稱的環境變數：prthinker 各後端各讀各的
+# The variable each backend reads its model from: each prthinker backend has its own
+MODEL_ENVIRONMENT = {
+    "remote": "PRTHINKER_MODEL_NAME",
+    "local": "PRTHINKER_MODEL_NAME",
+    "openai": "PRTHINKER_OPENAI_MODEL",
+    "anthropic": "PRTHINKER_ANTHROPIC_MODEL",
+    "gemini": "PRTHINKER_GEMINI_MODEL",
+    "cohere": "PRTHINKER_COHERE_MODEL",
+    "mistral": "PRTHINKER_MISTRAL_MODEL",
+    "claude-cli": "PRTHINKER_CLAUDE_CLI_MODEL",
+    "codex-cli": "PRTHINKER_CODEX_CLI_MODEL",
+}
+
+# 其餘每個設定項對應的環境變數；模型名稱依後端而定，見 MODEL_ENVIRONMENT
+# The variable every other setting is given through; the model name's depends on
+# the backend (MODEL_ENVIRONMENT)
 SETTING_ENVIRONMENT = {
     "backend": "PRTHINKER_BACKEND",
-    "model_name": "PRTHINKER_MODEL_NAME",
     "remote_url": "PRTHINKER_REMOTE_URL",
     "remote_api_key": "PRTHINKER_REMOTE_API_KEY",
     "openai_api_key": "PRTHINKER_OPENAI_API_KEY",
@@ -163,12 +178,14 @@ def environment_for(setting: Dict[str, str]) -> Dict[str, str]:
     把設定變成 prthinker 認得的環境變數
     Turn the settings into the environment variables prthinker reads.
 
-    空白的項目不放進去，prthinker 才用得到它自己的預設值。規則檢索例外：prthinker 預設
-    在本機檢索，而這裡裝的 prthinker 做不到，所以一定會明講要關掉或交給伺服器。
-    A blank setting is left out, so prthinker keeps its own default for it. Rule
-    retrieval is the exception: prthinker's default is to retrieve locally, which
-    the prthinker installed from here cannot do, so it is always told to go
-    without or to ask the server.
+    空白的項目不放進去，prthinker 才用得到它自己的預設值。模型名稱交給所選後端自己的
+    變數。規則檢索例外：prthinker 預設在本機檢索，而這裡裝的 prthinker 做不到，所以
+    一定會明講要關掉或交給伺服器。
+    A blank setting is left out, so prthinker keeps its own default for it. The
+    model name goes to the chosen backend's own variable. Rule retrieval is the
+    exception: prthinker's default is to retrieve locally, which the prthinker
+    installed from here cannot do, so it is always told to go without or to ask
+    the server.
 
     :param setting: 目前的設定 / the settings in use
     :return: 要加進子行程環境的變數 / the variables to add to the child's environment
@@ -178,6 +195,10 @@ def environment_for(setting: Dict[str, str]) -> Dict[str, str]:
         for key, name in SETTING_ENVIRONMENT.items()
         if setting.get(key, "").strip()
     }
+    model = setting.get("model_name", "").strip()
+    model_variable = MODEL_ENVIRONMENT.get(setting.get("backend", "").strip())
+    if model and model_variable:
+        environment[model_variable] = model
     rag_mode = setting.get("rag", "")
     environment.update(RAG_ENVIRONMENT.get(rag_mode, RAG_ENVIRONMENT["off"]))
     return environment

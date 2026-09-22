@@ -150,10 +150,22 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
   (`extend/process_executor/python_task_process_manager.py`). TestPioneer runs as
   `python -m test_pioneer -e <yaml>` through the same manager's `start_module_process`
   (`extend/process_executor/test_pioneer/`).
-- **prthinker**: runs as `python -m prthinker` via `TaskProcessManager.start_module_process`
-  (`extend/process_executor/prthinker/`). Secrets are passed as environment variables, never argv.
-  It is not on PyPI: the Install menu asks for a local source folder and installs `<path>[runner]`.
-  README states it needs Python 3.12+.
+- **prthinker**: runs as `python -m prthinker review-file <path>` or
+  `review-pr --pr-number <n>` via `TaskProcessManager.start_module_process`
+  (`extend/process_executor/prthinker/`), with the interpreter chosen in the IDE, which needs Python
+  3.12+ (PyBreeze's own may be older). Settings travel as environment variables, never argv
+  (`prthinker_setting.environment_for`): `PRTHINKER_BACKEND`, the chosen backend's model variable
+  (`MODEL_ENVIRONMENT`: `PRTHINKER_MODEL_NAME` for `remote`/`local`, otherwise
+  `PRTHINKER_<BACKEND>_MODEL`), `PRTHINKER_REMOTE_URL`, `PRTHINKER_REMOTE_API_KEY`,
+  `PRTHINKER_OPENAI_API_KEY`, `PRTHINKER_OPENAI_BASE_URL`, `PRTHINKER_ANTHROPIC_API_KEY`,
+  `PRTHINKER_PLATFORM`, `PRTHINKER_PLATFORM_BASE_URL`, `GITHUB_REPOSITORY`, `GITHUB_TOKEN`, and
+  always one of `PRTHINKER_RAG_ENABLED=false` / `PRTHINKER_REMOTE_RAG=true`. `BACKENDS` must stay a
+  subset of `prthinker.config.BackendKind`. It is not on PyPI: the Install menu asks for a local
+  source folder and installs `<path>[runner]`; that package excludes prthinker's `codes/` (the local
+  RAG index), which is why local retrieval is never left on. `test_prthinker_contract.py` runs the
+  real prthinker (CI's 3.12 leg) against the arguments and variables PyBreeze builds, and builds
+  prthinker's config (`prthinker.cli._build_parser`, `_build_config`, both in its `__all__`) to check
+  each backend gets the model.
 - **IDE_Plugins**: the plugin browser's default repo (set in JEditor). Its run configs execute here via
   `FileRunnerProcess`.
 - **PySide6 pin**: it must match JEditor and FrontEngine. PyBreeze pins it in `pyproject.toml`,

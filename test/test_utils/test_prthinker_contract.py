@@ -114,6 +114,56 @@ def test_rule_retrieval_through_the_server_is_accepted(tmp_path, closed_url):
     _assert_accepted(_run(review_file_arguments(str(source), setting), setting, tmp_path))
 
 
+# Build prthinker's review configuration the way its command line does, from the
+# environment alone, and report the backend and the model it settled on.
+# ``_build_parser`` and ``_build_config`` are in ``prthinker.cli.__all__``.
+_REPORT_BACKEND_AND_MODEL = """
+import json
+from prthinker.cli import _build_config, _build_parser
+args = _build_parser().parse_args(["review-file", "main.py"])
+config = _build_config(args)
+kind = getattr(config.backend, "value", config.backend)
+chosen = getattr(config, kind.replace("-", "_"))
+for attribute in ("model", "model_name"):
+    if hasattr(chosen, attribute):
+        model = getattr(chosen, attribute)
+        break
+else:
+    # The remote server picks its own model; prthinker only reports this one.
+    model = args.model_name
+print(json.dumps({"backend": kind, "model": model}))
+"""
+
+
+@pytest.mark.parametrize("backend", BACKENDS)
+def test_the_model_reaches_the_backend_it_was_set_for(closed_url, backend):
+    setting = {
+        **DEFAULT_SETTING,
+        "backend": backend,
+        "model_name": "pybreeze-contract-model",
+        "remote_url": closed_url,
+        "openai_api_key": "not-a-real-key",
+        "anthropic_api_key": "not-a-real-key",
+    }
+    environment = {
+        **utf8_subprocess_env("utf-8"),
+        # The three keys PyBreeze has no field for: prthinker reads them from
+        # the environment the IDE was started in.
+        "PRTHINKER_GEMINI_API_KEY": "not-a-real-key",
+        "PRTHINKER_COHERE_API_KEY": "not-a-real-key",
+        "PRTHINKER_MISTRAL_API_KEY": "not-a-real-key",
+        **environment_for(setting),
+    }
+    completed = subprocess.run(  # noqa: S603 — fixed interpreter and a literal script
+        [PRTHINKER_PYTHON, "-c", _REPORT_BACKEND_AND_MODEL],
+        env=environment, capture_output=True, timeout=_RUN_TIMEOUT_SECONDS, check=False,
+        shell=False,
+    )
+    assert completed.returncode == 0, completed.stderr.decode("utf-8", "replace")[-2000:]
+    assert json.loads(completed.stdout) == {
+        "backend": backend, "model": "pybreeze-contract-model"}
+
+
 def test_reviewing_a_pull_request_is_accepted(tmp_path, closed_url):
     setting = {
         **DEFAULT_SETTING,

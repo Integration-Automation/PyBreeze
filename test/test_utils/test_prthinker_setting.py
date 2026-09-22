@@ -8,7 +8,8 @@ import pytest
 
 from pybreeze.extend.prthinker_extend import prthinker_setting
 from pybreeze.extend.prthinker_extend.prthinker_setting import (
-    DEFAULT_SETTING, INSTALL_EXTRAS, RAG_MODES, SECRET_SETTINGS, SETTING_ENVIRONMENT,
+    BACKENDS, DEFAULT_SETTING, INSTALL_EXTRAS, MODEL_ENVIRONMENT, RAG_MODES, SECRET_SETTINGS,
+    SETTING_ENVIRONMENT,
     environment_for, extra_arguments, install_target, load_setting, loggable,
     review_file_arguments, review_pr_arguments, save_setting, split_arguments
 )
@@ -69,6 +70,34 @@ class TestTheEnvironmentGivenToTheChild:
     def test_every_setting_that_travels_has_a_variable(self):
         # Anything in the table has to name a setting that actually exists.
         assert set(SETTING_ENVIRONMENT) <= set(DEFAULT_SETTING)
+
+
+class TestTheModelName:
+    # prthinker reads the model from a different variable for each backend.
+    @pytest.mark.parametrize("backend,variable", [
+        ("remote", "PRTHINKER_MODEL_NAME"),
+        ("local", "PRTHINKER_MODEL_NAME"),
+        ("openai", "PRTHINKER_OPENAI_MODEL"),
+        ("anthropic", "PRTHINKER_ANTHROPIC_MODEL"),
+        ("gemini", "PRTHINKER_GEMINI_MODEL"),
+        ("cohere", "PRTHINKER_COHERE_MODEL"),
+        ("mistral", "PRTHINKER_MISTRAL_MODEL"),
+        ("claude-cli", "PRTHINKER_CLAUDE_CLI_MODEL"),
+        ("codex-cli", "PRTHINKER_CODEX_CLI_MODEL"),
+    ])
+    def test_it_goes_to_the_chosen_backends_variable(self, backend, variable):
+        environment = environment_for(
+            {**DEFAULT_SETTING, "backend": backend, "model_name": " the-model "})
+        model_variables = {name for name in environment if name.endswith(("_MODEL", "_MODEL_NAME"))}
+        assert model_variables == {variable}
+        assert environment[variable] == "the-model"
+
+    def test_every_backend_on_offer_has_a_model_variable(self):
+        assert set(MODEL_ENVIRONMENT) == set(BACKENDS)
+
+    def test_no_model_leaves_every_backend_its_default(self):
+        environment = environment_for({**DEFAULT_SETTING, "backend": "anthropic"})
+        assert not [name for name in environment if name.endswith(("_MODEL", "_MODEL_NAME"))]
 
 
 class TestRuleRetrieval:
