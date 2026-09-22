@@ -392,3 +392,99 @@ class TestSizesAndPensFromAFile:
 
         assert connection._line_color.isValid()
         assert connection._line_color.name() != "#000000"
+
+
+class TestWhereAnImageMayComeFrom:
+    """A saved diagram names its images; where those names may point is a boundary."""
+
+    def _scene_with_source(self, monkeypatch, source: str):
+        from pybreeze.pybreeze_ui.diagram_editor import diagram_scene as scene_module
+
+        looked_at: list = []
+        monkeypatch.setattr(
+            scene_module.Path, "is_file",
+            lambda self: looked_at.append(str(self)) or False)
+        scene = scene_module.DiagramScene()
+        scene.load_from_dict({
+            "nodes": [], "connections": [],
+            "images": [{"x": 0, "y": 0, "w": 100, "h": 100, "source": source}],
+        })
+        return looked_at
+
+    @pytest.mark.parametrize("source", [
+        "\\\\attacker.example\\share\\x.png",
+        "//attacker.example/share/x.png",
+    ], ids=["windows unc", "forward slash unc"])
+    def test_a_path_on_another_machine_is_never_touched(self, qt_app, monkeypatch, source):
+        # Asking whether a UNC path is a file makes Windows authenticate to that
+        # host, so a diagram from someone else must not get that far.
+        assert self._scene_with_source(monkeypatch, source) == []
+
+    def test_a_name_that_is_not_an_image_is_never_touched(self, qt_app, monkeypatch):
+        assert self._scene_with_source(monkeypatch, r"C:\Windows\System32\config\SAM") == []
+
+    def test_a_local_image_path_is_still_looked_up(self, qt_app, monkeypatch):
+        assert self._scene_with_source(monkeypatch, r"C:\pictures\logo.png") == [
+            r"C:\pictures\logo.png"]
+
+
+class TestTheUndoScope:
+    def test_a_scope_whose_body_raises_leaves_nothing_pending(self, qt_app):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_items import DiagramNode, NodeShape
+
+        scene = DiagramScene()
+        with pytest.raises(RuntimeError):
+            with scene.undo_scope("Half done"):
+                scene.addItem(DiagramNode(x=0, y=0, text="A", shape=NodeShape.RECTANGLE))
+                raise RuntimeError("something in the middle went wrong")
+
+        assert scene._pending_undo_snapshot is None
+        pushed = scene.undo_stack.count()
+        # The next gesture ends with end_undo(); with a scope left open it would
+        # push a command undoing everything since.
+        scene.end_undo()
+        assert scene.undo_stack.count() == pushed
+
+
+class TestStackingOrder:
+    def _scene_with_two_nodes(self):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene
+
+        scene = DiagramScene()
+        scene.load_from_dict({
+            "nodes": [
+                {"id": 0, "x": 0, "y": 0, "text": "A", "shape": "RECTANGLE"},
+                {"id": 1, "x": 10, "y": 10, "text": "B", "shape": "RECTANGLE"},
+            ],
+            "connections": [],
+        })
+        return scene
+
+    def test_it_survives_a_save_and_a_load(self, qt_app):
+        scene = self._scene_with_two_nodes()
+        front = [n for n in scene.get_all_nodes() if n.text() == "B"][0]
+        front.setZValue(3)
+
+        stored = scene.to_dict()
+        scene.load_from_dict(stored)
+
+        assert {n.text(): n.zValue() for n in scene.get_all_nodes()} == {"A": 0.0, "B": 3.0}
+
+    def test_bringing_a_node_to_the_front_can_be_undone(self, qt_app):
+        scene = self._scene_with_two_nodes()
+        node = [n for n in scene.get_all_nodes() if n.text() == "B"][0]
+        node.setSelected(True)
+
+        scene._change_z(1)
+        assert [n.zValue() for n in scene.get_all_nodes() if n.text() == "B"] == [1.0]
+
+        scene.undo_stack.undo()
+        assert [n.zValue() for n in scene.get_all_nodes() if n.text() == "B"] == [0.0]
+
+    def test_a_z_that_is_not_a_number_is_ignored(self, qt_app):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_items import DiagramNode
+
+        node = DiagramNode.from_dict({"x": 0, "y": 0, "text": "A", "z": "front"})
+
+        assert node.zValue() == 0.0

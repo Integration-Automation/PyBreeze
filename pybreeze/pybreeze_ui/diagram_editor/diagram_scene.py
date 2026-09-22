@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from enum import Enum, auto
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 from PySide6.QtCore import QPointF, Qt, Signal
 from PySide6.QtGui import QColor, QPen, QPixmap, QUndoStack
@@ -30,6 +30,17 @@ from pybreeze.utils.logging.logger import pybreeze_logger
 _VALID_IMAGE_SUFFIXES = frozenset(
     {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".svg", ".webp", ".ico"}
 )
+
+
+def _is_on_this_machine(source: str) -> bool:
+    """Whether *source* names a path on this machine rather than another host.
+
+    UNC paths (``\\\\host\\share\\x.png``, or ``//host/share/x.png``, which
+    Windows treats the same) are refused: see ``_try_load_image_source``.
+    """
+    if source.startswith(("\\\\", "//")):
+        return False
+    return not PureWindowsPath(source).drive.startswith("\\\\")
 
 
 class ToolMode(Enum):
@@ -149,9 +160,17 @@ class DiagramScene(QGraphicsScene):
 
     @contextmanager
     def undo_scope(self, description: str):
+        """Take a snapshot, run the body, and record what it changed.
+
+        The closing snapshot is taken even when the body raises: a scope left
+        open would be closed by the next mouse release instead, turning an
+        unrelated click into an undo entry that reverts everything since.
+        """
         self.begin_undo(description)
-        yield
-        self.end_undo()
+        try:
+            yield
+        finally:
+            self.end_undo()
 
     @staticmethod
     def _check_is_a_diagram(data: dict) -> None:
@@ -349,9 +368,11 @@ class DiagramScene(QGraphicsScene):
             self._temp_line = None
 
     def _change_z(self, direction: int) -> None:
-        for item in self.selectedItems():
-            if isinstance(item, DiagramNode):
-                item.setZValue(item.zValue() + direction)
+        """Raise or lower the selected nodes. Undoable, and kept in the file."""
+        with self.undo_scope("Change Z"):
+            for item in self.selectedItems():
+                if isinstance(item, DiagramNode):
+                    item.setZValue(item.zValue() + direction)
 
     # ------------------------------------------------------------------
     # Operations (all undoable)
@@ -647,12 +668,18 @@ class DiagramScene(QGraphicsScene):
     def _try_load_image_source(self, img: DiagramImage, source: str) -> None:
         """Load pixmap from local path or URL into a DiagramImage.
 
-        Local paths are restricted to existing image files.
+        Local paths are restricted to existing image files on this machine.
         URLs are validated and size-limited via ``safe_download_image``.
         """
         path = Path(source)
-        # Only load if the file actually exists and has an allowlisted extension.
-        if path.is_file() and path.suffix.lower() in _VALID_IMAGE_SUFFIXES:
+        # The extension is checked before the filesystem is touched, and a path
+        # on another machine is refused outright: on Windows, merely asking
+        # whether \\host\share\x.png is a file makes the SMB client authenticate
+        # to that host, so a diagram from someone else could collect the user's
+        # credentials, and an unreachable host would block the UI thread until
+        # SMB gives up.
+        if (path.suffix.lower() in _VALID_IMAGE_SUFFIXES
+                and _is_on_this_machine(source) and path.is_file()):
             pix = QPixmap(str(path))
             if not pix.isNull():
                 img.set_pixmap(pix, source)

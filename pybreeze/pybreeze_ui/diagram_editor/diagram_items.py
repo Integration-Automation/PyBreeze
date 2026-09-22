@@ -136,6 +136,14 @@ _MIN_LINE_WIDTH = 0.5
 _MAX_LINE_WIDTH = 10.0
 
 
+def _number(value: object, fallback: float) -> float:
+    """Return *value* as a float, or *fallback* when it is not a number."""
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return fallback
+
+
 def _clamped_line_width(width: float) -> float:
     """Return *width* within the pen widths a connection may be drawn with."""
     try:
@@ -502,11 +510,12 @@ class DiagramNode(QGraphicsRectItem):
             "fill_color": self._fill_color.name(),
             "border_color": self._border_color.name(),
             "font_size": self._font_size,
+            "z": self.zValue(),
         }
 
     @classmethod
     def from_dict(cls, data: dict) -> DiagramNode:
-        return cls(
+        node = cls(
             x=data["x"],
             y=data["y"],
             w=data.get("w", _DEFAULT_NODE_W),
@@ -519,6 +528,10 @@ class DiagramNode(QGraphicsRectItem):
                 font_size=data.get("font_size", _LABEL_FONT_SIZE),
             ),
         )
+        # Stacking is part of the diagram: without it, nodes the user brought
+        # to the front come back in whatever order the scene lists them.
+        node.setZValue(_number(data.get("z", 0.0), 0.0))
+        return node
 
 
 # ---------------------------------------------------------------------------

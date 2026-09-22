@@ -232,13 +232,13 @@ call_X_multi_file_and_send()   → run_dir_files_with_package(..., True)
 
 ---
 
-## 7. `pybreeze_ui/diagram_editor/` — 架構圖編輯器（3,410 行，最大子系統）
+## 7. `pybreeze_ui/diagram_editor/` — 架構圖編輯器（3,450 行，最大子系統）
 
 | 檔案 | 職責 |
 |---|---|
 | `diagram_editor_widget.py` (594) | 外層 widget：兩排工具列（工具模式列 + 檔案/undo/對齊/格線/匯出/縮放列）、canvas 與屬性面板的 splitter、快捷鍵；PNG/SVG 匯出；Mermaid 匯入對話框。存檔先寫 `<name>.saving` 再 `os.replace()` 換上去，存檔失敗不會毀掉上一份 |
-| `diagram_scene.py` (685) | `DiagramScene(QGraphicsScene)`：**State pattern** 的 `ToolMode` 決定滑鼠行為；undo/redo、複製貼上、多選對齊與分佈、z-order、序列化 `to_dict()` / `load_from_dict()`。`load_from_dict()` 先用 `_check_is_a_diagram()` 確認資料形狀才清空畫布（不合就丟 `ValueError`，畫布原封不動），每一筆節點／連線／圖片再各自容錯 |
-| `diagram_items.py` (871) | 圖元：`DiagramNode`（矩形/圓角/橢圓/菱形 4 種 body + 置中標籤 + 4 個 `ResizeHandle`；填色、框線色、字級收在 frozen dataclass `NodeStyle`）、`DiagramConnection`（三次貝茲 + 箭頭，連到節點邊界交點）、`DiagramImage`。`_EditableLabel` 刻意預設唯讀、雙擊才進編輯（對應 CLAUDE.md 的 Qt 規範） |
+| `diagram_scene.py` (712) | `DiagramScene(QGraphicsScene)`：**State pattern** 的 `ToolMode` 決定滑鼠行為；undo/redo、複製貼上、多選對齊與分佈、z-order、序列化 `to_dict()` / `load_from_dict()`。`load_from_dict()` 先用 `_check_is_a_diagram()` 確認資料形狀才清空畫布（不合就丟 `ValueError`，畫布原封不動），每一筆節點／連線／圖片再各自容錯。`undo_scope` 用 `try/finally`，本體丟例外也一定收掉快照；圖片來源先看副檔名、拒絕 UNC（`_is_on_this_machine()`）才碰檔案系統 |
+| `diagram_items.py` (884) | 圖元：`DiagramNode`（矩形/圓角/橢圓/菱形 4 種 body + 置中標籤 + 4 個 `ResizeHandle`；填色、框線色、字級收在 frozen dataclass `NodeStyle`）、`DiagramConnection`（三次貝茲 + 箭頭，連到節點邊界交點）、`DiagramImage`。`_EditableLabel` 刻意預設唯讀、雙擊才進編輯（對應 CLAUDE.md 的 Qt 規範） |
 | `diagram_mermaid_parser.py` (532) | Mermaid flowchart → diagram dict。含 **Sugiyama 風格自動排版**：分層 → 交叉最小化掃描 → 交叉軸偏移解析 |
 | `diagram_property_panel.py` (421) | 右側屬性側欄，依選取型別切換 node / connection / image 三組表單 |
 | `diagram_view.py` (175) | `QGraphicsView`：滾輪縮放（有上下界）、中鍵平移、`drawBackground` 畫格線 |
@@ -424,7 +424,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 18. 測試與 CI
 
-- **單元測試** `test/test_utils/` — 75 個 `test_*.py`、1120 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
+- **單元測試** `test/test_utils/` — 75 個 `test_*.py`、1128 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
 - **整合測試** `test/unit_test/start_automation/` — 以 `debug_mode=True` 啟動 IDE，10 秒後自動關閉，驗證啟動流程與 extend tab
 - **CI** `.github/workflows/{dev,stable}.yml` — `unit-tests` job 跑 Windows runner、Python 3.10–3.14 矩陣，3.12 那一腳額外上傳 `coverage-xml` artifact；`sonarcloud` job 跑 ubuntu、`needs: unit-tests`。每日 02:00 排程 + push/PR 觸發。`stable.yml` 另有 `publish` job 負責版號遞增與 PyPI 發布
 - **覆蓋率** `.coveragerc` — `relative_files = True` 是必要的：報告在 Windows 產生、由 Linux 上的 scanner 讀取，路徑不能帶機器資訊。目前整體 60%（`utils/`、`tools_gui`、`dialog` 95–100%；`editor_main` 58%、`menu` 54%；仍低的是 `diagram_editor` 45%、`process_executor` 39%、`connect_gui` 28%）
