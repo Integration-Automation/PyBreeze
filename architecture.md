@@ -90,6 +90,7 @@ extend/process_executor/<pkg>/ → build_process() (process_executor_utils.py)
 
 ```
 Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
+  → run_current_file_with() → save_current_file_for_run() [tab's own encoding and line ending]
   → FileRunnerProcess.run_file() → interpret, or compile then run → CodeWindow
 ```
 

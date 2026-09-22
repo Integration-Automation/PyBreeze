@@ -1,7 +1,8 @@
 """
 "Run with..." menu — lets users run the current file with a plugin-registered runner.
 
-Uses je_editor's plugin run config registry instead of scanning sys.modules.
+Uses je_editor's plugin run config registry instead of scanning sys.modules. The
+Plugins menu's run entries go through ``run_current_file_with`` here as well.
 """
 from __future__ import annotations
 
@@ -11,11 +12,11 @@ from typing import TYPE_CHECKING
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QMessageBox
 
-from je_editor import language_wrapper
+from je_editor import EditorWidget, language_wrapper
 from je_editor.plugins import get_all_plugin_run_configs
 from je_editor.pyside_ui.dialog.file_dialog.save_file_dialog import choose_file_get_save_file_path
-from je_editor.pyside_ui.main_ui.editor.editor_widget import EditorWidget
-from je_editor.utils.file.save.save_file import write_file
+from je_editor.utils.encodings.text_codec import DEFAULT_ENCODING, LINE_ENDING_LF
+from je_editor.utils.file.save.save_file import write_file_with_encoding
 
 from pybreeze.extend.process_executor.file_runner_process import FileRunnerProcess
 from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
@@ -24,26 +25,35 @@ if TYPE_CHECKING:
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
 
 
-def _get_current_file(main_window: PyBreezeMainWindow) -> str | None:
-    """Get and save the current editor file, return its path or None."""
+def save_current_file_for_run(main_window: PyBreezeMainWindow) -> str | None:
+    """Save the current editor tab and return its path, or None when there is nothing to run.
+
+    A tab that already has a file is written in place the way JEditor's own saves
+    write it: in the tab's encoding and line ending (a Big5 or CRLF file stays
+    one), with the tab's file watcher told to expect the write (otherwise it asks
+    whether to reload the file PyBreeze just wrote), and with the tab's unsaved
+    marker cleared. A tab without a file goes through JEditor's Save As dialog.
+    """
     widget = main_window.tab_widget.currentWidget()
     if not isinstance(widget, EditorWidget):
         return None
+    if not widget.current_file:
+        if not choose_file_get_save_file_path(main_window):
+            return None
+        # The save dialog can be accepted without a path being set.
+        return widget.current_file or None
+    widget.mark_ignore_next_file_change()
+    write_file_with_encoding(
+        str(widget.current_file), widget.code_edit.toPlainText(),
+        getattr(widget, "file_encoding", DEFAULT_ENCODING),
+        getattr(widget, "line_ending", LINE_ENDING_LF))
+    widget.mark_saved()
+    return widget.current_file
 
-    # If file already saved, just write current content
-    if widget.current_file:
-        write_file(widget.current_file, widget.code_edit.toPlainText())
-        return widget.current_file
 
-    # No file yet — ask user to save first
-    if choose_file_get_save_file_path(main_window):
-        return widget.current_file
-    return None
-
-
-def _run_with(main_window: PyBreezeMainWindow, run_config: dict) -> None:
-    """Execute the current file using the given run config."""
-    file_path = _get_current_file(main_window)
+def run_current_file_with(main_window: PyBreezeMainWindow, run_config: dict) -> None:
+    """Save the current file, then run it with *run_config* in a new run window."""
+    file_path = save_current_file_for_run(main_window)
     if not file_path:
         return
 
@@ -93,6 +103,6 @@ def set_run_with_menu(ui_we_want_to_set: PyBreezeMainWindow) -> None:
 
         action = QAction(label, ui_we_want_to_set.run_with_menu)
         action.triggered.connect(
-            lambda checked=False, cfg=config: _run_with(ui_we_want_to_set, cfg)
+            lambda checked=False, cfg=config: run_current_file_with(ui_we_want_to_set, cfg)
         )
         ui_we_want_to_set.run_with_menu.addAction(action)
