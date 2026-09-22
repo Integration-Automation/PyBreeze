@@ -9,7 +9,9 @@ from je_editor import language_wrapper
 from pybreeze.extend.prthinker_extend.prthinker_setting import (
     install_target, load_setting, save_setting
 )
-from pybreeze.pybreeze_ui.menu.install_menu.install_utils import install_package
+from pybreeze.pybreeze_ui.menu.install_menu.install_utils import (
+    install_is_possible, install_package
+)
 
 if TYPE_CHECKING:
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
@@ -99,6 +101,10 @@ def install_prthinker(ui_we_want_to_set: PyBreezeMainWindow) -> None:
     prthinker is installed from source rather than from PyPI, so the folder is
     asked for once and then remembered in the prthinker settings.
     """
+    if not install_is_possible(ui_we_want_to_set):
+        # Asked before the folder dialog: choosing and storing a source folder
+        # for an install that cannot start is work the user would repeat.
+        return
     setting = load_setting()
     target = install_target(setting.get("source_path", ""))
     if not target:

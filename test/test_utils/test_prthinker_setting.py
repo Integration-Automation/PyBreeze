@@ -99,6 +99,22 @@ class TestTheModelName:
         environment = environment_for({**DEFAULT_SETTING, "backend": "anthropic"})
         assert not [name for name in environment if name.endswith(("_MODEL", "_MODEL_NAME"))]
 
+    def test_a_model_with_no_backend_to_send_it_to_is_reported(self, monkeypatch):
+        # A stored backend PyBreeze does not offer (hand-edited, or from a newer
+        # build) has no variable to put the model in. Dropping it quietly would
+        # leave the dialog showing a model prthinker never sees.
+        logged: list = []
+        monkeypatch.setattr(
+            prthinker_setting.pybreeze_logger, "error",
+            lambda message, *args: logged.append(message % args))
+
+        environment = environment_for(
+            {**DEFAULT_SETTING, "backend": "a-backend-from-the-future",
+             "model_name": "the-model"})
+
+        assert not [name for name in environment if name.endswith(("_MODEL", "_MODEL_NAME"))]
+        assert logged and "the-model" in logged[0]
+
 
 class TestRuleRetrieval:
     # prthinker's local RAG index ships with its repository, not its package, so
@@ -107,20 +123,23 @@ class TestRuleRetrieval:
         assert RAG_MODES == ("off", "remote")
 
     def test_it_starts_off(self):
-        environment = environment_for(DEFAULT_SETTING)
-        assert environment["PRTHINKER_RAG_ENABLED"] == "false"
-        assert "PRTHINKER_REMOTE_RAG" not in environment
+        # Both variables travel every time: the child inherits the IDE's
+        # environment, so one left out would be decided by whatever is exported
+        # in the shell PyBreeze was started from.
+        assert environment_for(DEFAULT_SETTING) | {
+            "PRTHINKER_RAG_ENABLED": "false", "PRTHINKER_REMOTE_RAG": "false",
+        } == environment_for(DEFAULT_SETTING)
 
     def test_remote_asks_the_server(self):
         environment = environment_for({**DEFAULT_SETTING, "rag": "remote"})
         assert environment["PRTHINKER_REMOTE_RAG"] == "true"
-        assert "PRTHINKER_RAG_ENABLED" not in environment
+        assert environment["PRTHINKER_RAG_ENABLED"] == "true"
 
     @pytest.mark.parametrize("stored", ["local", "", "REMOTE "])
     def test_anything_else_counts_as_off(self, stored):
         environment = environment_for({**DEFAULT_SETTING, "rag": stored})
         assert environment["PRTHINKER_RAG_ENABLED"] == "false"
-        assert "PRTHINKER_REMOTE_RAG" not in environment
+        assert environment["PRTHINKER_REMOTE_RAG"] == "false"
 
 
 class TestTheCommandsAreBuilt:

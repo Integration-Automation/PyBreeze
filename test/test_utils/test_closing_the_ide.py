@@ -35,3 +35,16 @@ def test_closing_the_ide_stops_a_run_still_going(tmp_path):
 
     assert seen["running_before"]
     assert seen["stopped"]
+
+
+_AUTO_CLOSE_WITH_A_RUN_GOING = _CLOSE_WITH_A_RUN_GOING.replace(
+    "window.close()", "window.debug_close()")
+
+
+def test_the_auto_close_of_debug_mode_stops_a_run_too(tmp_path):
+    # The startup tests close the IDE this way; quitting the application on its
+    # own skips closeEvent, and with it every bit of cleanup.
+    seen = run_started_window(tmp_path, _AUTO_CLOSE_WITH_A_RUN_GOING)
+
+    assert seen["running_before"]
+    assert seen["stopped"]

@@ -90,12 +90,14 @@ class PyBreezeMainWindow(EditorMain):
             run_window.close()
         super().closeEvent(event)
 
-    @staticmethod
-    def debug_close() -> None:
+    def debug_close(self) -> None:
+        """Close the window and leave the event loop. Used by the startup tests.
+
+        Closing first means the same cleanup as a user closing the IDE --
+        stopping any run still going, saving the settings -- which quitting
+        the application on its own would skip.
         """
-        Use to run CI test.
-        :return: None
-        """
+        self.close()
         app = QApplication.instance()
         if app is not None:
             app.quit()

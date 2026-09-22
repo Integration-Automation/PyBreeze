@@ -189,6 +189,8 @@ call_X_multi_file_and_send()   → run_dir_files_with_package(..., True)
 - `_TAB_ACTIONS: tuple[...]` — (widget key, 主視窗屬性, 選單屬性, action 語言鍵, 分頁標籤鍵)
 - `_DOCK_ACTIONS` / `_DOCK_TITLES` — 同一組 widget 也能開成右側 dock
 
+安裝選單的 `install_is_possible()` 也是先問再做：沒有編輯器分頁就說一聲並回傳 `False`，安裝三個建置工具或先問 prthinker 原始碼資料夾的路徑都靠它提早停下。
+
 `_register_action()` 有一段關鍵註解：QAction 必須 `setattr` 掛回主視窗，否則 Qt 不持有它、被 GC 後選單項就失效。另一種做法是建構時把選單當 parent（自動化選單工廠、插件選單用這種）。`test_started_menus.py` 在子行程啟動真的 IDE、GC 後走訪整條選單列，任何子選單變空就失敗（JEditor 的兩個字型選單除外：offscreen 平台沒有字型）。
 
 ### 5.4 插件選單
@@ -360,7 +362,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 - 模型名稱依後端交給不同變數（`MODEL_ENVIRONMENT`）：`remote` / `local` 是 `PRTHINKER_MODEL_NAME`，其他後端是各自的 `PRTHINKER_<BACKEND>_MODEL`。prthinker 只有 local 讀 `PRTHINKER_MODEL_NAME`（remote 由伺服器決定模型，只拿來標示）
 - `extra_arguments()` 經 `split_arguments()` 以命令列規則斷詞（引號內空白不拆）；反斜線是路徑分隔字元的平台（Windows）上反斜線不當跳脫字元，`C:\reviews` 才不會變成 `C:reviews`。解析失敗當作沒有而不是讓整次審查失敗
 - `install_target()` 回傳 `<path>[runner]`，因為 prthinker 不在 PyPI 上
-- 規則檢索（`rag`，`RAG_MODES = ("off", "remote")`）**永遠明講**：`off` 給 `PRTHINKER_RAG_ENABLED=false`，`remote` 給 `PRTHINKER_REMOTE_RAG=true`（走伺服器的 `/rag`），認不得的值當 `off`。prthinker 的預設是本機 FAISS 檢索，但那份索引（`codes/`）只在它的原始碼庫、被排除在套件外，從這裡裝的 prthinker 一跑就 `ModuleNotFoundError: codes`
+- 規則檢索（`rag`，`RAG_MODES = ("off", "remote")`）**永遠明講**，而且兩個變數都送：`off` 給 `PRTHINKER_RAG_ENABLED=false` + `PRTHINKER_REMOTE_RAG=false`，`remote` 兩個都 `true`（走伺服器的 `/rag`），認不得的值當 `off`。子行程繼承 IDE 的環境，少送一個就會被使用者 shell 裡的設定決定。prthinker 的預設是本機 FAISS 檢索，但那份索引（`codes/`）只在它的原始碼庫、被排除在套件外，從這裡裝的 prthinker 一跑就 `ModuleNotFoundError: codes`
 
 支援的後端：`remote / local / openai / anthropic / gemini / cohere / mistral / claude-cli / codex-cli`；平台：`github / gitlab / gitea`。
 
@@ -424,7 +426,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 18. 測試與 CI
 
-- **單元測試** `test/test_utils/` — 75 個 `test_*.py`、1128 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
+- **單元測試** `test/test_utils/` — 76 個 `test_*.py`、1144 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
 - **整合測試** `test/unit_test/start_automation/` — 以 `debug_mode=True` 啟動 IDE，10 秒後自動關閉，驗證啟動流程與 extend tab
 - **CI** `.github/workflows/{dev,stable}.yml` — `unit-tests` job 跑 Windows runner、Python 3.10–3.14 矩陣，3.12 那一腳額外上傳 `coverage-xml` artifact；`sonarcloud` job 跑 ubuntu、`needs: unit-tests`。每日 02:00 排程 + push/PR 觸發。`stable.yml` 另有 `publish` job 負責版號遞增與 PyPI 發布
 - **覆蓋率** `.coveragerc` — `relative_files = True` 是必要的：報告在 Windows 產生、由 Linux 上的 scanner 讀取，路徑不能帶機器資訊。目前整體 60%（`utils/`、`tools_gui`、`dialog` 95–100%；`editor_main` 58%、`menu` 54%；仍低的是 `diagram_editor` 45%、`process_executor` 39%、`connect_gui` 28%）

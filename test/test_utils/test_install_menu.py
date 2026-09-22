@@ -40,12 +40,14 @@ class Shell:
     """Records the command instead of starting a shell."""
 
     last: "Shell | None" = None
+    every: list = []
 
     def __init__(self, main_window) -> None:
         self.main_window = main_window
         self.compiler_path = "shell/python"
         self.commands: list = []
         Shell.last = self
+        Shell.every.append(self)
 
     def later_init(self) -> None:
         self.initialised = True
@@ -57,6 +59,7 @@ class Shell:
 @pytest.fixture()
 def shell(monkeypatch):
     Shell.last = None
+    Shell.every = []
     monkeypatch.setattr(install_utils, "EditorWidget", EditorTab)
     monkeypatch.setattr(install_utils, "ShellManager", Shell)
     return Shell
@@ -116,3 +119,47 @@ class TestInstallingAPackage:
 
         assert shell.last is None
         assert told, "the user was told nothing"
+
+
+class TestInstallingTheBuildTools:
+    def test_it_stops_at_the_first_one_that_cannot_start(self, app, shell, told):
+        from pybreeze.pybreeze_ui.menu.install_menu.tools_menu.build_tool_install_menu import (
+            install_build_tools,
+        )
+
+        install_build_tools(Window(QWidget()))
+
+        # One message, not one per package.
+        assert len(told) == 1
+        assert shell.last is None
+
+    def test_it_installs_all_three_when_it_can(self, app, shell, told):
+        from pybreeze.pybreeze_ui.menu.install_menu.tools_menu.build_tool_install_menu import (
+            install_build_tools,
+        )
+
+        install_build_tools(Window(EditorTab(), python_compiler="python"))
+
+        assert [one.commands[0][4] for one in shell.every] == ["setuptools", "build", "wheel"]
+        assert told == []
+
+
+class TestInstallingPrthinker:
+    def test_the_source_folder_is_not_asked_for_when_nothing_can_be_installed(
+            self, app, shell, told, monkeypatch):
+        from pybreeze.pybreeze_ui.menu.install_menu.automation_menu import (
+            build_automation_install_menu as install_menu,
+        )
+
+        asked: list = []
+        monkeypatch.setattr(
+            install_menu.QFileDialog, "getExistingDirectory",
+            lambda *args, **kwargs: asked.append(kwargs) or "")
+        monkeypatch.setattr(install_menu, "load_setting", lambda: {"source_path": ""})
+        monkeypatch.setattr(
+            install_menu, "save_setting", lambda setting: asked.append(setting))
+
+        install_menu.install_prthinker(Window(QWidget()))
+
+        assert asked == [], "the user was asked to choose a folder for an install that cannot start"
+        assert told

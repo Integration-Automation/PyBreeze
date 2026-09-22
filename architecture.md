@@ -160,7 +160,8 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
   `PRTHINKER_<BACKEND>_MODEL`), `PRTHINKER_REMOTE_URL`, `PRTHINKER_REMOTE_API_KEY`,
   `PRTHINKER_OPENAI_API_KEY`, `PRTHINKER_OPENAI_BASE_URL`, `PRTHINKER_ANTHROPIC_API_KEY`,
   `PRTHINKER_PLATFORM`, `PRTHINKER_PLATFORM_BASE_URL`, `GITHUB_REPOSITORY`, `GITHUB_TOKEN`, and
-  always one of `PRTHINKER_RAG_ENABLED=false` / `PRTHINKER_REMOTE_RAG=true`. `BACKENDS` must stay a
+  always both `PRTHINKER_RAG_ENABLED` and `PRTHINKER_REMOTE_RAG` (the child inherits the IDE's
+  environment, so one left out would be decided by whatever is exported there). `BACKENDS` must stay a
   subset of `prthinker.config.BackendKind`. It is not on PyPI: the Install menu asks for a local
   source folder and installs `<path>[runner]`; that package excludes prthinker's `codes/` (the local
   RAG index), which is why local retrieval is never left on. `test_prthinker_contract.py` runs the

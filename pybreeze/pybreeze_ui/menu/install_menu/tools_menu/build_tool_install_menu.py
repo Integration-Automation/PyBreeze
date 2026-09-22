@@ -24,6 +24,11 @@ def build_tool_install_menu(ui_we_want_to_set: PyBreezeMainWindow):
 
 
 def install_build_tools(ui_we_want_to_set: PyBreezeMainWindow) -> None:
-    install_package("setuptools", ui_we_want_to_set)
-    install_package("build", ui_we_want_to_set)
-    install_package("wheel", ui_we_want_to_set)
+    """Install the packaging tools, stopping at the first one that cannot start.
+
+    Without an editor tab in front none of them can, and carrying on would
+    put the same message box in front of the user once per package.
+    """
+    for package in ("setuptools", "build", "wheel"):
+        if not install_package(package, ui_we_want_to_set):
+            return

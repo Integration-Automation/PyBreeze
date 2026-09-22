@@ -48,11 +48,14 @@ PLATFORMS = ("github", "gitlab", "gitea")
 # the prthinker installed from here cannot retrieve locally.
 RAG_MODES = ("off", "remote")
 
-# 每種做法交給子行程的環境變數；認不得的值一律當作關掉
-# The variables each way is given through; an unknown value counts as off
+# 每種做法交給子行程的環境變數；認不得的值一律當作關掉。兩個變數都一定送出：
+# 子行程繼承 IDE 的環境，只送一個的話，使用者原本設的另一個會留下來作數。
+# The variables each way is given through; an unknown value counts as off.
+# Both are always sent: the child inherits the IDE's environment, so leaving
+# one out would let whatever the user has exported decide it.
 RAG_ENVIRONMENT = {
-    "off": {"PRTHINKER_RAG_ENABLED": "false"},
-    "remote": {"PRTHINKER_REMOTE_RAG": "true"},
+    "off": {"PRTHINKER_RAG_ENABLED": "false", "PRTHINKER_REMOTE_RAG": "false"},
+    "remote": {"PRTHINKER_RAG_ENABLED": "true", "PRTHINKER_REMOTE_RAG": "true"},
 }
 
 # 每個後端讀模型名稱的環境變數：prthinker 各後端各讀各的
@@ -196,9 +199,16 @@ def environment_for(setting: Dict[str, str]) -> Dict[str, str]:
         if setting.get(key, "").strip()
     }
     model = setting.get("model_name", "").strip()
-    model_variable = MODEL_ENVIRONMENT.get(setting.get("backend", "").strip())
+    backend = setting.get("backend", "").strip()
+    model_variable = MODEL_ENVIRONMENT.get(backend)
     if model and model_variable:
         environment[model_variable] = model
+    elif model:
+        # Each backend reads its own variable, so without a backend there is
+        # nowhere to put the model; say so rather than drop it quietly.
+        pybreeze_logger.error(
+            "prthinker model %r not sent: %r is not a backend PyBreeze offers",
+            model, backend)
     rag_mode = setting.get("rag", "")
     environment.update(RAG_ENVIRONMENT.get(rag_mode, RAG_ENVIRONMENT["off"]))
     return environment
