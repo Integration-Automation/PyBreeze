@@ -58,8 +58,9 @@ pybreeze/
 
 ## Branching & CI
 
-- `main`: stable, publishes `pybreeze` · `dev`: development, publishes `pybreeze_dev`
-- Version config: `pyproject.toml` (stable), `dev.toml` (dev) — keep both in sync when bumping
+- `main`: stable. On every push to `main`, the `publish` job in `stable.yml` bumps the patch version in `pyproject.toml`, uploads `pybreeze` to PyPI, then commits and tags the bump. `dev`: development. `dev.yml` runs the tests and SonarCloud and publishes nothing
+- Never edit a version by hand: CI owns `pyproject.toml`'s, and `dev` is always behind `origin/main`
+- `dev.toml` describes a `pybreeze_dev` package that no workflow builds; PyPI's `pybreeze_dev` stopped at the 1.0.14 it names. Whether CI should publish it or `dev.toml` should be deleted is undecided (workspace X-13). Until then, keep its `dependencies` identical to `pyproject.toml`'s
 - `unit-tests` job: GitHub Actions on Windows, Python 3.10–3.14 — install deps → pytest `test/test_utils/` → `start_automation_test` → `extend_automation_test`
 - `sonarcloud` job: CI-based SonarQube Cloud analysis (`sonar-project.properties`), `needs: unit-tests` so it can consume the `coverage-xml` artifact that leg uploads. Automatic Analysis is off and must stay off — the two modes are mutually exclusive and the scanner refuses to run alongside it
 - SonarCloud's plan for this organization exposes results for `main` and for pull requests only. An analysis pushed for another branch succeeds but its results read back 403, so `dev.yml` scans on pull requests only; `stable.yml` also scans pushes to `main`. Do not "fix" this by scanning every `dev` push — the numbers are not readable

@@ -5,8 +5,9 @@
 
 ## 1. Purpose
 
-PyBreeze is an automation-first Python IDE built on JEditor. It is published as `pybreeze`
-(stable, `pyproject.toml`) and `pybreeze_dev` (dev, `dev.toml`). It does not have its own editor.
+PyBreeze is an automation-first Python IDE built on JEditor. CI publishes it as `pybreeze`
+(`pyproject.toml`) from `main`; `dev.toml` describes a `pybreeze_dev` package that nothing
+publishes any more (workspace X-13). It does not have its own editor.
 Instead it subclasses JEditor's main window and adds menus, tool tabs and docks around it:
 
 - menus that drive the automation packages (AutoControl, WebRunner, APITestka, LoadDensity,
@@ -36,7 +37,7 @@ their output reaches the UI through Queue + QTimer.
 | `pybreeze/extend_multi_language/` | PyBreeze's English and Traditional Chinese strings, merged into JEditor's dictionaries |
 | `pybreeze/utils/` | Pure logic (only `file_process/get_dir_file_list.py` imports Qt): request parsing and codegen, HTTP tools, `network/` SSRF validation and capped reads, exceptions, logging, `app_dirs.py`, `subprocess_util.py` |
 | `test/test_utils/` | Unit tests (pure logic and headless widgets). `test/unit_test/start_automation/` holds the launch tests |
-| `pyproject.toml`, `dev.toml` | Stable and dev packaging (keep both in sync) |
+| `pyproject.toml`, `dev.toml` | Stable packaging (CI bumps and publishes it) and the unpublished dev packaging (keep its dependencies identical) |
 | `.github/workflows/` | `dev.yml`, `stable.yml` (unit tests on a Windows matrix, then SonarCloud) |
 | `docs/`, `linux_package_source/`, `architecture_diagram/` | Sphinx docs, Debian package source, architecture image |
 
@@ -151,7 +152,7 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
 - Persist data only under `~/.pybreeze/` (§ Security › File I/O).
 - Complexity, length and nesting caps; no silent `except`; no `assert` in runtime code
   (§ Code quality gates).
-- `main` is stable and `dev` is development, and the version must be bumped in both toml files.
+- `main` is stable and `dev` is development. CI owns the version: never edit it by hand.
   SonarCloud automatic analysis stays off (§ Branching & CI).
 - Commit and PR text must follow the attribution rules (§ Commit & PR rules).
 
