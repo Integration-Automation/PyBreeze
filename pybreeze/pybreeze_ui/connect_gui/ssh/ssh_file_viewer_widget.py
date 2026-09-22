@@ -57,6 +57,22 @@ def natural_key(name: str) -> list:
     ]
 
 
+# Item data: the serial of the listing a directory item is waiting for
+LISTING_ROLE = Qt.ItemDataRole.UserRole
+
+
+def sort_entries(entries) -> list:
+    """Return ``[(name, entry)]`` with directories first, each in natural order."""
+    dirs: list = []
+    files: list = []
+    for entry in entries:
+        bucket = dirs if stat.S_ISDIR(entry.st_mode) else files
+        bucket.append((entry.filename, entry))
+    dirs.sort(key=lambda item: natural_key(item[0]))
+    files.sort(key=lambda item: natural_key(item[0]))
+    return dirs + files
+
+
 def remote_join(directory: str, name: str) -> str:
     """Join *name* under a remote POSIX *directory* into an absolute path.
 
@@ -154,7 +170,10 @@ class SFTPClientWrapper:
         列出目錄項目（含屬性）。
         """
         self._require_connection()
-        return self._sftp.listdir_attr(path)
+        sftp = self._sftp
+        if sftp is None:  # closed from the UI thread since the check
+            self._require_connection()
+        return sftp.listdir_attr(path)
 
     def is_dir(self, path: str) -> bool:
         """
@@ -250,6 +269,31 @@ class SftpTransferThread(QThread):
             self.done.emit(self._local_path if self._downloading else self._remote_path)
 
 
+class SftpListThread(QThread):
+    """List one remote directory off the UI thread, sorted for the tree.
+
+    ``listdir_attr()`` has no timeout of its own and returns every entry at
+    once, so a stalled server or a directory of tens of thousands of files
+    used to hold the IDE until it answered.
+    """
+
+    listed = Signal(object)  # [(name, SFTPAttributes)], directories first
+    failed = Signal(str)
+
+    def __init__(self, client: "SFTPClientWrapper", path: str) -> None:
+        super().__init__()
+        self._client = client
+        self._path = path
+
+    def run(self) -> None:
+        try:
+            entries = self._client.list_dir(self._path)
+        except (OSError, RuntimeError, EOFError, paramiko.SSHException) as error:
+            self.failed.emit(str(error))
+        else:
+            self.listed.emit(sort_entries(entries))
+
+
 class SSHFileTreeManager(QWidget):
     """
     QWidget: connection form + tree + context menu.
@@ -273,6 +317,12 @@ class SSHFileTreeManager(QWidget):
         host_key_asker()  # built here, on the UI thread, for a connect to ask through
         # The transfer in flight, if any / 正在進行的傳輸
         self._transfer: SftpTransferThread | None = None
+        # Listings in flight / 正在進行的目錄列出
+        self._listings: set[SftpListThread] = set()
+        self._listing_serial = 0
+        # Bumped whenever the tree is cleared: a listing started before then
+        # returns to items that no longer exist.
+        self._tree_generation = 0
 
         if self.add_login_widget:
             # 使用獨立的登入介面
@@ -366,6 +416,10 @@ class SSHFileTreeManager(QWidget):
         if transfer is not None and transfer.isRunning():
             transfer.blockSignals(True)
             transfer.wait()
+        for listing in list(self._listings):
+            if listing.isRunning():
+                let_run_out(listing, listing.listed, listing.failed)
+        self._listings.clear()
         if self._connecting is not None and self._connecting.isRunning():
             let_run_out(self._connecting, self._connecting.connected, self._connecting.failed)
             # A connect that still succeeds after the widget has gone would leave
@@ -381,7 +435,7 @@ class SSHFileTreeManager(QWidget):
         斷線 SSH。
         """
         self.client.close()
-        self.tree.clear()
+        self._clear_tree()
         self.state_changed.emit()
 
     def load_root(self, path: str = "/"):
@@ -389,13 +443,18 @@ class SSHFileTreeManager(QWidget):
         Clear and load root items.
         清空並載入根項目。
         """
-        self.tree.clear()
+        self._clear_tree()
         root_item = self.make_item("/", "dir", 0, "/")
-        # Add a placeholder child to show expandable icon
-        self.add_placeholder(root_item)
         self.tree.addTopLevelItem(root_item)
-        root_item.setExpanded(True)
+        # Listed once, here. Expanding an item that still had its placeholder
+        # would list it a second time through on_item_expanded.
         self.populate_children(root_item)
+        root_item.setExpanded(True)
+
+    def _clear_tree(self) -> None:
+        """Empty the tree; listings still running will find nothing to fill."""
+        self._tree_generation += 1
+        self.tree.clear()
 
     def make_item(self, name: str, typ: str, size: int, full_path: str) -> QTreeWidgetItem:
         """
@@ -450,28 +509,47 @@ class SSHFileTreeManager(QWidget):
         if not self.client.connected:
             return
         path = parent_item.text(3)
-        try:
-            entries = self.client.list_dir(path)
-        except Exception as ex:
-            QMessageBox.critical(
-                self,
-                self.word_dict.get("ssh_file_viewer_dialog_title_list_error"),
-                f"{self.word_dict.get('ssh_file_viewer_dialog_message_list_failed')} '{path}': {ex}")
+        # The rows arrive from a thread. Until then the item shows it is loading,
+        # and it remembers which listing it is waiting for: a refresh started
+        # meanwhile supersedes this one.
+        self._listing_serial += 1
+        serial = self._listing_serial
+        parent_item.setData(0, LISTING_ROLE, serial)
+        parent_item.addChild(QTreeWidgetItem([self.word_dict.get("ssh_file_viewer_loading"), "", "", ""]))
+        generation = self._tree_generation
+        listing = SftpListThread(self.client, path)
+        listing.listed.connect(
+            lambda rows: self._listing_done(parent_item, generation, serial, rows))
+        listing.failed.connect(
+            lambda message: self._listing_failed(parent_item, generation, serial, message))
+        listing.finished.connect(lambda: self._listings.discard(listing))
+        self._listings.add(listing)
+        listing.start()
+
+    def _is_waiting_for(self, item: QTreeWidgetItem, generation: int, serial: int) -> bool:
+        """Whether *item* still exists and is waiting for listing *serial*. UI thread."""
+        return generation == self._tree_generation and item.data(0, LISTING_ROLE) == serial
+
+    def _listing_done(self, parent_item: QTreeWidgetItem, generation: int, serial: int, rows) -> None:
+        """Fill *parent_item* with its listing, unless it has moved on. UI thread."""
+        if not self._is_waiting_for(parent_item, generation, serial):
             return
-        for name, entry in self._sort_entries(entries):
+        parent_item.takeChildren()
+        path = parent_item.text(3)
+        for name, entry in rows:
             self._add_entry_row(parent_item, path, name, entry)
 
-    @staticmethod
-    def _sort_entries(entries):
-        """Return ``[(name, entry)]`` with directories first, each in natural order."""
-        dirs: list = []
-        files: list = []
-        for entry in entries:
-            bucket = dirs if stat.S_ISDIR(entry.st_mode) else files
-            bucket.append((entry.filename, entry))
-        dirs.sort(key=lambda item: natural_key(item[0]))
-        files.sort(key=lambda item: natural_key(item[0]))
-        return dirs + files
+    def _listing_failed(self, parent_item: QTreeWidgetItem, generation: int, serial: int,
+                        message: str) -> None:
+        """Say why *parent_item* could not be listed, unless it has moved on. UI thread."""
+        if not self._is_waiting_for(parent_item, generation, serial):
+            return
+        parent_item.takeChildren()
+        QMessageBox.critical(
+            self,
+            self.word_dict.get("ssh_file_viewer_dialog_title_list_error"),
+            f"{self.word_dict.get('ssh_file_viewer_dialog_message_list_failed')} "
+            f"'{parent_item.text(3)}': {message}")
 
     def _add_entry_row(self, parent_item: QTreeWidgetItem, path: str, name: str, entry) -> None:
         full_path = remote_join(path, name)

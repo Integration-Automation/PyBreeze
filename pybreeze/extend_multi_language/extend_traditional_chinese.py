@@ -175,6 +175,7 @@ pybreeze_traditional_chinese_word_dict = {
     # SSH File Viewer GUI
     "ssh_file_viewer_dialog_title_list_error": "列出錯誤",
     "ssh_file_viewer_dialog_message_list_failed": "無法列出",
+    "ssh_file_viewer_loading": "載入中…",
     "ssh_file_viewer_dialog_title_operation_failed": "操作失敗",
     "ssh_file_viewer_dialog_message_operation_failed": "錯誤",
     "ssh_file_viewer_context_menu_action_refresh": "重新整理",

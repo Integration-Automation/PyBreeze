@@ -175,6 +175,7 @@ pybreeze_english_word_dict = {
     # SSH File Viewer GUI
     "ssh_file_viewer_dialog_title_list_error": "List error",
     "ssh_file_viewer_dialog_message_list_failed": "Failed to list",
+    "ssh_file_viewer_loading": "Loading…",
     "ssh_file_viewer_dialog_title_operation_failed": "Operation failed",
     "ssh_file_viewer_dialog_message_operation_failed": "Error",
     "ssh_file_viewer_context_menu_action_refresh": "Refresh",
