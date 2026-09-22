@@ -51,11 +51,11 @@ def set_autocontrol_menu(ui_we_want_to_set: PyBreezeMainWindow):
     lang = language_wrapper.language_word_dict
     record_menu = menu.addMenu(lang.get("autocontrol_record_menu_label"))
 
-    record_action = QAction(lang.get("autocontrol_record_start_label"))
+    record_action = QAction(lang.get("autocontrol_record_start_label"), record_menu)
     record_action.triggered.connect(je_auto_control.record)
     record_menu.addAction(record_action)
 
-    stop_record_action = QAction(lang.get("autocontrol_record_stop_label"))
+    stop_record_action = QAction(lang.get("autocontrol_record_stop_label"), record_menu)
     stop_record_action.triggered.connect(lambda: stop_record(ui_we_want_to_set))
     record_menu.addAction(stop_record_action)
 

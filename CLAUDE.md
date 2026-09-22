@@ -84,7 +84,7 @@ ruff check pybreeze/                              # before committing non-trivia
 - **Never update UI from a worker thread** — Queue + QTimer (see `TaskProcessManager`) or Qt Signal/Slot
 - Custom exceptions inherit from `ITEException`; log via `pybreeze_logger` (lazy `%s` formatting, never `print()`)
 - Plugin API: `register_programming_language()` / `register_natural_language()` from `je_editor.plugins`
-- A QAction built for a menu must be stored on the main window — Qt holds no reference and a GC'd action silently stops responding
+- A QAction built for a menu must be kept alive: store it on the main window or give it the menu as its parent. A menu does not own the actions added to it, so one held only by a local variable is deleted when the builder returns and its entry disappears
 - Delete unused code immediately — no dead imports, unreachable branches, commented-out blocks, or `_old_` prefixes
 - Follow PEP 8 and standard Pythonic practice; `ruff` is the arbiter
 

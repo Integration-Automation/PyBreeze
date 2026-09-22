@@ -165,8 +165,8 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
 
 - Keep `architecture_explore.md` and the CLAUDE.md tree current in the same change
   (CLAUDE.md § Architecture).
-- Never update UI from a worker thread: use Queue + QTimer or Signal/Slot. Store every menu `QAction`
-  on the main window. Custom exceptions derive from `ITEException`. Log via `pybreeze_logger`
+- Never update UI from a worker thread: use Queue + QTimer or Signal/Slot. Keep every menu `QAction`
+  alive: store it on the main window or parent it to its menu. Custom exceptions derive from `ITEException`. Log via `pybreeze_logger`
   (§ Conventions).
 - Every outbound request to a user URL passes SSRF validation (`utils/network/url_validation.py`)
   with timeouts and size caps (§ Security › Network).

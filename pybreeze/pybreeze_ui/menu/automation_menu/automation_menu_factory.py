@@ -58,7 +58,7 @@ def build_automation_menu(
     if run_actions:
         run_menu = menu.addMenu(lang.get("run_label"))
         for action_config in run_actions:
-            action = QAction(lang.get(action_config["label_key"]))
+            action = QAction(lang.get(action_config["label_key"]), run_menu)
             callback = action_config["callback"]
             action.triggered.connect(callback)
             run_menu.addAction(action)
@@ -67,14 +67,14 @@ def build_automation_menu(
     if doc_url or github_url:
         help_menu = menu.addMenu(lang.get("help_label"))
         if doc_url and doc_label_key:
-            doc_action = QAction(lang.get(doc_label_key))
+            doc_action = QAction(lang.get(doc_label_key), help_menu)
             doc_action.triggered.connect(
                 lambda checked=False, u=doc_url, t=doc_tab_label_key:
                     open_web_browser(ui, u, lang.get(t))
             )
             help_menu.addAction(doc_action)
         if github_url and github_label_key:
-            github_action = QAction(lang.get(github_label_key))
+            github_action = QAction(lang.get(github_label_key), help_menu)
             github_action.triggered.connect(
                 lambda checked=False, u=github_url, t=github_tab_label_key:
                     open_web_browser(ui, u, lang.get(t))
@@ -84,13 +84,13 @@ def build_automation_menu(
     # Project sub-menu
     if create_project_func and create_project_label_key:
         project_menu = menu.addMenu(lang.get("project_label"))
-        create_action = QAction(lang.get(create_project_label_key))
+        create_action = QAction(lang.get(create_project_label_key), project_menu)
         create_action.triggered.connect(create_project_func)
         project_menu.addAction(create_action)
 
     # GUI widget tab
     if gui_widget_class and gui_label:
-        gui_action = QAction(gui_label)
+        gui_action = QAction(gui_label, menu)
         gui_action.triggered.connect(
             lambda checked=False: ui.tab_widget.addTab(gui_widget_class(), gui_label)
         )

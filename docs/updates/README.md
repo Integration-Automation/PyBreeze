@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260922-17 | 2026-09-22 | Automation submenus came up empty | #incident #menus | [2026-09](2026-09.md) |
 | U-20260922-16 | 2026-09-22 | Contract test for the prthinker command line | #done #prthinker #ci | [2026-09](2026-09.md) |
 | U-20260922-15 | 2026-09-22 | Dependency audit of what CI installs | #snapshot #dependencies | [2026-09](2026-09.md) |
 | U-20260922-14 | 2026-09-22 | Extra prthinker arguments lost their Windows backslashes | #incident #prthinker | [2026-09](2026-09.md) |
@@ -79,4 +80,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 16 |
+| [2026-09.md](2026-09.md) | 2026-09 | 17 |
