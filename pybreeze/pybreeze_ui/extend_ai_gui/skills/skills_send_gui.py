@@ -12,6 +12,7 @@ from pybreeze.pybreeze_ui.extend_ai_gui.ai_gui_global_variable import (
     SKILLS_TEMPLATE_FILES, SKILLS_TEMPLATE_RELATION
 )
 from pybreeze.pybreeze_ui.extend_ai_gui.prompt_store import load_prompt
+from pybreeze.pybreeze_ui.thread_keeper import let_run_out
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.network.http_client import (
     ResponseTooLargeError, read_capped_text, CONNECT_TIMEOUT, truncate_for_display,
@@ -20,7 +21,9 @@ from pybreeze.utils.network.url_validation import UnsafeURLError, validate_url
 
 
 class RequestThread(QThread):
-    finished = Signal(str)   # 成功或錯誤訊息
+    # Not "finished": that is QThread's own end-of-thread signal, and hiding it
+    # left nothing to re-enable the send button when run() ended some other way.
+    answered = Signal(str)   # 成功或錯誤訊息 / the answer, or a status to show
     error = Signal(str)
 
     def __init__(self, api_url, code_text):
@@ -37,9 +40,9 @@ class RequestThread(QThread):
             )
             body = read_capped_text(response)
             if response.ok:
-                self.finished.emit(body)
+                self.answered.emit(body)
             elif response.is_redirect:
-                self.finished.emit(
+                self.answered.emit(
                     language_wrapper.language_word_dict.get(
                         "skills_error_status").format(
                         status_code=response.status_code,
@@ -57,7 +60,7 @@ class RequestThread(QThread):
                         status_code=response.status_code,
                         text=f"Server error: {truncate_for_display(body)}"))
             else:
-                self.finished.emit(
+                self.answered.emit(
                     language_wrapper.language_word_dict.get(
                         "skills_error_status").format(
                         status_code=response.status_code, text=truncate_for_display(body)))
@@ -148,8 +151,11 @@ class SkillsSendGUI(QWidget):
         # 啟動 QThread
         self.send_button.setEnabled(False)
         self.thread = RequestThread(api_url, prompt_text)
-        self.thread.finished.connect(self.on_finished)
+        self.thread.answered.connect(self.on_finished)
         self.thread.error.connect(self.on_error)
+        # However run() ends -- including an exception outside its handler --
+        # the button comes back.
+        self.thread.finished.connect(lambda: self.send_button.setEnabled(True))
         self.thread.start()
 
     def on_finished(self, result):
@@ -161,10 +167,14 @@ class SkillsSendGUI(QWidget):
         self.send_button.setEnabled(True)
 
     def closeEvent(self, event):
+        """Let a request still in flight finish on its own, without this panel.
+
+        Its answers are cut off from the panel, and the thread is kept
+        referenced until it ends, so it is never destroyed while running. The
+        panel does not wait for it: the request can take the whole read timeout,
+        and waiting froze the IDE for that long.
+        """
         thread = self.thread
         if thread is not None and thread.isRunning():
-            # Block slots so a late finished/error emit can't hit the dying
-            # widget, then wait so the QThread is never destroyed while running.
-            thread.blockSignals(True)
-            thread.wait()
+            let_run_out(thread, thread.answered, thread.error)
         event.accept()

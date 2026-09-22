@@ -18,6 +18,7 @@ pybreeze/
 │   ├── connect_gui/             # ssh/ (terminal + SFTP tree), url/ (AI review client)
 │   ├── jupyter_lab_gui/         # JupyterLab tab (QWebEngineView)
 │   ├── show_code_window/        # CodeWindow — subprocess output display
+│   ├── thread_keeper.py         # let_run_out: a worker QThread outlives its closed widget
 │   ├── dialog/                  # prthinker settings dialog
 │   └── syntax/                  # Automation keyword highlighting definitions
 ├── extend/

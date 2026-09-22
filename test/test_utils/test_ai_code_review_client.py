@@ -165,26 +165,22 @@ class TestWhileARequestIsInFlight:
 
         assert started == []
 
-    def test_closing_waits_for_it(self, client):
-        class Waited:
-            def __init__(self) -> None:
-                self.waited = False
-                self.blocked = False
+    def test_closing_lets_it_run_out_without_waiting(self, client):
+        from unittest.mock import MagicMock
 
-            def isRunning(self) -> bool:
-                return True
+        from pybreeze.pybreeze_ui import thread_keeper
 
-            def blockSignals(self, blocked: bool) -> None:
-                self.blocked = blocked
-
-            def wait(self) -> None:
-                self.waited = True
-
-        client.request_thread = Waited()
+        thread = MagicMock()
+        thread.isRunning.return_value = True
+        client.request_thread = thread
 
         client.close()
 
-        assert client.request_thread.waited and client.request_thread.blocked
+        thread.wait.assert_not_called()
+        thread.answered.disconnect.assert_called_once()
+        thread.failed.disconnect.assert_called_once()
+        assert thread_keeper.is_kept(thread)
+        thread_keeper._OUTLIVING_THEIR_WIDGET.discard(thread)
 
     def test_an_unsupported_method_says_so_and_starts_nothing(self, client, monkeypatch):
         started: list = []

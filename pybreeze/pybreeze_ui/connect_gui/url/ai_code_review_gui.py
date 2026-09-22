@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.thread_keeper import let_run_out
 from pybreeze.utils.app_dirs import pybreeze_data_dir
 from pybreeze.utils.hash_tools.hash_text import hash_text
 from pybreeze.utils.logging.logger import pybreeze_logger
@@ -232,11 +233,15 @@ class AICodeReviewClient(QWidget):
         self.send_button.setEnabled(True)
 
     def closeEvent(self, event) -> None:
-        """Wait for a request still in flight, so its thread is not destroyed mid-run."""
+        """Let a request still in flight run out without this panel.
+
+        Waiting for it froze the IDE for as long as the request took; it is cut
+        off from the panel instead and kept until it ends, so it is never
+        destroyed while running.
+        """
         thread = self.request_thread
         if thread is not None and thread.isRunning():
-            thread.blockSignals(True)
-            thread.wait()
+            let_run_out(thread, thread.answered, thread.failed)
         super().closeEvent(event)
 
     def record_url(self, url: str) -> bool:

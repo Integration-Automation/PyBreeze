@@ -191,7 +191,9 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
   with timeouts and size caps (§ Security › Network).
 - SSH uses the interactive host-key policy, never auto-add (§ Security › SSH).
 - Work that waits on a network — an AI review request, a diagram's image downloads — runs on a
-  `QThread` and reaches the UI only through signals; the widget or scene waits for it on close.
+  `QThread` and reaches the UI only through signals. A request panel that closes mid-request hands
+  its thread to `thread_keeper.let_run_out()` (cut off from the panel, kept until it ends) rather
+  than waiting for it on the UI thread; a running `QThread` must never be destroyed.
 - Subprocesses use argument lists, `shell=False` and a `timeout`, and pass secrets through `env`
   (§ Security › Subprocess).
 - The JupyterLab server stays localhost-only (§ Security › JupyterLab).
