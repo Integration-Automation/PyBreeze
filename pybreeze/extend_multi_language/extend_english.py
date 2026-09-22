@@ -195,6 +195,9 @@ pybreeze_english_word_dict = {
     "ssh_file_viewer_dialog_title_invalid_selection": "Invalid selection",
     "ssh_file_viewer_dialog_message_select_file_to_download": "Select a file to download.",
     "ssh_file_viewer_dialog_title_save_as": "Save as",
+    "ssh_file_viewer_dialog_title_transfer_running": "A transfer is already running",
+    "ssh_file_viewer_dialog_message_transfer_running":
+        "One file at a time: wait for the transfer that is running to finish.",
     "ssh_file_viewer_dialog_title_downloaded": "Downloaded",
     "ssh_file_viewer_dialog_message_saved_to": "Saved to",
     "ssh_file_viewer_dialog_title_select_local_file": "Select local file to upload",

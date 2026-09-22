@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-19 | 2026-09-23 | An SFTP transfer held the IDE until it finished | #done #ssh | [2026-09](2026-09.md) |
 | U-20260923-18 | 2026-09-23 | Copy and duplicate ignored images | #done #diagram | [2026-09](2026-09.md) |
 | U-20260923-17 | 2026-09-23 | Run windows were kept for the whole session | #done #process-executor | [2026-09](2026-09.md) |
 | U-20260923-16 | 2026-09-23 | A diagram fetched its images again on every undo | #done #diagram | [2026-09](2026-09.md) |
@@ -99,4 +100,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 36 |
+| [2026-09.md](2026-09.md) | 2026-09 | 37 |

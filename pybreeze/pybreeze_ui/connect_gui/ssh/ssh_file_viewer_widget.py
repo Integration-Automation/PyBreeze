@@ -6,7 +6,7 @@ import re
 import stat
 
 import paramiko
-from PySide6.QtCore import Qt, QEvent
+from PySide6.QtCore import Qt, QEvent, QThread, Signal
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLineEdit, QPushButton, QTreeWidget, QTreeWidgetItem,
     QMenu, QFileDialog, QMessageBox, QSplitter, QInputDialog, QStyle
@@ -213,6 +213,39 @@ class SFTPClientWrapper:
         self._sftp.put(local_path, remote_path)
 
 
+class SftpTransferThread(QThread):
+    """One SFTP transfer, off the UI thread.
+
+    A transfer has no timeout of its own, and a file can be any size: run in the
+    button's slot, a download over a stalled link holds every tab, every run
+    window and the editor itself until it finishes. Only the two signals reach
+    the UI, and only one transfer runs at a time -- a paramiko SFTP session is
+    not meant to be used from two places at once.
+    """
+
+    done = Signal(str)
+    failed = Signal(str)
+
+    def __init__(self, client: "SFTPClientWrapper", downloading: bool,
+                 remote_path: str, local_path: str) -> None:
+        super().__init__()
+        self._client = client
+        self._downloading = downloading
+        self._remote_path = remote_path
+        self._local_path = local_path
+
+    def run(self) -> None:
+        try:
+            if self._downloading:
+                self._client.download(self._remote_path, self._local_path)
+            else:
+                self._client.upload(self._local_path, self._remote_path)
+        except (OSError, RuntimeError, paramiko.SSHException) as error:
+            self.failed.emit(str(error))
+        else:
+            self.done.emit(self._local_path if self._downloading else self._remote_path)
+
+
 class SSHFileTreeManager(QWidget):
     """
     QWidget: connection form + tree + context menu.
@@ -228,6 +261,8 @@ class SSHFileTreeManager(QWidget):
         self.add_login_widget = add_login_widget
 
         self.client = SFTPClientWrapper()
+        # The transfer in flight, if any / 正在進行的傳輸
+        self._transfer: SftpTransferThread | None = None
 
         if self.add_login_widget:
             # 使用獨立的登入介面
@@ -291,8 +326,14 @@ class SSHFileTreeManager(QWidget):
 
         Qt delivers a close event only to the widget being closed, so a tab or a
         dock closing takes this route; without it the paramiko transport stays
-        open, sending keepalives, for the rest of the session.
+        open, sending keepalives, for the rest of the session. A transfer still
+        going is waited for first, with its signals blocked: a QThread destroyed
+        while running aborts the process.
         """
+        transfer = self._transfer
+        if transfer is not None and transfer.isRunning():
+            transfer.blockSignals(True)
+            transfer.wait()
         self.client.close()
         super().closeEvent(event)
 
@@ -543,11 +584,10 @@ class SSHFileTreeManager(QWidget):
             suggested)
         if not local_path:
             return
-        self.client.download(remote_path, local_path)
-        QMessageBox.information(
-            self,
-            self.word_dict.get("ssh_file_viewer_dialog_title_downloaded"),
-            f"{self.word_dict.get('ssh_file_viewer_dialog_message_saved_to')}: {local_path}")
+        self._start_transfer(
+            downloading=True, remote_path=remote_path, local_path=local_path,
+            title=self.word_dict.get("ssh_file_viewer_dialog_title_downloaded"),
+            message=self.word_dict.get("ssh_file_viewer_dialog_message_saved_to"))
 
     def action_upload(self, item: QTreeWidgetItem | None):
         """
@@ -563,13 +603,51 @@ class SSHFileTreeManager(QWidget):
             return
         filename = os.path.basename(local_path)  # local path: OS-native separator is correct
         remote_path = remote_join(target_dir, filename)
-        self.client.upload(local_path, remote_path)
-        QMessageBox.information(
+        self._start_transfer(
+            downloading=False, remote_path=remote_path, local_path=local_path,
+            title=self.word_dict.get("ssh_file_viewer_dialog_title_uploaded"),
+            message=self.word_dict.get("ssh_file_viewer_dialog_message_uploaded_to"),
+            # The folder only holds the new file once the upload is done.
+            after=lambda: self.action_refresh(item))
+
+    def _start_transfer(self, *, downloading: bool, remote_path: str, local_path: str,
+                        title: str, message: str, after=None) -> bool:
+        """Start one transfer in the background, unless one is already going.
+
+        :param downloading: download when true, upload when false
+        :param remote_path: the path on the server
+        :param local_path: the path on this machine
+        :param title: the title of the message shown when it is done
+        :param message: what that message says, before the path it ended at
+        :param after: what to do once it is done, on the UI thread
+        :return: whether it started
+        """
+        if self._transfer is not None and self._transfer.isRunning():
+            QMessageBox.information(
+                self,
+                self.word_dict.get("ssh_file_viewer_dialog_title_transfer_running"),
+                self.word_dict.get("ssh_file_viewer_dialog_message_transfer_running"))
+            return False
+        self._transfer = SftpTransferThread(self.client, downloading, remote_path, local_path)
+        self._transfer.done.connect(
+            lambda path: self._transfer_done(title, message, path, after))
+        self._transfer.failed.connect(self._transfer_failed)
+        self._transfer.start()
+        return True
+
+    def _transfer_done(self, title: str, message: str, path: str, after=None) -> None:
+        """Say where the file ended up, and do whatever was waiting on it. UI thread."""
+        QMessageBox.information(self, title, f"{message}: {path}")
+        if after is not None:
+            after()
+
+    def _transfer_failed(self, error_message: str) -> None:
+        """Say why the transfer did not finish. UI thread."""
+        QMessageBox.critical(
             self,
-            self.word_dict.get("ssh_file_viewer_dialog_title_uploaded"),
-            f"{self.word_dict.get('ssh_file_viewer_dialog_message_uploaded_to')}: {remote_path}")
-        # Refresh folder contents
-        self.action_refresh(item)
+            self.word_dict.get("ssh_file_viewer_dialog_title_operation_failed"),
+            f"{self.word_dict.get('ssh_file_viewer_dialog_message_operation_failed')}: "
+            f"{error_message}")
 
     def get_text(self, title: str, label: str):
         """

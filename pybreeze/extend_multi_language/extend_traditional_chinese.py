@@ -195,6 +195,9 @@ pybreeze_traditional_chinese_word_dict = {
     "ssh_file_viewer_dialog_title_invalid_selection": "選取無效",
     "ssh_file_viewer_dialog_message_select_file_to_download": "請選擇要下載的檔案。",
     "ssh_file_viewer_dialog_title_save_as": "另存新檔",
+    "ssh_file_viewer_dialog_title_transfer_running": "已有傳輸進行中",
+    "ssh_file_viewer_dialog_message_transfer_running":
+        "一次只傳一個檔案：請等目前的傳輸結束。",
     "ssh_file_viewer_dialog_title_downloaded": "已下載",
     "ssh_file_viewer_dialog_message_saved_to": "已儲存至",
     "ssh_file_viewer_dialog_title_select_local_file": "選擇要上傳的本地檔案",
