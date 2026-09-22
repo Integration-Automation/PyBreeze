@@ -9,3 +9,6 @@ updates:
     directory: "/" # Location of package manifests
     schedule:
       interval: "daily"
+    # Development work, dependency bumps included, goes to dev; main takes
+    # releases only, and every push to main publishes to PyPI.
+    target-branch: "dev"
