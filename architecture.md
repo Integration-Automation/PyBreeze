@@ -88,7 +88,7 @@ Automation menu (automation_menu_factory.build_automation_menu) → call_<pkg>()
 extend/process_executor/<pkg>/ → build_process() (process_executor_utils.py)
   → CodeWindow + TaskProcessManager → python -m <package> --execute_str | --execute_file
   → stdout/stderr reader threads → Queue → QTimer → pump_message_queue() → CodeWindow.append_output()
-  → optional send_after_test() (mail_thunder_extend)
+  → optional send_after_test() (mail_thunder_extend; mails the report on a thread of its own)
 ```
 
 **Run a non-Python file through a plugin**
