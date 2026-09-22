@@ -18,7 +18,7 @@ from je_editor.utils.encodings.text_codec import DEFAULT_ENCODING, LINE_ENDING_L
 from je_editor.utils.file.save.save_file import write_file_with_encoding
 
 from pybreeze.extend.process_executor.file_runner_process import FileRunnerProcess
-from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
+from pybreeze.extend.process_executor.process_executor_utils import open_run_window
 
 if TYPE_CHECKING:
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
@@ -71,9 +71,8 @@ def run_current_file_with(main_window: PyBreezeMainWindow, run_config: dict) -> 
         msg.exec()
         return
 
-    code_window = CodeWindow()
-    code_window.setWindowTitle(f"{run_config['name']} - {Path(file_path).name}")
-    main_window.current_run_code_window.append(code_window)
+    code_window = open_run_window(
+        main_window, f"{run_config['name']} - {Path(file_path).name}")
 
     code_window.runner = FileRunnerProcess(
         main_window=code_window,

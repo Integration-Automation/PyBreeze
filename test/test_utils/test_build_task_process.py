@@ -115,3 +115,46 @@ class TestRunningWithoutAScriptTab:
 
         assert started and started[0][2] == "{}"
         assert main_window.current_run_code_window == []
+
+
+class TestLettingGoOfARunWindow:
+    """The main window holds every run window; a closed one whose run is over goes."""
+
+    def test_a_closed_window_with_nothing_running_is_let_go_of(self, qt_app):
+        from pybreeze.extend.process_executor.process_executor_utils import open_run_window
+
+        main_window = MainWindow()
+        run_window = open_run_window(main_window)
+
+        run_window.close()
+
+        assert main_window.current_run_code_window == []
+
+    def test_a_window_whose_run_is_still_going_is_kept(self, qt_app):
+        from pybreeze.extend.process_executor.process_executor_utils import open_run_window
+
+        class StillRunning:
+            class process:
+                @staticmethod
+                def poll():
+                    return None
+
+        main_window = MainWindow()
+        run_window = open_run_window(main_window)
+        run_window.runner = StillRunning()
+
+        run_window.close()
+
+        assert main_window.current_run_code_window == [run_window]
+
+    def test_closing_one_window_does_not_skip_the_others(self, qt_app):
+        from pybreeze.extend.process_executor.process_executor_utils import open_run_window
+
+        main_window = MainWindow()
+        windows = [open_run_window(main_window) for _ in range(3)]
+
+        for window in tuple(main_window.current_run_code_window):
+            window.close()
+
+        assert main_window.current_run_code_window == []
+        assert all(not window.isVisible() for window in windows)

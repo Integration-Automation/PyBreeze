@@ -114,6 +114,31 @@ def run_dir_files_with_package(
         pybreeze_logger.error("%s multi file error: %r", package, error)
 
 
+def open_run_window(main_window: PyBreezeMainWindow, title: str = "") -> CodeWindow:
+    """Open a run window and keep it on the main window until it is closed.
+
+    The main window holds every run window (that is what stops the runs when
+    it closes) and lets go of one that the user closes once its run is over.
+
+    :param main_window: the main window
+    :param title: the window's title, when it has one of its own
+    :return: the run window
+    """
+    code_window = CodeWindow()
+    if title:
+        code_window.setWindowTitle(title)
+    main_window.current_run_code_window.append(code_window)
+    code_window.finished_and_closed.connect(
+        lambda: forget_run_window(main_window, code_window))
+    return code_window
+
+
+def forget_run_window(main_window: PyBreezeMainWindow, code_window: CodeWindow) -> None:
+    """Drop *code_window* from the main window's list, if it is still there."""
+    if code_window in main_window.current_run_code_window:
+        main_window.current_run_code_window.remove(code_window)
+
+
 def build_task_process(
         main_window: PyBreezeMainWindow,
         send_mail: bool = False,
@@ -127,9 +152,8 @@ def build_task_process(
     ``venv`` / ``.venv`` in the working directory, then to ``PATH``. The run
     window holds the manager (``CodeWindow.runner``), so a caller may drop it.
     """
-    code_window = CodeWindow()
+    code_window = open_run_window(main_window)
     code_window.python_compiler = main_window.python_compiler
-    main_window.current_run_code_window.append(code_window)
     main_window.clear_code_result()
     code_window.runner = TaskProcessManager(
         code_window,

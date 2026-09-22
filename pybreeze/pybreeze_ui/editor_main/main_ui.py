@@ -85,7 +85,8 @@ class PyBreezeMainWindow(EditorMain):
     def closeEvent(self, event) -> None:
         # A run's child outlives the IDE unless stopped here: it is a separate
         # process, and without a console nobody would see it still running.
-        for run_window in self.current_run_code_window:
+        # Over a copy: a window that closes drops itself from the list.
+        for run_window in tuple(self.current_run_code_window):
             run_window.stop_runner()
             run_window.close()
         super().closeEvent(event)

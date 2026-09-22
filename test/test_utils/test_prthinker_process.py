@@ -33,10 +33,20 @@ class Window:
         self.cleared = True
 
 
+class Signalled:
+    """The one signal a run window offers its main window."""
+
+    def connect(self, _slot) -> None:
+        """Nothing listens here: the stand-in is never closed."""
+
+
 class RunWindow:
     """Stands in for the run window the review's output goes to."""
 
     python_compiler = None
+
+    def __init__(self) -> None:
+        self.finished_and_closed = Signalled()
 
 
 class RecordingProcess:

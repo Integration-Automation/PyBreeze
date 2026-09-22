@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from je_editor.pyside_ui.main_ui.save_settings.user_color_setting_file import actually_color_dict
+from PySide6.QtCore import Signal
 from PySide6.QtGui import QGuiApplication, QTextCharFormat, QTextCursor
 from PySide6.QtWidgets import QWidget, QGridLayout, QTextEdit, QScrollArea
 
@@ -26,6 +27,11 @@ def normalize_line_endings(text: str) -> str:
 
 
 class CodeWindow(QWidget):
+
+    # Emitted when a window closes with nothing left running in it, so the
+    # main window can let go of it: run windows are kept in a list that only
+    # ever grew, one per run, each holding its executor, queues and timer.
+    finished_and_closed = Signal()
 
     def __init__(self):
         # UI used to show run code or shell command result.
@@ -58,6 +64,22 @@ class CodeWindow(QWidget):
             self.resize(500, 500)
         self.setLayout(self.grid_layout)
         self.setFocus()
+
+    def closeEvent(self, event) -> None:
+        """Let the main window forget this one, unless its run is still going.
+
+        A run that is still going keeps its window in the list: it is where
+        the rest of the output goes, and closing the IDE stops it from there.
+        """
+        if not self.is_running():
+            self.finished_and_closed.emit()
+        super().closeEvent(event)
+
+    def is_running(self) -> bool:
+        """Whether the executor writing here still has a child running."""
+        runner = self.runner
+        process = getattr(runner, "process", None) if runner is not None else None
+        return process is not None and process.poll() is None
 
     def stop_runner(self) -> None:
         """Stop the child this window shows, if one is still running."""

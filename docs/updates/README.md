@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-17 | 2026-09-23 | Run windows were kept for the whole session | #done #process-executor | [2026-09](2026-09.md) |
 | U-20260923-16 | 2026-09-23 | A diagram fetched its images again on every undo | #done #diagram | [2026-09](2026-09.md) |
 | U-20260923-15 | 2026-09-23 | The AI review request froze the IDE while it waited | #done #ai | [2026-09](2026-09.md) |
 | U-20260923-14 | 2026-09-23 | Closing an SSH tab left its thread and session running | #incident #ssh | [2026-09](2026-09.md) |
@@ -97,4 +98,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 34 |
+| [2026-09.md](2026-09.md) | 2026-09 | 35 |
