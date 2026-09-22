@@ -52,11 +52,18 @@ class JupyterLabWidget(QWidget):
         pybreeze_logger.error(msg)
 
     def closeEvent(self, event):
+        """Stop the server with the tab.
+
+        The server outlives the launcher thread, which ends as soon as the lab
+        is ready, so stopping only a thread that is still running left a
+        JupyterLab process behind for every tab that had finished loading --
+        holding its port, and reachable for as long as the machine was up.
+        """
+        # Block signals first so a late status/error emit can't reach a slot
+        # on the widget being torn down.
+        self.thread.blockSignals(True)
+        self.thread.stop()
         if self.thread.isRunning():
-            # Block signals first so a late status/error emit can't reach a slot
-            # on the widget being torn down.
-            self.thread.blockSignals(True)
-            self.thread.stop()
             self.thread.quit()
             self.thread.wait()
         event.accept()

@@ -51,12 +51,18 @@ def _thread(qt_app):
 
 class TestWaitUntilReady:
     def test_early_exit_fails_fast(self, qt_app):
+        import tempfile
+
         thread = _thread(qt_app)
         thread.process = _DeadProcess()
+        # What the server wrote goes to a file the launcher keeps, not a pipe.
+        thread._output = tempfile.TemporaryFile(mode="w+", encoding="utf-8")
+        thread._output.write("ImportError: jupyterlab not installed\n")
         with pytest.raises(RuntimeError) as exc:
             thread._wait_until_ready(59999)
         assert "exited early" in str(exc.value)
         assert "jupyterlab not installed" in str(exc.value)
+        thread._output.close()
 
     def test_returns_when_port_open(self, qt_app, monkeypatch):
         thread = _thread(qt_app)

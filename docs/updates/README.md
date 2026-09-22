@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-21 | 2026-09-23 | The embedded JupyterLab took any origin and outlived its tab | #incident #security #jupyter | [2026-09](2026-09.md) |
 | U-20260923-20 | 2026-09-23 | One Connect button, two sessions, one honest label | #done #ssh | [2026-09](2026-09.md) |
 | U-20260923-19 | 2026-09-23 | An SFTP transfer held the IDE until it finished | #done #ssh | [2026-09](2026-09.md) |
 | U-20260923-18 | 2026-09-23 | Copy and duplicate ignored images | #done #diagram | [2026-09](2026-09.md) |
@@ -101,4 +102,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 38 |
+| [2026-09.md](2026-09.md) | 2026-09 | 39 |

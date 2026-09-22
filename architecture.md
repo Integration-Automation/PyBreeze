@@ -128,7 +128,7 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
   | Name | JEditor module | Used in |
   | --- | --- | --- |
   | `PluginBrowserWidget` | `pyside_ui.main_ui.plugin_browser.plugin_browser_widget` | `menu/plugin_menu/build_plugin_menu.py` |
-  | `DestroyDock` | `pyside_ui.main_ui.dock.destroy_dock` | `menu/tools/tools_menu.py` |
+  | `DestroyDock` | `pyside_ui.main_ui.dock.destroy_dock` | `menu/tools/tools_menu.py`, `editor_main/main_ui.py` |
   | `check_and_choose_venv` | `utils.venv_check.check_venv` | `extend/process_executor/python_task_process_manager.py` |
   | `choose_file_get_save_file_path` | `pyside_ui.dialog.file_dialog.save_file_dialog` | `menu/plugin_menu/build_run_with_menu.py` |
   | `write_file_with_encoding` | `utils.file.save.save_file` | `menu/plugin_menu/build_run_with_menu.py` |

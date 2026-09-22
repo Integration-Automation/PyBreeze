@@ -4,6 +4,7 @@ import os
 import socket
 import subprocess
 import sys
+import tempfile
 import time
 import traceback
 
@@ -69,6 +70,8 @@ class JupyterLauncherThread(QThread):
     def __init__(self, parent=None, startup_timeout: int = JUPYTER_STARTUP_TIMEOUT):
         super().__init__(parent)
         self.process = None
+        # The server's output, kept in a file rather than a pipe
+        self._output = None
         self.startup_timeout = startup_timeout
 
     def run(self):
@@ -99,10 +102,14 @@ class JupyterLauncherThread(QThread):
 
             # Launch embedded JupyterLab. Server binds to localhost only (see
             # CLAUDE.md JupyterLab integration notes); shell=False. nosec B603.
-            # The bind address is pinned explicitly: with token/password empty,
-            # XSRF disabled and a wildcard origin, the loopback-only binding is
-            # the sole barrier, so we never rely on the jupyter default staying
-            # localhost.
+            # The bind address is pinned explicitly: with token and password
+            # empty, the loopback-only binding is the sole barrier, so we never
+            # rely on the jupyter default staying localhost. No wildcard origin:
+            # a loopback bind does not stop a browser, and with the origin open
+            # any page the user visits could drive this server's API and kernel
+            # sockets. The view this serves loads from the same origin, so it
+            # needs nothing relaxed.
+            self._output = tempfile.TemporaryFile(mode="w+", encoding="utf-8", errors="replace")
             self.process = subprocess.Popen([  # nosec B603  # nosemgrep  # noqa: S603
                 python_exe,
                 "-m",
@@ -112,9 +119,8 @@ class JupyterLauncherThread(QThread):
                 f"--ServerApp.port={port}",
                 "--ServerApp.token=",
                 "--ServerApp.password=",
-                "--ServerApp.allow_origin=*",
                 "--ServerApp.disable_check_xsrf=True",
-            ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            ], stdout=self._output, stderr=subprocess.STDOUT, text=True,
                 creationflags=no_window_creationflags())
 
             self._wait_until_ready(port)
@@ -151,13 +157,9 @@ class JupyterLauncherThread(QThread):
             # Fail fast if the server died (port conflict, bad install, ...)
             # instead of polling a dead port until the full timeout elapses.
             if process.poll() is not None:
-                stderr_tail = ""
-                if process.stderr is not None:
-                    # Bounded read: the process has exited so the pipe holds at
-                    # most its buffer; cap explicitly and keep the tail message.
-                    stderr_tail = process.stderr.read(65536)[-500:]
                 raise RuntimeError(
-                    f"JupyterLab exited early (code {process.returncode}): {stderr_tail}")
+                    f"JupyterLab exited early (code {process.returncode}): "
+                    f"{self._output_tail()}")
 
             self.status_update.emit(
                 f"{language_wrapper.language_word_dict.get('jupyterlab_loading')} "
@@ -167,9 +169,31 @@ class JupyterLauncherThread(QThread):
                 return
             time.sleep(0.2)
 
+    def _output_tail(self, characters: int = 500) -> str:
+        """The end of what the server wrote, for an error message.
+
+        Its output goes to a temporary file rather than a pipe: nothing reads a
+        pipe once the server is up, and a server that keeps logging would block
+        in ``write()`` when the pipe buffer filled, freezing the lab with
+        nothing to show for it.
+        """
+        if self._output is None:
+            return ""
+        try:
+            self._output.seek(0)
+            return self._output.read()[-characters:]
+        except (OSError, ValueError) as error:
+            pybreeze_logger.debug("JupyterLab output could not be read: %r", error)
+            return ""
+
     def stop(self):
+        """Stop the server and let go of its output file. Safe to call twice."""
         if self.process is not None:
             try:
                 self.process.terminate()
             except OSError as error:
                 pybreeze_logger.debug("JupyterLab terminate failed: %r", error)
+            self.process = None
+        if self._output is not None:
+            self._output.close()
+            self._output = None

@@ -10,7 +10,8 @@ environ["LOCUST_SKIP_MONKEY_PATCH"] = "1"
 from PySide6.QtCore import QTimer, QCoreApplication
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QWidget
-from je_editor import EditorMain, language_wrapper
+from je_editor import EditorMain, EditorWidget, language_wrapper
+from je_editor.pyside_ui.main_ui.dock.destroy_dock import DestroyDock
 from qt_material import apply_stylesheet
 
 from pybreeze.extend_multi_language.update_language_dict import update_language_dict
@@ -89,7 +90,23 @@ class PyBreezeMainWindow(EditorMain):
         for run_window in tuple(self.current_run_code_window):
             run_window.stop_runner()
             run_window.close()
+        self._close_tool_tabs_and_docks()
         super().closeEvent(event)
+
+    def _close_tool_tabs_and_docks(self) -> None:
+        """Close PyBreeze's own tabs and docks so each can stop what it started.
+
+        JEditor's ``closeEvent`` closes editor tabs only, and PyBreeze's tabs and
+        docks own processes and sessions of their own -- a JupyterLab server, an
+        SSH session, a diagram's downloads. Without this, ``start_editor``'s
+        ``os._exit`` leaves them running.
+        """
+        for index in range(self.tab_widget.count() - 1, -1, -1):
+            widget = self.tab_widget.widget(index)
+            if widget is not None and not isinstance(widget, EditorWidget):
+                widget.close()
+        for dock in self.findChildren(DestroyDock):
+            dock.close()
 
     def debug_close(self) -> None:
         """Close the window and leave the event loop. Used by the startup tests.
