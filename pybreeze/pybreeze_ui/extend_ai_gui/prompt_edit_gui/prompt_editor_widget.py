@@ -22,7 +22,10 @@ from PySide6.QtWidgets import (
 from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.extend_ai_gui.prompt_edit_gui.prompt_file_io import save_prompt_text
-from pybreeze.pybreeze_ui.extend_ai_gui.prompt_store import prompt_dir, prompt_path
+from pybreeze.pybreeze_ui.extend_ai_gui.prompt_store import (
+    prompt_dir, prompt_path, read_prompt_file
+)
+from pybreeze.utils.logging.logger import pybreeze_logger
 
 
 @dataclass(frozen=True)
@@ -98,8 +101,10 @@ class PromptEditorWidget(QWidget):
         main_layout.addLayout(bottom_layout)
 
         # 檔案監控器：外部改動即時反映 / Pick up edits made outside the editor
+        # Parented to the editor so it goes with it: an orphan watcher outlived a
+        # closed editor and delivered the next change on disk to a deleted widget.
         self.watcher = QFileSystemWatcher(
-            [str(prompt_path(name)) for name in self.prompt_files])
+            [str(prompt_path(name)) for name in self.prompt_files], self)
         self.watcher.fileChanged.connect(self.on_file_changed)
 
         if self.prompt_files:
@@ -111,11 +116,35 @@ class PromptEditorWidget(QWidget):
         self.current_file = str(prompt_path(name))
         path = Path(self.current_file)
         if path.is_file():
-            self.middle_editor.setPlainText(path.read_text(encoding="utf-8"))
+            self._show_file(path)
             return
-        self.middle_editor.setPlainText(
+        self._show_text(
             language_wrapper.language_word_dict.get(
                 self._labels.file_not_exist).format(filename=name))
+
+    def _show_file(self, path: Path) -> None:
+        """Put the prompt file in the edit area, however it was encoded."""
+        text = read_prompt_file(path)
+        if text is None:
+            try:
+                # Not UTF-8: shown with what cannot be read replaced, so that a
+                # save writes it back as UTF-8 and the review can use it again.
+                text = path.read_bytes().decode("utf-8", errors="replace")
+            except OSError as error:
+                pybreeze_logger.error("Prompt file %s could not be opened: %r", path.name, error)
+                # Nothing was shown, so there is nothing a save may write back.
+                self.current_file = None
+                return
+            QMessageBox.information(
+                self, language_wrapper.language_word_dict.get(self._labels.info_title),
+                language_wrapper.language_word_dict.get("prompt_editor_not_utf8").format(
+                    filename=path.name))
+        self._show_text(text)
+
+    def _show_text(self, text: str) -> None:
+        """Replace the edit area's text; what is shown now counts as unedited."""
+        self.middle_editor.setPlainText(text)
+        self.middle_editor.document().setModified(False)
 
     def create_file(self) -> None:
         """用內建模板建立目前選擇的檔案 / Create the selected file from its built-in template."""
@@ -141,10 +170,38 @@ class PromptEditorWidget(QWidget):
             word.get(self._labels.file_created).format(filename=self.current_file))
         self.load_file_content(self.file_selector.currentIndex())
 
+    def closeEvent(self, event) -> None:
+        """Stop watching the prompt files once the editor closes.
+
+        A change on disk after that -- the next save from another window, or
+        the directory being cleaned up -- would otherwise reach a widget that is
+        on its way out, and with unsaved edits open a question box over it.
+        """
+        self.watcher.blockSignals(True)
+        watched = self.watcher.files()
+        if watched:
+            self.watcher.removePaths(watched)
+        super().closeEvent(event)
+
     def on_file_changed(self, path: str) -> None:
-        """外部改動時重新載入 / Reload when the file changes underneath us."""
-        if path == self.current_file:
-            self.load_file_content(self.file_selector.currentIndex())
+        """外部改動時重新載入 / Reload when the file changes underneath us.
+
+        Unsaved edits are not thrown away without asking: another window, an
+        external editor or a sync client touching the file used to replace
+        whatever had been typed here.
+        """
+        if path != self.current_file:
+            return
+        if self.middle_editor.document().isModified():
+            word = language_wrapper.language_word_dict
+            reply = QMessageBox.question(
+                self, word.get(self._labels.info_title),
+                word.get("prompt_editor_reload_over_edits").format(filename=Path(path).name),
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No)
+            if reply != QMessageBox.StandardButton.Yes:
+                return
+        self.load_file_content(self.file_selector.currentIndex())
 
     def save_file(self) -> None:
         """把編輯區內容存回檔案 / Write the edit area back to the file."""
@@ -160,6 +217,7 @@ class PromptEditorWidget(QWidget):
                 word.get(self._labels.error_title)):
             return
         self.watcher.addPath(self.current_file)
+        self.middle_editor.document().setModified(False)
         QMessageBox.information(
             self, word.get(self._labels.success_title),
             word.get(self._labels.file_saved).format(filename=self.current_file))

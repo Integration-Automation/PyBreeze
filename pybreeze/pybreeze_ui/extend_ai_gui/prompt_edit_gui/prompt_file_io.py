@@ -6,6 +6,7 @@ a user-facing dialog instead of an uncaught traceback.
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from PySide6.QtWidgets import QMessageBox, QWidget
@@ -22,11 +23,17 @@ def save_prompt_text(parent: QWidget, path: str, content: str, error_title: str)
     try:
         # The directory is made here rather than on every read, so a session that
         # only looks at the built-in prompts leaves nothing behind.
-        Path(path).parent.mkdir(parents=True, exist_ok=True)
-        with open(path, "w", encoding="utf-8") as file_handle:
-            file_handle.write(content)
+        target = Path(path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        # Written beside the file and moved into place in one step: opening the
+        # file itself for writing truncates it first, so a failure part-way left
+        # the prompt empty, and the review silently fell back to the built-in.
+        beside = target.with_name(target.name + ".saving")
+        beside.write_text(content, encoding="utf-8")
+        os.replace(beside, target)
         return True
     except OSError as error:
         pybreeze_logger.error("Prompt file write failed for %s: %r", path, error)
-        QMessageBox.warning(parent, error_title, str(error))
+        Path(path).with_name(Path(path).name + ".saving").unlink(missing_ok=True)
+        QMessageBox.warning(parent, error_title, error.strerror or type(error).__name__)
         return False

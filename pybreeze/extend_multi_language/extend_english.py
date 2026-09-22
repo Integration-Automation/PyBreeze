@@ -195,6 +195,10 @@ pybreeze_english_word_dict = {
     "ssh_file_viewer_dialog_title_invalid_selection": "Invalid selection",
     "ssh_file_viewer_dialog_message_select_file_to_download": "Select a file to download.",
     "ssh_file_viewer_dialog_title_save_as": "Save as",
+    "prompt_editor_not_utf8":
+        "{filename} is not UTF-8 text. It is shown with the characters that could not be read replaced; saving writes it back as UTF-8.",
+    "prompt_editor_reload_over_edits":
+        "{filename} changed on disk. Reload it and lose the edits made here?",
     "ssh_state_shell_and_files": "Connected: shell and files",
     "ssh_state_shell_only": "Connected: shell only (the file tree did not connect)",
     "ssh_state_files_only": "Connected: files only (the shell did not connect)",

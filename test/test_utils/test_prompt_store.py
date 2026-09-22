@@ -119,7 +119,7 @@ class TestTheChainUsesTheEditedPrompt:
 class TestTheEditorAndTheChainAgree:
     """The point of the editor: what is saved there is what a review sends."""
 
-    def test_saving_in_the_editor_changes_what_the_chain_sends(self, prompts):
+    def test_saving_in_the_editor_changes_what_the_chain_sends(self, prompts, monkeypatch):
         from PySide6.QtWidgets import QApplication, QMessageBox
 
         from pybreeze.extend_multi_language.update_language_dict import update_language_dict
@@ -131,7 +131,7 @@ class TestTheEditorAndTheChainAgree:
         update_language_dict()
         editor = CoTPromptEditor()
         # The confirmation dialogs would block; the save itself is what matters.
-        QMessageBox.information = staticmethod(lambda *a, **k: None)
+        monkeypatch.setattr(QMessageBox, "information", staticmethod(lambda *a, **k: None))
 
         editor.file_selector.setCurrentIndex(
             editor.prompt_files.index("linter.md"))
@@ -201,3 +201,135 @@ class TestTheSkillSelectorLoadsWhatItNames:
         widget.prompt_select.setCurrentText(name)
         assert widget.prompt_input.toPlainText() == "my own skill prompt"
         widget.deleteLater()
+
+
+def _cot_editor(monkeypatch):
+    """A CoT prompt editor whose message boxes answer without blocking."""
+    from PySide6.QtWidgets import QApplication, QMessageBox
+
+    from pybreeze.extend_multi_language.update_language_dict import update_language_dict
+    from pybreeze.pybreeze_ui.extend_ai_gui.prompt_edit_gui.cot_prompt_editor_widget import (
+        CoTPromptEditor
+    )
+
+    QApplication.instance() or QApplication([])
+    update_language_dict()
+    shown: list = []
+    monkeypatch.setattr(QMessageBox, "information", staticmethod(lambda *a, **k: shown.append(a)))
+    monkeypatch.setattr(QMessageBox, "warning", staticmethod(lambda *a, **k: shown.append(a)))
+    editor = CoTPromptEditor()
+    editor.shown = shown
+    return editor
+
+
+class TestAPromptFileInAnotherEncoding:
+    """A prompt saved as "ANSI" on Windows is not UTF-8; it must not break anything."""
+
+    def test_the_review_falls_back_to_the_built_in(self, prompts):
+        prompts.mkdir(parents=True, exist_ok=True)
+        (prompts / "linter.md").write_bytes("檢查這段程式碼".encode("cp950"))
+
+        assert load_prompt("linter.md", "built-in") == "built-in"
+
+    def test_a_byte_order_mark_does_not_reach_the_prompt(self, prompts):
+        prompts.mkdir(parents=True, exist_ok=True)
+        (prompts / "linter.md").write_text("my prompt", encoding="utf-8-sig")
+
+        assert load_prompt("linter.md", "built-in") == "my prompt"
+
+    def test_the_editor_opens_it_and_says_so(self, prompts, monkeypatch):
+        prompts.mkdir(parents=True, exist_ok=True)
+        (prompts / "linter.md").write_bytes("檢查這段程式碼".encode("cp950"))
+        editor = _cot_editor(monkeypatch)
+
+        editor.file_selector.setCurrentIndex(editor.prompt_files.index("linter.md"))
+
+        assert editor.shown, "the user was not told the file is not UTF-8"
+        assert editor.current_file == str(prompt_path("linter.md"))
+        editor.close()
+        editor.deleteLater()
+
+
+class TestAChangeOnDiskWhileEditing:
+    def test_unsaved_edits_are_kept_unless_the_user_says_otherwise(self, prompts, monkeypatch):
+        from PySide6.QtWidgets import QMessageBox
+
+        write(prompts, "linter.md", "on disk")
+        editor = _cot_editor(monkeypatch)
+        editor.file_selector.setCurrentIndex(editor.prompt_files.index("linter.md"))
+        # Typed, the way a keystroke arrives: setPlainText() would reset the
+        # document's modified flag, which is what a real edit sets.
+        editor.middle_editor.selectAll()
+        editor.middle_editor.textCursor().insertText("typed here, not saved")
+        monkeypatch.setattr(
+            QMessageBox, "question",
+            staticmethod(lambda *a, **k: QMessageBox.StandardButton.No))
+
+        write(prompts, "linter.md", "changed elsewhere")
+        editor.on_file_changed(editor.current_file)
+
+        assert editor.middle_editor.toPlainText() == "typed here, not saved"
+        editor.close()
+        editor.deleteLater()
+
+    def test_with_nothing_unsaved_it_reloads_without_asking(self, prompts, monkeypatch):
+        from PySide6.QtWidgets import QMessageBox
+
+        write(prompts, "linter.md", "on disk")
+        editor = _cot_editor(monkeypatch)
+        editor.file_selector.setCurrentIndex(editor.prompt_files.index("linter.md"))
+        asked: list = []
+        monkeypatch.setattr(
+            QMessageBox, "question", staticmethod(lambda *a, **k: asked.append(a)))
+
+        write(prompts, "linter.md", "changed elsewhere")
+        editor.on_file_changed(editor.current_file)
+
+        assert editor.middle_editor.toPlainText() == "changed elsewhere"
+        assert asked == []
+        editor.close()
+        editor.deleteLater()
+
+
+class TestSavingAPrompt:
+    def test_a_save_that_fails_leaves_the_last_good_file(self, prompts, monkeypatch):
+        from pybreeze.pybreeze_ui.extend_ai_gui.prompt_edit_gui import prompt_file_io
+
+        write(prompts, "linter.md", "the last good prompt")
+        editor = _cot_editor(monkeypatch)
+        editor.file_selector.setCurrentIndex(editor.prompt_files.index("linter.md"))
+        editor.middle_editor.setPlainText("a new prompt")
+
+        def refuse(*_args):
+            raise OSError(28, "No space left on device")
+
+        monkeypatch.setattr(prompt_file_io.os, "replace", refuse)
+        editor.save_file()
+
+        assert (prompts / "linter.md").read_text(encoding="utf-8") == "the last good prompt"
+        assert [path.name for path in prompts.iterdir()] == ["linter.md"]
+        editor.close()
+        editor.deleteLater()
+
+
+class TestClosingThePromptEditor:
+    def test_its_file_watcher_goes_with_it(self, prompts, monkeypatch):
+        # An orphan watcher outlived the editor and delivered the next change on
+        # disk to a deleted widget -- a crash, once the slot touched the editor.
+        from PySide6.QtCore import QObject
+
+        editor = _cot_editor(monkeypatch)
+
+        assert editor.watcher.parent() is editor
+        assert isinstance(editor.watcher, QObject)
+        editor.close()
+        editor.deleteLater()
+
+    def test_closing_it_stops_watching(self, prompts, monkeypatch):
+        write(prompts, "linter.md", "on disk")
+        editor = _cot_editor(monkeypatch)
+
+        editor.close()
+
+        assert editor.watcher.files() == []
+        editor.deleteLater()

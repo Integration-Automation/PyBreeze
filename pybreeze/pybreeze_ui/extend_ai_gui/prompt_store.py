@@ -48,9 +48,25 @@ def load_prompt(name: str, default: str) -> str:
     path = prompt_path(name)
     if not path.is_file():
         return default
-    try:
-        edited = path.read_text(encoding="utf-8")
-    except OSError as error:
-        pybreeze_logger.error("Prompt %s could not be read: %r", name, error)
+    edited = read_prompt_file(path)
+    if edited is None:
         return default
     return edited if edited.strip() else default
+
+
+def read_prompt_file(path: Path) -> str | None:
+    """Return the text of the prompt file *path*, or ``None`` when it cannot be read.
+
+    Read as ``utf-8-sig``, so the byte-order mark some editors write does not end
+    up at the front of a prompt. A file in another encoding -- a prompt saved as
+    "ANSI" on Windows -- counts as unreadable, the same as one that is locked:
+    decoding it anyway would send mojibake to the model.
+
+    :param path: the prompt file
+    :return: its text, or ``None``
+    """
+    try:
+        return path.read_text(encoding="utf-8-sig")
+    except (OSError, UnicodeDecodeError) as error:
+        pybreeze_logger.error("Prompt %s could not be read: %r", path.name, error)
+        return None

@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-30 | 2026-09-23 | Prompt files: other encodings, unsaved edits, half-written saves | #done #ai | [2026-09](2026-09.md) |
 | U-20260923-29 | 2026-09-23 | Closing a request panel no longer waits for its request | #done #ai | [2026-09](2026-09.md) |
 | U-20260923-28 | 2026-09-23 | One broken extend tab no longer stops the IDE from starting | #done #editor | [2026-09](2026-09.md) |
 | U-20260923-27 | 2026-09-23 | PyBreeze.log leaves the working directory and becomes UTF-8 | #done #logging | [2026-09](2026-09.md) |
@@ -110,4 +111,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 47 |
+| [2026-09.md](2026-09.md) | 2026-09 | 48 |

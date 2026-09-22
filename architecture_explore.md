@@ -257,16 +257,16 @@ call_X_multi_file_and_send()   → run_dir_files_with_package(..., True)
 ```
 extend_ai_gui/
 ├── ai_gui_global_variable.py     模板檔名清單 + 檔名→內建模板內容對照表
-├── prompt_store.py               編輯過的 prompt 檔案解析（~/.pybreeze/prompts/）
+├── prompt_store.py               編輯過的 prompt 檔案解析（~/.pybreeze/prompts/；`read_prompt_file()` 讀 utf-8-sig，非 UTF-8 視同讀不到、退回內建）
 ├── code_review/
 │   ├── cot_chain.py              接線表（純邏輯，無 Qt）：哪步引用哪步
 │   ├── code_review_thread.py     SenderThread(QThread)：跑八步審查鏈
 │   └── cot_code_review_gui.py    UI
 ├── prompt_edit_gui/
-│   ├── prompt_editor_widget.py         共用編輯器（QFileSystemWatcher 熱更新）
+│   ├── prompt_editor_widget.py         共用編輯器（QFileSystemWatcher 熱更新，watcher 以編輯器為 parent、關閉時停止監看；有未存編輯時先問再重新載入）
 │   ├── cot_prompt_editor_widget.py     8 個 CoT 模板的檔案清單＋語言鍵
 │   ├── skills_prompt_editor_widget.py  2 個 Skill 模板的檔案清單＋語言鍵
-│   ├── prompt_file_io.py               共用存檔（失敗跳警告對話框）
+│   ├── prompt_file_io.py               共用存檔（先寫 `.saving` 再 `os.replace()`；失敗跳警告對話框，不顯示路徑）
 │   ├── cot_code_review_prompt_templates/   8 個模板常數＋global_rule
 │   └── skills_prompt_templates/            2 個模板常數
 └── skills/skills_send_gui.py     單次 prompt 發送（RequestThread：回答走 `answered`，不再蓋掉 QThread 自己的 `finished`；關閉時交給 `thread_keeper.let_run_out()`）
@@ -431,7 +431,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 18. 測試與 CI
 
-- **單元測試** `test/test_utils/` — 80 個 `test_*.py`、1210 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
+- **單元測試** `test/test_utils/` — 80 個 `test_*.py`、1218 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
 - **整合測試** `test/unit_test/start_automation/` — 以 `debug_mode=True` 啟動 IDE，10 秒後自動關閉，驗證啟動流程與 extend tab
 - **CI** `.github/workflows/{dev,stable}.yml` — `unit-tests` job 跑 Windows runner、Python 3.10–3.14 矩陣，3.12 那一腳額外上傳 `coverage-xml` artifact；`sonarcloud` job 跑 ubuntu、`needs: unit-tests`。每日 02:00 排程 + push/PR 觸發。`stable.yml` 另有 `publish` job 負責版號遞增與 PyPI 發布
 - **覆蓋率** `.coveragerc` — `relative_files = True` 是必要的：報告在 Windows 產生、由 Linux 上的 scanner 讀取，路徑不能帶機器資訊。目前整體 60%（`utils/`、`tools_gui`、`dialog` 95–100%；`editor_main` 58%、`menu` 54%；仍低的是 `diagram_editor` 45%、`process_executor` 39%、`connect_gui` 28%）

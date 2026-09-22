@@ -195,6 +195,10 @@ pybreeze_traditional_chinese_word_dict = {
     "ssh_file_viewer_dialog_title_invalid_selection": "選取無效",
     "ssh_file_viewer_dialog_message_select_file_to_download": "請選擇要下載的檔案。",
     "ssh_file_viewer_dialog_title_save_as": "另存新檔",
+    "prompt_editor_not_utf8":
+        "{filename} 不是 UTF-8 文字檔。讀不出來的字元已經換掉後顯示；存檔時會改存成 UTF-8。",
+    "prompt_editor_reload_over_edits":
+        "{filename} 在磁碟上被改過了。要重新載入並捨棄這裡還沒存的編輯嗎？",
     "ssh_state_shell_and_files": "已連線：終端與檔案",
     "ssh_state_shell_only": "已連線：只有終端（檔案樹沒連上）",
     "ssh_state_files_only": "已連線：只有檔案（終端沒連上）",
