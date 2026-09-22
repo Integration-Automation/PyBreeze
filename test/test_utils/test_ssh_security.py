@@ -5,6 +5,7 @@ import hashlib
 
 import paramiko
 
+from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_connect_thread import SHA1_ALGORITHMS
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_host_key_policy import _fingerprint_sha256
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_key_loader import load_private_key
 
@@ -48,3 +49,20 @@ class TestLoadPrivateKey:
         paramiko.RSAKey.generate(2048).write_private_key_file(str(path), password="secret")
         assert load_private_key(str(path), "wrong") is None
         assert isinstance(load_private_key(str(path), "secret"), paramiko.RSAKey)
+
+
+class TestSha1Algorithms:
+    def test_a_transport_given_them_offers_no_sha1(self):
+        import socket
+
+        ours, theirs = socket.socketpair()
+        transport = paramiko.Transport(ours, disabled_algorithms=SHA1_ALGORITHMS)
+        try:
+            offered = (*transport.preferred_keys, *transport.preferred_kex, *transport.preferred_pubkeys)
+        finally:
+            transport.close()
+            theirs.close()
+
+        assert [name for name in offered if "sha1" in name or name.startswith("ssh-rsa")] == []
+        # RSA keys still work, signed with SHA-2
+        assert "rsa-sha2-256" in transport.preferred_pubkeys

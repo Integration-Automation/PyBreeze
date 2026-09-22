@@ -44,9 +44,11 @@ class FakeClient:
         self.error = error
         self.closed = False
         self.connect_thread: QThread | None = None
+        self.connect_options: dict = {}
 
-    def connect(self, **_kwargs) -> None:
+    def connect(self, **options) -> None:
         self.connect_thread = QThread.currentThread()
+        self.connect_options = options
         if self.release is not None:
             self.release.wait(WAIT_SECONDS)
         if self.error is not None:
@@ -247,3 +249,42 @@ class TestHostKeyAsker:
 
         assert answers == [False]
         assert shown_on == [app.thread()]
+
+
+class TestSha1IsRefused:
+    """Every connect refuses SHA-1, whichever paramiko is installed (CVE-2026-44405)."""
+
+    def test_the_shell_refuses_it(self, app, monkeypatch):
+        client = FakeClient()
+        widget = _shell(monkeypatch, client)
+        widget._start_shell = lambda *args: None
+
+        widget.connect_ssh()
+        _wait_for(lambda: client.connect_options and not widget._connecting.isRunning())
+
+        assert client.connect_options["disabled_algorithms"] is shell_mod.SHA1_ALGORITHMS
+
+    def test_the_file_tree_refuses_it(self, app, monkeypatch):
+        connects = []
+
+        class Client:
+            def set_missing_host_key_policy(self, _policy) -> None:
+                """Nothing to set in a stand-in."""
+
+            def load_host_keys(self, _path) -> None:
+                """Nothing to load in a stand-in."""
+
+            def connect(self, **options) -> None:
+                connects.append(options)
+                raise OSError("stop here")
+
+            def close(self) -> None:
+                """Nothing to close."""
+
+        monkeypatch.setattr(tree_mod.paramiko, "SSHClient", Client)
+        monkeypatch.setattr(tree_mod, "apply_host_key_policy", lambda _client, _parent: None)
+
+        with pytest.raises(OSError):
+            tree_mod.SFTPClientWrapper().connect("host", 22, "user", "pw")
+
+        assert connects[0]["disabled_algorithms"] is tree_mod.SHA1_ALGORITHMS

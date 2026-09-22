@@ -13,7 +13,9 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
-from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_connect_thread import CONNECT_ERRORS, SshConnectThread
+from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_connect_thread import (
+    CONNECT_ERRORS, SHA1_ALGORITHMS, SshConnectThread
+)
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_host_key_policy import (
     apply_host_key_policy, host_key_asker
 )
@@ -115,9 +117,11 @@ class SFTPClientWrapper:
                     raise ValueError(
                         self.word_dict.get("ssh_command_widget_error_message_unsupported_private_key")
                     )
-                self._ssh.connect(hostname=host, port=port, username=username, pkey=pkey, timeout=10)
+                self._ssh.connect(hostname=host, port=port, username=username, pkey=pkey, timeout=10,
+                                  disabled_algorithms=SHA1_ALGORITHMS)
             else:
-                self._ssh.connect(hostname=host, port=port, username=username, password=password, timeout=10)
+                self._ssh.connect(hostname=host, port=port, username=username, password=password,
+                                  timeout=10, disabled_algorithms=SHA1_ALGORITHMS)
             transport = self._ssh.get_transport()
             if transport is not None:
                 transport.set_keepalive(SSH_KEEPALIVE_SECONDS)

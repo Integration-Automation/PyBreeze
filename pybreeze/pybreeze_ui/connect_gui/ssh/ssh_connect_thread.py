@@ -21,6 +21,22 @@ from pybreeze.utils.logging.logger import pybreeze_logger
 # EOF from a server that hangs up during the handshake.
 CONNECT_ERRORS = (paramiko.SSHException, OSError, ValueError, RuntimeError, EOFError)
 
+# SHA-1 in SSH, refused on every connect: RSA signatures made with SHA-1
+# ("ssh-rsa" and its certificate) and the SHA-1 key exchanges. paramiko 5
+# removed them (CVE-2026-44405); a paramiko 4 install still offers all of
+# them, and refusing them here keeps it from falling back to one. OpenSSH has
+# refused "ssh-rsa" signatures by default since 8.8; RSA keys still work
+# through rsa-sha2-256/512.
+SHA1_ALGORITHMS = {
+    "pubkeys": ("ssh-rsa", "ssh-rsa-cert-v01@openssh.com"),
+    "keys": ("ssh-rsa", "ssh-rsa-cert-v01@openssh.com"),
+    "kex": (
+        "diffie-hellman-group1-sha1",
+        "diffie-hellman-group14-sha1",
+        "diffie-hellman-group-exchange-sha1",
+    ),
+}
+
 
 class SshConnectThread(QThread):
     """Call *connect* on this thread; report ``connected`` or ``failed(message)``."""

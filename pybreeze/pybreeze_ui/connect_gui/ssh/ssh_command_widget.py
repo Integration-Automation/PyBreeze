@@ -12,7 +12,9 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
-from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_connect_thread import CONNECT_ERRORS, SshConnectThread
+from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_connect_thread import (
+    CONNECT_ERRORS, SHA1_ALGORITHMS, SshConnectThread
+)
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_host_key_policy import (
     apply_host_key_policy, host_key_asker
 )
@@ -193,7 +195,8 @@ class SSHCommandWidget(QWidget):
         else:
             def connect() -> None:
                 client.connect(
-                    hostname=host, port=port, username=user, password=password, timeout=10)
+                    hostname=host, port=port, username=user, password=password, timeout=10,
+                    disabled_algorithms=SHA1_ALGORITHMS)
         # The connect itself runs off the UI thread: an unreachable host used to
         # hold the IDE for the connect, banner and auth timeouts together.
         thread = SshConnectThread(connect)
@@ -212,7 +215,8 @@ class SSHCommandWidget(QWidget):
                     self.word_dict.get(
                         "ssh_command_widget_error_message_unsupported_private_key"
                     ))
-            client.connect(hostname=host, port=port, username=user, pkey=pkey, timeout=10)
+            client.connect(hostname=host, port=port, username=user, pkey=pkey, timeout=10,
+                           disabled_algorithms=SHA1_ALGORITHMS)
         except CONNECT_ERRORS as e:
             raise RuntimeError(
                 f"{self.word_dict.get('ssh_command_widget_error_message_key_auth_failed')} {e}") from e
