@@ -76,41 +76,125 @@ class TestRecordingAUrl:
         assert all(looks_like_a_fingerprint(line) for line in text.split() if line)
 
 
-class TestSending:
-    def _answer_with(self, monkeypatch, response):
-        monkeypatch.setattr(ai_code_review_gui, "validate_url", lambda url: url)
-        monkeypatch.setattr(ai_code_review_gui.requests, "get", lambda *a, **k: response)
-        monkeypatch.setattr(ai_code_review_gui, "read_capped_text", lambda resp: resp.text)
+class TestTheRequestItself:
+    """The request runs on its own thread; its two signals are what reaches the UI."""
 
-    def test_a_failed_status_is_reported_instead_of_an_empty_panel(self, client, monkeypatch):
+    def _run(self, monkeypatch, response=None, raises=None, method="GET"):
+        from pybreeze.pybreeze_ui.connect_gui.url.ai_code_review_gui import ReviewRequestThread
+
+        monkeypatch.setattr(ai_code_review_gui, "validate_url", lambda url: url)
+        if raises is None:
+            monkeypatch.setattr(
+                ai_code_review_gui.requests, method.lower(), lambda *a, **k: response)
+            monkeypatch.setattr(ai_code_review_gui, "read_capped_text", lambda resp: resp.text)
+        else:
+            def refuse(*_args, **_kwargs):
+                raise raises
+
+            monkeypatch.setattr(ai_code_review_gui.requests, method.lower(), refuse)
+        thread = ReviewRequestThread(method, _A_URL, "print(1)")
+        answered: list = []
+        failed: list = []
+        thread.answered.connect(answered.append)
+        thread.failed.connect(failed.append)
+        thread.run()
+        return answered, failed
+
+    def test_an_answer_reaches_the_panel(self, app, monkeypatch):
+        class Response:
+            ok = True
+            status_code = 200
+            reason = "OK"
+            text = "looks fine to me"
+
+        answered, failed = self._run(monkeypatch, Response())
+
+        assert answered == ["looks fine to me"]
+        assert failed == []
+
+    def test_a_failed_status_is_reported_instead_of_an_empty_panel(self, app, monkeypatch):
         class Response:
             ok = False
             status_code = 500
             reason = "Internal Server Error"
             text = ""
 
-        self._answer_with(monkeypatch, Response())
-        client.url_input.setText(_A_URL)
+        answered, failed = self._run(monkeypatch, Response())
 
-        client.send_request()
+        assert answered and "500" in answered[0]
 
-        assert "500" in client.response_panel.toPlainText()
-
-    def test_a_request_that_fails_does_not_log_the_url(self, client, monkeypatch):
+    def test_a_request_that_fails_does_not_log_the_url(self, app, monkeypatch):
         logged: list = []
-        monkeypatch.setattr(ai_code_review_gui, "validate_url", lambda url: url)
         monkeypatch.setattr(
             ai_code_review_gui.pybreeze_logger, "error",
             lambda message, *args: logged.append(message % args))
+        error = ai_code_review_gui.requests.ConnectionError(
+            f"HTTPSConnectionPool(host='api.example'): Max retries exceeded with url: {_A_URL}")
 
-        def refuse(*_args, **_kwargs):
-            raise ai_code_review_gui.requests.ConnectionError(
-                f"HTTPSConnectionPool(host='api.example'): Max retries exceeded with url: {_A_URL}")
+        answered, failed = self._run(monkeypatch, raises=error)
 
-        monkeypatch.setattr(ai_code_review_gui.requests, "get", refuse)
+        assert failed, "the panel was told nothing"
+        assert logged and all("sk-live-not-a-real-key" not in line for line in logged)
+
+    def test_a_url_that_cannot_be_sent_to_is_reported_not_raised(self, app, monkeypatch):
+        from pybreeze.pybreeze_ui.connect_gui.url.ai_code_review_gui import ReviewRequestThread
+
+        thread = ReviewRequestThread("GET", "http://.example", "print(1)")
+        failed: list = []
+        thread.failed.connect(failed.append)
+
+        thread.run()
+
+        assert failed
+
+
+class TestWhileARequestIsInFlight:
+    class NeverEnding:
+        def isRunning(self) -> bool:
+            return True
+
+    def test_a_second_send_is_ignored(self, client, monkeypatch):
+        started: list = []
+        monkeypatch.setattr(
+            ai_code_review_gui, "ReviewRequestThread",
+            lambda *args: started.append(args))
         client.url_input.setText(_A_URL)
+        client.request_thread = self.NeverEnding()
 
         client.send_request()
 
-        assert logged, "nothing was logged"
-        assert all("sk-live-not-a-real-key" not in line for line in logged)
+        assert started == []
+
+    def test_closing_waits_for_it(self, client):
+        class Waited:
+            def __init__(self) -> None:
+                self.waited = False
+                self.blocked = False
+
+            def isRunning(self) -> bool:
+                return True
+
+            def blockSignals(self, blocked: bool) -> None:
+                self.blocked = blocked
+
+            def wait(self) -> None:
+                self.waited = True
+
+        client.request_thread = Waited()
+
+        client.close()
+
+        assert client.request_thread.waited and client.request_thread.blocked
+
+    def test_an_unsupported_method_says_so_and_starts_nothing(self, client, monkeypatch):
+        started: list = []
+        monkeypatch.setattr(
+            ai_code_review_gui, "ReviewRequestThread", lambda *args: started.append(args))
+        client.url_input.setText(_A_URL)
+        client.method_box.addItem("TRACE")
+        client.method_box.setCurrentText("TRACE")
+
+        client.send_request()
+
+        assert started == []
+        assert client.response_panel.toPlainText()

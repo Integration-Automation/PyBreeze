@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 import requests
+from PySide6.QtCore import QThread, Signal
 from PySide6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLineEdit, QTextEdit, QComboBox, QLabel, QSizePolicy
@@ -35,6 +36,54 @@ def looks_like_a_fingerprint(line: str) -> bool:
     """Whether *line* is already a fingerprint rather than a URL."""
     return len(line) == _FINGERPRINT_LENGTH and all(c in "0123456789abcdef" for c in line)
 
+# The methods the panel offers / 面板提供的方法
+SUPPORTED_METHODS = ("GET", "POST", "PUT", "DELETE")
+# The methods that carry the code in a body / 會把程式碼放進 body 的方法
+METHODS_WITH_A_BODY = ("POST", "PUT")
+
+
+class ReviewRequestThread(QThread):
+    """One review request, off the UI thread.
+
+    The IDE must stay usable while an endpoint thinks: the request can take the
+    connect timeout plus 30 s per read, and the body is streamed under a cap
+    after that. Only these two signals touch the UI, and they are delivered on
+    the UI thread.
+    """
+
+    answered = Signal(str)
+    failed = Signal(str)
+
+    def __init__(self, method: str, url: str, code_text: str) -> None:
+        super().__init__()
+        self._method = method
+        self._url = url
+        self._code_text = code_text
+
+    def run(self) -> None:
+        try:
+            validate_url(self._url)
+            response = self._send()
+            body = read_capped_text(response)
+            if response.ok:
+                self.answered.emit(body)
+            else:
+                # Without this a 302 (redirects are not followed) or a 500 with
+                # an empty body would leave the panel looking like a success.
+                self.answered.emit(f"HTTP {response.status_code} {response.reason}\n{body}")
+        except (requests.RequestException, ResponseTooLargeError, UnsafeURLError) as error:
+            # Not %r: a requests error carries the whole URL, which may hold a token.
+            pybreeze_logger.error("AI code review request failed: %s", type(error).__name__)
+            self.failed.emit(str(error))
+
+    def _send(self) -> requests.Response:
+        """Send the request with the chosen method, code in the body where there is one."""
+        send = getattr(requests, self._method.lower())
+        options = {"timeout": (CONNECT_TIMEOUT, 30), "allow_redirects": False, "stream": True}
+        if self._method in METHODS_WITH_A_BODY:
+            return send(self._url, data={"code": self._code_text}, **options)
+        return send(self._url, **options)
+
 
 class AICodeReviewClient(QWidget):
     def __init__(self):
@@ -44,6 +93,8 @@ class AICodeReviewClient(QWidget):
             "ai_code_review_gui_window_title"
         ))
 
+        # 目前在飛的請求 / The request in flight, if any
+        self.request_thread: ReviewRequestThread | None = None
         # 記錄接受/拒絕次數
         self.accept_count = 0
         self.reject_count = 0
@@ -134,7 +185,14 @@ class AICodeReviewClient(QWidget):
         self.setLayout(main_layout)
 
     def send_request(self):
-        """Send HTTP request and display result"""
+        """Start a review request; the answer reaches the panel when it arrives.
+
+        Nothing is sent while one is in flight: replacing a running QThread here
+        would risk destroying it mid-run and let a stale answer overwrite a newer
+        one.
+        """
+        if self.request_thread is not None and self.request_thread.isRunning():
+            return
         url = self.url_input.text().strip()
         method = self.method_box.currentText()
         code_content = self.code_input.toPlainText().strip()
@@ -143,12 +201,9 @@ class AICodeReviewClient(QWidget):
             self.response_panel.setPlainText(
                 self.word_dict.get("ai_code_review_gui_message_enter_valid_url"))
             return
-
-        try:
-            validate_url(url)
-        except UnsafeURLError as e:
+        if method not in SUPPORTED_METHODS:
             self.response_panel.setPlainText(
-                f"{self.word_dict.get('ai_code_review_gui_message_error')}: {e}")
+                self.word_dict.get("ai_code_review_gui_message_unsupported_http_method"))
             return
 
         # 這個 URL 之前送過嗎 / Has this URL been sent before?
@@ -159,30 +214,30 @@ class AICodeReviewClient(QWidget):
             self.response_panel.setPlainText(
                 self.word_dict.get("ai_code_review_gui_message_url_already_recorded"))
 
-        try:
-            if method == "GET":
-                response = requests.get(url, timeout=(CONNECT_TIMEOUT, 30), allow_redirects=False, stream=True)
-            elif method == "POST":
-                response = requests.post(url, data={"code": code_content}, timeout=(CONNECT_TIMEOUT, 30), allow_redirects=False, stream=True)
-            elif method == "PUT":
-                response = requests.put(url, data={"code": code_content}, timeout=(CONNECT_TIMEOUT, 30), allow_redirects=False, stream=True)
-            elif method == "DELETE":
-                response = requests.delete(url, timeout=(CONNECT_TIMEOUT, 30), allow_redirects=False, stream=True)
-            else:
-                self.response_panel.setPlainText(
-                    self.word_dict.get("ai_code_review_gui_message_unsupported_http_method"))
-                return
+        self.send_button.setEnabled(False)
+        self.request_thread = ReviewRequestThread(method, url, code_content)
+        self.request_thread.answered.connect(self.on_answered)
+        self.request_thread.failed.connect(self.on_failed)
+        self.request_thread.start()
 
-            if not response.ok:
-                self.response_panel.append(
-                    f"{self.word_dict.get('ai_code_review_gui_message_error')}: "
-                    f"HTTP {response.status_code} {response.reason}")
-            self.response_panel.append(read_capped_text(response))
+    def on_answered(self, body: str) -> None:
+        """Show what came back and let the next request be sent."""
+        self.response_panel.append(body)
+        self.send_button.setEnabled(True)
 
-        except (requests.RequestException, ResponseTooLargeError) as e:
-            # Not %r: a requests error carries the whole URL, which may hold a token.
-            pybreeze_logger.error("AI code review request failed: %s", type(e).__name__)
-            self.response_panel.setPlainText(f"{self.word_dict.get('ai_code_review_gui_message_error')}: {e}")
+    def on_failed(self, message: str) -> None:
+        """Show why nothing came back and let the next request be sent."""
+        self.response_panel.setPlainText(
+            f"{self.word_dict.get('ai_code_review_gui_message_error')}: {message}")
+        self.send_button.setEnabled(True)
+
+    def closeEvent(self, event) -> None:
+        """Wait for a request still in flight, so its thread is not destroyed mid-run."""
+        thread = self.request_thread
+        if thread is not None and thread.isRunning():
+            thread.blockSignals(True)
+            thread.wait()
+        super().closeEvent(event)
 
     def record_url(self, url: str) -> bool:
         """Record *url* as sent, and say whether it had not been sent before.
