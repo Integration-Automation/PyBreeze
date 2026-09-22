@@ -115,6 +115,24 @@ class TestFileRunnerOutput:
         assert "  warned\n" in text
         assert text.endswith("[Process exited with code 0]\n")
 
+    def test_a_program_that_reads_input_gets_end_of_file(self, qt_app, tmp_path):
+        # A run window has no input box: a read must end at once rather than
+        # wait on a pipe nobody writes to, which hung the run for good.
+        from pybreeze.extend.process_executor.file_runner_process import FileRunnerProcess
+        from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
+
+        script = tmp_path / "ask.py"
+        script.write_text("input('name? ')\n", encoding="utf-8")
+        window = CodeWindow()
+        window.runner = FileRunnerProcess(window)
+
+        window.runner.run_file({"name": "Python", "compiler": sys.executable}, str(script))
+        _run_events_until(qt_app, lambda: window.runner.process is None)
+
+        text = window.code_result.toPlainText()
+        assert "EOFError" in text
+        assert text.endswith("[Process exited with code 1]\n")
+
     def test_run_with_finishes_with_no_one_else_holding_its_runner(
             self, qt_app, tmp_path, monkeypatch):
         from pybreeze.pybreeze_ui.menu.plugin_menu import build_run_with_menu as run_with

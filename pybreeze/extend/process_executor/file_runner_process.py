@@ -116,7 +116,9 @@ class FileRunnerProcess:
                 command,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                stdin=subprocess.PIPE,
+                # A run window has no input box: a read gets end-of-file at once
+                # instead of waiting on a pipe nobody writes to.
+                stdin=subprocess.DEVNULL,
                 shell=False,
                 creationflags=no_window_creationflags(),
                 env=utf8_subprocess_env(self.program_encoding),
