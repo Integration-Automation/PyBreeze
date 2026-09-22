@@ -92,6 +92,8 @@ pybreeze_traditional_chinese_word_dict = {
     "install_menu_automation_file": "安裝 Automation File",
     "install_menu_mail_thunder": "安裝 MailThunder",
     "install_menu_prthinker": "安裝 prthinker（程式碼審查）",
+    "install_need_editor_tab_message":
+        "請先開啟一個檔案分頁：安裝會在那個分頁的 shell 面板裡執行。",
     "install_menu_tools_install_menu_label": "工具",
     "install_menu_tools_install_build_tools": "安裝 Build Tools",
     # Tools Menu

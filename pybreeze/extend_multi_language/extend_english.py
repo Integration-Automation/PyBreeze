@@ -92,6 +92,8 @@ pybreeze_english_word_dict = {
     "install_menu_automation_file": "Install Automation File",
     "install_menu_mail_thunder": "Install MailThunder",
     "install_menu_prthinker": "Install prthinker (code review)",
+    "install_need_editor_tab_message":
+        "Open a file tab first: the install runs in that tab's shell panel.",
     "install_menu_tools_install_menu_label": "Tools",
     "install_menu_tools_install_build_tools": "Install Build Tools",
     # Tools Menu
