@@ -66,8 +66,9 @@ The layers are presentation (`pybreeze_ui/`), then execution (`extend/`), then f
 
 ```
 python -m pybreeze → start_editor() → QApplication → PyBreezeMainWindow()
+  → update_language_dict()             [before JEditor picks the startup language]
   → EditorMain.__init__(extend=True)   [JEditor builds the editor, loads jeditor_plugins/]
-  → drop JEditor Help menu → update_language_dict() → add_menu_to_menubar()
+  → drop JEditor Help menu → add_menu_to_menubar()
   → syntax_extend_package() → EDITOR_EXTEND_TAB tabs → setup_file_tree_context_menu()
   → apply_stylesheet(theme) → showMaximized() → startup_setting() → exec() → os._exit()
 ```
@@ -119,7 +120,11 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
   `pybreeze/__init__.py` re-exports JEditor's plugin API. PyBreeze also imports JEditor internals
   (e.g. `PluginBrowserWidget`, `DestroyDock`, `check_and_choose_venv`, `actually_color_dict`). It
   merges its strings by mutating JEditor's `english_word_dict` and `traditional_chinese_word_dict`
-  in place (`extend_multi_language/update_language_dict.py`). JEditor translation changes must keep
+  in place, and writes its `application_name` into every dict in
+  `language_wrapper.choose_language_dict` (`extend_multi_language/update_language_dict.py`). That has
+  to happen before `EditorMain.__init__`: JEditor serves every language but English from a merged
+  copy built when it picks the startup language, so strings added later are missing and a `None`
+  menu title crashes Qt (`test_startup_language.py`). JEditor translation changes must keep
   `test_language_parity.py` green.
 - **Automation packages**: `je_auto_control`, `je_web_runner`, `je_api_testka`, `je_load_density`,
   `automation_file` and `je_mail_thunder` run as `python -m <pkg> --execute_str/--execute_file`

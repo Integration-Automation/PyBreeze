@@ -28,6 +28,11 @@ EDITOR_EXTEND_TAB: dict[str, type[QWidget]] = {
 class PyBreezeMainWindow(EditorMain):
 
     def __init__(self, debug_mode: bool = False, show_system_tray_ray: bool = False, extend: bool = False) -> None:
+        # PyBreeze's strings must be in JEditor's word dicts before EditorMain.__init__
+        # picks the startup language: for any language but English it builds the
+        # dictionary it reads from as a merged copy, so strings added afterwards are
+        # missing from it, and a menu given a None title crashes Qt.
+        update_language_dict()
         super().__init__(debug_mode, show_system_tray_ray, extend=True)
         # Note: EditorMain.__init__ already calls load_external_plugins()
         # which auto-discovers jeditor_plugins/ in the current working directory.
@@ -39,9 +44,6 @@ class PyBreezeMainWindow(EditorMain):
         # Delete JEditor help
         if self.help_menu:
             self.help_menu.deleteLater()
-
-        # Update language_dict
-        update_language_dict()
 
         # Title
         self.setWindowTitle(language_wrapper.language_word_dict.get("application_name"))

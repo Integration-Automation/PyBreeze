@@ -82,3 +82,44 @@ class TestCodeKeysAreDefined:
             if key not in EN
         ]
         assert not missing, f"Prompt editor label keys missing from the dict: {missing}"
+
+
+class TestEveryLanguageServesPyBreezeStrings:
+    def test_each_registered_language_resolves_every_key(self):
+        # JEditor serves each language but English from a merged copy of its dict
+        # and English's. Once PyBreeze's strings are in, every language, even one
+        # PyBreeze does not translate, must resolve every key the code asks for.
+        from je_editor import language_wrapper
+
+        from pybreeze.extend_multi_language.update_language_dict import update_language_dict
+
+        update_language_dict()
+        used = _code_used_keys()
+        original = language_wrapper.language
+        missing = {}
+        try:
+            for language in language_wrapper.available_languages():
+                language_wrapper.reset_language(language)
+                blank = sorted(
+                    key for key in used if not language_wrapper.language_word_dict.get(key))
+                if blank:
+                    missing[language] = blank
+        finally:
+            language_wrapper.reset_language(original)
+        assert not missing, f"Keys a language cannot resolve: {missing}"
+
+    def test_the_window_is_called_pybreeze_in_every_language(self):
+        from je_editor import language_wrapper
+
+        from pybreeze.extend_multi_language.update_language_dict import update_language_dict
+
+        update_language_dict()
+        original = language_wrapper.language
+        names = {}
+        try:
+            for language in language_wrapper.available_languages():
+                language_wrapper.reset_language(language)
+                names[language] = language_wrapper.language_word_dict["application_name"]
+        finally:
+            language_wrapper.reset_language(original)
+        assert set(names.values()) == {"PyBreeze"}, names

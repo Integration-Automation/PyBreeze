@@ -54,6 +54,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260922-11 | 2026-09-22 | IDE crashed on start with a non-English language saved | #done #i18n | [2026-09](2026-09.md) |
 | U-20260922-10 | 2026-09-22 | Pin PySide6 6.11.1 like the published je_editor | #done #dependencies | [2026-09](2026-09.md) |
 | U-20260922-09 | 2026-09-22 | Describe the release flow CI actually runs | #done #ci | [2026-09](2026-09.md) |
 | U-20260922-08 | 2026-09-22 | PLUGIN_GUIDE.md points to JEditor's guide | #done #docs | [2026-09](2026-09.md) |
@@ -69,4 +70,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 10 |
+| [2026-09.md](2026-09.md) | 2026-09 | 11 |
