@@ -105,7 +105,8 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
 - **New automation package**:
   - add a sub-package under `extend/process_executor/` with a `_PACKAGE` constant that calls
     `build_process()`;
-  - add a menu via `pybreeze_ui/menu/automation_menu/automation_menu_factory.py`, wired in
+  - add a menu: one `AutomationMenu(...)` passed to `build_automation_menu()`
+    (`pybreeze_ui/menu/automation_menu/automation_menu_factory.py`), wired in
     `menu/build_menubar.py`;
   - add an installer in `menu/install_menu/automation_menu/`;
   - add keywords in `pybreeze_ui/syntax/syntax_keyword.py`.

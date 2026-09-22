@@ -18,7 +18,7 @@ from PySide6.QtWidgets import QApplication, QMainWindow, QMenu, QTabWidget, QWid
 from pybreeze.extend_multi_language.update_language_dict import update_language_dict
 from pybreeze.pybreeze_ui.menu.automation_menu import automation_menu_factory
 from pybreeze.pybreeze_ui.menu.automation_menu.automation_menu_factory import (
-    build_automation_menu
+    AutomationMenu, HelpLink, RunAction, build_automation_menu
 )
 
 
@@ -54,13 +54,13 @@ def _submenu_actions(menu: QMenu, index: int) -> list[QAction]:
 
 def test_run_actions_survive_and_answer(window):
     calls = []
-    menu = build_automation_menu(
-        window, "run_label",
-        run_actions=[
-            {"label_key": "run_label", "callback": lambda: calls.append("first")},
-            {"label_key": "help_label", "callback": lambda: calls.append("second")},
-        ],
-    )
+    menu = build_automation_menu(window, AutomationMenu(
+        "run_label",
+        run_actions=(
+            RunAction("run_label", lambda: calls.append("first")),
+            RunAction("help_label", lambda: calls.append("second")),
+        ),
+    ))
     gc.collect()
 
     run_actions = _submenu_actions(menu, 0)
@@ -74,13 +74,13 @@ def test_help_actions_survive_and_open_their_page(window, monkeypatch):
     monkeypatch.setattr(
         automation_menu_factory, "open_web_browser",
         lambda ui, url, label: opened.append(url))
-    menu = build_automation_menu(
-        window, "run_label",
-        doc_url="https://docs.example", doc_label_key="help_label",
-        doc_tab_label_key="help_label",
-        github_url="https://github.example", github_label_key="run_label",
-        github_tab_label_key="run_label",
-    )
+    menu = build_automation_menu(window, AutomationMenu(
+        "run_label",
+        help_links=(
+            HelpLink("https://docs.example", "help_label", "help_label"),
+            HelpLink("https://github.example", "run_label", "run_label"),
+        ),
+    ))
     gc.collect()
 
     help_actions = _submenu_actions(menu, 0)
@@ -92,12 +92,12 @@ def test_help_actions_survive_and_open_their_page(window, monkeypatch):
 
 def test_project_and_gui_actions_survive_and_answer(window):
     created = []
-    menu = build_automation_menu(
-        window, "run_label",
-        create_project_func=lambda: created.append(True),
+    menu = build_automation_menu(window, AutomationMenu(
+        "run_label",
+        create_project=lambda: created.append(True),
         create_project_label_key="project_label",
         gui_widget_class=QWidget, gui_label="GUI",
-    )
+    ))
     gc.collect()
 
     project_actions = _submenu_actions(menu, 0)

@@ -160,7 +160,7 @@ call_X_multi_file_and_send()   → run_dir_files_with_package(..., True)
 
 ### 5.1 `automation_menu_factory.py` — 選單工廠
 
-`build_automation_menu()` 用宣告式參數組出標準自動化子選單：`Run` 子選單 / `Help`（文件＋GitHub，開內嵌瀏覽器分頁）/ `Project`（建立範本目錄）/ GUI 分頁。六個自動化模組全部靠它，`build_*_menu.py` 只剩一份設定表。每個 QAction 都以它所在的選單為 parent，由 Qt 持有；AutoControl 額外的 `Record` 子選單也一樣。
+`build_automation_menu(ui, spec)` 依一份 `AutomationMenu` 描述組出標準自動化子選單：`Run` 子選單（`RunAction` 列表）/ `Help`（`HelpLink` 列表，文件＋GitHub，開內嵌瀏覽器分頁）/ `Project`（建立範本目錄）/ GUI 分頁，每一段各由一個小函式建（`_add_run_menu` 等），沒有項目的段落不建。三個描述都是 frozen dataclass。六個自動化模組全部靠它，`build_*_menu.py` 只剩一份 `AutomationMenu(...)`。每個 QAction 都以它所在的選單為 parent，由 Qt 持有；AutoControl 額外的 `Record` 子選單也一樣。
 
 `safe_create_project(import_name)` 回傳延遲 import 的 closure，模組沒裝時只記 log 不炸選單。
 
