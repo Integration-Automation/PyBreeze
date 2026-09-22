@@ -126,7 +126,8 @@ class JupyterLauncherThread(QThread):
             self._wait_until_ready(port)
             self.server_ready.emit(f"http://localhost:{port}/lab")
 
-        except Exception:
+        # OSError includes the TimeoutError of a server that never came up
+        except (OSError, ValueError, RuntimeError, subprocess.SubprocessError):
             err = traceback.format_exc()
             # Tear down a half-started server so a startup timeout doesn't leave an
             # orphaned JupyterLab process running and holding the port.

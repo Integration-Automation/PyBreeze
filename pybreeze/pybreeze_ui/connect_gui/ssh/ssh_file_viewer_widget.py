@@ -592,7 +592,8 @@ class SSHFileTreeManager(QWidget):
                 self.action_download(item)
             elif action == upload_act:
                 self.action_upload(item)
-        except Exception as e:
+        # what an SFTP operation raises, a closed session's RuntimeError included
+        except CONNECT_ERRORS as e:
             QMessageBox.critical(
                 self,
                 self.word_dict.get("ssh_file_viewer_dialog_title_operation_failed"),

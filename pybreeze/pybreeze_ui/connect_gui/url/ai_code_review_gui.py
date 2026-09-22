@@ -283,7 +283,7 @@ class AICodeReviewClient(QWidget):
             with open(self.stats_file, "w", encoding="utf-8") as f:
                 f.write(f"Accepted: {self.accept_count}\n")
                 f.write(f"Rejected: {self.reject_count}\n")
-        except Exception as e:
+        except OSError as e:
             self.response_panel.append(f"\n[{self.word_dict.get('ai_code_review_gui_status_save_failed')}: {e}]")
 
 

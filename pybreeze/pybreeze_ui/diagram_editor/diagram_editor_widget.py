@@ -397,8 +397,10 @@ class DiagramEditorWidget(QWidget):
             data = json.loads(Path(path).read_text(encoding="utf-8"))
             self._scene.load_from_dict(data)
             self._current_path = Path(path)
-        except Exception as e:
-            pybreeze_logger.error(f"Open diagram failed: {e}")
+        # ValueError covers bad JSON, a file that is not UTF-8 and one that is
+        # not a diagram; TypeError and KeyError an item with the wrong fields
+        except (OSError, ValueError, TypeError, KeyError) as e:
+            pybreeze_logger.error("Open diagram failed: %r", e)
             QMessageBox.warning(self, _lang("diagram_editor_error_title", "Error"), str(e))
 
     def _save_diagram(self) -> None:
@@ -440,8 +442,8 @@ class DiagramEditorWidget(QWidget):
                 self._scene._load_items(data)
             self._scene.item_count_changed.emit()
             self._zoom_fit()
-        except Exception as e:
-            pybreeze_logger.error(f"Mermaid import failed: {e}")
+        except (ValueError, TypeError, KeyError) as e:
+            pybreeze_logger.error("Mermaid import failed: %r", e)
             QMessageBox.warning(
                 self,
                 _lang("diagram_editor_import_error", "Parse Error"),

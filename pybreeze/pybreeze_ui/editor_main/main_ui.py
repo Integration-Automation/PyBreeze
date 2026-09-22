@@ -149,7 +149,9 @@ def start_editor(debug_mode: bool = False, theme: str = "dark_amber.xml", **kwar
     window.showMaximized()
     try:
         window.startup_setting()
-    except Exception as error:
-        pybreeze_logger.error(f"Startup setting error: {error}")
+    # The user's saved settings, and the files they reopen, can be anything:
+    # a bad one is logged and the IDE starts without it.
+    except (OSError, ValueError, TypeError, KeyError, RuntimeError) as error:
+        pybreeze_logger.error("Startup setting error: %r", error)
     ret = new_ide.exec()
     os._exit(ret)

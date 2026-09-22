@@ -21,6 +21,9 @@ from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_login_widget import LoginWidget
 from pybreeze.pybreeze_ui.thread_keeper import let_run_out
 from pybreeze.utils.logging.logger import pybreeze_logger
 
+# What closing a channel or a client can raise on a connection already broken
+CLOSE_ERRORS = (OSError, EOFError, paramiko.SSHException)
+
 ANSI_ESCAPE_PATTERN = re.compile(
     r'\x1B(?:'
     r'\][^\x07\x1B]*(?:\x07|\x1B\\)?'  # OSC; BEL/ST-terminated or implicitly ended by the next ESC / EOF
@@ -252,13 +255,9 @@ class SSHCommandWidget(QWidget):
                          f" {host}:{port} as {user}\n")
 
     def _on_data(self, data: bytes):
-        try:
-            text = data.decode("utf-8", errors="replace")
-            clean_text = ANSI_ESCAPE_PATTERN.sub('', text)
-            self.append_text(clean_text)
-        except Exception as error:
-            self.append_text(f"{self.word_dict.get('ssh_command_widget_error_message_decode_failed')}"
-                             f" {error}\n")
+        # errors="replace" cannot fail, so there is nothing to catch here
+        text = data.decode("utf-8", errors="replace")
+        self.append_text(ANSI_ESCAPE_PATTERN.sub('', text))
 
     def _on_closed(self, msg: str):
         self.append_text(f"\n{self.word_dict.get('ssh_command_widget_log_message_channel_closed')}"
@@ -275,7 +274,7 @@ class SSHCommandWidget(QWidget):
             try:
                 self.shell_channel.send(cmd + "\n")
                 self.command_input_edit.clear()
-            except Exception as e:
+            except (OSError, paramiko.SSHException) as e:
                 self.append_text(f"{self.word_dict.get('ssh_command_widget_error_message_send_failed')} {e}\n")
         else:
             QMessageBox.information(
@@ -320,20 +319,20 @@ class SSHCommandWidget(QWidget):
                 self.reader_thread.blockSignals(True)
                 self.reader_thread.stop()
                 self.reader_thread.wait(1000)
-        except Exception as error:
+        except RuntimeError as error:  # its C++ object already deleted
             pybreeze_logger.debug("SSH reader thread cleanup: %r", error)
         self.reader_thread = None
 
         try:
             if self.shell_channel and not self.shell_channel.closed:
                 self.shell_channel.close()
-        except Exception as error:
+        except CLOSE_ERRORS as error:
             pybreeze_logger.debug("SSH channel cleanup: %r", error)
         self.shell_channel = None
 
         try:
             if self.ssh_client:
                 self.ssh_client.close()
-        except Exception as error:
+        except CLOSE_ERRORS as error:
             pybreeze_logger.debug("SSH client cleanup: %r", error)
         self.ssh_client = None
