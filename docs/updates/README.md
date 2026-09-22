@@ -40,7 +40,11 @@ Without `rg`: `git grep -n "^## U-2" -- docs/updates`, or in PowerShell `Select-
 
 1. One file per month: `docs/updates/YYYY-MM.md`. Append new entries at the end.
 2. Over about 800 lines, continue in `YYYY-MM-b.md` (then `-c`) and list it in the batch table below.
-3. **Claim the ID first**: write the heading line and the index row, then fill in the body. Check the day's last number with `rg -n "^## U-YYYYMMDD" docs/updates`.
+3. **Claim the ID under a lock.** Several sessions may write this log at the same time (for example parallel autonomous runs), and without a lock two of them pick the same number:
+   1. `mkdir docs/updates/.id-lock`. Creating a directory is atomic, so only one writer succeeds. If it already exists, someone else is claiming: wait a few seconds and retry. A lock older than 10 minutes is stale and may be removed.
+   2. Find the day's last number with `rg -n "^## U-YYYYMMDD" docs/updates` and write the heading line and the index row.
+   3. `rmdir docs/updates/.id-lock`, then fill in the body. Git never tracks the empty lock directory.
+   4. Before committing, `rg -c "^## U-<your ID>" docs/updates` must report one match in total. If not, renumber your entry under the lock and fix its index row. Whoever merges a branch renumbers entries that reuse an ID.
 4. **One line per index row**: title only (about 60 characters), no summary.
 5. Never rewrite a recorded entry. Correct it with a new `#decision` or `#incident` entry and add "→ corrected in U-..." to the old one.
 
