@@ -41,32 +41,29 @@ class RequestThread(QThread):
             body = read_capped_text(response)
             if succeeded(response):
                 self.answered.emit(body)
-            elif response.is_redirect:
-                self.answered.emit(
-                    language_wrapper.language_word_dict.get(
-                        "skills_error_status").format(
-                        status_code=response.status_code,
-                        text=f"Redirect to {response.headers.get('Location', 'unknown')}"))
-            elif response.status_code in (401, 403):
-                self.error.emit(
-                    language_wrapper.language_word_dict.get(
-                        "skills_error_status").format(
-                        status_code=response.status_code,
-                        text="Authentication/Authorization failed"))
-            elif response.status_code >= 500:
-                self.error.emit(
-                    language_wrapper.language_word_dict.get(
-                        "skills_error_status").format(
-                        status_code=response.status_code,
-                        text=f"Server error: {truncate_for_display(body)}"))
-            else:
-                self.answered.emit(
-                    language_wrapper.language_word_dict.get(
-                        "skills_error_status").format(
-                        status_code=response.status_code, text=truncate_for_display(body)))
+                return
+            is_error, text = describe_failed_status(response, body)
+            message = language_wrapper.language_word_dict.get("skills_error_status").format(
+                status_code=response.status_code, text=text)
+            (self.error if is_error else self.answered).emit(message)
         except (requests.RequestException, ResponseTooLargeError, UnsafeURLError) as e:
             pybreeze_logger.error("Skills send request failed: %r", e)
             self.error.emit(language_wrapper.language_word_dict.get("skills_exception").format(error=str(e)))
+
+
+def describe_failed_status(response, body: str) -> tuple[bool, str]:
+    """Say what a non-2xx answer means: whether it is an error, and in what words.
+
+    A redirect (not followed) and an ordinary client error are shown as the
+    answer; a refused request and a server error are errors.
+    """
+    if response.is_redirect:
+        return False, f"Redirect to {response.headers.get('Location', 'unknown')}"
+    if response.status_code in (401, 403):
+        return True, "Authentication/Authorization failed"
+    if response.status_code >= 500:
+        return True, f"Server error: {truncate_for_display(body)}"
+    return False, truncate_for_display(body)
 
 
 class SkillsSendGUI(QWidget):

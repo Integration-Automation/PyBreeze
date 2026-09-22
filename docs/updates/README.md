@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-42 | 2026-09-23 | Skills status wording and the review panel's layout split out | #done #refactor #ai | [2026-09](2026-09.md) |
 | U-20260923-41 | 2026-09-23 | A redirect or an HTTP error no longer passes for an AI answer | #done #ai | [2026-09](2026-09.md) |
 | U-20260923-40 | 2026-09-23 | SSH connects refuse SHA-1 on any paramiko (CVE-2026-44405) | #done #security #ssh | [2026-09](2026-09.md) |
 | U-20260923-39 | 2026-09-23 | A plugin's compile step streams instead of freezing the IDE | #done #executor #plugin | [2026-09](2026-09.md) |
@@ -122,4 +123,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 59 |
+| [2026-09.md](2026-09.md) | 2026-09 | 60 |

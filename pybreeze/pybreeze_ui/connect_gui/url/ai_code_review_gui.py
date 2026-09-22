@@ -107,10 +107,17 @@ class AICodeReviewClient(QWidget):
 
         # 主佈局 (垂直)
         main_layout = QVBoxLayout()
+        main_layout.addLayout(self._build_request_row())
+        main_layout.addLayout(self._build_code_and_response())
+        self.send_button = QPushButton(
+            self.word_dict.get("ai_code_review_gui_button_send_request"))
+        self.send_button.clicked.connect(self.send_request)
+        main_layout.addWidget(self.send_button)
+        main_layout.addLayout(self._build_verdict_buttons())
+        self.setLayout(main_layout)
 
-        # -------------------------------
-        # 上方：URL 與 Method
-        # -------------------------------
+    def _build_request_row(self) -> QHBoxLayout:
+        """上方：URL 與 Method / The URL and method row."""
         top_layout = QHBoxLayout()
 
         # URL
@@ -127,12 +134,10 @@ class AICodeReviewClient(QWidget):
         self.method_box.addItems(["GET", "POST", "PUT", "DELETE"])
         method_layout.addWidget(self.method_box)
         top_layout.addLayout(method_layout)
+        return top_layout
 
-        main_layout.addLayout(top_layout)
-
-        # -------------------------------
-        # 中間：左右顯示框 (同樣高)
-        # -------------------------------
+    def _build_code_and_response(self) -> QHBoxLayout:
+        """中間：左右顯示框 (同樣高) / The code and the response, side by side."""
         middle_layout = QHBoxLayout()
 
         # 左邊：程式碼輸入
@@ -154,20 +159,10 @@ class AICodeReviewClient(QWidget):
         # 放入中間佈局
         middle_layout.addLayout(left_layout, 1)
         middle_layout.addLayout(right_layout, 1)
+        return middle_layout
 
-        main_layout.addLayout(middle_layout)
-
-        # -------------------------------
-        # 最下面：發送按鈕
-        # -------------------------------
-        self.send_button = QPushButton(
-            self.word_dict.get("ai_code_review_gui_button_send_request"))
-        self.send_button.clicked.connect(self.send_request)
-        main_layout.addWidget(self.send_button)
-
-        # -------------------------------
-        # 最下面：接受/不接受按鈕
-        # -------------------------------
+    def _build_verdict_buttons(self) -> QHBoxLayout:
+        """最下面：接受/不接受按鈕 / Accept and reject."""
         bottom_layout = QHBoxLayout()
         self.accept_button = QPushButton(
             self.word_dict.get("ai_code_review_gui_button_accept_response"))
@@ -180,10 +175,7 @@ class AICodeReviewClient(QWidget):
 
         bottom_layout.addWidget(self.accept_button)
         bottom_layout.addWidget(self.reject_button)
-
-        main_layout.addLayout(bottom_layout)
-
-        self.setLayout(main_layout)
+        return bottom_layout
 
     def send_request(self):
         """Start a review request; the answer reaches the panel when it arrives.
