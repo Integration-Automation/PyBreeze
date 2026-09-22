@@ -1,7 +1,7 @@
 # PyBreeze Architecture
 
 > Short overview for people and agents. Per-module detail lives in [`architecture_explore.md`](architecture_explore.md).
-> Last verified: 2026-09-22 against `d0068d2` on `dev`.
+> Last verified: 2026-09-23 against `dcd35c6` on `dev`.
 
 ## 1. Purpose
 
@@ -32,6 +32,7 @@ their output reaches the UI through Queue + QTimer.
 | `pybreeze/pybreeze_ui/extend_ai_gui/`, `dialog/` | LLM code-review chain and prompt editors; prthinker settings dialog |
 | `pybreeze/pybreeze_ui/connect_gui/` | `ssh/` terminal + SFTP tree; `url/` HTTP code-review client |
 | `pybreeze/pybreeze_ui/jupyter_lab_gui/`, `show_code_window/`, `syntax/` | JupyterLab tab; `CodeWindow` subprocess output window; automation keyword highlighting |
+| `pybreeze/pybreeze_ui/thread_keeper.py` | `let_run_out()`: a worker `QThread` whose widget closed is kept until it ends instead of being waited for |
 | `pybreeze/extend/process_executor/` | Subprocess isolation layer: `TaskProcessManager`, `process_executor_utils.py`, `FileRunnerProcess`, `queue_pump.py`, one sub-package per automation package, plus `test_pioneer/` and `prthinker/` |
 | `pybreeze/extend/mail_thunder_extend/`, `prthinker_extend/` | Post-test email hook; prthinker settings and argument assembly (pure logic) |
 | `pybreeze/extend_multi_language/` | PyBreeze's English and Traditional Chinese strings, merged into JEditor's dictionaries |
@@ -57,7 +58,8 @@ The layers are presentation (`pybreeze_ui/`), then execution (`extend/`), then f
 - **Plugin API (re-exported)**: `load_external_plugins`, `register_programming_language`,
   `register_natural_language`.
 - **Persisted state**: `~/.pybreeze/` via `utils/app_dirs.pybreeze_data_dir()` (SSH known hosts,
-  prthinker settings, edited prompts, review history). The editor settings inherited from JEditor
+  prthinker settings, edited prompts, review history, and `logs/PyBreeze.log`, which
+  `$PYBREEZE_LOG_FILE` can move). The editor settings inherited from JEditor
   stay in `.jeditor/` under the working directory.
 
 ## 4. Main flows
