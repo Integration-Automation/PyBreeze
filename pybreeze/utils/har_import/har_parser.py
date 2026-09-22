@@ -12,9 +12,9 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from urllib.parse import urlparse
+from urllib.parse import parse_qsl, urlparse
 
-from pybreeze.utils.curl_import.curl_parser import CurlRequest, parse_query_pairs
+from pybreeze.utils.curl_import.curl_parser import CurlRequest
 from pybreeze.utils.exception.exception_tags import (
     empty_har_error,
     invalid_har_json_error,
@@ -130,9 +130,12 @@ def _apply_query(request: CurlRequest, raw_request: dict, query: str) -> None:
     """Collect the query parameters from the URL, then from ``queryString``.
 
     The URL is authoritative because it is what was actually sent; the recorded
-    ``queryString`` list only fills in what the URL did not carry.
+    ``queryString`` list only fills in what the URL did not carry. Values from
+    the URL are percent-decoded, as the cURL importer does: ``params`` holds
+    values, and :attr:`CurlRequest.full_url` and the generated scripts encode
+    them once on the way out.
     """
-    for key, value in parse_query_pairs(query.split("&")).items():
+    for key, value in parse_qsl(query, keep_blank_values=True):
         request.params.setdefault(key, value)
     for name, value in _header_pairs(raw_request.get("queryString")):
         request.params.setdefault(name, value)

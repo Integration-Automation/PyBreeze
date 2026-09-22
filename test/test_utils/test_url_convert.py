@@ -106,3 +106,15 @@ class TestAUrlThatCannotBeSplit:
 
         with pytest.raises(UrlConvertException):
             url_to_json("http://[::1")
+
+
+class TestARepeatedKey:
+    def test_every_value_is_kept(self):
+        from pybreeze.utils.url_tools.url_convert import parse_url
+
+        assert parse_url("https://x/?tag=a&tag=b")["query"] == {"tag": ["a", "b"]}
+
+    def test_the_round_trip_keeps_them(self):
+        from pybreeze.utils.url_tools.url_convert import build_url, parse_url
+
+        assert build_url(parse_url("https://x/?tag=a&tag=b&one=1")) == "https://x/?tag=a&tag=b&one=1"

@@ -7,7 +7,7 @@ then turn it back into a URL. Pure logic — no Qt and no network access.
 from __future__ import annotations
 
 import json
-from urllib.parse import SplitResult, parse_qsl, urlencode, urlsplit, urlunsplit
+from urllib.parse import SplitResult, urlencode, urlsplit, urlunsplit
 
 from pybreeze.utils.exception.exception_tags import (
     invalid_json_for_url_error,
@@ -16,6 +16,7 @@ from pybreeze.utils.exception.exception_tags import (
 )
 from pybreeze.utils.exception.exceptions import UrlConvertException
 from pybreeze.utils.logging.logger import pybreeze_logger
+from pybreeze.utils.query_tools.query_convert import query_to_dict
 
 
 def _safe_port(split: SplitResult) -> int | None:
@@ -39,7 +40,8 @@ def parse_url(url: str) -> dict:
         "host": split.hostname or "",
         "port": _safe_port(split),
         "path": split.path,
-        "query": dict(parse_qsl(split.query, keep_blank_values=True)),
+        # A repeated key keeps every value, as a list, like the query tool.
+        "query": query_to_dict(split.query),
         "fragment": split.fragment,
     }
     if split.username is not None:
@@ -86,7 +88,8 @@ def _build_query(query: object) -> str:
     if not query:
         return ""
     if isinstance(query, dict):
-        return urlencode(query)
+        # doseq: a list value is a key that repeats, one pair per value.
+        return urlencode(query, doseq=True)
     return str(query)
 
 

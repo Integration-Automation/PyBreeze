@@ -342,7 +342,11 @@ def _finalise_method(request: CurlRequest) -> None:
     if request.method == _DEFAULT_METHOD and request.has_body and not request.send_data_as_params:
         request.method = _METHOD_WITH_BODY
     if request.send_data_as_params:
-        request.params.update(parse_query_pairs(request.data_parts))
+        # With -G, curl appends the data to the URL exactly as given, joined by
+        # '&': each fragment is query text already, so it is split on '&' and
+        # decoded here, or full_url would encode it a second time.
+        for part in request.data_parts:
+            request.params.update(parse_qsl(part, keep_blank_values=True))
         request.data_parts = []
 
 
@@ -360,20 +364,6 @@ def _split_url_query(request: CurlRequest) -> None:
     request.url = base
     for key, value in parse_qsl(query, keep_blank_values=True):
         request.params.setdefault(key, value)
-
-
-def parse_query_pairs(parts: list[str]) -> dict[str, str]:
-    """Parse ``key=value`` fragments into a dict, ignoring pieces without ``=``.
-
-    :param parts: body fragments such as ``["a=1", "b=2"]``
-    :return: the parsed ``key -> value`` mapping
-    """
-    pairs: dict[str, str] = {}
-    for part in parts:
-        key, separator, value = part.partition("=")
-        if separator:
-            pairs[key] = value
-    return pairs
 
 
 def parse_curl(command: str) -> CurlRequest:

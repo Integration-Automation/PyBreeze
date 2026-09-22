@@ -6,7 +6,6 @@ import pytest
 from pybreeze.utils.curl_import.curl_parser import (
     CurlRequest,
     parse_curl,
-    parse_query_pairs,
 )
 from pybreeze.utils.curl_import.request_codegen import to_requests_code
 from pybreeze.utils.exception.exceptions import CurlParseException
@@ -476,17 +475,6 @@ class TestParseCurlForm:
         assert request.form_fields == ["a=1"]
 
 
-class TestParseQueryPairs:
-    def test_parses_pairs(self):
-        assert parse_query_pairs(["a=1", "b=2"]) == {"a": "1", "b": "2"}
-
-    def test_ignores_fragments_without_equals(self):
-        assert parse_query_pairs(["a=1", "bad"]) == {"a": "1"}
-
-    def test_empty(self):
-        assert parse_query_pairs([]) == {}
-
-
 class TestToRequestsCode:
     def test_simple_get(self):
         code = to_requests_code(parse_curl("curl https://example.com/api"))
@@ -560,3 +548,19 @@ class TestCurlRequestDataclass:
         assert request.headers == {}
         # The JSON round-trip in codegen should never see a stale shared dict.
         assert CurlRequest().headers is not request.headers
+
+
+class TestGetWithData:
+    """With -G, curl appends each -d fragment to the URL as given, joined by '&'."""
+
+    def test_one_fragment_with_several_pairs_is_split(self):
+        request = parse_curl("curl -G https://x/api -d 'a=1&b=2'")
+
+        assert request.params == {"a": "1", "b": "2"}
+        assert request.full_url == "https://x/api?a=1&b=2"
+
+    def test_data_urlencode_is_encoded_once(self):
+        request = parse_curl("curl -G https://x/api --data-urlencode 'q=hello world'")
+
+        assert request.params == {"q": "hello world"}
+        assert request.full_url == "https://x/api?q=hello+world"
