@@ -190,8 +190,6 @@ call_X_multi_file_and_send()   → run_dir_files_with_package(..., True)
 - `_TAB_ACTIONS: tuple[...]` — (widget key, 主視窗屬性, 選單屬性, action 語言鍵, 分頁標籤鍵)
 - `_DOCK_ACTIONS` / `_DOCK_TITLES` — 同一組 widget 也能開成右側 dock
 
-安裝選單的 `install_is_possible()` 也是先問再做：沒有編輯器分頁就說一聲並回傳 `False`，安裝三個建置工具或先問 prthinker 原始碼資料夾的路徑都靠它提早停下。
-
 `_register_action()` 有一段關鍵註解：QAction 必須 `setattr` 掛回主視窗，否則 Qt 不持有它、被 GC 後選單項就失效。另一種做法是建構時把選單當 parent（自動化選單工廠、插件選單用這種）。`test_started_menus.py` 在子行程啟動真的 IDE、GC 後走訪整條選單列，任何子選單變空就失敗（JEditor 的兩個字型選單除外：offscreen 平台沒有字型）。
 
 ### 5.4 插件選單
@@ -201,7 +199,7 @@ call_X_multi_file_and_send()   → run_dir_files_with_package(..., True)
 
 ### 5.5 安裝選單
 
-`install_utils.install_package()` 借用 JEditor 的 `ShellManager` 跑 `pip install -U`，輸出進目前編輯器分頁的 shell 面板，pip 用 IDE 選定的直譯器（沒選才用 shell 自己找到的）。目前分頁不是編輯器分頁時不會安裝，並跳訊息說明（回傳 `False`），不是靜靜地什麼都不做。
+`install_utils.install_packages()` 用 `build_task_process()` 開一個執行視窗，`start_module_process("pip", ["install", "-U", *packages])`：參數清單、不經 shell（以前借 JEditor 的 `ShellManager`，它用 `shell=True` 交給 `cmd.exe`，使用者選的資料夾名稱裡有 `&` 就會把指令切開）。多個套件一次 pip（建置工具以前是三個 pip 同時對同一個環境跑）。pip 用 IDE 選定的直譯器，沒選時照一般執行的退路。`install_package()` 是單一套件的寫法
 
 - `automation_menu/` — 七個自動化套件的一鍵安裝。**prthinker 例外**：不在 PyPI 上，第一次會問來源資料夾、記進設定，之後裝 `<path>[runner]`
 - `tools_menu/` — 安裝 setuptools / build / wheel
@@ -435,7 +433,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 18. 測試與 CI
 
-- **單元測試** `test/test_utils/` — 87 個 `test_*.py`、1307 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
+- **單元測試** `test/test_utils/` — 87 個 `test_*.py`、1305 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
 - **整合測試** `test/unit_test/start_automation/` — 以 `debug_mode=True` 啟動 IDE，10 秒後自動關閉，驗證啟動流程與 extend tab
 - **CI** `.github/workflows/{dev,stable}.yml` — `unit-tests` job 跑 Windows runner、Python 3.10–3.14 矩陣，3.12 那一腳額外上傳 `coverage-xml` artifact；`sonarcloud` job 跑 ubuntu、`needs: unit-tests`。每日 02:00 排程 + push/PR 觸發。`stable.yml` 另有 `publish` job 負責版號遞增與 PyPI 發布
 - **覆蓋率** `.coveragerc` — `relative_files = True` 是必要的：報告在 Windows 產生、由 Linux 上的 scanner 讀取，路徑不能帶機器資訊。目前整體 60%（`utils/`、`tools_gui`、`dialog` 95–100%；`editor_main` 58%、`menu` 54%；仍低的是 `diagram_editor` 45%、`process_executor` 39%、`connect_gui` 28%）

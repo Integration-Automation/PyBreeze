@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from PySide6.QtGui import QAction
 from je_editor import language_wrapper
 
-from pybreeze.pybreeze_ui.menu.install_menu.install_utils import install_package
+from pybreeze.pybreeze_ui.menu.install_menu.install_utils import install_packages
 
 if TYPE_CHECKING:
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
@@ -24,11 +24,5 @@ def build_tool_install_menu(ui_we_want_to_set: PyBreezeMainWindow):
 
 
 def install_build_tools(ui_we_want_to_set: PyBreezeMainWindow) -> None:
-    """Install the packaging tools, stopping at the first one that cannot start.
-
-    Without an editor tab in front none of them can, and carrying on would
-    put the same message box in front of the user once per package.
-    """
-    for package in ("setuptools", "build", "wheel"):
-        if not install_package(package, ui_we_want_to_set):
-            return
+    """Install the packaging tools with one pip."""
+    install_packages(["setuptools", "build", "wheel"], ui_we_want_to_set)

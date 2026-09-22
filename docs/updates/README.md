@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-46 | 2026-09-23 | Package installs no longer go through cmd.exe | #done #security #install | [2026-09](2026-09.md) |
 | U-20260923-45 | 2026-09-23 | Deleting a folder closes the tabs open inside it | #done #editor | [2026-09](2026-09.md) |
 | U-20260923-44 | 2026-09-23 | A long output line no longer garbles its characters or doubles its line ending | #done #executor | [2026-09](2026-09.md) |
 | U-20260923-43 | 2026-09-23 | The SSH terminal no longer breaks lines, characters or escapes where a read ends | #done #ssh | [2026-09](2026-09.md) |
@@ -126,4 +127,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 63 |
+| [2026-09.md](2026-09.md) | 2026-09 | 64 |
