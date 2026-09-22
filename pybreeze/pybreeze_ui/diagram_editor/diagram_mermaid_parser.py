@@ -350,6 +350,11 @@ def _assign_cross_offsets(
 _NODE_H = 60.0
 _GAP_MAIN = 120.0
 _GAP_CROSS = 80.0
+# Node width grows with its text: characters times _CHAR_W plus padding, clamped
+_NODE_MIN_W = 100.0
+_NODE_MAX_W = 300.0
+_CHAR_W = 11
+_TEXT_PADDING = 40
 
 
 def _position_node(node: _NodeInfo, layer_idx: int, cross_offset: float,
@@ -468,39 +473,46 @@ def parse_mermaid(text: str) -> dict:
     """
     nodes: dict[str, _NodeInfo] = {}
     edges: list[_EdgeInfo] = []
-    direction = "TD"
+    direction = _parse_lines(text, nodes, edges)
+    _auto_layout(nodes, edges, direction)
+    return _to_diagram_dict(list(nodes.values()), edges)
 
+
+def _parse_lines(text: str, nodes: dict[str, _NodeInfo], edges: list[_EdgeInfo]) -> str:
+    """Parse every line of *text* into *nodes* and *edges*; return the flow direction."""
+    direction = "TD"
     for raw_line in text.splitlines():
         line = _COMMENT_RE.sub("", raw_line).strip()
         if not line:
             continue
         parsed_dir = _parse_direction(line)
         if parsed_dir is not None:
-            direction, remainder = parsed_dir
-            if not remainder:
+            direction, line = parsed_dir
+            if not line:
                 continue
-            line = remainder
         if _SKIP_RE.match(line):
             continue
         for stmt in line.split(";"):
             _parse_statement(stmt, nodes, edges)
+    return direction
 
-    _auto_layout(nodes, edges, direction)
 
-    node_list = list(nodes.values())
+def _node_width(node: _NodeInfo) -> float:
+    """Width that fits the node's text, within the minimum and maximum."""
+    return max(_NODE_MIN_W, min(len(node.text) * _CHAR_W + _TEXT_PADDING, _NODE_MAX_W))
+
+
+def _to_diagram_dict(node_list: list[_NodeInfo], edges: list[_EdgeInfo]) -> dict:
+    """The diagram dict for laid-out nodes; an edge to an unknown node is dropped."""
     id_to_idx: dict[str, int] = {n.id: i for i, n in enumerate(node_list)}
-
-    def _node_w(n: _NodeInfo) -> float:
-        return max(100.0, min(len(n.text) * 11 + 40, 300.0))
-
     return {
         "nodes": [
             {
                 "id": i,
                 "x": n.x,
                 "y": n.y,
-                "w": _node_w(n),
-                "h": 60.0,
+                "w": _node_width(n),
+                "h": _NODE_H,
                 "text": n.text,
                 "shape": n.shape.name,
             }

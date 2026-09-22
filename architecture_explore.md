@@ -229,14 +229,14 @@ call_X_multi_file_and_send()   → run_dir_files_with_package(..., True)
 
 ---
 
-## 7. `pybreeze_ui/diagram_editor/` — 架構圖編輯器（3,322 行，最大子系統）
+## 7. `pybreeze_ui/diagram_editor/` — 架構圖編輯器（3,334 行，最大子系統）
 
 | 檔案 | 職責 |
 |---|---|
 | `diagram_editor_widget.py` (584) | 外層 widget：兩排工具列（工具模式列 + 檔案/undo/對齊/格線/匯出/縮放列）、canvas 與屬性面板的 splitter、快捷鍵；PNG/SVG 匯出；Mermaid 匯入對話框 |
 | `diagram_scene.py` (648) | `DiagramScene(QGraphicsScene)`：**State pattern** 的 `ToolMode` 決定滑鼠行為；undo/redo、複製貼上、多選對齊與分佈、z-order、序列化 `to_dict()` / `load_from_dict()` |
 | `diagram_items.py` (842) | 圖元：`DiagramNode`（矩形/圓角/橢圓/菱形 4 種 body + 置中標籤 + 4 個 `ResizeHandle`；填色、框線色、字級收在 frozen dataclass `NodeStyle`）、`DiagramConnection`（三次貝茲 + 箭頭，連到節點邊界交點）、`DiagramImage`。`_EditableLabel` 刻意預設唯讀、雙擊才進編輯（對應 CLAUDE.md 的 Qt 規範） |
-| `diagram_mermaid_parser.py` (520) | Mermaid flowchart → diagram dict。含 **Sugiyama 風格自動排版**：分層 → 交叉最小化掃描 → 交叉軸偏移解析 |
+| `diagram_mermaid_parser.py` (532) | Mermaid flowchart → diagram dict。含 **Sugiyama 風格自動排版**：分層 → 交叉最小化掃描 → 交叉軸偏移解析 |
 | `diagram_property_panel.py` (421) | 右側屬性側欄，依選取型別切換 node / connection / image 三組表單 |
 | `diagram_view.py` (175) | `QGraphicsView`：滾輪縮放（有上下界）、中鍵平移、`drawBackground` 畫格線 |
 | `diagram_commands.py` (28) | `DiagramSnapshotCommand(QUndoCommand)` — 快照式 undo，存變更前後完整場景狀態 |
