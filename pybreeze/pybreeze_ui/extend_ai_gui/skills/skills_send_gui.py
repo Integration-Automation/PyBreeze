@@ -15,7 +15,7 @@ from pybreeze.pybreeze_ui.extend_ai_gui.prompt_store import load_prompt
 from pybreeze.pybreeze_ui.thread_keeper import let_run_out
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.network.http_client import (
-    ResponseTooLargeError, read_capped_text, CONNECT_TIMEOUT, truncate_for_display,
+    ResponseTooLargeError, read_capped_text, CONNECT_TIMEOUT, succeeded, truncate_for_display,
 )
 from pybreeze.utils.network.url_validation import UnsafeURLError, validate_url
 
@@ -39,7 +39,7 @@ class RequestThread(QThread):
                 timeout=(CONNECT_TIMEOUT, 30), allow_redirects=False, stream=True,
             )
             body = read_capped_text(response)
-            if response.ok:
+            if succeeded(response):
                 self.answered.emit(body)
             elif response.is_redirect:
                 self.answered.emit(

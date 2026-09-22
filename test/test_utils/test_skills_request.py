@@ -1,0 +1,95 @@
+"""What a Skills request reports for each kind of answer the endpoint gives."""
+from __future__ import annotations
+
+import os
+
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+import pytest
+import requests
+
+from pybreeze.extend_multi_language.update_language_dict import update_language_dict
+from pybreeze.pybreeze_ui.extend_ai_gui.skills import skills_send_gui
+from pybreeze.pybreeze_ui.extend_ai_gui.skills.skills_send_gui import RequestThread
+
+_URL = "https://skills.example/api"
+
+
+@pytest.fixture(scope="module", autouse=True)
+def app():
+    from PySide6.QtWidgets import QApplication
+
+    instance = QApplication.instance() or QApplication([])
+    update_language_dict()
+    return instance
+
+
+class FakeResponse:
+    def __init__(self, status_code: int, body: str = "", location: str | None = None) -> None:
+        self.status_code = status_code
+        self.ok = status_code < 400
+        self.is_redirect = location is not None
+        self.headers = {"Location": location} if location else {}
+        self.encoding = "utf-8"
+        self._body = body.encode("utf-8")
+
+    def iter_content(self, chunk_size: int = 65536):
+        yield self._body
+
+    def close(self) -> None:
+        """Nothing to close."""
+
+
+def _run(monkeypatch, answer) -> tuple[list[str], list[str]]:
+    """Run one request against *answer* (a response, or an exception to raise)."""
+    monkeypatch.setattr(skills_send_gui, "validate_url", lambda url: url)
+
+    def post(*_args, **_kwargs):
+        if isinstance(answer, Exception):
+            raise answer
+        return answer
+
+    monkeypatch.setattr(skills_send_gui.requests, "post", post)
+    answered: list[str] = []
+    errors: list[str] = []
+    thread = RequestThread(_URL, "print(1)")
+    thread.answered.connect(answered.append)
+    thread.error.connect(errors.append)
+    thread.run()  # on this thread: direct connections, no event loop needed
+    return answered, errors
+
+
+class TestWhatARequestReports:
+    def test_a_good_answer_is_shown_as_is(self, monkeypatch):
+        assert _run(monkeypatch, FakeResponse(200, "looks fine")) == (["looks fine"], [])
+
+    def test_a_redirect_is_shown_with_where_it_went(self, monkeypatch):
+        answered, errors = _run(monkeypatch, FakeResponse(302, location="https://elsewhere.example"))
+
+        assert errors == []
+        assert "302" in answered[0] and "Redirect to https://elsewhere.example" in answered[0]
+
+    @pytest.mark.parametrize("status", [401, 403])
+    def test_a_refusal_is_an_error(self, monkeypatch, status):
+        answered, errors = _run(monkeypatch, FakeResponse(status, "no"))
+
+        assert answered == []
+        assert str(status) in errors[0] and "Authentication/Authorization failed" in errors[0]
+
+    def test_a_server_error_is_an_error_with_its_body(self, monkeypatch):
+        answered, errors = _run(monkeypatch, FakeResponse(503, "overloaded"))
+
+        assert answered == []
+        assert "503" in errors[0] and "Server error: overloaded" in errors[0]
+
+    def test_another_client_error_is_shown_with_its_body(self, monkeypatch):
+        answered, errors = _run(monkeypatch, FakeResponse(422, "bad field"))
+
+        assert errors == []
+        assert "422" in answered[0] and "bad field" in answered[0]
+
+    def test_a_failed_request_is_an_error(self, monkeypatch):
+        answered, errors = _run(monkeypatch, requests.ConnectionError("refused"))
+
+        assert answered == []
+        assert "refused" in errors[0]

@@ -6,8 +6,9 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 
 class _FakeResponse:
-    def __init__(self, body: bytes):
+    def __init__(self, body: bytes, status_code: int = 200):
         self._body = body
+        self.status_code = status_code
         self.encoding = "utf-8"
         self.closed = False
 
@@ -192,3 +193,38 @@ def test_closing_mid_review_does_not_wait(monkeypatch):
         assert time.monotonic() < deadline, "the review thread was never let go"
         app.processEvents()
         time.sleep(0.01)
+
+
+class _ErrorPageSession(_FakeSession):
+    """Answers every step but the *fail_on*-th, which gets an HTTP 500 error page."""
+
+    def __init__(self, fail_on: int):
+        super().__init__()
+        self.fail_on = fail_on
+
+    def post(self, url, **kwargs):
+        self.post_calls.append((url, kwargs))
+        if len(self.post_calls) == self.fail_on:
+            return _FakeResponse(b"<h1>Internal Server Error</h1>", status_code=500)
+        return _FakeResponse(f"answer {len(self.post_calls)}".encode())
+
+
+def test_an_error_status_is_a_failed_step_not_an_answer():
+    # An HTTP error page used to count as the step's answer and was quoted into
+    # the steps after it as if it were the model's findings.
+    _qt_app()
+    from pybreeze.pybreeze_ui.extend_ai_gui.ai_gui_global_variable import COT_TEMPLATE_FILES
+    from pybreeze.pybreeze_ui.extend_ai_gui.code_review.code_review_thread import SenderThread
+
+    linter_step = COT_TEMPLATE_FILES.index("linter.md")
+    thread = SenderThread(files=list(COT_TEMPLATE_FILES), code="print('x')",
+                          url="https://example.com/api")
+    received = {}
+    thread.update_response.connect(lambda name, resp: received.__setitem__(name, resp))
+
+    session = _ErrorPageSession(fail_on=linter_step + 1)
+    thread._run_templates(session, "print('x')")
+
+    assert "HTTP 500" in received["linter.md"]
+    later = _prompts(session)[linter_step + 1:]
+    assert not any("Internal Server Error" in prompt for prompt in later)

@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 
 from pybreeze.utils.network.http_client import (
     CONNECT_TIMEOUT,
     ResponseTooLargeError,
     read_capped_text,
+    succeeded,
     truncate_for_display,
 )
 
@@ -83,3 +86,14 @@ class TestAnEncodingTheServerNames:
         resp = FakeResponse("héllo".encode("utf-8"), encoding="totally-made-up")
 
         assert read_capped_text(resp, default_encoding="utf-8") == "héllo"
+
+
+class TestSucceeded:
+    @pytest.mark.parametrize("status", [200, 201, 204, 299])
+    def test_a_2xx_is_an_answer(self, status):
+        assert succeeded(SimpleNamespace(status_code=status))
+
+    @pytest.mark.parametrize("status", [199, 301, 302, 304, 400, 404, 500])
+    def test_anything_else_is_not(self, status):
+        # 3xx included, although requests calls it "ok"
+        assert not succeeded(SimpleNamespace(status_code=status))

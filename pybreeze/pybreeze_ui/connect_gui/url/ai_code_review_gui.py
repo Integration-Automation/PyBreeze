@@ -16,7 +16,7 @@ from pybreeze.utils.app_dirs import pybreeze_data_dir
 from pybreeze.utils.hash_tools.hash_text import hash_text
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.network.http_client import (
-    ResponseTooLargeError, read_capped_text, CONNECT_TIMEOUT,
+    ResponseTooLargeError, read_capped_text, CONNECT_TIMEOUT, succeeded,
 )
 from pybreeze.utils.network.url_validation import UnsafeURLError, validate_url
 
@@ -66,7 +66,7 @@ class ReviewRequestThread(QThread):
             validate_url(self._url)
             response = self._send()
             body = read_capped_text(response)
-            if response.ok:
+            if succeeded(response):
                 self.answered.emit(body)
             else:
                 # Without this a 302 (redirects are not followed) or a 500 with

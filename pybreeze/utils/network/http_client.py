@@ -61,6 +61,16 @@ def read_capped_text(
         return body.decode(default_encoding, "replace")
 
 
+def succeeded(response) -> bool:
+    """Whether *response* answered with a 2xx status.
+
+    Not ``response.ok``: that is true for every status below 400, so a redirect
+    -- which these requests do not follow -- would pass for an answer, usually
+    an empty one.
+    """
+    return 200 <= response.status_code < 300
+
+
 def truncate_for_display(text: str, limit: int = DISPLAY_TRUNCATE_CHARS) -> str:
     """Shorten *text* for safe embedding in an error message / dialog."""
     if len(text) <= limit:

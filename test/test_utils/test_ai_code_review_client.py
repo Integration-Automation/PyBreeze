@@ -123,6 +123,18 @@ class TestTheRequestItself:
 
         assert answered and "500" in answered[0]
 
+    def test_a_redirect_is_reported_not_shown_as_an_empty_answer(self, app, monkeypatch):
+        # requests calls every status below 400 "ok", a 302 included.
+        class Response:
+            ok = True
+            status_code = 302
+            reason = "Found"
+            text = ""
+
+        answered, failed = self._run(monkeypatch, Response())
+
+        assert answered and answered[0].startswith("HTTP 302 Found")
+
     def test_a_request_that_fails_does_not_log_the_url(self, app, monkeypatch):
         logged: list = []
         monkeypatch.setattr(
