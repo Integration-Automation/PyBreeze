@@ -217,8 +217,14 @@ class TestRenaming:
         original.touch()
         window = FakeWindow()
         editor = FakeEditor(str(original))
+        editor.code_save_thread = None
         monkeypatch.setattr(
-            ctx, "_find_editor_for_file", lambda _w, _p: editor)
+            ctx, "_editors_under", lambda _w, _p: [(editor, original)])
+        # The real one starts JEditor's save thread; the stand-in only records
+        # where the tab now points, the way it does.
+        monkeypatch.setattr(
+            ctx, "init_new_auto_save_thread",
+            lambda file_path, widget: setattr(widget, "current_file", file_path))
         answer(monkeypatch, "renamed.py")
         _action_rename(tree, window, original)
         assert editor.current_file == str(tmp_path / "renamed.py")

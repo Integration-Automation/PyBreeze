@@ -23,7 +23,13 @@ INTERNAL = [
     ("je_editor.pyside_ui.main_ui.plugin_browser.plugin_browser_widget", "PluginBrowserWidget",
      "menu/plugin_menu/build_plugin_menu.py"),
     ("je_editor.pyside_ui.main_ui.dock.destroy_dock", "DestroyDock",
-     "menu/tools/tools_menu.py"),
+     "menu/tools/tools_menu.py, editor_main/main_ui.py"),
+    ("je_editor.pyside_ui.code.auto_save.auto_save_manager", "init_new_auto_save_thread",
+     "editor_main/file_tree_context_menu.py"),
+    ("je_editor.pyside_ui.code.auto_save.auto_save_manager", "auto_save_manager_dict",
+     "editor_main/file_tree_context_menu.py"),
+    ("je_editor.pyside_ui.code.auto_save.auto_save_manager", "file_is_open_manager_dict",
+     "editor_main/file_tree_context_menu.py"),
     ("je_editor.utils.venv_check.check_venv", "check_and_choose_venv",
      "extend/process_executor/python_task_process_manager.py"),
     ("je_editor.pyside_ui.dialog.file_dialog.save_file_dialog", "choose_file_get_save_file_path",
@@ -120,6 +126,17 @@ class TestTheShapesPyBreezeCalls:
             for name, parameter in inspect.signature(browser.__init__).parameters.items()
             if name != "self")
 
+    def test_auto_save_can_be_stopped_and_started_again_on_another_path(self):
+        # A rename in the file tree stops a tab's save thread and starts another.
+        module = "je_editor.pyside_ui.code.auto_save.auto_save_manager"
+        start = _internal(module, "init_new_auto_save_thread")
+        assert _parameters(start)[:2] == ["file_path", "widget"]
+        assert isinstance(_internal(module, "auto_save_manager_dict"), dict)
+        assert isinstance(_internal(module, "file_is_open_manager_dict"), dict)
+        thread = _internal("je_editor.pyside_ui.code.auto_save.auto_save_thread", "CodeEditSaveThread")
+        source = inspect.getsource(thread)
+        assert "self.still_run" in source and "self.file" in source
+
     def test_the_language_wrapper_has_what_pybreeze_reads(self):
         from je_editor import language_wrapper
 
@@ -141,9 +158,13 @@ def test_the_list_matches_the_code():
 
     import pybreeze
 
-    pattern = re.compile(r"^\s*from (je_editor\.[\w.]+) import ([\w, ]+)$", re.MULTILINE)
+    # Both "import a, b" and "import (\n    a, b,\n)": a parenthesised import that
+    # the check could not read would slip past it unlisted.
+    pattern = re.compile(
+        r"^\s*from (je_editor\.[\w.]+) import (?:\(([^)]*)\)|([\w, ]+)$)", re.MULTILINE)
     found = set()
     for path in pathlib.Path(pybreeze.__file__).parent.rglob("*.py"):
-        for module, names in pattern.findall(path.read_text(encoding="utf-8")):
-            found.update((module, name.strip()) for name in names.split(","))
+        for module, wrapped, plain in pattern.findall(path.read_text(encoding="utf-8")):
+            names = (wrapped or plain).replace("\n", " ").split(",")
+            found.update((module, name.strip()) for name in names if name.strip())
     assert found == {(module, name) for module, name, _ in INTERNAL}

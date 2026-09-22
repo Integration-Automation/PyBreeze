@@ -14,6 +14,9 @@ from PySide6.QtWidgets import (
     QMessageBox, QApplication,
 )
 from je_editor import EditorWidget, language_wrapper
+from je_editor.pyside_ui.code.auto_save.auto_save_manager import (
+    auto_save_manager_dict, file_is_open_manager_dict, init_new_auto_save_thread,
+)
 
 from pybreeze.utils.logging.logger import pybreeze_logger
 
@@ -201,6 +204,45 @@ def _find_editor_for_file(main_window, file_path: Path) -> EditorWidget | None:
     return None
 
 
+def _editors_under(main_window, path: Path) -> list[tuple[EditorWidget, Path]]:
+    """The editor tabs open on *path*, or on any file under it, with their files."""
+    found = []
+    for index in range(main_window.tab_widget.count()):
+        widget = main_window.tab_widget.widget(index)
+        if not isinstance(widget, EditorWidget) or widget.current_file is None:
+            continue
+        file_path = Path(widget.current_file)
+        if file_path == path or path in file_path.parents:
+            found.append((widget, file_path))
+    return found
+
+
+def _stop_auto_save(editor: EditorWidget) -> None:
+    """Stop the tab's auto-save and forget the path it was registered under.
+
+    JEditor's save thread loops for as long as the path it *started* with is a
+    file, writing to whatever ``file`` holds; after a rename it would write the
+    buffer back to the old name -- recreating it, so it never stops -- and never
+    save the new one. It cannot be pointed elsewhere, only replaced.
+    """
+    if editor.code_save_thread is not None:
+        editor.code_save_thread.still_run = False
+        editor.code_save_thread = None
+    old = str(editor.current_file)
+    auto_save_manager_dict.pop(old, None)
+    file_is_open_manager_dict.pop(str(Path(old)), None)
+
+
+def _start_auto_save(editor: EditorWidget, file_path: Path) -> None:
+    """Point the tab at *file_path* and start its auto-save there."""
+    editor.code_edit.current_file = str(file_path)
+    file_is_open_manager_dict[str(file_path)] = str(file_path)
+    # Sets current_file, carries the tab's encoding and line ending, and starts
+    # the thread, as JEditor does when it opens a file.
+    init_new_auto_save_thread(str(file_path), editor)
+    editor.rename_self_tab()
+
+
 def _action_rename(tree_view: QTreeView, main_window, path: Path | None) -> None:
     if path is None:
         return
@@ -222,14 +264,15 @@ def _action_rename(tree_view: QTreeView, main_window, path: Path | None) -> None
         )
         return
 
-    # If this file is currently open in an editor tab, update the tab
-    editor = _find_editor_for_file(main_window, path)
-    if not _perform_file_op(tree_view, lambda: path.rename(target)):
-        return
-    if editor is not None and target.is_file():
-        editor.current_file = str(target)
-        editor.code_edit.current_file = str(target)
-        editor.rename_self_tab()
+    # Every tab open on the file, or on a file under the folder, follows it. Their
+    # auto-save stops first, so none writes to the old path mid-rename.
+    moving = _editors_under(main_window, path)
+    for editor, _old in moving:
+        _stop_auto_save(editor)
+    renamed = _perform_file_op(tree_view, lambda: path.rename(target))
+    for editor, old in moving:
+        now = target / old.relative_to(path) if renamed else old
+        _start_auto_save(editor, now)
 
 
 def _action_delete(tree_view: QTreeView, main_window, path: Path | None) -> None:
