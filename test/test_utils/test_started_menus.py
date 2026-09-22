@@ -43,3 +43,33 @@ def test_no_submenu_of_the_started_ide_is_empty(tmp_path):
 
     assert seen["automation_entries"] > 0
     assert seen["empty"] == []
+
+
+
+_REGISTER_A_BROKEN_AND_A_FINE_TAB = """
+from pybreeze import EDITOR_EXTEND_TAB
+from PySide6.QtWidgets import QWidget
+
+class Broken(QWidget):
+    def __init__(self):
+        raise RuntimeError("a third-party tab that fails")
+
+class Fine(QWidget):
+    pass
+
+EDITOR_EXTEND_TAB.update({"broken": Broken, "fine": Fine})
+"""
+
+_REPORT_THE_TABS = """
+result = [window.tab_widget.tabText(index) for index in range(window.tab_widget.count())]
+"""
+
+
+def test_a_broken_extend_tab_costs_only_itself(tmp_path):
+    # EDITOR_EXTEND_TAB is open to third parties: one constructor that raises
+    # must not keep the IDE from starting.
+    tabs = run_started_window(
+        tmp_path, _REPORT_THE_TABS, before_window=_REGISTER_A_BROKEN_AND_A_FINE_TAB)
+
+    assert "fine" in tabs
+    assert "broken" not in tabs

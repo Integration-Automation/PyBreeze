@@ -22,6 +22,9 @@ from PySide6.QtWidgets import QApplication
 app = QApplication([])
 from je_editor import language_wrapper
 from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
+"""
+
+_BUILD_WINDOW = """
 window = PyBreezeMainWindow(debug_mode=True)
 gc.collect()
 """
@@ -38,14 +41,18 @@ with open(sys.argv[1], "w", encoding="utf-8") as handle:
 """
 
 
-def run_started_window(tmp_path: Path, body: str, *, saved_language: str | None = None) -> object:
+def run_started_window(
+        tmp_path: Path, body: str, *, saved_language: str | None = None,
+        before_window: str = "") -> object:
     """Start the IDE in a child, run *body* there, and return the ``result`` it set.
 
     *body* runs after the window is built and garbage has been collected, with
     ``window`` and ``language_wrapper`` in scope; it must assign a JSON-able
     value to ``result``. The child's working directory is *tmp_path*, which is
     where JEditor looks for its settings, so *saved_language* is written there
-    as the saved language before the start.
+    as the saved language before the start. *before_window* runs after the
+    application exists and before the window is built -- to register an
+    ``EDITOR_EXTEND_TAB``, say.
     """
     if saved_language is not None:
         settings_dir = tmp_path / ".jeditor"
@@ -60,7 +67,8 @@ def run_started_window(tmp_path: Path, body: str, *, saved_language: str | None 
             filter(None, [str(_REPOSITORY_ROOT), os.environ.get("PYTHONPATH")])),
     }
     completed = subprocess.run(  # noqa: S603 — fixed argv: this interpreter and a script built from literals
-        [sys.executable, "-c", _PRELUDE + body + _REPORT, str(result_file)],
+        [sys.executable, "-c", _PRELUDE + before_window + _BUILD_WINDOW + body + _REPORT,
+         str(result_file)],
         cwd=tmp_path, env=environment, capture_output=True, timeout=_START_TIMEOUT_SECONDS,
         check=False, shell=False,
     )

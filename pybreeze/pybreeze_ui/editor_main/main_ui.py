@@ -71,8 +71,7 @@ class PyBreezeMainWindow(EditorMain):
         syntax_extend_package(self)
 
         # Tab
-        for widget_name, widget in EDITOR_EXTEND_TAB.items():
-            self.tab_widget.addTab(widget(), widget_name)
+        self._add_extend_tabs()
 
         # File tree context menu (right-click)
         setup_file_tree_context_menu(self)
@@ -82,6 +81,20 @@ class PyBreezeMainWindow(EditorMain):
             close_timer.setInterval(10000)
             close_timer.timeout.connect(self.debug_close)
             close_timer.start()
+
+    def _add_extend_tabs(self) -> None:
+        """Add every registered ``EDITOR_EXTEND_TAB`` widget as a tab.
+
+        The registry is open to third parties, so one widget whose constructor
+        raises must cost only its own tab: unguarded, it took down the whole
+        window before anything was shown, and the user got a traceback instead
+        of an IDE.
+        """
+        for widget_name, widget in EDITOR_EXTEND_TAB.items():
+            try:
+                self.tab_widget.addTab(widget(), widget_name)
+            except Exception as error:  # noqa: BLE001 — a registered third-party tab may raise anything; the IDE must still start
+                pybreeze_logger.error("Extend tab %r could not be built: %r", widget_name, error)
 
     def closeEvent(self, event) -> None:
         # A run's child outlives the IDE unless stopped here: it is a separate
