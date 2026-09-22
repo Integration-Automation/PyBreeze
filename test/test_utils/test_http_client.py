@@ -74,3 +74,12 @@ class TestTruncateForDisplay:
         assert result.startswith("x" * 100)
         assert "truncated" in result
         assert "5000" in result
+
+
+class TestAnEncodingTheServerNames:
+    def test_an_encoding_python_does_not_know_falls_back(self):
+        # The charset comes from the response's Content-Type: a server naming
+        # one Python has never heard of must not raise out of the read.
+        resp = FakeResponse("héllo".encode("utf-8"), encoding="totally-made-up")
+
+        assert read_capped_text(resp, default_encoding="utf-8") == "héllo"

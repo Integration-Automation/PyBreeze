@@ -82,7 +82,10 @@ def validate_url(url: str) -> str:
 
     try:
         infos = socket.getaddrinfo(hostname, None, socket.AF_UNSPEC, socket.SOCK_STREAM)
-    except socket.gaierror as exc:
+    except (socket.gaierror, UnicodeError) as exc:
+        # UnicodeError: the name cannot even be encoded for a lookup (a label
+        # over 63 characters, or an empty one). Callers catch UnsafeURLError, so
+        # anything else here would escape into a Qt slot.
         raise UnsafeURLError(f"Cannot resolve hostname '{hostname}': {exc}") from exc
 
     for *_unused, sockaddr in infos:

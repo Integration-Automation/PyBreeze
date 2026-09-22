@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import sys
+from pathlib import Path
+
 import requests
-import os
 from PySide6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLineEdit, QTextEdit, QComboBox, QLabel, QSizePolicy
@@ -10,11 +11,29 @@ from PySide6.QtWidgets import (
 from je_editor import language_wrapper
 
 from pybreeze.utils.app_dirs import pybreeze_data_dir
+from pybreeze.utils.hash_tools.hash_text import hash_text
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.network.http_client import (
     ResponseTooLargeError, read_capped_text, CONNECT_TIMEOUT,
 )
 from pybreeze.utils.network.url_validation import UnsafeURLError, validate_url
+
+
+# What the "seen this URL before" file keeps. An API URL can carry a token in
+# its query, and this project treats one as a credential, so only a fingerprint
+# of the URL is written to disk.
+_FINGERPRINT_ALGORITHM = "sha256"
+_FINGERPRINT_LENGTH = 64
+
+
+def url_fingerprint(url: str) -> str:
+    """Return the fingerprint recorded for *url* instead of the URL itself."""
+    return hash_text(url, _FINGERPRINT_ALGORITHM)
+
+
+def looks_like_a_fingerprint(line: str) -> bool:
+    """Whether *line* is already a fingerprint rather than a URL."""
+    return len(line) == _FINGERPRINT_LENGTH and all(c in "0123456789abcdef" for c in line)
 
 
 class AICodeReviewClient(QWidget):
@@ -132,21 +151,13 @@ class AICodeReviewClient(QWidget):
                 f"{self.word_dict.get('ai_code_review_gui_message_error')}: {e}")
             return
 
-        # 檢查 URL 是否已紀錄
-        if os.path.exists(self.url_file):
-            with open(self.url_file, encoding="utf-8") as f:
-                urls = [line.strip() for line in f.readlines()]
-        else:
-            urls = []
-
-        if url in urls:
-            self.response_panel.setPlainText(
-                self.word_dict.get("ai_code_review_gui_message_url_already_recorded"))
-        else:
-            with open(self.url_file, "a", encoding="utf-8") as f:
-                f.write(url + "\n")
+        # 這個 URL 之前送過嗎 / Has this URL been sent before?
+        if self.record_url(url):
             self.response_panel.setPlainText(
                 self.word_dict.get("ai_code_review_gui_message_new_url_recorded"))
+        else:
+            self.response_panel.setPlainText(
+                self.word_dict.get("ai_code_review_gui_message_url_already_recorded"))
 
         try:
             if method == "GET":
@@ -162,11 +173,37 @@ class AICodeReviewClient(QWidget):
                     self.word_dict.get("ai_code_review_gui_message_unsupported_http_method"))
                 return
 
+            if not response.ok:
+                self.response_panel.append(
+                    f"{self.word_dict.get('ai_code_review_gui_message_error')}: "
+                    f"HTTP {response.status_code} {response.reason}")
             self.response_panel.append(read_capped_text(response))
 
         except (requests.RequestException, ResponseTooLargeError) as e:
-            pybreeze_logger.error("AI code review request failed: %r", e)
+            # Not %r: a requests error carries the whole URL, which may hold a token.
+            pybreeze_logger.error("AI code review request failed: %s", type(e).__name__)
             self.response_panel.setPlainText(f"{self.word_dict.get('ai_code_review_gui_message_error')}: {e}")
+
+    def record_url(self, url: str) -> bool:
+        """Record *url* as sent, and say whether it had not been sent before.
+
+        Only a fingerprint is stored. A file still holding URLs from an older
+        version is rewritten as fingerprints, so the tokens they may carry stop
+        sitting in the user's home directory.
+        """
+        path = Path(self.url_file)
+        lines = []
+        if path.is_file():
+            lines = [line.strip() for line in path.read_text(encoding="utf-8").splitlines()
+                     if line.strip()]
+        seen = {line if looks_like_a_fingerprint(line) else url_fingerprint(line)
+                for line in lines}
+        fingerprint = url_fingerprint(url)
+        is_new = fingerprint not in seen
+        if is_new or any(not looks_like_a_fingerprint(line) for line in lines):
+            seen.add(fingerprint)
+            path.write_text("\n".join(sorted(seen)) + "\n", encoding="utf-8")
+        return is_new
 
     def accept_response(self):
         """Accept response code and save"""

@@ -36,7 +36,9 @@ def read_capped_text(
     The request must be issued with ``stream=True`` so the body is read here
     under the cap instead of being buffered in full by ``requests``. Raises
     ``ResponseTooLargeError`` once the accumulated body exceeds *max_bytes*. The
-    response is always closed before returning.
+    response is always closed before returning. The charset the response names
+    is used when Python knows it, and *default_encoding* otherwise: a server can
+    name anything, and an unknown one would raise ``LookupError`` here.
     """
     total = 0
     chunks: list[bytes] = []
@@ -52,8 +54,11 @@ def read_capped_text(
             chunks.append(chunk)
     finally:
         response.close()
-    encoding = response.encoding or default_encoding
-    return b"".join(chunks).decode(encoding, "replace")
+    body = b"".join(chunks)
+    try:
+        return body.decode(response.encoding or default_encoding, "replace")
+    except LookupError:
+        return body.decode(default_encoding, "replace")
 
 
 def truncate_for_display(text: str, limit: int = DISPLAY_TRUNCATE_CHARS) -> str:

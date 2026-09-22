@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-12 | 2026-09-23 | The AI review panel kept API URLs, tokens and all | #incident #security | [2026-09](2026-09.md) |
 | U-20260923-11 | 2026-09-23 | Image sources, undo scopes and stacking order | #done #diagram | [2026-09](2026-09.md) |
 | U-20260923-10 | 2026-09-23 | A diagram that failed to load took the open one with it | #incident #diagram | [2026-09](2026-09.md) |
 | U-20260923-09 | 2026-09-23 | A run with no script tab handed the package nothing | #incident #process-executor | [2026-09](2026-09.md) |
@@ -92,4 +93,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 29 |
+| [2026-09.md](2026-09.md) | 2026-09 | 30 |
