@@ -54,10 +54,11 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260922-02 | 2026-09-22 | Run windows ignored the interpreter chosen in the IDE | #incident #process-executor | [2026-09](2026-09.md) |
 | U-20260922-01 | 2026-09-22 | Adopt progress/architecture/docs-updates rules | #docs #migration | [2026-09](2026-09.md) |
 
 ## Batches
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 1 |
+| [2026-09.md](2026-09.md) | 2026-09 | 2 |

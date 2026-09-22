@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import pytest
 
+from pybreeze.extend.process_executor import process_executor_utils
 from pybreeze.extend.process_executor.prthinker import prthinker_process
 from pybreeze.extend.prthinker_extend.prthinker_setting import DEFAULT_SETTING
 
@@ -22,6 +23,7 @@ class Window:
         self._current_widget = current_widget
         self.current_run_code_window: list = []
         self.encoding = "utf-8"
+        self.python_compiler = None
         self.cleared = False
 
     def currentWidget(self):  # noqa: N802 — the Qt name this stands in for
@@ -29,6 +31,12 @@ class Window:
 
     def clear_code_result(self) -> None:
         self.cleared = True
+
+
+class RunWindow:
+    """Stands in for the run window the review's output goes to."""
+
+    python_compiler = None
 
 
 class RecordingProcess:
@@ -47,8 +55,8 @@ class RecordingProcess:
 def recorded(monkeypatch):
     """Catch the review before it reaches a real process or a real window."""
     RecordingProcess.calls = []
-    monkeypatch.setattr(prthinker_process, "TaskProcessManager", RecordingProcess)
-    monkeypatch.setattr(prthinker_process, "CodeWindow", lambda: object())
+    monkeypatch.setattr(process_executor_utils, "TaskProcessManager", RecordingProcess)
+    monkeypatch.setattr(process_executor_utils, "CodeWindow", RunWindow)
     # The editor tab is recognised by its type, so the stand-in becomes that type.
     monkeypatch.setattr(prthinker_process, "EditorWidget", Editor)
     return RecordingProcess.calls

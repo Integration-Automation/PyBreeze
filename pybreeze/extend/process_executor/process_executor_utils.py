@@ -44,7 +44,7 @@ def start_process(
         send_mail: bool = False,
         program_buffer: int = 1024000
 ):
-    process = _build_task_process(main_window, send_mail, program_buffer)
+    process = build_task_process(main_window, send_mail, program_buffer)
     process.start_test_process(
         package,
         exec_str=test_format_code,
@@ -65,7 +65,7 @@ def build_process_from_file(
     the file is already on disk.
     """
     try:
-        process = _build_task_process(main_window, send_mail, program_buffer)
+        process = build_task_process(main_window, send_mail, program_buffer)
         process.start_test_process_file(package, file_path)
     except ITETestExecutorException as error:
         pybreeze_logger.error(repr(error))
@@ -95,23 +95,25 @@ def run_dir_files_with_package(
         pybreeze_logger.error("%s multi file error: %r", package, error)
 
 
-def _build_task_process(
+def build_task_process(
         main_window: PyBreezeMainWindow,
-        send_mail: bool,
-        program_buffer: int,
+        send_mail: bool = False,
+        program_buffer: int = 1024000,
 ) -> TaskProcessManager:
+    """Open a fresh run window and the task process manager that writes to it.
+
+    The run window carries the interpreter chosen in the IDE (the Python
+    environment menu, or the saved setting), so the child runs with that
+    interpreter; only when none was chosen does the manager fall back to a
+    ``venv`` / ``.venv`` in the working directory, then to ``PATH``.
+    """
     code_window = CodeWindow()
+    code_window.python_compiler = main_window.python_compiler
     main_window.current_run_code_window.append(code_window)
     main_window.clear_code_result()
-    if send_mail:
-        return TaskProcessManager(
-            main_window=code_window,
-            task_done_trigger_function=send_after_test,
-            program_buffer_size=program_buffer,
-            program_encoding=main_window.encoding,
-        )
     return TaskProcessManager(
         code_window,
+        task_done_trigger_function=send_after_test if send_mail else None,
         program_buffer_size=program_buffer,
         program_encoding=main_window.encoding,
     )

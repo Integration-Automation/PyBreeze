@@ -17,8 +17,7 @@ from pybreeze.extend.prthinker_extend.prthinker_setting import (
     PRTHINKER_PACKAGE, environment_for, load_setting, review_file_arguments,
     review_pr_arguments
 )
-from pybreeze.extend.process_executor.python_task_process_manager import TaskProcessManager
-from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
+from pybreeze.extend.process_executor.process_executor_utils import build_task_process
 from pybreeze.utils.logging.logger import pybreeze_logger
 
 if TYPE_CHECKING:
@@ -74,14 +73,7 @@ def review_pull_request(
 def _run(main_window: PyBreezeMainWindow, arguments: List[str],
          setting: dict, program_buffer: int) -> bool:
     """開一個執行視窗把 prthinker 跑起來 / Open a run window and start prthinker in it."""
-    code_window = CodeWindow()
-    main_window.current_run_code_window.append(code_window)
-    main_window.clear_code_result()
-    process = TaskProcessManager(
-        code_window,
-        program_buffer_size=program_buffer,
-        program_encoding=main_window.encoding,
-    )
+    process = build_task_process(main_window, program_buffer=program_buffer)
     process.start_module_process(
         PRTHINKER_PACKAGE, arguments, environment_for(setting))
     return True
