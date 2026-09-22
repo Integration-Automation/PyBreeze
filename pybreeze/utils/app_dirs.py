@@ -6,6 +6,14 @@ from pathlib import Path
 _DATA_DIR_NAME = ".pybreeze"
 
 
+def pybreeze_data_path() -> Path:
+    """Return where the user-level PyBreeze data directory is, without creating it.
+
+    For callers that must not touch the disk yet, such as the logger at import.
+    """
+    return Path.home() / _DATA_DIR_NAME
+
+
 def pybreeze_data_dir() -> Path:
     """Return the user-level PyBreeze data directory, creating it if needed.
 
@@ -13,6 +21,6 @@ def pybreeze_data_dir() -> Path:
     known hosts, AI-review stats — stable regardless of the directory the IDE
     was launched from.
     """
-    data_dir = Path.home() / _DATA_DIR_NAME
+    data_dir = pybreeze_data_path()
     data_dir.mkdir(parents=True, exist_ok=True)
     return data_dir
