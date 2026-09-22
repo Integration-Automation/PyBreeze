@@ -25,10 +25,10 @@ pybreeze/
 │   │   ├── python_task_process_manager.py  # TaskProcessManager (subprocess + threads + QTimer)
 │   │   ├── process_executor_utils.py       # build_process / start_process / run_dir_files_*
 │   │   ├── file_runner_process.py          # FileRunnerProcess — plugin run configs (any language)
-│   │   ├── queue_pump.py                   # Shared per-tick queue drain
+│   │   ├── queue_pump.py                   # Shared pipe reader + per-tick queue drain
 │   │   ├── api_testka/ auto_control/ web_runner/ load_density/
 │   │   ├── file_automation/ mail_thunder/  # Each delegates to build_process with its package name
-│   │   ├── test_pioneer/        # TestPioneerProcess (custom variant)
+│   │   ├── test_pioneer/        # python -m test_pioneer -e <yaml> via start_module_process
 │   │   └── prthinker/           # Code review via start_module_process (secrets via env)
 │   ├── mail_thunder_extend/     # Post-test email report hook
 │   └── prthinker_extend/        # prthinker settings + argument assembly (pure logic, no Qt)

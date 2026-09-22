@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import queue
 import subprocess
 import sys
 import threading
@@ -11,12 +10,10 @@ from queue import Queue
 from threading import Thread
 
 from PySide6.QtCore import QTimer
-from PySide6.QtGui import QTextCharFormat
-from je_editor.pyside_ui.main_ui.save_settings.user_color_setting_file import actually_color_dict
 from je_editor.utils.exception.exceptions import JEditorExecException
 from je_editor.utils.venv_check.check_venv import check_and_choose_venv
 
-from pybreeze.extend.process_executor.queue_pump import pump_message_queue
+from pybreeze.extend.process_executor.queue_pump import pump_message_queue, read_stream_into_queue
 from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.subprocess_util import no_window_creationflags, utf8_subprocess_env
@@ -77,7 +74,8 @@ class TaskProcessManager:
                 self.compiler_path = check_and_choose_venv(venv_path)
             except JEditorExecException as error:
                 pybreeze_logger.error("No Python interpreter found for run: %r", error)
-                self._append_text(f"[Error] No Python interpreter found: {error}", is_error=True)
+                self.main_window.append_output(
+                    f"[Error] No Python interpreter found: {error}\n", is_error=True, own_line=True)
                 self.main_window.show()
                 return False
         else:
@@ -159,19 +157,10 @@ class TaskProcessManager:
         self.timer.timeout.connect(self.pull_text)
         self.timer.start()
 
-    def _append_text(self, text: str, is_error: bool = False) -> None:
-        """Append text to the code result widget."""
-        text_cursor = self.main_window.code_result.textCursor()
-        text_format = QTextCharFormat()
-        color_key = "error_output_color" if is_error else "normal_output_color"
-        text_format.setForeground(actually_color_dict.get(color_key))
-        text_cursor.insertText(text, text_format)
-        text_cursor.insertBlock()
-
     # Pyside UI update method
     def pull_text(self):
-        pump_message_queue(self.run_output_queue, self._append_text, is_error=False)
-        pump_message_queue(self.run_error_queue, self._append_text, is_error=True)
+        pump_message_queue(self.run_output_queue, self.main_window.append_output, is_error=False)
+        pump_message_queue(self.run_error_queue, self.main_window.append_output, is_error=True)
         if self.process is None:
             if self.timer.isActive():
                 self.timer.stop()
@@ -196,52 +185,31 @@ class TaskProcessManager:
         self.drain_and_display_queue()
         if self.process is not None:
             self.process.terminate()
-            self._append_text(f"Task exit with code {self.process.returncode}")
+            self.main_window.append_output(
+                f"Task exit with code {self.process.returncode}\n", own_line=True)
             self.process = None
         if self.task_done_trigger_function is not None:
             try:
                 self.task_done_trigger_function()
-            except Exception as e:
-                pybreeze_logger.error(f"Task done trigger failed: {e}")
+            except Exception as error:  # noqa: BLE001 — a failing hook (e.g. the report mail) must not break the run window
+                pybreeze_logger.error("Task done trigger failed: %r", error)
 
     def drain_and_display_queue(self):
-        while not self.run_output_queue.empty():
-            try:
-                output_message = str(self.run_output_queue.get_nowait()).strip()
-                if output_message:
-                    self._append_text(output_message)
-            except queue.Empty:
-                break
-        while not self.run_error_queue.empty():
-            try:
-                error_message = str(self.run_error_queue.get_nowait()).strip()
-                if error_message:
-                    self._append_text(error_message, is_error=True)
-            except queue.Empty:
-                break
+        pump_message_queue(
+            self.run_output_queue, self.main_window.append_output, is_error=False, max_messages=None)
+        pump_message_queue(
+            self.run_error_queue, self.main_window.append_output, is_error=True, max_messages=None)
 
     def _read_stream_into_queue(self, stream_name: str, target_queue: Queue) -> None:
-        # Block on readline until a line arrives or the pipe hits EOF. Stopping on
-        # EOF (empty read) is essential: without it the loop spins at 100% CPU
-        # re-reading a closed pipe until the QTimer notices the process exited.
-        while self.still_run_program:
-            proc = self.process
-            if proc is None:
-                break
-            stream = getattr(proc, stream_name)
-            if stream is None:
-                break
-            try:
-                line = stream.readline(self.program_buffer_size)
-            except (ValueError, OSError):
-                # Pipe closed underneath us during shutdown.
-                break
-            if not line:
-                break
-            if isinstance(line, bytes):
-                line = line.decode(self.program_encoding, "replace")
-            if line.strip():
-                target_queue.put(line)
+        stream = getattr(self.process, stream_name, None)
+        if stream is None:
+            return
+        read_stream_into_queue(
+            stream, target_queue,
+            buffer_size=self.program_buffer_size,
+            encoding=self.program_encoding,
+            keep_reading=lambda: self.still_run_program,
+        )
 
     def read_program_output_from_process(self):
         self._read_stream_into_queue("stdout", self.run_output_queue)

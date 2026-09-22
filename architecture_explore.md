@@ -1,6 +1,6 @@
 # PyBreeze 架構探勘 / Architecture Exploration
 
-> 掃描範圍：`pybreeze/`（149 個 `.py`、約 16,400 行）＋ `test/`、`exe/`、`docs/`、CI 設定
+> 掃描範圍：`pybreeze/`（189 個 `.py`、約 16,300 行）＋ `test/`、`exe/`、`docs/`、CI 設定
 > 對應版本：`pyproject.toml` 1.0.21（stable）／`dev.toml` 1.0.14（dev），分支 `dev`
 
 ---
@@ -93,9 +93,9 @@ Template Method 定義的子行程生命週期：
 |---|---|
 | 解譯器解析 | `renew_path()` → 執行視窗帶著 IDE 選定的直譯器（`python_compiler`，由 `build_task_process()` 從主視窗抄過來）就用它；沒選才用 `find_venv_path()` 找 `venv/`、`.venv/`，交給 `check_and_choose_venv()`；找不到時**不拋例外**，直接把錯誤寫進執行視窗並回傳 `False` |
 | 啟動 | `subprocess.Popen(args, shell=False, creationflags=CREATE_NO_WINDOW, env=PYTHONIOENCODING=...)` |
-| 讀取 | 兩條 daemon Thread 各自 `readline()` stdout / stderr，塞進 `Queue`；**空讀 = EOF 立刻 break**（否則會 100% CPU 空轉） |
-| 送 UI | `QTimer` 每 100 ms 呼叫 `pull_text()`，經 `pump_message_queue()` 每 tick 最多抽 256 則 |
-| 收尾 | `exit_program()`：join 執行緒（timeout 2s）→ drain queue → `terminate()` → 呼叫 `task_done_trigger_function`（例如寄信） |
+| 讀取 | 兩條 daemon Thread 各自經 `queue_pump.read_stream_into_queue()` 對 stdout / stderr `readline()`，原樣塞進 `Queue`（保留縮排、行尾與空行）；**空讀 = EOF 立刻 break**（否則會 100% CPU 空轉） |
+| 送 UI | `QTimer` 每 100 ms 呼叫 `pull_text()`，經 `pump_message_queue()` 每 tick 最多抽 256 則，交給 `CodeWindow.append_output()` |
+| 收尾 | `exit_program()`：join 執行緒（timeout 2s）→ drain queue（`max_messages=None` 一次抽乾）→ `terminate()` → 呼叫 `task_done_trigger_function`（例如寄信） |
 
 三種啟動介面：
 
@@ -133,17 +133,23 @@ call_X_multi_file_and_send()   → run_dir_files_with_package(..., True)
 | `file_automation` | `automation_file` |
 | `mail_thunder` | `je_mail_thunder`（只有單一 `call_mail_thunder()`） |
 
-### 4.4 兩個特化執行器
+`test_pioneer/test_pioneer_process_manager.py` 只剩 `init_and_start_test_pioneer_process()`：經 `build_task_process()` 開執行視窗，再用 `start_module_process("test_pioneer", ["-e", <yaml>])` 跑，跟其他套件走同一個 `TaskProcessManager`（找不到直譯器時一樣寫進執行視窗，不會從選單 callback 拋出）。
 
-- **`test_pioneer/test_pioneer_process_manager.py`** — `TestPioneerProcess`。跑 `python -m test_pioneer -e <yaml>`。自帶一份幾乎與 `TaskProcessManager` 相同的 pump / drain / exit 邏輯（只有 `queue_pump` 被抽出共用）。
+### 4.4 特化執行器
+
 - **`file_runner_process.py`** — `FileRunnerProcess`。**唯一不跑 Python 的執行器**，服務插件註冊的 run config：
   - 直譯式：`compiler [args...] file`（如 `go run main.go`）
   - 編譯式：`compiler file -o out` → 執行 `out` → 執行完 `os.remove()` 清掉產物
   - 編譯有 60 秒 timeout，QTimer 間隔 50 ms（比 Python 執行器更快）
+  - 讀取、pump、drain 與寫進視窗都用 §4.5 的共用函式
 
-### 4.5 `queue_pump.py`
+### 4.5 `queue_pump.py` 與 `CodeWindow.append_output()`
 
-抽出來的共用 pump：`MAX_MESSAGES_PER_PUMP = 256`。註解說明得很清楚 — 每 tick 只抽一則的話輸出上限只有 ~10 行/秒，聒噪的腳本會爬行；有上界則避免洪水輸出卡住 UI 執行緒。目前只有 `TaskProcessManager` 和 `TestPioneerProcess` 用它，`FileRunnerProcess` 仍是自己的迴圈。
+子行程輸出到執行視窗的整條管線，兩個執行器（`TaskProcessManager`、`FileRunnerProcess`）共用：
+
+- `read_stream_into_queue(stream, queue, buffer_size, encoding, keep_reading)` — reader 執行緒用。行**原樣**進 queue（縮排、行尾、空行都留著）；空讀 = EOF 即停，管線被關掉的 `OSError` / `ValueError` 記 debug 後停
+- `pump_message_queue(q, append_fn, is_error, max_messages)` — UI 執行緒用。`MAX_MESSAGES_PER_PUMP = 256`：每 tick 只抽一則的話輸出上限只有 ~10 行/秒，聒噪的腳本會爬行；有上界則避免洪水輸出卡住 UI 執行緒。`max_messages=None` 是收尾時一次抽乾。只跳過空字串
+- `CodeWindow.append_output(text, is_error, own_line=False)`（`show_code_window/code_window.py`）— 一律寫在文件**尾端**（不用 widget 自己的游標：那個游標跟著使用者的點擊與選取走，寫在那裡會把輸出插進中間、或蓋掉使用者選取的文字）。`\r\n` 與單獨的 `\r` 轉成換行；換行只出現在文字本身有換行的地方，所以超過 buffer 被切段的長行會接回同一行。`own_line=True` 給視窗自己的狀態訊息（`Task exit with code …`），程式留下沒換行的半行時先補一個換行
 
 ---
 
@@ -410,7 +416,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 18. 測試與 CI
 
-- **單元測試** `test/test_utils/` — 66 個 `test_*.py`、989 個測試。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
+- **單元測試** `test/test_utils/` — 67 個 `test_*.py`、1006 個測試。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
 - **整合測試** `test/unit_test/start_automation/` — 以 `debug_mode=True` 啟動 IDE，10 秒後自動關閉，驗證啟動流程與 extend tab
 - **CI** `.github/workflows/{dev,stable}.yml` — `unit-tests` job 跑 Windows runner、Python 3.10–3.14 矩陣，3.12 那一腳額外上傳 `coverage-xml` artifact；`sonarcloud` job 跑 ubuntu、`needs: unit-tests`。每日 02:00 排程 + push/PR 觸發。`stable.yml` 另有 `publish` job 負責版號遞增與 PyPI 發布
 - **覆蓋率** `.coveragerc` — `relative_files = True` 是必要的：報告在 Windows 產生、由 Linux 上的 scanner 讀取，路徑不能帶機器資訊。目前整體 60%（`utils/`、`tools_gui`、`dialog` 95–100%；`editor_main` 58%、`menu` 54%；仍低的是 `diagram_editor` 45%、`process_executor` 39%、`connect_gui` 28%）
@@ -423,23 +429,17 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 以下是客觀觀察，不是缺陷判定，但值得留意：
 
-1. **三份幾乎相同的 pump/drain 邏輯** — `TaskProcessManager`、`TestPioneerProcess`、`FileRunnerProcess` 各自實作 `_read_stream_into_queue` / `drain_*` / `_append_text`。`queue_pump.py` 只抽走了其中兩者的 pump 部分；`_append_text` 三處逐字重複（CLAUDE.md 的「6 行以上重複區塊應抽 helper」規則）。
+1. **`file_tree_context_menu.setup_file_tree_context_menu()` 用 monkey patch** — 直接覆寫 `main_window.tab_widget.addTab` 來攔截新分頁。可行但脆弱，若他處也包裝 `addTab` 會疊加。
 
-2. **執行視窗會吃掉輸出的縮排** — `FileRunnerProcess._pull_text()` / `_drain_queues()` 與 `queue_pump.pump_message_queue()` 都對每一行做 `.strip()`。對日誌型輸出無感，但子行程若輸出程式碼或任何有縮排結構的文字，執行視窗裡會全部靠左（`images/run_output_window.png` 這張實拍截圖就看得到）。修法是只去掉行尾換行。
+2. **`PyBreezeMainWindow.__init__` 的 `extend` 參數語意分歧** — 對 `super()` 恆傳 `extend=True`，而參數本身只用來決定要不要設定 Windows AppUserModelID 與視窗圖示。
 
-3. **`file_tree_context_menu.setup_file_tree_context_menu()` 用 monkey patch** — 直接覆寫 `main_window.tab_widget.addTab` 來攔截新分頁。可行但脆弱，若他處也包裝 `addTab` 會疊加。
+3. **`start_editor()` 以 `os._exit(ret)` 收場** — 繞過 atexit 與 Qt 拆解。對 GUI 主程式常見（避免殘留執行緒卡住），但 `closeEvent` 之後的清理路徑等於不存在。
 
-4. **`PyBreezeMainWindow.__init__` 的 `extend` 參數語意分歧** — 對 `super()` 恆傳 `extend=True`，而參數本身只用來決定要不要設定 Windows AppUserModelID 與視窗圖示。
+4. **`mail_thunder_setting.send_after_test()` 捕捉裸 `Exception`** — 最後一個 `except Exception` 只記 log，符合「不讓寄信失敗炸掉測試」的意圖，但與 CLAUDE.md「避免捕捉 Exception 除非立即重拋」有張力。
 
-5. **`start_editor()` 以 `os._exit(ret)` 收場** — 繞過 atexit 與 Qt 拆解。對 GUI 主程式常見（避免殘留執行緒卡住），但 `closeEvent` 之後的清理路徑等於不存在。
+5. **`PackageManager` 名實不符** — 類別名暗示 pip 管理，實際只承載 `syntax_check_list` 六個項目；pip 安裝落在 `install_utils.install_package()`。
 
-6. **`mail_thunder_setting.send_after_test()` 捕捉裸 `Exception`** — 最後一個 `except Exception` 只記 log，符合「不讓寄信失敗炸掉測試」的意圖，但與 CLAUDE.md「避免捕捉 Exception 除非立即重拋」有張力。
-
-7. **`test_pioneer_process_manager` 建構子直接呼叫 `check_and_choose_venv()`** — 不像 `TaskProcessManager.renew_path()` 那樣把找不到解譯器的情況轉成視窗訊息，這裡會直接讓 `JEditorExecException` 從選單 callback 逃出去。
-
-8. **`PackageManager` 名實不符** — 類別名暗示 pip 管理，實際只承載 `syntax_check_list` 六個項目；pip 安裝落在 `install_utils.install_package()`。
-
-9. **`PLUGIN_GUIDE.md` 指向不存在的目錄** — 文件末尾說內建插件都在 `exe/jeditor_plugins/`，但該目錄不在 repo 裡，`je_editor` 套件內也只有 `plugin_loader.py`。README 已改為以「範例」描述這些插件。
+6. **`PLUGIN_GUIDE.md` 指向不存在的目錄** — 文件末尾說內建插件都在 `exe/jeditor_plugins/`，但該目錄不在 repo 裡，`je_editor` 套件內也只有 `plugin_loader.py`。README 已改為以「範例」描述這些插件。
 
 ---
 

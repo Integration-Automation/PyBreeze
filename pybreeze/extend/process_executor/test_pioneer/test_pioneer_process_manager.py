@@ -1,181 +1,22 @@
 from __future__ import annotations
 
-import queue
-import subprocess
-import threading
-from queue import Queue
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import QTimer
-from PySide6.QtGui import QTextCharFormat
-from je_editor.pyside_ui.main_ui.save_settings.user_color_setting_file import actually_color_dict
-from je_editor.utils.venv_check.check_venv import check_and_choose_venv
-
-from pybreeze.extend.process_executor.python_task_process_manager import find_venv_path
-from pybreeze.extend.process_executor.queue_pump import pump_message_queue
-from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
-from pybreeze.utils.subprocess_util import no_window_creationflags, utf8_subprocess_env
+from pybreeze.extend.process_executor.process_executor_utils import build_task_process
 
 if TYPE_CHECKING:
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
 
-
-class TestPioneerProcess:
-
-    def __init__(
-            self,
-            main_window: PyBreezeMainWindow,
-            executable_path: str,
-            program_buffer: int = 1024000,
-            encoding: str = "utf-8",
-    ):
-        self._main_window: PyBreezeMainWindow = main_window
-        # Code window init
-        self._code_window = CodeWindow()
-        self._main_window.current_run_code_window.append(self._code_window)
-        self._main_window.clear_code_result()
-        self._still_run_program: bool = False
-        self._program_buffer_size = program_buffer
-        self._program_encoding = encoding
-        self._run_output_queue: Queue = Queue()
-        self._run_error_queue: Queue = Queue()
-        self._read_program_error_output_from_thread: threading.Thread | None = None
-        self._read_program_output_from_thread: threading.Thread | None = None
-        self._timer: QTimer = QTimer(self._code_window)
-        if self._main_window.python_compiler is None:
-            venv_path = find_venv_path()
-            self._compiler_path = check_and_choose_venv(venv_path)
-        else:
-            self._compiler_path = main_window.python_compiler
-        args = [
-            str(self._compiler_path),
-            "-m",
-            "test_pioneer",
-            "-e",
-            executable_path
-        ]
-        # Launch the test_pioneer CLI in the user's configured Python interpreter.
-        # Argument list is assembled from a curated template + an executable path the
-        # user selected via file dialog. shell=False. nosec B603.
-        self._process: subprocess.Popen | None = subprocess.Popen(  # nosec B603  # nosemgrep  # noqa: S603
-            args,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            creationflags=no_window_creationflags(),
-            env=utf8_subprocess_env(self._program_encoding),
-        )
-
-    def _append_text(self, text: str, is_error: bool = False) -> None:
-        """Append text to the code result widget."""
-        text_cursor = self._code_window.code_result.textCursor()
-        text_format = QTextCharFormat()
-        color_key = "error_output_color" if is_error else "normal_output_color"
-        text_format.setForeground(actually_color_dict.get(color_key))
-        text_cursor.insertText(text, text_format)
-        text_cursor.insertBlock()
-
-    # Pyside UI update method
-    def pull_text(self):
-        pump_message_queue(self._run_output_queue, self._append_text, is_error=False)
-        pump_message_queue(self._run_error_queue, self._append_text, is_error=True)
-        if self._process is None:
-            if self._timer.isActive():
-                self._timer.stop()
-            return
-        if self._process.returncode is not None:
-            if self._timer.isActive():
-                self._timer.stop()
-            self.exit_program()
-        elif self._still_run_program:
-            self._process.poll()
-
-    # exit program change run flag to false and clean read thread and queue and process
-    def exit_program(self):
-        self._still_run_program = False
-        # Wait for threads to finish before cleanup
-        if self._read_program_output_from_thread is not None:
-            self._read_program_output_from_thread.join(timeout=2)
-            self._read_program_output_from_thread = None
-        if self._read_program_error_output_from_thread is not None:
-            self._read_program_error_output_from_thread.join(timeout=2)
-            self._read_program_error_output_from_thread = None
-        self.drain_and_clear_queue()
-        if self._process is not None:
-            self._process.terminate()
-            self._append_text(f"Task exit with code {self._process.returncode}")
-            self._process = None
-
-    def drain_and_clear_queue(self):
-        while not self._run_output_queue.empty():
-            try:
-                output_message = str(self._run_output_queue.get_nowait()).strip()
-                if output_message:
-                    self._append_text(output_message)
-            except queue.Empty:
-                break
-        while not self._run_error_queue.empty():
-            try:
-                error_message = str(self._run_error_queue.get_nowait()).strip()
-                if error_message:
-                    self._append_text(error_message, is_error=True)
-            except queue.Empty:
-                break
-
-    def _read_stream_into_queue(self, stream_name: str, target_queue: Queue) -> None:
-        # Block on readline until a line arrives or the pipe hits EOF. Stopping on
-        # EOF (empty read) is essential: without it the loop spins at 100% CPU
-        # re-reading a closed pipe until the QTimer notices the process exited.
-        while self._still_run_program:
-            proc = self._process
-            if proc is None:
-                break
-            stream = getattr(proc, stream_name)
-            if stream is None:
-                break
-            try:
-                line = stream.readline(self._program_buffer_size)
-            except (ValueError, OSError):
-                # Pipe closed underneath us during shutdown.
-                break
-            if not line:
-                break
-            if isinstance(line, bytes):
-                line = line.decode(self._program_encoding, "replace")
-            if line.strip():
-                target_queue.put(line)
-
-    def read_program_output_from_process(self):
-        self._read_stream_into_queue("stdout", self._run_output_queue)
-
-    def read_program_error_output_from_process(self):
-        self._read_stream_into_queue("stderr", self._run_error_queue)
-
-    def start_test_pioneer_process(self):
-        self._still_run_program = True
-        # program output message queue thread
-        self._read_program_output_from_thread = threading.Thread(
-            target=self.read_program_output_from_process,
-            daemon=True
-        )
-        self._read_program_output_from_thread.start()
-        # program error message queue thread
-        self._read_program_error_output_from_thread = threading.Thread(
-            target=self.read_program_error_output_from_process,
-            daemon=True
-        )
-        self._read_program_error_output_from_thread.start()
-        # start Pyside update
-        # start timer
-        self._code_window.setWindowTitle("Test Pioneer")
-        self._code_window.show()
-        self._timer = QTimer(self._code_window)
-        self._timer.setInterval(100)
-        self._timer.timeout.connect(self.pull_text)
-        self._timer.start()
+_PACKAGE = "test_pioneer"
 
 
-def init_and_start_test_pioneer_process(ui_we_want_to_set: PyBreezeMainWindow, file_path: str):
-    test_pioneer_process_manager = TestPioneerProcess(
-        main_window=ui_we_want_to_set, executable_path=file_path)
-    test_pioneer_process_manager.start_test_pioneer_process()
+def init_and_start_test_pioneer_process(
+        ui_we_want_to_set: PyBreezeMainWindow, file_path: str, program_buffer: int = 1024000) -> None:
+    """Run ``python -m test_pioneer -e <yaml>`` in a new run window.
+
+    It goes through the same task process manager as the other automation
+    packages, so a missing interpreter is reported in the run window rather
+    than raised out of the menu callback.
+    """
+    process = build_task_process(ui_we_want_to_set, program_buffer=program_buffer)
+    process.start_module_process(_PACKAGE, ["-e", file_path])

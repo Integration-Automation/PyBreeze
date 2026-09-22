@@ -8,7 +8,6 @@ Supports two modes:
 from __future__ import annotations
 
 import os
-import queue
 import subprocess
 import sys
 from pathlib import Path
@@ -16,10 +15,8 @@ from queue import Queue
 from threading import Thread
 
 from PySide6.QtCore import QTimer
-from PySide6.QtGui import QTextCharFormat
 
-from je_editor.pyside_ui.main_ui.save_settings.user_color_setting_file import actually_color_dict
-
+from pybreeze.extend.process_executor.queue_pump import pump_message_queue, read_stream_into_queue
 from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.subprocess_util import no_window_creationflags, utf8_subprocess_env
@@ -74,7 +71,7 @@ class FileRunnerProcess:
             output_name += ".exe"
 
         compile_cmd = [compiler] + args + [file_path, output_flag, output_name]
-        self._append_text(f"[Compile] {' '.join(compile_cmd)}\n", is_error=False)
+        self.main_window.append_output(f"[Compile] {' '.join(compile_cmd)}\n", is_error=False)
 
         try:
             # Runs the plugin-configured compiler against a file the user opened.
@@ -87,22 +84,22 @@ class FileRunnerProcess:
                 creationflags=no_window_creationflags(),
             )
         except FileNotFoundError:
-            self._append_text(f"[Error] Compiler not found: {compiler}\n", is_error=True)
+            self.main_window.append_output(f"[Error] Compiler not found: {compiler}\n", is_error=True)
             return
         except subprocess.TimeoutExpired:
-            self._append_text("[Error] Compilation timed out (60s)\n", is_error=True)
+            self.main_window.append_output("[Error] Compilation timed out (60s)\n", is_error=True)
             return
 
         if result.stdout:
-            self._append_text(result.stdout.decode(self.program_encoding, "replace"), is_error=False)
+            self.main_window.append_output(result.stdout.decode(self.program_encoding, "replace"), is_error=False)
         if result.stderr:
-            self._append_text(result.stderr.decode(self.program_encoding, "replace"), is_error=True)
+            self.main_window.append_output(result.stderr.decode(self.program_encoding, "replace"), is_error=True)
 
         if result.returncode != 0:
-            self._append_text(f"[Compile failed] exit code {result.returncode}\n", is_error=True)
+            self.main_window.append_output(f"[Compile failed] exit code {result.returncode}\n", is_error=True)
             return
 
-        self._append_text(f"[Run] {output_name}\n", is_error=False)
+        self.main_window.append_output(f"[Run] {output_name}\n", is_error=False)
         self._start_process([output_name], cleanup_binary=output_name)
 
     def _start_process(self, command: list[str], cleanup_binary: str | None = None) -> None:
@@ -110,7 +107,7 @@ class FileRunnerProcess:
         self._cleanup_binary = cleanup_binary
 
         cmd_display = " ".join(command)
-        self._append_text(f"> {cmd_display}\n", is_error=False)
+        self.main_window.append_output(f"> {cmd_display}\n", is_error=False)
 
         try:
             # Run the user's plugin-configured command. shell=False is explicit;
@@ -125,7 +122,7 @@ class FileRunnerProcess:
                 env=utf8_subprocess_env(self.program_encoding),
             )
         except FileNotFoundError:
-            self._append_text(f"[Error] Command not found: {command[0]}\n", is_error=True)
+            self.main_window.append_output(f"[Error] Command not found: {command[0]}\n", is_error=True)
             return
 
         self.still_running = True
@@ -144,23 +141,8 @@ class FileRunnerProcess:
 
     def _pull_text(self) -> None:
         """Timer callback: pump queues to UI."""
-        try:
-            while not self.output_queue.empty():
-                msg = self.output_queue.get_nowait()
-                msg = str(msg).strip()
-                if msg:
-                    self._append_text(msg + "\n", is_error=False)
-        except queue.Empty:
-            pass
-
-        try:
-            while not self.error_queue.empty():
-                msg = self.error_queue.get_nowait()
-                msg = str(msg).strip()
-                if msg:
-                    self._append_text(msg + "\n", is_error=True)
-        except queue.Empty:
-            pass
+        pump_message_queue(self.output_queue, self.main_window.append_output, is_error=False)
+        pump_message_queue(self.error_queue, self.main_window.append_output, is_error=True)
 
         if self.process is not None:
             self.process.poll()
@@ -185,7 +167,7 @@ class FileRunnerProcess:
         self._drain_queues()
 
         if self.process is not None:
-            self._append_text(
+            self.main_window.append_output(
                 f"\n[Process exited with code {self.process.returncode}]\n",
                 is_error=self.process.returncode != 0,
             )
@@ -200,51 +182,22 @@ class FileRunnerProcess:
 
     def _drain_queues(self) -> None:
         """Drain all remaining messages from output/error queues to UI."""
-        while not self.output_queue.empty():
-            try:
-                msg = self.output_queue.get_nowait()
-                msg = str(msg).strip()
-                if msg:
-                    self._append_text(msg + "\n", is_error=False)
-            except queue.Empty:
-                break
-        while not self.error_queue.empty():
-            try:
-                msg = self.error_queue.get_nowait()
-                msg = str(msg).strip()
-                if msg:
-                    self._append_text(msg + "\n", is_error=True)
-            except queue.Empty:
-                break
+        pump_message_queue(self.output_queue, self.main_window.append_output, is_error=False, max_messages=None)
+        pump_message_queue(self.error_queue, self.main_window.append_output, is_error=True, max_messages=None)
 
     def _read_stream(self, stream_name: str, target_queue: Queue) -> None:
-        # Empty read from readline means the pipe reached EOF (the child closed
-        # the stream), so stop immediately rather than spinning on a closed pipe
-        # until the process is reaped.
-        try:
-            while self.still_running:
-                proc = self.process
-                if proc is None:
-                    break
-                data = getattr(proc, stream_name).readline(self.program_buffer_size)
-                if not data:
-                    break
-                if isinstance(data, bytes):
-                    data = data.decode(self.program_encoding, "replace")
-                target_queue.put(data)
-        except (OSError, ValueError) as error:
-            pybreeze_logger.debug("Reader for %s stopped: %s", stream_name, error)
+        stream = getattr(self.process, stream_name, None)
+        if stream is None:
+            return
+        read_stream_into_queue(
+            stream, target_queue,
+            buffer_size=self.program_buffer_size,
+            encoding=self.program_encoding,
+            keep_reading=lambda: self.still_running,
+        )
 
     def _read_stdout(self) -> None:
         self._read_stream("stdout", self.output_queue)
 
     def _read_stderr(self) -> None:
         self._read_stream("stderr", self.error_queue)
-
-    def _append_text(self, text: str, is_error: bool) -> None:
-        """Append text to the code result widget."""
-        text_cursor = self.main_window.code_result.textCursor()
-        text_format = QTextCharFormat()
-        color_key = "error_output_color" if is_error else "normal_output_color"
-        text_format.setForeground(actually_color_dict.get(color_key))
-        text_cursor.insertText(text, text_format)

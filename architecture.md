@@ -80,7 +80,7 @@ gevent patching away from Qt.
 Automation menu (automation_menu_factory.build_automation_menu) → call_<pkg>() in
 extend/process_executor/<pkg>/ → build_process() (process_executor_utils.py)
   → CodeWindow + TaskProcessManager → python -m <package> --execute_str | --execute_file
-  → stdout/stderr reader threads → Queue → QTimer → pump_message_queue() → CodeWindow
+  → stdout/stderr reader threads → Queue → QTimer → pump_message_queue() → CodeWindow.append_output()
   → optional send_after_test() (mail_thunder_extend)
 ```
 
@@ -123,7 +123,7 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
 - **Automation packages**: `je_auto_control`, `je_web_runner`, `je_api_testka`, `je_load_density`,
   `automation_file` and `je_mail_thunder` run as `python -m <pkg> --execute_str/--execute_file`
   (`extend/process_executor/python_task_process_manager.py`). TestPioneer runs as
-  `python -m test_pioneer -e <yaml>` through its own `TestPioneerProcess`
+  `python -m test_pioneer -e <yaml>` through the same manager's `start_module_process`
   (`extend/process_executor/test_pioneer/`).
 - **prthinker**: runs as `python -m prthinker` via `TaskProcessManager.start_module_process`
   (`extend/process_executor/prthinker/`). Secrets are passed as environment variables, never argv.
