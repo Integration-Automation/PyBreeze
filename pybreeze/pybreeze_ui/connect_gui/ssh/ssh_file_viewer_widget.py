@@ -13,7 +13,11 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
-from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_host_key_policy import apply_host_key_policy
+from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_connect_thread import CONNECT_ERRORS, SshConnectThread
+from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_host_key_policy import (
+    apply_host_key_policy, host_key_asker
+)
+from pybreeze.pybreeze_ui.thread_keeper import let_run_out
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_key_loader import load_private_key
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_login_widget import LoginWidget
 from pybreeze.utils.logging.logger import pybreeze_logger
@@ -252,6 +256,9 @@ class SSHFileTreeManager(QWidget):
     QWidget：連線表單 + 樹狀檔案管理 + 右鍵選單。
     """
 
+    # Emitted when the session comes up or goes down, for the tab's status label
+    state_changed = Signal()
+
     def __init__(self, external_login_widget: LoginWidget = None, add_login_widget: bool = True):
         super().__init__()
         self.word_dict = language_wrapper.language_word_dict
@@ -261,6 +268,9 @@ class SSHFileTreeManager(QWidget):
         self.add_login_widget = add_login_widget
 
         self.client = SFTPClientWrapper()
+        # The connect in progress, if any / 正在進行的連線
+        self._connecting: SshConnectThread | None = None
+        host_key_asker()  # built here, on the UI thread, for a connect to ask through
         # The transfer in flight, if any / 正在進行的傳輸
         self._transfer: SftpTransferThread | None = None
 
@@ -312,14 +322,36 @@ class SSHFileTreeManager(QWidget):
                 self.word_dict.get("ssh_file_viewer_dialog_title_missing_input"),
                 self.word_dict.get("ssh_file_viewer_dialog_message_missing_input"))
             return
-        try:
+        if self._connecting is not None and self._connecting.isRunning():
+            return
+
+        def connect() -> None:
             self.client.connect(host, port, user, pwd, use_key, key_path, parent_widget=self)
+
+        # Off the UI thread, as for the shell: an unreachable host used to hold
+        # the IDE for every timeout the connect has.
+        thread = SshConnectThread(connect)
+        thread.connected.connect(self._on_connected)
+        thread.failed.connect(self._on_connect_failed)
+        self._connecting = thread
+        thread.start()
+
+    def _on_connected(self) -> None:
+        """List the root once the session is up. UI thread."""
+        try:
             self.load_root("/")
-        except Exception as e:
-            QMessageBox.critical(
-                self,
-                self.word_dict.get("ssh_file_viewer_dialog_title_connection_failed"),
-                f"{self.word_dict.get('ssh_file_viewer_dialog_message_connection_failed')}: {e}")
+        except CONNECT_ERRORS as error:
+            self._on_connect_failed(str(error))
+            return
+        self.state_changed.emit()
+
+    def _on_connect_failed(self, message: str) -> None:
+        """Say why the connect failed. UI thread."""
+        QMessageBox.critical(
+            self,
+            self.word_dict.get("ssh_file_viewer_dialog_title_connection_failed"),
+            f"{self.word_dict.get('ssh_file_viewer_dialog_message_connection_failed')}: {message}")
+        self.state_changed.emit()
 
     def closeEvent(self, event) -> None:
         """Close the SFTP session with the widget.
@@ -334,6 +366,12 @@ class SSHFileTreeManager(QWidget):
         if transfer is not None and transfer.isRunning():
             transfer.blockSignals(True)
             transfer.wait()
+        if self._connecting is not None and self._connecting.isRunning():
+            let_run_out(self._connecting, self._connecting.connected, self._connecting.failed)
+            # A connect that still succeeds after the widget has gone would leave
+            # its session open: close it whatever way the thread ends. (After
+            # let_run_out, which cuts off everything connected to ``finished``.)
+            self._connecting.finished.connect(self.client.close)
         self.client.close()
         super().closeEvent(event)
 
@@ -344,6 +382,7 @@ class SSHFileTreeManager(QWidget):
         """
         self.client.close()
         self.tree.clear()
+        self.state_changed.emit()
 
     def load_root(self, path: str = "/"):
         """

@@ -45,10 +45,11 @@ class SSHMainWidget(QWidget):
         self.setLayout(main_layout)
 
         # One Connect button, two sessions: the shell and the file tree each open
-        # their own, and each used to set the shared label, so whichever finished
-        # last decided what it said. This runs after both and reports the pair.
-        self.login_widget.connect_btn.clicked.connect(self.report_connection_state)
-        self.login_widget.disconnect_btn.clicked.connect(self.report_connection_state)
+        # their own, on a thread of their own. Setting the shared label from each
+        # would let whichever finished last decide what it says, so the pair is
+        # reported each time either one comes up or goes down.
+        self.command_widget.state_changed.connect(self.report_connection_state)
+        self.file_tree.state_changed.connect(self.report_connection_state)
 
     def report_connection_state(self) -> None:
         """Put what actually happened to both sessions in the shared status label."""

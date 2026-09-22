@@ -12,9 +12,13 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
-from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_host_key_policy import apply_host_key_policy
+from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_connect_thread import CONNECT_ERRORS, SshConnectThread
+from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_host_key_policy import (
+    apply_host_key_policy, host_key_asker
+)
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_key_loader import load_private_key
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_login_widget import LoginWidget
+from pybreeze.pybreeze_ui.thread_keeper import let_run_out
 from pybreeze.utils.logging.logger import pybreeze_logger
 
 ANSI_ESCAPE_PATTERN = re.compile(
@@ -76,6 +80,9 @@ class SSHReaderThread(QThread):
 
 
 class SSHCommandWidget(QWidget):
+    # Emitted when the session comes up or goes down, for the tab's status label
+    state_changed = Signal()
+
     def __init__(self, external_login_widget: LoginWidget = None, add_login_widget: bool = True):
         super().__init__()
         self.word_dict = language_wrapper.language_word_dict
@@ -88,6 +95,9 @@ class SSHCommandWidget(QWidget):
         self.ssh_client: paramiko.SSHClient | None = None
         self.shell_channel: paramiko.Channel | None = None
         self.reader_thread: SSHReaderThread | None = None
+        # The connect in progress, if any / 正在進行的連線
+        self._connecting: SshConnectThread | None = None
+        host_key_asker()  # built here, on the UI thread, for a connect to ask through
 
         if self.add_login_widget:
             # 使用獨立的登入介面
@@ -157,38 +167,41 @@ class SSHCommandWidget(QWidget):
                     "ssh_command_widget_dialog_message_input_error_host_user_required"))
             return
 
-        try:
-            # Tear down any prior session first: re-clicking Connect while already
-            # connected would otherwise leak the old SSH client and orphan its
-            # reader thread (which keeps appending to the terminal).
-            self._cleanup()
-            self.ssh_client = paramiko.SSHClient()
-            apply_host_key_policy(self.ssh_client, self)
-            pybreeze_logger.info("SSH connecting to %s:%s", host, port)
-
-            if use_key:
-                if not self._authenticate_with_key(host, port, user, key_path, password):
-                    return
-            else:
-                self.ssh_client.connect(
-                    hostname=host, port=port, username=user, password=password, timeout=10
-                )
-
-            self._start_shell(host, port, user)
-        except Exception as e:
-            self.login_widget.status_label.setText(
-                self.word_dict.get('ssh_command_widget_status_label_disconnected'))
-            self.append_text(f"{self.word_dict.get('ssh_command_widget_log_message_error')} {e}\n")
-            self._cleanup()
-
-    def _authenticate_with_key(self, host: str, port: int, user: str, key_path: str, password: str) -> bool:
-        """Perform key-based auth. Returns True on success; False if the key file is missing."""
-        if not os.path.exists(key_path):
+        if self._connecting is not None and self._connecting.isRunning():
+            return
+        if use_key and not os.path.exists(key_path):
             QMessageBox.warning(
                 self,
                 self.word_dict.get("ssh_command_widget_dialog_title_key_error"),
                 self.word_dict.get("ssh_command_widget_dialog_message_key_file_not_exist"))
-            return False
+            return
+
+        # Tear down any prior session first: re-clicking Connect while already
+        # connected would otherwise leak the old SSH client and orphan its
+        # reader thread (which keeps appending to the terminal).
+        self._cleanup()
+        client = paramiko.SSHClient()
+        self.ssh_client = client
+        apply_host_key_policy(client, self)
+        pybreeze_logger.info("SSH connecting to %s:%s", host, port)
+        if use_key:
+            def connect() -> None:
+                self._connect_with_key(client, host, port, user, key_path, password)
+        else:
+            def connect() -> None:
+                client.connect(
+                    hostname=host, port=port, username=user, password=password, timeout=10)
+        # The connect itself runs off the UI thread: an unreachable host used to
+        # hold the IDE for the connect, banner and auth timeouts together.
+        thread = SshConnectThread(connect)
+        thread.connected.connect(lambda: self._on_connected(client, host, port, user))
+        thread.failed.connect(lambda message: self._on_connect_failed(client, message))
+        self._connecting = thread
+        thread.start()
+
+    def _connect_with_key(self, client: paramiko.SSHClient, host: str, port: int, user: str,
+                          key_path: str, password: str) -> None:
+        """Key-based auth, on the connecting thread. Raises what the connect raises."""
         try:
             pkey = load_private_key(key_path, password, context="SSH")
             if pkey is None:
@@ -196,11 +209,32 @@ class SSHCommandWidget(QWidget):
                     self.word_dict.get(
                         "ssh_command_widget_error_message_unsupported_private_key"
                     ))
-            self.ssh_client.connect(hostname=host, port=port, username=user, pkey=pkey, timeout=10)
-        except Exception as e:
+            client.connect(hostname=host, port=port, username=user, pkey=pkey, timeout=10)
+        except CONNECT_ERRORS as e:
             raise RuntimeError(
                 f"{self.word_dict.get('ssh_command_widget_error_message_key_auth_failed')} {e}") from e
-        return True
+
+    def _on_connected(self, client: paramiko.SSHClient, host: str, port: int, user: str) -> None:
+        """Open the shell once the connect has succeeded. UI thread."""
+        if client is not self.ssh_client:
+            client.close()  # disconnected, or reconnected, while it was connecting
+            return
+        try:
+            self._start_shell(host, port, user)
+        except CONNECT_ERRORS as error:
+            self._on_connect_failed(client, str(error))
+            return
+        self.state_changed.emit()
+
+    def _on_connect_failed(self, client: paramiko.SSHClient, message: str) -> None:
+        """Say why the connect failed and drop the half-made session. UI thread."""
+        if client is not self.ssh_client:
+            return
+        self.login_widget.status_label.setText(
+            self.word_dict.get('ssh_command_widget_status_label_disconnected'))
+        self.append_text(f"{self.word_dict.get('ssh_command_widget_log_message_error')} {message}\n")
+        self._cleanup()
+        self.state_changed.emit()
 
     def _start_shell(self, host: str, port: int, user: str) -> None:
         transport = self.ssh_client.get_transport()
@@ -254,6 +288,7 @@ class SSHCommandWidget(QWidget):
         self._cleanup()
         self.login_widget.status_label.setText(
             self.word_dict.get('ssh_command_widget_status_label_disconnected'))
+        self.state_changed.emit()
 
     def is_connected(self) -> bool:
         """Whether a shell session is open here."""
@@ -266,6 +301,14 @@ class SSHCommandWidget(QWidget):
         running QThread is destroyed, and a queued signal from one lands in a
         widget that is already gone.
         """
+        if self._connecting is not None and self._connecting.isRunning():
+            let_run_out(self._connecting, self._connecting.connected, self._connecting.failed)
+            # A connect that still succeeds after the tab has gone would leave its
+            # session open: close it whatever way the thread ends. (After
+            # let_run_out, which cuts off everything connected to ``finished``.)
+            connecting_client = self.ssh_client
+            if connecting_client is not None:
+                self._connecting.finished.connect(connecting_client.close)
         self._cleanup()
         super().closeEvent(event)
 
@@ -278,19 +321,19 @@ class SSHCommandWidget(QWidget):
                 self.reader_thread.stop()
                 self.reader_thread.wait(1000)
         except Exception as error:
-            pybreeze_logger.debug(f"SSH reader thread cleanup: {error}")
+            pybreeze_logger.debug("SSH reader thread cleanup: %r", error)
         self.reader_thread = None
 
         try:
             if self.shell_channel and not self.shell_channel.closed:
                 self.shell_channel.close()
         except Exception as error:
-            pybreeze_logger.debug(f"SSH channel cleanup: {error}")
+            pybreeze_logger.debug("SSH channel cleanup: %r", error)
         self.shell_channel = None
 
         try:
             if self.ssh_client:
                 self.ssh_client.close()
         except Exception as error:
-            pybreeze_logger.debug(f"SSH client cleanup: {error}")
+            pybreeze_logger.debug("SSH client cleanup: %r", error)
         self.ssh_client = None

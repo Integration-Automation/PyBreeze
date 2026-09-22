@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING
 
 import paramiko
 from je_editor import language_wrapper
+from PySide6.QtCore import QObject, Qt, QThread, Signal, Slot
 from PySide6.QtWidgets import QMessageBox
 
 from pybreeze.utils.app_dirs import pybreeze_data_dir
@@ -70,15 +71,7 @@ class InteractiveHostKeyPolicy(paramiko.MissingHostKeyPolicy):
             host=hostname, key_type=key_type, fingerprint=fingerprint
         )
 
-        box = QMessageBox(self._parent)
-        box.setIcon(QMessageBox.Icon.Warning)
-        box.setWindowTitle(title)
-        box.setText(message)
-        box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
-        box.setDefaultButton(QMessageBox.StandardButton.No)
-        response = box.exec()
-
-        if response != QMessageBox.StandardButton.Yes:
+        if not host_key_asker().ask(self._parent, title, message):
             pybreeze_logger.warning(
                 "SSH host key for %s rejected by user (%s)", hostname, fingerprint
             )
@@ -96,6 +89,58 @@ class InteractiveHostKeyPolicy(paramiko.MissingHostKeyPolicy):
         pybreeze_logger.info(
             "SSH host key for %s accepted and stored (%s)", hostname, fingerprint
         )
+
+
+class HostKeyAsker(QObject):
+    """Asks the user about an unknown host key, on the UI thread, from any thread.
+
+    ``SSHClient.connect()`` calls the host-key policy from whichever thread is
+    connecting. To connect off the UI thread and still ask, the question travels
+    to this object -- which lives on the UI thread -- over a blocking queued
+    signal: the connecting thread waits for the answer, the UI does not.
+    """
+
+    _asked = Signal(object, str, str)
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._answer = False
+        self._asked.connect(self._show, Qt.ConnectionType.BlockingQueuedConnection)
+
+    def ask(self, parent: QWidget | None, title: str, message: str) -> bool:
+        """Show the question and return whether the user trusts the key."""
+        if QThread.currentThread() is self.thread():
+            # Already on the UI thread: a blocking queued signal to ourselves
+            # would wait for itself forever.
+            self._show(parent, title, message)
+        else:
+            self._asked.emit(parent, title, message)
+        return self._answer
+
+    @Slot(object, str, str)
+    def _show(self, parent: QWidget | None, title: str, message: str) -> None:
+        box = QMessageBox(parent)
+        box.setIcon(QMessageBox.Icon.Warning)
+        box.setWindowTitle(title)
+        box.setText(message)
+        box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        box.setDefaultButton(QMessageBox.StandardButton.No)
+        self._answer = box.exec() == QMessageBox.StandardButton.Yes
+
+
+_ASKER: HostKeyAsker | None = None
+
+
+def host_key_asker() -> HostKeyAsker:
+    """The asker, created on first use -- which has to be on the UI thread.
+
+    The SSH widgets call this when they are built, so a connection started later
+    on a worker thread finds it already living where dialogs can be shown.
+    """
+    global _ASKER
+    if _ASKER is None:
+        _ASKER = HostKeyAsker()
+    return _ASKER
 
 
 def apply_host_key_policy(client: paramiko.SSHClient, parent: QWidget | None) -> None:
