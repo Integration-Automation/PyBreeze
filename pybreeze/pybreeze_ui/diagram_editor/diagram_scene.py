@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+from http.client import HTTPException
 from enum import Enum, auto
 from pathlib import Path, PureWindowsPath
 
-from PySide6.QtCore import QPointF, Qt, Signal
+from PySide6.QtCore import QPointF, Qt, QThread, Signal
 from PySide6.QtGui import QColor, QPen, QPixmap, QUndoStack
 from PySide6.QtWidgets import QGraphicsLineItem, QGraphicsScene, QMenu
 from je_editor import language_wrapper
@@ -62,6 +63,31 @@ _MODE_SHAPE_MAP: dict[ToolMode, NodeShape] = {
 }
 
 
+class ImageDownloadThread(QThread):
+    """Fetch one image for the canvas, off the UI thread.
+
+    A download is bounded by ``safe_download_image``'s own 15 s timeout, which is
+    15 s the IDE would otherwise spend frozen -- once per image, and again on
+    every undo, because an undo rebuilds every item from the saved dictionary.
+    Only the two signals reach the UI.
+    """
+
+    fetched = Signal(str, bytes)
+    failed = Signal(str, str)
+
+    def __init__(self, source: str) -> None:
+        super().__init__()
+        self._source = source
+
+    def run(self) -> None:
+        try:
+            data = safe_download_image(self._source)
+        except (ImageDownloadError, OSError, HTTPException) as err:
+            self.failed.emit(self._source, str(err))
+        else:
+            self.fetched.emit(self._source, data)
+
+
 class DiagramScene(QGraphicsScene):
     """QGraphicsScene with tool-mode state, undo/redo, grid, copy/paste, and align."""
 
@@ -83,6 +109,10 @@ class DiagramScene(QGraphicsScene):
         self.undo_stack = QUndoStack(self)
         self._pending_undo_snapshot: dict | None = None
         self._pending_undo_desc: str | None = None
+
+        # Images already loaded, and the fetches still going, by source
+        self._pixmap_cache: dict[str, QPixmap] = {}
+        self._image_downloads: dict[str, ImageDownloadThread] = {}
 
         # Grid
         self._grid_enabled = False
@@ -666,11 +696,18 @@ class DiagramScene(QGraphicsScene):
                 self._try_load_image_source(img, source)
 
     def _try_load_image_source(self, img: DiagramImage, source: str) -> None:
-        """Load pixmap from local path or URL into a DiagramImage.
+        """Put the image *source* names into *img*, fetching it if it is a URL.
 
-        Local paths are restricted to existing image files on this machine.
-        URLs are validated and size-limited via ``safe_download_image``.
+        Local paths are restricted to existing image files on this machine. A URL
+        is validated and size-limited by ``safe_download_image``, on its own
+        thread, and what comes back is kept for the rest of the session: an undo
+        rebuilds every item, and re-fetching each time froze the IDE for as long
+        as the host took to answer.
         """
+        cached = self._pixmap_cache.get(source)
+        if cached is not None:
+            img.set_pixmap(cached, source)
+            return
         path = Path(source)
         # The extension is checked before the filesystem is touched, and a path
         # on another machine is refused outright: on Windows, merely asking
@@ -682,17 +719,49 @@ class DiagramScene(QGraphicsScene):
                 and _is_on_this_machine(source) and path.is_file()):
             pix = QPixmap(str(path))
             if not pix.isNull():
+                self._pixmap_cache[source] = pix
                 img.set_pixmap(pix, source)
                 return
         if source.startswith(("http://", "https://")):  # NOSONAR S5332 — scheme detection; actual fetch goes through safe_download_image with SSRF validation
-            try:
-                data = safe_download_image(source)
-                pix = QPixmap()
-                pix.loadFromData(data)
-                if not pix.isNull():
-                    img.set_pixmap(pix, source)
-            except (ImageDownloadError, OSError) as err:
-                pybreeze_logger.debug("safe_download_image failed: %s", err)
+            self._start_image_download(source)
+
+    def _start_image_download(self, source: str) -> None:
+        """Fetch *source* in the background, unless a fetch for it is already going."""
+        if source in self._image_downloads:
+            return
+        thread = ImageDownloadThread(source)
+        thread.fetched.connect(self._on_image_fetched)
+        thread.failed.connect(self._on_image_download_failed)
+        thread.finished.connect(lambda: self._image_downloads.pop(source, None))
+        self._image_downloads[source] = thread
+        thread.start()
+
+    def _on_image_fetched(self, source: str, data: bytes) -> None:
+        """Hand a fetched image to every item still waiting for it. UI thread."""
+        pix = QPixmap()
+        pix.loadFromData(data)
+        if pix.isNull():
+            pybreeze_logger.debug("Fetched image is not an image: %s", source)
+            return
+        self._pixmap_cache[source] = pix
+        for image in self.get_all_images():
+            if image.source() == source:
+                image.set_pixmap(pix, source)
+
+    @staticmethod
+    def _on_image_download_failed(source: str, message: str) -> None:
+        pybreeze_logger.debug("safe_download_image failed for %s: %s", source, message)
+
+    def stop_image_downloads(self) -> None:
+        """Wait for every fetch still going, with its signals blocked.
+
+        Called when the editor closes: a running QThread destroyed with the
+        scene aborts the process, and a late signal would reach a dead scene.
+        """
+        for thread in tuple(self._image_downloads.values()):
+            thread.blockSignals(True)
+            thread.wait()
+        self._image_downloads.clear()
 
     def load_from_dict(self, data: dict) -> None:
         """Replace what is on the canvas with *data*.

@@ -446,6 +446,11 @@ class DiagramEditorWidget(QWidget):
                 str(e),
             )
 
+    def closeEvent(self, event) -> None:
+        """Wait for the scene's image fetches before the editor goes."""
+        self._scene.stop_image_downloads()
+        super().closeEvent(event)
+
     def _write_json(self, path: Path) -> None:
         """Write the diagram to *path*, leaving whatever is there now if it fails.
 
