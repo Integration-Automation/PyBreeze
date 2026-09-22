@@ -154,3 +154,50 @@ class TestClosingTheEditor:
         editor.close()
 
         assert editor._scene._image_downloads == {}
+
+
+class TestCopyingAnImage:
+    def _scene_with_an_image(self):
+        scene = DiagramScene()
+        scene.load_from_dict({
+            "nodes": [], "connections": [],
+            "images": [{"x": 0, "y": 0, "w": 100, "h": 100, "source": "", "caption": "Logo"}],
+        })
+        return scene
+
+    def test_an_image_on_its_own_can_be_duplicated(self, app):
+        scene = self._scene_with_an_image()
+        scene.get_all_images()[0].setSelected(True)
+
+        scene.duplicate_selected()
+
+        images = scene.get_all_images()
+        assert len(images) == 2
+        assert {image.text() for image in images} == {"Logo"}
+        assert {(image.pos().x(), image.pos().y()) for image in images} == {(0.0, 0.0), (30.0, 30.0)}
+
+    def test_a_node_and_an_image_are_copied_together(self, app):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_items import DiagramNode, NodeShape
+
+        scene = self._scene_with_an_image()
+        node = DiagramNode(x=0, y=0, w=100, h=60, text="A", shape=NodeShape.RECTANGLE)
+        scene.addItem(node)
+        for item in scene.get_all_images() + scene.get_all_nodes():
+            item.setSelected(True)
+
+        scene.copy_selected()
+        scene.clearSelection()
+        scene.paste_clipboard()
+
+        assert len(scene.get_all_images()) == 2
+        assert len(scene.get_all_nodes()) == 2
+
+    def test_nothing_selected_leaves_the_clipboard_alone(self, app):
+        scene = self._scene_with_an_image()
+        scene.get_all_images()[0].setSelected(True)
+        scene.copy_selected()
+
+        scene.clearSelection()
+        scene.copy_selected()
+
+        assert scene._clipboard["images"], "the clipboard was emptied by a copy of nothing"

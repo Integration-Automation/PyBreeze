@@ -28,6 +28,9 @@ from pybreeze.utils.logging.logger import pybreeze_logger
 # Allowlist of image extensions that a saved diagram may reference on disk.
 # Defined once at module scope because it is a security boundary (only these
 # local files are read back when reloading a ``.diagram.json``).
+# How far a pasted copy sits from the original, so it is visible as a copy
+_PASTE_OFFSET = 30
+
 _VALID_IMAGE_SUFFIXES = frozenset(
     {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".svg", ".webp", ".ico"}
 )
@@ -434,8 +437,14 @@ class DiagramScene(QGraphicsScene):
                 item.setSelected(True)
 
     def copy_selected(self) -> None:
+        """Put the selected items on the clipboard, in the diagram's own format.
+
+        A connection comes along only when both of its ends do; an image comes
+        along on its own, which is also what ``Ctrl+D`` on one needs.
+        """
         nodes = [i for i in self.selectedItems() if isinstance(i, DiagramNode)]
-        if not nodes:
+        images = [i for i in self.selectedItems() if isinstance(i, DiagramImage)]
+        if not nodes and not images:
             return
         node_set = set(nodes)
         connections = [
@@ -447,6 +456,7 @@ class DiagramScene(QGraphicsScene):
         self._clipboard = {
             "nodes": [n.to_dict(node_map[n]) for n in nodes],
             "connections": [c.to_dict(node_map) for c in connections],
+            "images": [image.to_dict(index) for index, image in enumerate(images)],
         }
 
     def paste_clipboard(self) -> None:
@@ -457,8 +467,8 @@ class DiagramScene(QGraphicsScene):
             id_to_node: dict[int, DiagramNode] = {}
             for nd in self._clipboard["nodes"]:
                 data = dict(nd)
-                data["x"] += 30
-                data["y"] += 30
+                data["x"] += _PASTE_OFFSET
+                data["y"] += _PASTE_OFFSET
                 node = DiagramNode.from_dict(data)
                 self.addItem(node)
                 node.setSelected(True)
@@ -475,7 +485,21 @@ class DiagramScene(QGraphicsScene):
                         style=ConnectionStyle.__members__.get(cd.get("style", "SOLID"), ConnectionStyle.SOLID),
                     )
                     self.addItem(conn)
+            self._paste_images()
         self.item_count_changed.emit()
+
+    def _paste_images(self) -> None:
+        """Add the clipboard's images, offset like its nodes and selected with them."""
+        for image_dict in self._clipboard.get("images", ()):
+            data = dict(image_dict)
+            data["x"] += _PASTE_OFFSET
+            data["y"] += _PASTE_OFFSET
+            image = DiagramImage.from_dict(data)
+            self.addItem(image)
+            image.setSelected(True)
+            source = data.get("source", "")
+            if source:
+                self._try_load_image_source(image, source)
 
     def duplicate_selected(self) -> None:
         self.copy_selected()
@@ -648,6 +672,11 @@ class DiagramScene(QGraphicsScene):
             try:
                 node_id = nd.get("id")
                 if node_id is not None:
+                    if node_id in id_to_node:
+                        # Later wins, as before; connections to that id now
+                        # point at this node, which is worth a line in the log.
+                        pybreeze_logger.debug(
+                            "Diagram has more than one node with id %r", node_id)
                     id_to_node[node_id] = node
             except TypeError as err:
                 # An id that cannot be a key (a list, say): the node is on the
