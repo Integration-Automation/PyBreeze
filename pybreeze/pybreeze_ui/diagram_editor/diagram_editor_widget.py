@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 from PySide6.QtCore import QMarginsF, QRectF, QSizeF, Qt
@@ -446,11 +447,20 @@ class DiagramEditorWidget(QWidget):
             )
 
     def _write_json(self, path: Path) -> None:
+        """Write the diagram to *path*, leaving whatever is there now if it fails.
+
+        The text goes to a file beside it first and replaces the target in one
+        step, so a failure part-way through (a full disk, a file being read by
+        something else) costs the new save, never the last good one.
+        """
+        beside = path.with_name(path.name + ".saving")
         try:
             data = self._scene.to_dict()
-            path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-        except Exception as e:
+            beside.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+            os.replace(beside, path)
+        except (OSError, TypeError, ValueError) as e:
             pybreeze_logger.error(f"Save diagram failed: {e}")
+            beside.unlink(missing_ok=True)
             QMessageBox.warning(self, _lang("diagram_editor_error_title", "Error"), str(e))
 
     # ------------------------------------------------------------------

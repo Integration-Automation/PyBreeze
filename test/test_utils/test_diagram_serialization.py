@@ -239,3 +239,156 @@ class TestMermaidImportEndToEnd:
         assert {"DB", "B", "C", "Decision"} == texts
         styles = sorted(c._style.name for c in scene.get_all_connections())
         assert styles == ["DOTTED", "DOTTED", "SOLID"]  # two dotted fan-out, one thick
+
+
+class TestALoadThatCannotWorkLeavesTheDiagramAlone:
+    """What is on the canvas must survive a file that turns out not to be a diagram.
+
+    The editor keeps the path it opened last and saves back to it, so a load that
+    empties the canvas half-way is a file the next save would overwrite with the
+    wreckage.
+    """
+
+    _GOOD = {
+        "nodes": [
+            {"id": 0, "x": 0, "y": 0, "w": 100, "h": 60, "text": "A", "shape": "RECTANGLE"},
+            {"id": 1, "x": 200, "y": 0, "w": 100, "h": 60, "text": "B", "shape": "RECTANGLE"},
+        ],
+        "connections": [{"source": 0, "target": 1}],
+        "images": [],
+    }
+
+    def _loaded_scene(self):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene
+
+        scene = DiagramScene()
+        scene.load_from_dict(self._GOOD)
+        return scene
+
+    @pytest.mark.parametrize("data", [
+        [1, 2],
+        "a diagram",
+        {"nodes": "not a list"},
+        {"nodes": [], "connections": {"source": 0}},
+    ], ids=["top level list", "top level string", "nodes not a list", "connections not a list"])
+    def test_a_file_that_is_not_a_diagram_is_refused_before_anything_is_cleared(self, qt_app, data):
+        scene = self._loaded_scene()
+
+        with pytest.raises(ValueError):
+            scene.load_from_dict(data)
+
+        assert {n.text() for n in scene.get_all_nodes()} == {"A", "B"}
+        assert len(scene.get_all_connections()) == 1
+
+    @pytest.mark.parametrize("connection", [
+        {"source": [], "target": 1},
+        "a string where an object belongs",
+        {"source": 0, "target": 1, "style": []},
+    ], ids=["unhashable source", "string entry", "unhashable style"])
+    def test_one_bad_connection_costs_only_that_connection(self, qt_app, connection):
+        scene = self._loaded_scene()
+        data = {**self._GOOD, "connections": [{"source": 0, "target": 1}, connection]}
+
+        scene.load_from_dict(data)
+
+        assert {n.text() for n in scene.get_all_nodes()} == {"A", "B"}
+        assert len(scene.get_all_connections()) == 1
+
+    @pytest.mark.parametrize("connection,attribute,expected", [
+        ({"source": 0, "target": 1, "line_width": "3"}, "_line_width", 3.0),
+        ({"source": 0, "target": 1, "line_width": "wide"}, "_line_width", 2.0),
+    ], ids=["a width written as text", "a width that is not a number"])
+    def test_a_connection_with_an_odd_pen_still_loads(
+            self, qt_app, connection, attribute, expected):
+        scene = self._loaded_scene()
+
+        scene.load_from_dict({**self._GOOD, "connections": [connection]})
+
+        loaded = scene.get_all_connections()
+        assert len(loaded) == 1
+        assert getattr(loaded[0], attribute) == expected
+
+    def test_a_colour_that_is_not_text_falls_back_and_still_loads(self, qt_app):
+        scene = self._loaded_scene()
+
+        scene.load_from_dict(
+            {**self._GOOD, "connections": [{"source": 0, "target": 1, "line_color": 5}]})
+
+        loaded = scene.get_all_connections()
+        assert len(loaded) == 1
+        assert loaded[0]._line_color.name() == "#37474f"
+
+    def test_a_node_with_an_unknown_shape_keeps_its_place_as_a_rectangle(self, qt_app):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_items import NodeShape
+
+        scene = self._loaded_scene()
+
+        scene.load_from_dict({
+            "nodes": [{"id": 0, "x": 0, "y": 0, "text": "Odd", "shape": "hexagon"}],
+            "connections": [],
+        })
+
+        nodes = scene.get_all_nodes()
+        assert [n.text() for n in nodes] == ["Odd"]
+        assert nodes[0].shape_type is NodeShape.RECTANGLE
+
+    def test_an_unhashable_node_id_costs_only_that_node(self, qt_app):
+        scene = self._loaded_scene()
+
+        scene.load_from_dict({
+            "nodes": [{"id": [], "x": 0, "y": 0, "text": "Odd"},
+                      {"id": 2, "x": 0, "y": 0, "text": "Fine"}],
+            "connections": [],
+        })
+
+        assert {n.text() for n in scene.get_all_nodes()} == {"Odd", "Fine"}
+
+
+class TestSizesAndPensFromAFile:
+    def test_an_enormous_image_is_clamped(self, qt_app):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_items import DiagramImage, MAX_ITEM_SIZE
+
+        image = DiagramImage.from_dict({"x": 0, "y": 0, "w": 40000, "h": 1e30})
+
+        assert image.img_w == MAX_ITEM_SIZE
+        assert image.img_h == MAX_ITEM_SIZE
+
+    def test_a_negative_image_size_is_clamped(self, qt_app):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_items import DiagramImage
+
+        image = DiagramImage.from_dict({"x": 0, "y": 0, "w": -5, "h": -5})
+
+        assert image.img_w > 0
+        assert image.img_h > 0
+
+    def test_an_enormous_node_is_clamped(self, qt_app):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_items import (
+            DiagramNode, MAX_ITEM_SIZE,
+        )
+
+        node = DiagramNode.from_dict(
+            {"x": 0, "y": 0, "w": 1e12, "h": 1e12, "text": "Big", "shape": "RECTANGLE"})
+
+        assert node.node_w == MAX_ITEM_SIZE
+        assert node.node_h == MAX_ITEM_SIZE
+
+    def test_a_wild_line_width_is_clamped_like_the_setter_does(self, qt_app):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_items import (
+            DiagramConnection, DiagramNode, NodeShape,
+        )
+
+        node = DiagramNode(x=0, y=0, w=100, h=60, text="A", shape=NodeShape.RECTANGLE)
+        connection = DiagramConnection(node, node, line_width=1e9)
+
+        assert connection._line_width == 10.0
+
+    def test_an_unparseable_line_colour_falls_back(self, qt_app):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_items import (
+            DiagramConnection, DiagramNode, NodeShape,
+        )
+
+        node = DiagramNode(x=0, y=0, w=100, h=60, text="A", shape=NodeShape.RECTANGLE)
+        connection = DiagramConnection(node, node, line_color="not-a-colour")
+
+        assert connection._line_color.isValid()
+        assert connection._line_color.name() != "#000000"

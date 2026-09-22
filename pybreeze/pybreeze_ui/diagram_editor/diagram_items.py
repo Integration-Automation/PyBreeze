@@ -106,6 +106,12 @@ _DEFAULT_NODE_W = 140.0
 _DEFAULT_NODE_H = 60.0
 _MIN_NODE_W = 40.0
 _MIN_NODE_H = 20.0
+# A ceiling for any item's width or height. A size read from a file is not
+# trusted: scaling a pixmap to 40,000 x 40,000 asks for a 6 GB allocation on the
+# UI thread, and a pen or a bounding rect of 1e12 drives the view's fit-to-
+# contents transform to a scale nothing can be drawn at.
+MAX_ITEM_SIZE = 10000.0
+_MIN_IMAGE_SIDE = 40.0
 _NODE_PEN_COLOR = "#455a64"
 _NODE_BRUSH_COLOR = "#e3f2fd"
 _NODE_SELECTED_COLOR = "#1565c0"
@@ -116,12 +122,26 @@ def _safe_color(value: str | None, fallback: str) -> QColor:
 
     A corrupted/hand-edited diagram can carry an unparseable colour string;
     ``QColor`` would silently produce an invalid (black) colour, so validate it.
+    Anything that is not a string falls back too: ``QColor(5)`` is a valid
+    near-black colour and ``QColor([])`` raises.
     """
-    if value:
+    if isinstance(value, str) and value:
         color = QColor(value)
         if color.isValid():
             return color
     return QColor(fallback)
+
+
+_MIN_LINE_WIDTH = 0.5
+_MAX_LINE_WIDTH = 10.0
+
+
+def _clamped_line_width(width: float) -> float:
+    """Return *width* within the pen widths a connection may be drawn with."""
+    try:
+        return min(max(_MIN_LINE_WIDTH, float(width)), _MAX_LINE_WIDTH)
+    except (TypeError, ValueError):
+        return _CONNECTION_WIDTH
 
 
 _LABEL_FONT_FAMILY = "Segoe UI"
@@ -248,9 +268,10 @@ class DiagramNode(QGraphicsRectItem):
     ):
         style = style or NodeStyle()
         # Clamp to a positive minimum so a zero/negative size from corrupted data
-        # can't cause a divide-by-zero when computing edge intersection points.
-        w = max(_MIN_NODE_W, w)
-        h = max(_MIN_NODE_H, h)
+        # can't cause a divide-by-zero when computing edge intersection points,
+        # and to a ceiling so one from a file cannot ask for an absurd rect.
+        w = min(max(_MIN_NODE_W, w), MAX_ITEM_SIZE)
+        h = min(max(_MIN_NODE_H, h), MAX_ITEM_SIZE)
         super().__init__(0, 0, w, h)
         self.setPen(QPen(Qt.PenStyle.NoPen))
         self.setBrush(QBrush(Qt.BrushStyle.NoBrush))
@@ -491,7 +512,7 @@ class DiagramNode(QGraphicsRectItem):
             w=data.get("w", _DEFAULT_NODE_W),
             h=data.get("h", _DEFAULT_NODE_H),
             text=data.get("text", "Node"),
-            shape=NodeShape[data.get("shape", "RECTANGLE")],
+            shape=NodeShape.__members__.get(data.get("shape", "RECTANGLE"), NodeShape.RECTANGLE),
             style=NodeStyle(
                 fill_color=data.get("fill_color", data.get("color")),
                 border_color=data.get("border_color"),
@@ -519,8 +540,11 @@ class DiagramConnection(QGraphicsPathItem):
         super().__init__()
         self.source = source
         self.target = target
-        self._line_color = QColor(line_color) if line_color else QColor(_CONNECTION_COLOR)
-        self._line_width = line_width
+        # Both come straight from a saved diagram: an unparseable colour would be
+        # drawn black instead of the default, and an unclamped width blows up the
+        # bounding rect (the setters below have always clamped and validated).
+        self._line_color = _safe_color(line_color, _CONNECTION_COLOR)
+        self._line_width = _clamped_line_width(line_width)
         self._style = style
         self._apply_pen()
         self.setFlags(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable)
@@ -554,7 +578,7 @@ class DiagramConnection(QGraphicsPathItem):
         self._apply_pen()
 
     def set_line_width(self, width: float) -> None:
-        self._line_width = max(0.5, min(width, 10.0))
+        self._line_width = _clamped_line_width(width)
         self._apply_pen()
 
     def set_style(self, style: ConnectionStyle) -> None:
@@ -678,6 +702,10 @@ class DiagramImage(QGraphicsRectItem):
         source: str = "",
         pixmap: QPixmap | None = None,
     ):
+        # As for a node: a size read from a file is clamped before it reaches a
+        # rect or a pixmap scale.
+        w = min(max(_MIN_IMAGE_SIDE, w), MAX_ITEM_SIZE)
+        h = min(max(_MIN_IMAGE_SIDE, h), MAX_ITEM_SIZE)
         super().__init__(0, 0, w, h)
         self.setPen(_IMG_BORDER_PEN)
         self.setBrush(QBrush(Qt.BrushStyle.NoBrush))
@@ -743,7 +771,8 @@ class DiagramImage(QGraphicsRectItem):
         return self.pos() + QPointF(self.img_w / 2, self.img_h / 2)
 
     def set_size(self, w: float, h: float) -> None:
-        w, h = max(40.0, w), max(40.0, h)
+        w = min(max(_MIN_IMAGE_SIDE, w), MAX_ITEM_SIZE)
+        h = min(max(_MIN_IMAGE_SIDE, h), MAX_ITEM_SIZE)
         self.prepareGeometryChange()
         self.img_w, self.img_h = w, h
         self.setRect(0, 0, w, h)

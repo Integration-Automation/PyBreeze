@@ -153,6 +153,16 @@ class DiagramScene(QGraphicsScene):
         yield
         self.end_undo()
 
+    @staticmethod
+    def _check_is_a_diagram(data: dict) -> None:
+        """Raise ``ValueError`` unless *data* has the shape of a diagram."""
+        if not isinstance(data, dict):
+            raise ValueError("a diagram file holds an object, not a %s" % type(data).__name__)
+        for section in ("nodes", "connections", "images"):
+            value = data.get(section, [])
+            if not isinstance(value, list):
+                raise ValueError(f"a diagram's '{section}' is a list, not a {type(value).__name__}")
+
     def _restore_from_dict(self, data: dict) -> None:
         """Rebuild scene from serialised data (used by undo/redo)."""
         self.blockSignals(True)
@@ -584,26 +594,42 @@ class DiagramScene(QGraphicsScene):
                 pybreeze_logger.debug("Skipping malformed diagram node %r: %s", nd, err)
                 continue
             self.addItem(node)
-            node_id = nd.get("id")
-            if node_id is not None:
-                id_to_node[node_id] = node
+            try:
+                node_id = nd.get("id")
+                if node_id is not None:
+                    id_to_node[node_id] = node
+            except TypeError as err:
+                # An id that cannot be a key (a list, say): the node is on the
+                # canvas, only its connections cannot find it.
+                pybreeze_logger.debug("Diagram node with an unusable id %r: %s", nd, err)
         return id_to_node
 
     def _load_connections(self, conn_dicts: list, id_to_node: dict[int, DiagramNode]) -> None:
         for cd in conn_dicts:
-            src = id_to_node.get(cd.get("source"))
-            tgt = id_to_node.get(cd.get("target"))
-            if src is None or tgt is None:
+            try:
+                conn = self._connection_from_dict(cd, id_to_node)
+            except (AttributeError, KeyError, TypeError, ValueError) as err:
+                pybreeze_logger.debug("Skipping malformed diagram connection %r: %s", cd, err)
                 continue
-            style = ConnectionStyle.__members__.get(cd.get("style", "SOLID"), ConnectionStyle.SOLID)
-            conn = DiagramConnection(
-                src, tgt,
-                label=cd.get("label", ""),
-                line_color=cd.get("line_color"),
-                line_width=cd.get("line_width", 2.0),
-                style=style,
-            )
-            self.addItem(conn)
+            if conn is not None:
+                self.addItem(conn)
+
+    @staticmethod
+    def _connection_from_dict(
+            cd: dict, id_to_node: dict[int, DiagramNode]) -> DiagramConnection | None:
+        """Build one connection, or ``None`` when either end is not on the canvas."""
+        src = id_to_node.get(cd.get("source"))
+        tgt = id_to_node.get(cd.get("target"))
+        if src is None or tgt is None:
+            return None
+        style = ConnectionStyle.__members__.get(cd.get("style", "SOLID"), ConnectionStyle.SOLID)
+        return DiagramConnection(
+            src, tgt,
+            label=cd.get("label", ""),
+            line_color=cd.get("line_color"),
+            line_width=cd.get("line_width", 2.0),
+            style=style,
+        )
 
     def _load_images(self, image_dicts: list) -> None:
         for img_d in image_dicts:
@@ -642,6 +668,17 @@ class DiagramScene(QGraphicsScene):
                 pybreeze_logger.debug("safe_download_image failed: %s", err)
 
     def load_from_dict(self, data: dict) -> None:
+        """Replace what is on the canvas with *data*.
+
+        The canvas is cleared only once *data* is known to be a diagram: the
+        editor saves back to the file it opened last, so a load that emptied the
+        canvas half-way would be written over the user's own file by the next
+        save.
+
+        :param data: a diagram, as :meth:`to_dict` writes it
+        :raises ValueError: when *data* is not a diagram; nothing is cleared then
+        """
+        self._check_is_a_diagram(data)
         self._clear_items()
         self._load_items(data)
         self.undo_stack.clear()
