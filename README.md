@@ -305,7 +305,7 @@ pip install -r requirements.txt
 
 - **Python**: 3.10 – 3.14
 - **OS**: Windows, macOS, Linux
-- **GUI**: PySide6 6.11.1 (installed automatically)
+- **GUI**: PySide6 6.11.2 (installed automatically)
 
 ---
 
@@ -399,7 +399,7 @@ PyBreeze/
 
 | Package | Purpose |
 |---|---|
-| `PySide6` (6.11.1) | GUI framework (Qt for Python) |
+| `PySide6` (6.11.2) | GUI framework (Qt for Python) |
 | `je-editor` | Base code editor engine |
 | `je_api_testka` | API testing automation |
 | `je_auto_control` | GUI/desktop automation |

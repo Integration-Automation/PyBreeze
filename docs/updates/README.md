@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-25 | 2026-09-23 | PySide6 6.11.2, after je_editor and frontengine | #done #dependencies | [2026-09](2026-09.md) |
 | U-20260923-24 | 2026-09-23 | Imported requests sent a different query than was recorded | #done #tools | [2026-09](2026-09.md) |
 | U-20260923-23 | 2026-09-23 | Three tool tabs let an exception out of their slots | #done #tools | [2026-09](2026-09.md) |
 | U-20260923-22 | 2026-09-23 | Renaming an open file brought the old name back | #done #editor | [2026-09](2026-09.md) |
@@ -105,4 +106,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 42 |
+| [2026-09.md](2026-09.md) | 2026-09 | 43 |

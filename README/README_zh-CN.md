@@ -236,7 +236,7 @@ pip install -r requirements.txt
 
 - **Python**：3.10 或更高版本
 - **操作系统**：Windows、macOS、Linux
-- **GUI 框架**：PySide6 6.11.1（自动安装）
+- **GUI 框架**：PySide6 6.11.2（自动安装）
 
 ---
 
@@ -382,7 +382,7 @@ PyBreeze/
 
 | 包 | 用途 |
 |---|---|
-| `PySide6` (6.11.1) | GUI 框架（Qt for Python）|
+| `PySide6` (6.11.2) | GUI 框架（Qt for Python）|
 | `je-editor` | 基础代码编辑器引擎 |
 | `je_api_testka` | API 测试自动化 |
 | `je_auto_control` | GUI/桌面自动化 |
