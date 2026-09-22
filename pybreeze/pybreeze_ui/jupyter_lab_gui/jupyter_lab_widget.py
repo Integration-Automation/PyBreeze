@@ -8,6 +8,7 @@ from PySide6.QtWidgets import QApplication, QVBoxLayout, QWidget, QLabel
 from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.jupyter_lab_gui.jupyter_lab_thread import JupyterLauncherThread
+from pybreeze.pybreeze_ui.thread_keeper import let_run_out
 from pybreeze.utils.logging.logger import pybreeze_logger
 
 
@@ -59,13 +60,17 @@ class JupyterLabWidget(QWidget):
         JupyterLab process behind for every tab that had finished loading --
         holding its port, and reachable for as long as the machine was up.
         """
-        # Block signals first so a late status/error emit can't reach a slot
-        # on the widget being torn down.
-        self.thread.blockSignals(True)
-        self.thread.stop()
         if self.thread.isRunning():
-            self.thread.quit()
-            self.thread.wait()
+            # Still installing or starting: cut off from this tab first, so a
+            # late status or error cannot reach it, and kept until it ends
+            # rather than waited for -- an install can take minutes, and a
+            # QThread destroyed while running aborts the process. (Not
+            # blockSignals: that would also block the ``finished`` that lets
+            # the keeper release it.)
+            let_run_out(self.thread, self.thread.status_update,
+                        self.thread.server_ready, self.thread.error_occurred)
+        # After this the launcher starts no server, even one still installing.
+        self.thread.stop()
         event.accept()
 
 

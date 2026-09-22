@@ -6,6 +6,7 @@ from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.extend_ai_gui.ai_gui_global_variable import COT_TEMPLATE_FILES
 from pybreeze.pybreeze_ui.extend_ai_gui.code_review.code_review_thread import SenderThread
+from pybreeze.pybreeze_ui.thread_keeper import let_run_out
 from pybreeze.utils.network.url_validation import UnsafeURLError, validate_url
 
 
@@ -98,12 +99,14 @@ class CoTCodeReviewGUI(QWidget):
         self.show_response(filename)
 
     def closeEvent(self, event):
+        """Ask a review still going to stop after its current request, without waiting.
+
+        A request can take its whole read timeout, so waiting here froze the IDE
+        that long. The thread is cut off from this widget and kept until it
+        ends: a QThread destroyed while running aborts the process.
+        """
         thread = self.thread
         if thread is not None and thread.isRunning():
-            # Block slots so a late signal can't hit the dying widget, ask the
-            # worker to stop after its current request, then wait so the QThread
-            # is never destroyed while still running ("Destroyed while running").
-            thread.blockSignals(True)
             thread.requestInterruption()
-            thread.wait()
+            let_run_out(thread, thread.update_response)
         event.accept()

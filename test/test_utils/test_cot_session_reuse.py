@@ -164,3 +164,31 @@ def test_run_closes_session_even_on_error(monkeypatch):
     except RuntimeError:
         pass
     assert created["session"].closed is True
+
+
+def test_closing_mid_review_does_not_wait(monkeypatch):
+    import threading
+    import time
+
+    from pybreeze.pybreeze_ui.extend_ai_gui.code_review import code_review_thread
+    from pybreeze.pybreeze_ui.extend_ai_gui.code_review.cot_code_review_gui import CoTCodeReviewGUI
+    from pybreeze.pybreeze_ui.thread_keeper import is_kept
+
+    app = _qt_app()
+    answering = threading.Event()
+    monkeypatch.setattr(code_review_thread.SenderThread, "run", lambda self: answering.wait(5))
+    gui = CoTCodeReviewGUI()
+    gui.thread = code_review_thread.SenderThread(files=[], code="", url="https://review.example")
+    gui.thread.start()
+    thread = gui.thread
+
+    gui.close()  # returns while the request is still out
+
+    assert is_kept(thread)
+    assert thread.isInterruptionRequested()
+    answering.set()
+    deadline = time.monotonic() + 5
+    while is_kept(thread):
+        assert time.monotonic() < deadline, "the review thread was never let go"
+        app.processEvents()
+        time.sleep(0.01)

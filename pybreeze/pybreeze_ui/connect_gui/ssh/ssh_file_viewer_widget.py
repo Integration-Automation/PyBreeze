@@ -409,13 +409,15 @@ class SSHFileTreeManager(QWidget):
         Qt delivers a close event only to the widget being closed, so a tab or a
         dock closing takes this route; without it the paramiko transport stays
         open, sending keepalives, for the rest of the session. A transfer still
-        going is waited for first, with its signals blocked: a QThread destroyed
-        while running aborts the process.
+        going is not waited for -- that froze the IDE for the rest of the
+        transfer -- nor cut short, which would leave half a file: it is kept
+        until it ends, and the session closes then.
         """
         transfer = self._transfer
-        if transfer is not None and transfer.isRunning():
-            transfer.blockSignals(True)
-            transfer.wait()
+        transfer_running = transfer is not None and transfer.isRunning()
+        if transfer_running:
+            let_run_out(transfer, transfer.done, transfer.failed)
+            transfer.finished.connect(self.client.close)
         for listing in list(self._listings):
             if listing.isRunning():
                 let_run_out(listing, listing.listed, listing.failed)
@@ -426,7 +428,8 @@ class SSHFileTreeManager(QWidget):
             # its session open: close it whatever way the thread ends. (After
             # let_run_out, which cuts off everything connected to ``finished``.)
             self._connecting.finished.connect(self.client.close)
-        self.client.close()
+        if not transfer_running:
+            self.client.close()
         super().closeEvent(event)
 
     def _disconnect(self):

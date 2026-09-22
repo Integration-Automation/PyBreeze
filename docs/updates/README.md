@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-38 | 2026-09-23 | Closing a tab no longer waits for its worker, and a closed JupyterLab tab starts no server | #done #jupyter #ssh #ai | [2026-09](2026-09.md) |
 | U-20260923-37 | 2026-09-23 | Blind catches narrowed to what each call raises | #done #quality | [2026-09](2026-09.md) |
 | U-20260923-36 | 2026-09-23 | Mailing a run's report no longer freezes the IDE | #done #executor | [2026-09](2026-09.md) |
 | U-20260923-35 | 2026-09-23 | Adding an image from a URL no longer freezes the IDE | #done #diagram | [2026-09](2026-09.md) |
@@ -118,4 +119,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 55 |
+| [2026-09.md](2026-09.md) | 2026-09 | 56 |

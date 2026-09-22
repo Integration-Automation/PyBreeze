@@ -133,9 +133,6 @@ class FinishedLauncher:
     def isRunning(self) -> bool:
         return False
 
-    def blockSignals(self, _blocked: bool) -> None:
-        """Nothing to block in a stand-in."""
-
     def stop(self) -> None:
         self.stopped = True
 
@@ -178,3 +175,43 @@ def test_closing_the_ide_closes_its_own_tabs_and_docks(tmp_path):
 
     assert "tab" in seen["closed"]
     assert "dock" in seen["closed"]
+
+
+class TestStoppingBeforeTheServerStarts:
+    """A tab closed while the launcher checks or installs gets no server afterwards."""
+
+    def test_a_stopped_launcher_starts_nothing(self, app, launched, monkeypatch):
+        thread = jupyter_lab_thread.JupyterLauncherThread()
+
+        def installed_while_the_tab_closes(_python: str) -> bool:
+            thread.stop()  # the tab closes during the check (or the install)
+            return True
+
+        monkeypatch.setattr(jupyter_lab_thread, "is_jupyter_installed", installed_while_the_tab_closes)
+
+        thread.run()
+
+        assert launched == []
+
+    def test_closing_the_tab_does_not_wait_for_the_launcher(self, app, monkeypatch):
+        import threading
+        import time
+
+        from pybreeze.pybreeze_ui.thread_keeper import is_kept
+
+        installing = threading.Event()
+        monkeypatch.setattr(
+            jupyter_lab_thread.JupyterLauncherThread, "run", lambda self: installing.wait(5))
+        tab = jupyter_lab_widget.JupyterLabWidget()
+        launcher = tab.thread
+
+        tab.close()  # returns with the install still going
+
+        assert is_kept(launcher)
+        assert launcher._stopped.is_set()
+        installing.set()
+        deadline = time.monotonic() + 5
+        while is_kept(launcher):
+            assert time.monotonic() < deadline, "the launcher was never let go"
+            app.processEvents()
+            time.sleep(0.01)

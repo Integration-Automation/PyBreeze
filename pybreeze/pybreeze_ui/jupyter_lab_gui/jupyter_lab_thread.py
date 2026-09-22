@@ -5,6 +5,7 @@ import socket
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import traceback
 
@@ -70,6 +71,11 @@ class JupyterLauncherThread(QThread):
     def __init__(self, parent=None, startup_timeout: int = JUPYTER_STARTUP_TIMEOUT):
         super().__init__(parent)
         self.process = None
+        # Set by stop(). Checked, under the lock, before the server is started:
+        # a tab closed during the install would otherwise get a server started
+        # after it had gone, with nothing left to stop it.
+        self._stopped = threading.Event()
+        self._process_lock = threading.Lock()
         # The server's output, kept in a file rather than a pipe
         self._output = None
         self.startup_timeout = startup_timeout
@@ -100,28 +106,11 @@ class JupyterLauncherThread(QThread):
 
             port = find_free_port()
 
-            # Launch embedded JupyterLab. Server binds to localhost only (see
-            # CLAUDE.md JupyterLab integration notes); shell=False. nosec B603.
-            # The bind address is pinned explicitly: with token and password
-            # empty, the loopback-only binding is the sole barrier, so we never
-            # rely on the jupyter default staying localhost. No wildcard origin:
-            # a loopback bind does not stop a browser, and with the origin open
-            # any page the user visits could drive this server's API and kernel
-            # sockets. The view this serves loads from the same origin, so it
-            # needs nothing relaxed.
-            self._output = tempfile.TemporaryFile(mode="w+", encoding="utf-8", errors="replace")
-            self.process = subprocess.Popen([  # nosec B603  # nosemgrep  # noqa: S603
-                python_exe,
-                "-m",
-                "jupyterlab",
-                "--no-browser",
-                "--ServerApp.ip=localhost",
-                f"--ServerApp.port={port}",
-                "--ServerApp.token=",
-                "--ServerApp.password=",
-                "--ServerApp.disable_check_xsrf=True",
-            ], stdout=self._output, stderr=subprocess.STDOUT, text=True,
-                creationflags=no_window_creationflags())
+            with self._process_lock:
+                if self._stopped.is_set():
+                    return
+                self._output = tempfile.TemporaryFile(mode="w+", encoding="utf-8", errors="replace")
+                self.process = self._start_server(python_exe, port)
 
             self._wait_until_ready(port)
             self.server_ready.emit(f"http://localhost:{port}/lab")
@@ -134,6 +123,30 @@ class JupyterLauncherThread(QThread):
             self.stop()
             self.error_occurred.emit(err)
             pybreeze_logger.error(f"JupyterLab launch failed: {err}")
+
+    def _start_server(self, python_exe: str, port: int) -> subprocess.Popen:
+        """Start the server on *port*, its output going to ``self._output``.
+
+        It binds to localhost only (CLAUDE.md, Security > JupyterLab); shell=False.
+        The bind address is pinned explicitly: with token and password empty,
+        the loopback-only binding is the sole barrier, so this never relies on
+        jupyter's default staying localhost. No wildcard origin: a loopback bind
+        does not stop a browser, and with the origin open any page the user
+        visits could drive this server's API and kernel sockets. The view this
+        serves loads from the same origin, so it needs nothing relaxed.
+        """
+        return subprocess.Popen([  # nosec B603  # nosemgrep  # noqa: S603
+            python_exe,
+            "-m",
+            "jupyterlab",
+            "--no-browser",
+            "--ServerApp.ip=localhost",
+            f"--ServerApp.port={port}",
+            "--ServerApp.token=",
+            "--ServerApp.password=",
+            "--ServerApp.disable_check_xsrf=True",
+        ], stdout=self._output, stderr=subprocess.STDOUT, text=True,
+            creationflags=no_window_creationflags())
 
     @staticmethod
     def _port_open(port: int) -> bool:
@@ -188,13 +201,19 @@ class JupyterLauncherThread(QThread):
             return ""
 
     def stop(self):
-        """Stop the server and let go of its output file. Safe to call twice."""
-        if self.process is not None:
+        """Stop the server, and any server not started yet, and let go of its output.
+
+        Safe to call twice, and from any thread. Once it has been called the
+        launcher starts no server, even one it is still installing.
+        """
+        with self._process_lock:
+            self._stopped.set()
+            process, self.process = self.process, None
+            output, self._output = self._output, None
+        if process is not None:
             try:
-                self.process.terminate()
+                process.terminate()
             except OSError as error:
                 pybreeze_logger.debug("JupyterLab terminate failed: %r", error)
-            self.process = None
-        if self._output is not None:
-            self._output.close()
-            self._output = None
+        if output is not None:
+            output.close()

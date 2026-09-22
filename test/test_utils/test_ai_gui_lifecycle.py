@@ -27,17 +27,25 @@ def _running_thread():
 
 
 class TestCoTCloseEvent:
-    def test_running_thread_is_blocked_interrupted_and_awaited(self):
+    def test_a_running_review_is_interrupted_and_let_go_of_without_waiting(self):
+        # Waiting froze the IDE for up to a request's read timeout. The thread
+        # is asked to stop after its current request, cut off from the panel,
+        # and kept referenced until it ends.
+        from pybreeze.pybreeze_ui import thread_keeper
+
         gui = CoTCodeReviewGUI.__new__(CoTCodeReviewGUI)
-        gui.thread = _running_thread()
+        thread = _running_thread()
+        gui.thread = thread
         event = MagicMock()
 
         CoTCodeReviewGUI.closeEvent(gui, event)
 
-        gui.thread.blockSignals.assert_called_once_with(True)
-        gui.thread.requestInterruption.assert_called_once()
-        gui.thread.wait.assert_called_once()
+        thread.requestInterruption.assert_called_once()
+        thread.wait.assert_not_called()
+        thread.update_response.disconnect.assert_called_once()
+        assert thread_keeper.is_kept(thread)
         event.accept.assert_called_once()
+        thread_keeper._OUTLIVING_THEIR_WIDGET.discard(thread)
 
     def test_no_thread_just_accepts(self):
         gui = CoTCodeReviewGUI.__new__(CoTCodeReviewGUI)

@@ -167,6 +167,7 @@ class TestATransfer:
         assert tree._transfer.isRunning(), "the caller waited for the transfer"
         answering.set()
         tree._transfer.wait(5000)
+        app.processEvents()  # deliver its "done" while the message box is still stubbed
 
     def test_a_second_transfer_is_refused_while_one_runs(self, app, monkeypatch):
         from pybreeze.pybreeze_ui.connect_gui.ssh import ssh_file_viewer_widget as viewer
@@ -203,31 +204,36 @@ class TestATransfer:
 
         assert problems and "link went away" in problems[0][2]
 
-    def test_closing_waits_for_a_transfer(self, app):
-        from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_file_viewer_widget import SSHFileTreeManager
+    def test_closing_leaves_a_transfer_to_finish_then_closes_the_session(self, app, monkeypatch):
+        import threading
+        import time
 
-        class Waited:
-            def __init__(self) -> None:
-                self.waited = False
-                self.blocked = False
+        from pybreeze.pybreeze_ui.connect_gui.ssh import ssh_file_viewer_widget as viewer
+        from pybreeze.pybreeze_ui.thread_keeper import is_kept
 
-            def isRunning(self) -> bool:
-                return True
-
-            def blockSignals(self, blocked: bool) -> None:
-                self.blocked = blocked
-
-            def wait(self) -> None:
-                self.waited = True
-
-        tree = SSHFileTreeManager()
+        # Nothing may be shown, but a stray signal must not open a modal box.
+        monkeypatch.setattr(viewer.QMessageBox, "information", staticmethod(lambda *args: None))
+        monkeypatch.setattr(viewer.QMessageBox, "critical", staticmethod(lambda *args: None))
+        answering = threading.Event()
+        tree = self._tree(app)
         tree.client = FakeClient()
-        tree._transfer = Waited()
+        tree.client.download = lambda _remote, _local: answering.wait(5)
+        tree._start_transfer(
+            downloading=True, remote_path="/tmp/big.bin", local_path="big.bin",
+            title="Downloaded", message="Saved to")
+        transfer = tree._transfer
 
-        tree.close()
+        tree.close()  # returns with the transfer still going
 
-        assert tree._transfer.waited and tree._transfer.blocked
-        assert tree.client.closed
+        assert is_kept(transfer)
+        # Closing the session under the transfer would leave half a file.
+        assert not tree.client.closed
+        answering.set()
+        deadline = time.monotonic() + 5
+        while not tree.client.closed or is_kept(transfer):
+            assert time.monotonic() < deadline, "the session was never closed"
+            app.processEvents()
+            time.sleep(0.01)
 
 
 class TestWhatTheStatusLabelSays:
