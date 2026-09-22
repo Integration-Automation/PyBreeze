@@ -304,3 +304,23 @@ class TestQueryValuesFromTheUrl:
 
         assert "%2520" not in entry.request.full_url
         assert entry.request.full_url == "https://x/api?q=hello+world"
+
+
+class TestWhatReachesTheGeneratedCode:
+    """A recording's method and URL end up in code; nothing in them may become code."""
+
+    def test_a_method_that_is_not_a_token_is_refused(self):
+        with pytest.raises(HarParseException, match="not an HTTP method"):
+            parse_har(_har(_entry(method="GET():\n    __import__('os').system('calc')\ndef t")))
+
+    def test_a_line_break_in_a_url_stays_inside_the_comment(self):
+        import ast
+
+        url = "https://x/a\nimport os; os.system('calc')  #"
+        requests = [e.request for e in parse_har(_har(_entry(url=url), _entry()))]
+
+        code = generate_har_script("requests", requests)
+
+        imports = [node for node in ast.parse(code).body if isinstance(node, ast.Import)]
+        assert [alias.name for node in imports for alias in node.names] == ["requests"]
+        assert "\x0a" in code

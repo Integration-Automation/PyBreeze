@@ -204,7 +204,8 @@ def test_function_name(request: CurlRequest) -> str:
     segments = [segment for segment in parsed.path.split("/") if segment]
     slug_source = "_".join(segments) if segments else (parsed.hostname or "request")
     slug = re.sub(r"[^0-9A-Za-z]+", "_", slug_source).strip("_").lower()
-    name = f"test_{request.method.lower()}_{slug}".rstrip("_")
+    method = re.sub(r"[^0-9A-Za-z]+", "_", request.method).strip("_").lower()
+    name = re.sub(r"_+", "_", f"test_{method}_{slug}").rstrip("_")
     return name or "test_request"
 
 

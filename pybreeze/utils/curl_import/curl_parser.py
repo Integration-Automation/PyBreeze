@@ -16,6 +16,7 @@ from urllib.parse import parse_qsl, quote, urlencode
 
 from pybreeze.utils.exception.exception_tags import (
     empty_curl_command_error,
+    invalid_http_method_error,
     malformed_curl_command_error,
     not_a_curl_command_error,
 )
@@ -31,6 +32,23 @@ _DEFAULT_METHOD = "GET"
 _METHOD_WITH_BODY = "POST"
 # Matches a backslash or caret line continuation before a newline
 _LINE_CONTINUATION_RE = re.compile(r"[\\^]\r?\n")
+# An HTTP method is a token (RFC 9110, section 5.6.2)
+_METHOD_TOKEN_RE = re.compile(r"[!#$%&'*+.^_`|~0-9A-Za-z-]+")
+
+
+def http_method(value: str) -> str:
+    """Return *value* as an upper-case HTTP method.
+
+    Generated scripts put the method into code -- a function name, a comment --
+    so anything that is not a token (a space, a newline, a parenthesis) is
+    refused here rather than written into a script.
+
+    :raises ValueError: when *value* is not an HTTP method
+    """
+    method = value.strip().upper()
+    if not _METHOD_TOKEN_RE.fullmatch(method):
+        raise ValueError(f"{invalid_http_method_error}: {value!r}")
+    return method
 
 
 @dataclass
@@ -281,7 +299,10 @@ def _apply_cookie(request: CurlRequest, value: str) -> None:
 def _apply_value_flag(request: CurlRequest, kind: str, value: str) -> None:
     """Apply one value-taking flag to *request* according to its *kind*."""
     if kind == "method":
-        request.method = value.upper()
+        try:
+            request.method = http_method(value)
+        except ValueError as error:
+            raise CurlParseException(str(error)) from None
     elif kind == "header":
         _apply_header(request, value)
     elif kind == "data":

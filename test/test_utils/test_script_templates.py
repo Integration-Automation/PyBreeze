@@ -288,3 +288,23 @@ class TestGenerateTemplate:
     def test_unknown_target_falls_back_to_requests(self):
         code = generate_template("nope", parse_curl("curl https://x"))
         assert "import requests" in code
+
+
+class TestMethodsInGeneratedCode:
+    def test_a_method_that_is_not_a_token_is_refused(self):
+        import pytest
+
+        from pybreeze.utils.exception.exceptions import CurlParseException
+
+        with pytest.raises(CurlParseException, match="not an HTTP method"):
+            parse_curl("curl -X 'GET():\n    import os\ndef t' https://x/a")
+
+    def test_a_method_with_a_hyphen_makes_a_valid_test_name(self):
+        import ast
+
+        from pybreeze.utils.curl_import.script_templates import to_pytest_test
+
+        code = to_pytest_test(parse_curl("curl -X M-SEARCH https://x/a"))
+
+        assert "def test_m_search_a():" in code
+        ast.parse(code)

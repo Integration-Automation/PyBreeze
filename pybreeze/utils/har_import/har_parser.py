@@ -14,7 +14,7 @@ import json
 from dataclasses import dataclass, field
 from urllib.parse import parse_qsl, urlparse
 
-from pybreeze.utils.curl_import.curl_parser import CurlRequest
+from pybreeze.utils.curl_import.curl_parser import CurlRequest, http_method
 from pybreeze.utils.exception.exception_tags import (
     empty_har_error,
     invalid_har_json_error,
@@ -184,8 +184,11 @@ def _entry_request(raw_request: dict) -> CurlRequest:
     """Build a :class:`CurlRequest` from a HAR entry's ``request`` object."""
     url = str(raw_request.get("url", ""))
     base, _separator, query = url.partition("?")
-    request = CurlRequest(
-        method=str(raw_request.get("method", "GET")).upper(), url=base)
+    try:
+        method = http_method(str(raw_request.get("method", "GET")))
+    except ValueError as error:
+        raise HarParseException(str(error)) from None
+    request = CurlRequest(method=method, url=base)
     _apply_headers(request, raw_request)
     _apply_cookies(request, raw_request)
     _apply_query(request, raw_request, query)

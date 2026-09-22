@@ -11,6 +11,7 @@ templates use, so the two paths cannot drift apart.
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Callable
 
 from pybreeze.utils.curl_import.curl_parser import CurlRequest
@@ -48,9 +49,18 @@ def unique_test_names(requests: list[CurlRequest]) -> list[str]:
     return names
 
 
+# Characters that must not reach a comment as they are: they would end it
+_CONTROL_CHARACTERS = re.compile(r"[\x00-\x1f\x7f]")
+
+
 def _numbered_comment(index: int, request: CurlRequest) -> str:
-    """Return the comment introducing one request's block."""
-    return f"# {index}. {request.method} {request.full_url}"
+    """Return the comment introducing one request's block.
+
+    A recorded URL can hold anything, a line break included, and a line break
+    in a comment ends it: control characters are written as escapes.
+    """
+    text = f"{request.method} {request.full_url}"
+    return f"# {index}. " + _CONTROL_CHARACTERS.sub(lambda match: f"\\x{ord(match.group()):02x}", text)
 
 
 def _requests_script(requests: list[CurlRequest]) -> str:

@@ -42,6 +42,8 @@ empty_curl_command_error: str = "no curl command provided"
 not_a_curl_command_error: str = "the command does not look like a curl command"
 malformed_curl_command_error: str = "can't parse the curl command: check quoting"
 no_url_in_curl_error: str = "no URL found in the curl command"
+invalid_http_method_error: str = (
+    "not an HTTP method: a method is one word of letters, digits and !#$%&'*+.^_`|~-")
 
 # HAR import
 empty_har_error: str = "no HAR content provided"
