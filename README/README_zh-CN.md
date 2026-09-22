@@ -228,7 +228,7 @@ pip install pybreeze
 
 ```bash
 git clone https://github.com/Integration-Automation/PyBreeze.git
-cd AutomationEditor
+cd PyBreeze
 pip install -r requirements.txt
 ```
 

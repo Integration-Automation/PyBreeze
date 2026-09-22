@@ -1,4 +1,10 @@
-pybreeze
+# -*- coding: utf-8 -*-
+# 執行 PyBreeze 所需的套件，與 pyproject.toml / dev.toml 的 dependencies 保持一致。
+# 這裡不列 pybreeze 自己：那會把 PyPI 上發佈的版本裝進來，CI 測到的就不是工作目錄的程式碼。
+#
+# What PyBreeze needs to run, kept in step with the dependencies in pyproject.toml
+# and dev.toml. It does not list pybreeze itself: that would install the published
+# build, so CI would be testing PyPI's code instead of the working tree.
 PySide6==6.11.0
 je-editor
 je_auto_control

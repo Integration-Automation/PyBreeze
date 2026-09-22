@@ -1,14 +1,18 @@
-build
-twine
-PySide6
-je-api-testka
-je-load-density
-je-auto-control
-je-web-runner
-je-mail-thunder
-pybreeze_dev
+# -*- coding: utf-8 -*-
+# 開發用：執行所需的套件（requirements.txt）加上測試、lint、文件與打包工具。
+# 這裡不列 pybreeze_dev：那會把 PyPI 上發佈的版本裝進來，CI 測到的就不是工作目錄的程式碼。
+#
+# For development: everything PyBreeze needs to run (requirements.txt) plus the
+# test, lint, docs and packaging tools. It does not list pybreeze_dev: that would
+# install the published build, so CI would be testing PyPI's code instead of the
+# working tree.
+-r requirements.txt
+pytest
+pytest-cov
+hypothesis
+ruff
 sphinx
 sphinx-rtd-theme
-PySide6
+build
+twine
 auto-py-to-exe
-test_pioneer
