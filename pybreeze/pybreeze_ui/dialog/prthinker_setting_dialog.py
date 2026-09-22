@@ -20,12 +20,15 @@ from PySide6.QtWidgets import (
 from je_editor import language_wrapper
 
 from pybreeze.extend.prthinker_extend.prthinker_setting import (
-    BACKENDS, PLATFORMS, load_setting, save_setting, setting_path
+    BACKENDS, PLATFORMS, RAG_MODES, load_setting, save_setting, setting_path
 )
 
 # 以圓點顯示的欄位 / The fields shown as dots
 SECRET_FIELDS = (
     "remote_api_key", "openai_api_key", "anthropic_api_key", "platform_token")
+
+# 從清單裡選的欄位，以及各自的選項 / The fields picked from a list, and each one's choices
+CHOICE_FIELDS = {"backend": BACKENDS, "rag": RAG_MODES, "platform": PLATFORMS}
 
 # 表格上的欄位順序，以及每一欄的說明用哪個語言鍵
 # The fields in the order they are shown, and the language key labelling each
@@ -34,6 +37,7 @@ FIELDS = (
     ("model_name", "prthinker_setting_model_name_label"),
     ("remote_url", "prthinker_setting_remote_url_label"),
     ("remote_api_key", "prthinker_setting_remote_api_key_label"),
+    ("rag", "prthinker_setting_rag_label"),
     ("openai_base_url", "prthinker_setting_openai_base_url_label"),
     ("openai_api_key", "prthinker_setting_openai_api_key_label"),
     ("anthropic_api_key", "prthinker_setting_anthropic_api_key_label"),
@@ -78,10 +82,8 @@ class PRThinkerSettingDialog(QDialog):
 
     def _editor_for(self, key: str):
         """依欄位種類給對應的輸入元件 / The right kind of editor for a field."""
-        if key == "backend":
-            editor = self._chooser(BACKENDS, self.setting.get(key, ""))
-        elif key == "platform":
-            editor = self._chooser(PLATFORMS, self.setting.get(key, ""))
+        if key in CHOICE_FIELDS:
+            editor = self._chooser(CHOICE_FIELDS[key], self.setting.get(key, ""))
         else:
             editor = QLineEdit(self.setting.get(key, ""))
             if key in SECRET_FIELDS:

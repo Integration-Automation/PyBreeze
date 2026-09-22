@@ -94,9 +94,22 @@ def test_reviewing_a_file_is_accepted(tmp_path, closed_url, backend):
         "remote_url": closed_url,
         "openai_base_url": f"{closed_url}/v1",
         "openai_api_key": "not-a-real-key",
-        # prthinker's local RAG index ships only with its repository, not its
-        # package, so an installed prthinker needs it off (or remote).
-        "extra_arguments": "--no-rag --max-new-tokens 16",
+        "extra_arguments": "--max-new-tokens 16",
+    }
+    _assert_accepted(_run(review_file_arguments(str(source), setting), setting, tmp_path))
+
+
+def test_rule_retrieval_through_the_server_is_accepted(tmp_path, closed_url):
+    # An installed prthinker has no local RAG index: were the variable that
+    # asks for the server's /rag not read, it would stop on that import instead.
+    source = tmp_path / "main.py"
+    source.write_text("print(1)\n", encoding="utf-8")
+    setting = {
+        **DEFAULT_SETTING,
+        "backend": "remote",
+        "remote_url": closed_url,
+        "rag": "remote",
+        "extra_arguments": "--max-new-tokens 16",
     }
     _assert_accepted(_run(review_file_arguments(str(source), setting), setting, tmp_path))
 

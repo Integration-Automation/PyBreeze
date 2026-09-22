@@ -2,8 +2,7 @@
 
 Outstanding work only. When an item is done, delete it in the same commit and add a `#done` entry to `docs/updates/` (format and query commands: `docs/updates/README.md`). No finished items, no history, no rules (rules live in `CLAUDE.md`).
 Item numbers (`#n`) are never reused. Tags: [DECIDE] needs the owner's decision, [BLOCKED] waits on something else, [UNVERIFIED] observed but not confirmed.
-Cross-repo and workspace items live in `D:\Codes\progress.md` (relevant here: X-1, X-8, X-13, X-17).
+Cross-repo and workspace items live in `D:\Codes\progress.md` (relevant here: X-1, X-13, X-17).
 
 ## Open
 
-- **#1** [BLOCKED] The prthinker integration (menu, settings, install; commit `99ef96f`) has never run a real review: this machine's PyBreeze venv is Python 3.11 and prthinker needs 3.12 or newer. Install prthinker with a 3.12+ interpreter and run one review (moved from JEditor's `PROGRESS.md`; workspace X-8).

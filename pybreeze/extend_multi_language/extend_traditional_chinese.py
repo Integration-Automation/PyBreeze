@@ -124,6 +124,7 @@ pybreeze_traditional_chinese_word_dict = {
     "prthinker_setting_model_name_label": "模型名稱",
     "prthinker_setting_remote_url_label": "伺服器網址（remote 後端）",
     "prthinker_setting_remote_api_key_label": "伺服器 API 金鑰",
+    "prthinker_setting_rag_label": "規則檢索（RAG）",
     "prthinker_setting_openai_base_url_label": "OpenAI 相容的 base URL",
     "prthinker_setting_openai_api_key_label": "OpenAI API 金鑰",
     "prthinker_setting_anthropic_api_key_label": "Anthropic API 金鑰",

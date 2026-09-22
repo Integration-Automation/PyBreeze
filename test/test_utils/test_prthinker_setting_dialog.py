@@ -11,7 +11,7 @@ from PySide6.QtWidgets import QApplication, QComboBox, QDialog, QLineEdit
 
 from pybreeze.extend.prthinker_extend import prthinker_setting
 from pybreeze.extend.prthinker_extend.prthinker_setting import (
-    BACKENDS, DEFAULT_SETTING, PLATFORMS, SETTING_FILE_NAME, save_setting
+    BACKENDS, DEFAULT_SETTING, PLATFORMS, RAG_MODES, SETTING_FILE_NAME, save_setting
 )
 from pybreeze.extend_multi_language.update_language_dict import update_language_dict
 from pybreeze.pybreeze_ui.dialog import prthinker_setting_dialog
@@ -64,6 +64,11 @@ class TestTheFormItBuilds:
     def test_the_platform_is_chosen_from_the_supported_list(self, dialog):
         editor = dialog.editors["platform"]
         assert [editor.itemText(i) for i in range(editor.count())] == list(PLATFORMS)
+
+    def test_rule_retrieval_is_chosen_from_the_supported_list(self, dialog):
+        editor = dialog.editors["rag"]
+        assert [editor.itemText(i) for i in range(editor.count())] == list(RAG_MODES)
+        assert editor.currentText() == DEFAULT_SETTING["rag"]
 
     def test_a_stored_choice_comes_back_selected(self, app, data_dir):
         save_setting({**DEFAULT_SETTING, "backend": "anthropic", "platform": "gitea"})

@@ -124,6 +124,7 @@ pybreeze_english_word_dict = {
     "prthinker_setting_model_name_label": "Model name",
     "prthinker_setting_remote_url_label": "Server URL (remote backend)",
     "prthinker_setting_remote_api_key_label": "Server API key",
+    "prthinker_setting_rag_label": "Rule retrieval (RAG)",
     "prthinker_setting_openai_base_url_label": "OpenAI-compatible base URL",
     "prthinker_setting_openai_api_key_label": "OpenAI API key",
     "prthinker_setting_anthropic_api_key_label": "Anthropic API key",

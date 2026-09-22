@@ -8,7 +8,7 @@ import pytest
 
 from pybreeze.extend.prthinker_extend import prthinker_setting
 from pybreeze.extend.prthinker_extend.prthinker_setting import (
-    DEFAULT_SETTING, INSTALL_EXTRAS, SECRET_SETTINGS, SETTING_ENVIRONMENT,
+    DEFAULT_SETTING, INSTALL_EXTRAS, RAG_MODES, SECRET_SETTINGS, SETTING_ENVIRONMENT,
     environment_for, extra_arguments, install_target, load_setting, loggable,
     review_file_arguments, review_pr_arguments, save_setting, split_arguments
 )
@@ -69,6 +69,29 @@ class TestTheEnvironmentGivenToTheChild:
     def test_every_setting_that_travels_has_a_variable(self):
         # Anything in the table has to name a setting that actually exists.
         assert set(SETTING_ENVIRONMENT) <= set(DEFAULT_SETTING)
+
+
+class TestRuleRetrieval:
+    # prthinker's local RAG index ships with its repository, not its package, so
+    # the prthinker PyBreeze installs can only do without it or ask the server.
+    def test_the_choices_are_off_and_the_server(self):
+        assert RAG_MODES == ("off", "remote")
+
+    def test_it_starts_off(self):
+        environment = environment_for(DEFAULT_SETTING)
+        assert environment["PRTHINKER_RAG_ENABLED"] == "false"
+        assert "PRTHINKER_REMOTE_RAG" not in environment
+
+    def test_remote_asks_the_server(self):
+        environment = environment_for({**DEFAULT_SETTING, "rag": "remote"})
+        assert environment["PRTHINKER_REMOTE_RAG"] == "true"
+        assert "PRTHINKER_RAG_ENABLED" not in environment
+
+    @pytest.mark.parametrize("stored", ["local", "", "REMOTE "])
+    def test_anything_else_counts_as_off(self, stored):
+        environment = environment_for({**DEFAULT_SETTING, "rag": stored})
+        assert environment["PRTHINKER_RAG_ENABLED"] == "false"
+        assert "PRTHINKER_REMOTE_RAG" not in environment
 
 
 class TestTheCommandsAreBuilt:

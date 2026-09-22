@@ -41,6 +41,20 @@ BACKENDS = (
 # 可選的程式碼託管平台 / The forges on offer
 PLATFORMS = ("github", "gitlab", "gitea")
 
+# 規則檢索（RAG）的做法：關掉，或交給伺服器的 /rag。prthinker 的本機索引只跟著它的
+# 原始碼庫，不在安裝的套件裡，所以這裡裝的 prthinker 沒辦法在本機檢索。
+# How rules are retrieved (RAG): not at all, or through the server's /rag.
+# prthinker's local index ships with its repository and not with its package, so
+# the prthinker installed from here cannot retrieve locally.
+RAG_MODES = ("off", "remote")
+
+# 每種做法交給子行程的環境變數；認不得的值一律當作關掉
+# The variables each way is given through; an unknown value counts as off
+RAG_ENVIRONMENT = {
+    "off": {"PRTHINKER_RAG_ENABLED": "false"},
+    "remote": {"PRTHINKER_REMOTE_RAG": "true"},
+}
+
 # 每個設定項對應的環境變數 / The environment variable each setting is given through
 SETTING_ENVIRONMENT = {
     "backend": "PRTHINKER_BACKEND",
@@ -73,6 +87,7 @@ DEFAULT_SETTING: Dict[str, str] = {
     "platform_base_url": "",
     "repository": "",
     "platform_token": "",
+    "rag": "off",
     "extra_arguments": "",
     "source_path": "",
 }
@@ -148,17 +163,24 @@ def environment_for(setting: Dict[str, str]) -> Dict[str, str]:
     把設定變成 prthinker 認得的環境變數
     Turn the settings into the environment variables prthinker reads.
 
-    空白的項目不放進去，prthinker 才用得到它自己的預設值。
-    A blank setting is left out, so prthinker keeps its own default for it.
+    空白的項目不放進去，prthinker 才用得到它自己的預設值。規則檢索例外：prthinker 預設
+    在本機檢索，而這裡裝的 prthinker 做不到，所以一定會明講要關掉或交給伺服器。
+    A blank setting is left out, so prthinker keeps its own default for it. Rule
+    retrieval is the exception: prthinker's default is to retrieve locally, which
+    the prthinker installed from here cannot do, so it is always told to go
+    without or to ask the server.
 
     :param setting: 目前的設定 / the settings in use
     :return: 要加進子行程環境的變數 / the variables to add to the child's environment
     """
-    return {
+    environment = {
         name: setting[key].strip()
         for key, name in SETTING_ENVIRONMENT.items()
         if setting.get(key, "").strip()
     }
+    rag_mode = setting.get("rag", "")
+    environment.update(RAG_ENVIRONMENT.get(rag_mode, RAG_ENVIRONMENT["off"]))
+    return environment
 
 
 def extra_arguments(setting: Dict[str, str]) -> List[str]:
