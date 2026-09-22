@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import codecs
 import os
 import re
 
 import paramiko
 from PySide6.QtCore import QThread, Signal
+from PySide6.QtGui import QTextCursor
 from PySide6.QtWidgets import (
     QWidget, QLineEdit, QPushButton,
     QPlainTextEdit, QHBoxLayout, QVBoxLayout,
@@ -33,6 +35,42 @@ ANSI_ESCAPE_PATTERN = re.compile(
     r'|\[[0-?]*[ -/]*[@-~]'           # CSI (colours, cursor movement)
     r')'
 )
+
+# The end of a read that stops inside an escape sequence: a lone ESC, a CSI
+# still waiting for its final byte, or an OSC still waiting for its terminator
+_INCOMPLETE_ESCAPE = re.compile(r'\x1B(?:\[[0-?]*[ -/]*|\][^\x07\x1B]*)?\Z')
+# Longest such tail held back for the next read; anything longer is shown as is
+_MAX_PENDING_ESCAPE = 256
+
+
+class TerminalDecoder:
+    """Turn what the shell sends into text to show, one read at a time.
+
+    A read ends wherever the channel's buffer did, so it can stop inside a
+    multi-byte UTF-8 character or inside an escape sequence. Decoding each read
+    on its own showed the character as replacement marks and the escape's tail
+    as text; this carries the unfinished part over to the next read.
+    """
+
+    def __init__(self) -> None:
+        self._decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
+        self._pending = ""
+
+    def reset(self) -> None:
+        """Forget anything carried over, for a new session."""
+        self._decoder.reset()
+        self._pending = ""
+
+    def feed(self, data: bytes) -> str:
+        """Return the text *data* completes, escape sequences removed."""
+        text = self._pending + self._decoder.decode(data)
+        self._pending = ""
+        tail = _INCOMPLETE_ESCAPE.search(text)
+        if tail is not None and len(text) - tail.start() <= _MAX_PENDING_ESCAPE:
+            self._pending = text[tail.start():]
+            text = text[:tail.start()]
+        return ANSI_ESCAPE_PATTERN.sub('', text)
+
 
 # Bound the terminal scrollback so an endless stream (``tail -f``, ``yes``)
 # cannot grow the document without limit; oldest lines drop once exceeded.
@@ -66,11 +104,21 @@ class SSHReaderThread(QThread):
                 self.data_received.emit(err)
         return not (self.chan.closed or self.chan.exit_status_ready())
 
+    def _drain(self) -> None:
+        """Forward what is still buffered once the shell has exited.
+
+        The last output and the exit status can arrive together; stopping at
+        the exit status dropped whatever did not fit in the final read.
+        """
+        while self._running and (self.chan.recv_ready() or self.chan.recv_stderr_ready()):
+            self._pump_once()
+
     def run(self):
         error_msg = None
         try:
             while self._running and self._pump_once():
                 self.msleep(10)
+            self._drain()
         except Exception as e:  # noqa: BLE001 — any reader failure must surface to the UI
             pybreeze_logger.debug("SSH reader thread error: %r", e)
             error_msg = f"{self.word_dict.get('ssh_command_widget_error_message_reader_failed')} {e}"
@@ -100,6 +148,8 @@ class SSHCommandWidget(QWidget):
         self.ssh_client: paramiko.SSHClient | None = None
         self.shell_channel: paramiko.Channel | None = None
         self.reader_thread: SSHReaderThread | None = None
+        # What the shell sends, joined across reads / 跨次讀取的解碼狀態
+        self._decoder = TerminalDecoder()
         # The connect in progress, if any / 正在進行的連線
         self._connecting: SshConnectThread | None = None
         host_key_asker()  # built here, on the UI thread, for a connect to ask through
@@ -154,7 +204,25 @@ class SSHCommandWidget(QWidget):
         self.command_input_edit.returnPressed.connect(self.send_command)
 
     def append_text(self, text: str):
-        self.terminal.appendPlainText(text)
+        """Add a notice of our own, starting on a line of its own."""
+        end = QTextCursor(self.terminal.document())
+        end.movePosition(QTextCursor.MoveOperation.End)
+        self._insert_output(text if end.atBlockStart() else "\n" + text)
+
+    def _insert_output(self, text: str) -> None:
+        """Add *text* where the output ends, without starting a new line.
+
+        ``appendPlainText`` starts a new paragraph on every call, so each read
+        from the shell began on a line of its own, wherever the read happened
+        to stop. The view follows the output only if it was already at the end.
+        """
+        scroll_bar = self.terminal.verticalScrollBar()
+        following = scroll_bar.value() == scroll_bar.maximum()
+        end = QTextCursor(self.terminal.document())
+        end.movePosition(QTextCursor.MoveOperation.End)
+        end.insertText(text)
+        if following:
+            scroll_bar.setValue(scroll_bar.maximum())
 
     def connect_ssh(self):
         host = self.login_widget.host_edit.text().strip()
@@ -249,6 +317,7 @@ class SSHCommandWidget(QWidget):
             transport.set_keepalive(SSH_KEEPALIVE_SECONDS)
         self.shell_channel = self.ssh_client.invoke_shell(term='xterm', width=120, height=32)
         self.shell_channel.settimeout(0.0)
+        self._decoder.reset()
         self.reader_thread = SSHReaderThread(self.shell_channel)
         self.reader_thread.data_received.connect(self._on_data)
         self.reader_thread.closed.connect(self._on_closed)
@@ -259,9 +328,7 @@ class SSHCommandWidget(QWidget):
                          f" {host}:{port} as {user}\n")
 
     def _on_data(self, data: bytes):
-        # errors="replace" cannot fail, so there is nothing to catch here
-        text = data.decode("utf-8", errors="replace")
-        self.append_text(ANSI_ESCAPE_PATTERN.sub('', text))
+        self._insert_output(self._decoder.feed(data))
 
     def _on_closed(self, msg: str):
         self.append_text(f"\n{self.word_dict.get('ssh_command_widget_log_message_channel_closed')}"
