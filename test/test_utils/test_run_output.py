@@ -1,6 +1,7 @@
 """A child's output, end to end: pipe, reader thread, queue, timer pump, run window."""
 from __future__ import annotations
 
+import gc
 import json
 import os
 import sys
@@ -35,6 +36,18 @@ def _run_events_until(qt_app, finished) -> None:
         time.sleep(0.01)
 
 
+def _finished_after_collecting(run_window, last_line: str):
+    """Return a check that collects garbage, then looks for *last_line* in *run_window*.
+
+    Collecting on every check is what a long-running IDE does sooner or later:
+    whatever keeps the run going must survive it.
+    """
+    def finished() -> bool:
+        gc.collect()
+        return last_line in run_window.code_result.toPlainText()
+    return finished
+
+
 class MainWindow:
     """The little of the IDE's main window that opening a run window touches."""
 
@@ -62,6 +75,20 @@ class TestTaskProcessOutput:
         assert '{\n    "outer": {\n        "inner": 1\n    }\n}\n' in text
         assert text.endswith("Task exit with code 0\n")
 
+    def test_the_run_finishes_with_no_one_else_holding_its_manager(self, qt_app, tmp_path):
+        from pybreeze.extend.process_executor.process_executor_utils import build_task_process
+
+        data = tmp_path / "data.json"
+        data.write_text(json.dumps({"key": "value"}), encoding="utf-8")
+        main_window = MainWindow(sys.executable)
+
+        build_task_process(main_window).start_module_process("json.tool", [str(data)])
+        run_window = main_window.current_run_code_window[0]
+        _run_events_until(
+            qt_app, _finished_after_collecting(run_window, "Task exit with code 0"))
+
+        assert '"key": "value"' in run_window.code_result.toPlainText()
+
 
 class TestFileRunnerOutput:
     def test_indentation_and_blank_lines_survive(self, qt_app, tmp_path):
@@ -87,6 +114,23 @@ class TestFileRunnerOutput:
         assert "def f():\n    return 1\n\n" in text
         assert "  warned\n" in text
         assert text.endswith("[Process exited with code 0]\n")
+
+    def test_run_with_finishes_with_no_one_else_holding_its_runner(
+            self, qt_app, tmp_path, monkeypatch):
+        from pybreeze.pybreeze_ui.menu.plugin_menu import build_run_with_menu as run_with
+
+        script = tmp_path / "hello.py"
+        script.write_text("print('hello from the plugin run')\n", encoding="utf-8")
+        monkeypatch.setattr(run_with, "save_current_file_for_run", lambda _w: str(script))
+        main_window = MainWindow()
+
+        run_with.run_current_file_with(
+            main_window, {"name": "Python", "compiler": sys.executable, "suffixes": (".py",)})
+        run_window = main_window.current_run_code_window[0]
+        _run_events_until(
+            qt_app, _finished_after_collecting(run_window, "[Process exited with code 0]"))
+
+        assert "hello from the plugin run" in run_window.code_result.toPlainText()
 
 
 class TestTestPioneerRun:

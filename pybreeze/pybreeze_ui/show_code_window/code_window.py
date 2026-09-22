@@ -1,8 +1,14 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from je_editor.pyside_ui.main_ui.save_settings.user_color_setting_file import actually_color_dict
 from PySide6.QtGui import QGuiApplication, QTextCharFormat, QTextCursor
 from PySide6.QtWidgets import QWidget, QGridLayout, QTextEdit, QScrollArea
+
+if TYPE_CHECKING:
+    from pybreeze.extend.process_executor.file_runner_process import FileRunnerProcess
+    from pybreeze.extend.process_executor.python_task_process_manager import TaskProcessManager
 
 # Cap the output scrollback so a runaway script (e.g. an infinite print loop)
 # cannot grow the document without bound and exhaust memory; the oldest lines
@@ -25,6 +31,11 @@ class CodeWindow(QWidget):
         # UI used to show run code or shell command result.
         super().__init__()
         self.python_compiler = None
+        # The executor writing to this window. Holding it here keeps it alive as
+        # long as the window: its timer's connection to its pump does not, so
+        # an executor nobody else holds is collected once its reader threads
+        # end, and the rest of the output and the exit line never arrive.
+        self.runner: TaskProcessManager | FileRunnerProcess | None = None
         self.grid_layout = QGridLayout()
         self.code_result = QTextEdit()
         self.code_result.setLineWrapMode(self.code_result.LineWrapMode.NoWrap)

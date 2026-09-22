@@ -75,11 +75,11 @@ def run_current_file_with(main_window: PyBreezeMainWindow, run_config: dict) -> 
     code_window.setWindowTitle(f"{run_config['name']} - {Path(file_path).name}")
     main_window.current_run_code_window.append(code_window)
 
-    runner = FileRunnerProcess(
+    code_window.runner = FileRunnerProcess(
         main_window=code_window,
         program_encoding=main_window.encoding,
     )
-    runner.run_file(run_config, file_path)
+    code_window.runner.run_file(run_config, file_path)
 
 
 def set_run_with_menu(ui_we_want_to_set: PyBreezeMainWindow) -> None:

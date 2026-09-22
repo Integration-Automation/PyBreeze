@@ -168,6 +168,8 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
 - Never update UI from a worker thread: use Queue + QTimer or Signal/Slot. Keep every menu `QAction`
   alive: store it on the main window or parent it to its menu. Custom exceptions derive from `ITEException`. Log via `pybreeze_logger`
   (§ Conventions).
+- An executor is held by the run window it writes to (`CodeWindow.runner`): its QTimer connection does
+  not keep it alive, and a collected executor stops pumping output before the exit line.
 - Every outbound request to a user URL passes SSRF validation (`utils/network/url_validation.py`)
   with timeouts and size caps (§ Security › Network).
 - SSH uses the interactive host-key policy, never auto-add (§ Security › SSH).
