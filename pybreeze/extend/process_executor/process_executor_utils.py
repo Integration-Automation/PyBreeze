@@ -24,17 +24,36 @@ def build_process(
         send_mail: bool = False,
         program_buffer: int = 1024000,
 ):
+    """Run *package* against a script: *exec_str*, or the code in the tab in front."""
     try:
-        widget = main_window.tab_widget.currentWidget()
-        if isinstance(widget, EditorWidget) and exec_str is None:
+        test_format_code = exec_str
+        if test_format_code is None:
+            widget = main_window.tab_widget.currentWidget()
+            if not isinstance(widget, EditorWidget):
+                report_no_script_tab(main_window, package, program_buffer)
+                return
             test_format_code = widget.code_edit.toPlainText()
-        else:
-            test_format_code = exec_str
         start_process(main_window, package, test_format_code, send_mail, program_buffer)
     except json.decoder.JSONDecodeError as error:
         pybreeze_logger.error(f"{error!r}\n{wrong_test_data_format_exception_tag}")
     except ITETestExecutorException as error:
         pybreeze_logger.error(repr(error))
+
+
+def report_no_script_tab(
+        main_window: PyBreezeMainWindow, package: str, program_buffer: int = 1024000) -> None:
+    """Open a run window saying the run needs the script's tab in front.
+
+    A run takes the code from the editor tab in front. With another kind of tab
+    there -- a tool tab, the diagram editor, a run window -- the package used to
+    be handed nothing and answered with a parse error of its own.
+    """
+    pybreeze_logger.error("%s run needs an editor tab in front", package)
+    process = build_task_process(main_window, program_buffer=program_buffer)
+    process.main_window.append_output(
+        f"[Error] {package} runs the script in the editor tab in front; open it and try again\n",
+        is_error=True, own_line=True)
+    process.main_window.show()
 
 
 def start_process(

@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-09 | 2026-09-23 | A run with no script tab handed the package nothing | #incident #process-executor | [2026-09](2026-09.md) |
 | U-20260923-08 | 2026-09-23 | Install did nothing without an editor tab in front | #incident #install | [2026-09](2026-09.md) |
 | U-20260923-07 | 2026-09-23 | A plugin run that read input hung for good | #incident #process-executor | [2026-09](2026-09.md) |
 | U-20260923-06 | 2026-09-23 | Runs outlived the IDE | #incident #process-executor | [2026-09](2026-09.md) |
@@ -89,4 +90,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 26 |
+| [2026-09.md](2026-09.md) | 2026-09 | 27 |

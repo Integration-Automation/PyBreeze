@@ -74,3 +74,44 @@ class TestBuildTaskProcess:
         assert build_task_process(MainWindow()).task_done_trigger_function is None
         assert build_task_process(
             MainWindow(), send_mail=True).task_done_trigger_function is send_after_test
+
+
+class TestRunningWithoutAScriptTab:
+    """A run takes the code from the editor tab in front; with another tab there it says so."""
+
+    def test_a_non_editor_tab_is_reported_in_a_run_window(self, qt_app, monkeypatch):
+        from PySide6.QtWidgets import QTabWidget, QWidget
+
+        from pybreeze.extend.process_executor import process_executor_utils
+
+        started: list = []
+        monkeypatch.setattr(
+            process_executor_utils, "start_process",
+            lambda *args, **kwargs: started.append(args))
+        main_window = MainWindow()
+        main_window.tab_widget = QTabWidget()
+        main_window.tab_widget.addTab(QWidget(), "tools")
+
+        process_executor_utils.build_process(main_window, "je_api_testka")
+
+        assert started == []
+        run_window = main_window.current_run_code_window[0]
+        assert "je_api_testka" in run_window.code_result.toPlainText()
+        assert "editor tab in front" in run_window.code_result.toPlainText()
+
+    def test_a_script_given_outright_runs_without_any_tab(self, qt_app, monkeypatch):
+        from PySide6.QtWidgets import QTabWidget
+
+        from pybreeze.extend.process_executor import process_executor_utils
+
+        started: list = []
+        monkeypatch.setattr(
+            process_executor_utils, "start_process",
+            lambda *args, **kwargs: started.append(args))
+        main_window = MainWindow()
+        main_window.tab_widget = QTabWidget()
+
+        process_executor_utils.build_process(main_window, "je_api_testka", exec_str="{}")
+
+        assert started and started[0][2] == "{}"
+        assert main_window.current_run_code_window == []
