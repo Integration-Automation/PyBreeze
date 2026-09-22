@@ -57,23 +57,23 @@ PyBreeze covers the full spectrum of automation testing out of the box:
 
 | Dimension | Module | What it does |
 |---|---|---|
-| **API** | [APITestka](https://github.com/Intergration-Automation-Testing/APITestka) | RESTful testing with request builders, response analyzers, mock servers and assertions |
-| **Web** | [WebRunner](https://github.com/Intergration-Automation-Testing/WebRunner) | Browser-driven interaction and testing with driver and locator integration |
-| **GUI** | [AutoControl](https://github.com/Intergration-Automation-Testing/AutoControl) | Desktop automation via image recognition, coordinates, keyboard/mouse control and recording |
-| **Load** | [LoadDensity](https://github.com/Intergration-Automation-Testing/LoadDensity) | High-concurrency performance testing for stability under pressure |
+| **API** | [APITestka](https://github.com/Integration-Automation/APITestka) | RESTful testing with request builders, response analyzers, mock servers and assertions |
+| **Web** | [WebRunner](https://github.com/Integration-Automation/WebRunner) | Browser-driven interaction and testing with driver and locator integration |
+| **GUI** | [AutoControl](https://github.com/Integration-Automation/AutoControlGUI) | Desktop automation via image recognition, coordinates, keyboard/mouse control and recording |
+| **Load** | [LoadDensity](https://github.com/Integration-Automation/LoadDensity) | High-concurrency performance testing for stability under pressure |
 
 Plus:
 
-- **File Automation** — file and directory operations via [automation-file](https://github.com/Intergration-Automation-Testing/AutomationFile)
-- **Mail Automation** — report delivery via [MailThunder](https://github.com/Intergration-Automation-Testing/MailThunder)
-- **Test Framework** — YAML-driven execution via [TestPioneer](https://github.com/Intergration-Automation-Testing/TestPioneer)
+- **File Automation** — file and directory operations via [automation-file](https://github.com/Integration-Automation/FileAutomation)
+- **Mail Automation** — report delivery via [MailThunder](https://github.com/Integration-Automation/MailThunder)
+- **Test Framework** — YAML-driven execution via [TestPioneer](https://github.com/Integration-Automation/TestPioneer)
 
 Each module gets the same menu shape: **Run** (single script, batch directory, with or without an emailed report), **Help** (docs and GitHub open as in-IDE browser tabs), **Project** (scaffold a template directory), and where available a native GUI tab.
 
 ### IDE core
 
 - **Automation-aware syntax highlighting** — the `AT_*` / GUI / Web / Load keyword sets are registered for `.json`, and TestPioneer's schema for `.yml`, on top of JEditor's language support
-- **Code editor** — built on [JEditor](https://github.com/Intergration-Automation-Testing/JEditor): tabs, project tree, format checker, debugger, terminal, variable inspector and a git client pane
+- **Code editor** — built on [JEditor](https://github.com/Integration-Automation/JEDITOR): tabs, project tree, format checker, debugger, terminal, variable inspector and a git client pane
 - **Script execution** — single or batch; large action files are passed by path, never through the command line, so Windows' ~32 KB argv limit is never a factor
 - **Report generation** — HTML / JSON / XML after a run, with optional email delivery
 - **Integrated JupyterLab** — launches as a tab, installing JupyterLab into the project venv if it is missing
@@ -296,7 +296,7 @@ pip install pybreeze
 ### From source
 
 ```bash
-git clone https://github.com/Intergration-Automation-Testing/AutomationEditor.git
+git clone https://github.com/Integration-Automation/PyBreeze.git
 cd AutomationEditor
 pip install -r requirements.txt
 ```
@@ -360,7 +360,7 @@ PyBreeze/
 │   │   │   ├── python_task_process_manager.py   # TaskProcessManager (core)
 │   │   │   ├── process_executor_utils.py        # build_process / start_process
 │   │   │   ├── file_runner_process.py           # Plugin run configs (any language)
-│   │   │   ├── queue_pump.py                    # Shared QTimer drain
+│   │   │   ├── queue_pump.py                    # Shared pipe reader + QTimer drain
 │   │   │   ├── api_testka/ auto_control/ web_runner/
 │   │   │   ├── load_density/ file_automation/ mail_thunder/
 │   │   │   ├── test_pioneer/ prthinker/

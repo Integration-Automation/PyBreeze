@@ -38,7 +38,7 @@ def set_autocontrol_menu(ui_we_want_to_set: PyBreezeMainWindow):
         doc_url="https://autocontrol.readthedocs.io/en/latest/",
         doc_label_key="autocontrol_doc_label",
         doc_tab_label_key="autocontrol_doc_tab_label",
-        github_url="https://github.com/Intergration-Automation-Testing/AutoControl",
+        github_url="https://github.com/Integration-Automation/AutoControlGUI",
         github_label_key="autocontrol_github_label",
         github_tab_label_key="autocontrol_github_tab_label",
         create_project_func=safe_create_project("je_auto_control"),

@@ -40,23 +40,23 @@ PyBreeze 开箱即用，涵盖自动化测试的完整范围：
 
 | 维度 | 模块 | 说明 |
 |---|---|---|
-| **Web 自动化** | [WebRunner](https://github.com/Intergration-Automation-Testing/WebRunner) | 浏览器交互模拟与测试，深度集成浏览器驱动与元素定位器 |
-| **API 自动化** | [APITestka](https://github.com/Intergration-Automation-Testing/APITestka) | RESTful API 开发与测试，内置请求构建器、响应分析器、Mock 服务器及断言验证 |
-| **GUI 自动化** | [AutoControl](https://github.com/Intergration-Automation-Testing/AutoControl) | 桌面应用程序自动化，支持图像识别、坐标定位、键盘鼠标控制及动作录制 |
-| **负载与压力测试** | [LoadDensity](https://github.com/Intergration-Automation-Testing/LoadDensity) | 高并发性能测试引擎，用于监控系统在极端压力下的稳定性 |
+| **Web 自动化** | [WebRunner](https://github.com/Integration-Automation/WebRunner) | 浏览器交互模拟与测试，深度集成浏览器驱动与元素定位器 |
+| **API 自动化** | [APITestka](https://github.com/Integration-Automation/APITestka) | RESTful API 开发与测试，内置请求构建器、响应分析器、Mock 服务器及断言验证 |
+| **GUI 自动化** | [AutoControl](https://github.com/Integration-Automation/AutoControlGUI) | 桌面应用程序自动化，支持图像识别、坐标定位、键盘鼠标控制及动作录制 |
+| **负载与压力测试** | [LoadDensity](https://github.com/Integration-Automation/LoadDensity) | 高并发性能测试引擎，用于监控系统在极端压力下的稳定性 |
 
 此外还包含：
 
-- **文件自动化** — 通过 [automation-file](https://github.com/Intergration-Automation-Testing/AutomationFile) 模块实现自动化文件与目录操作
-- **邮件自动化** — 通过 [MailThunder](https://github.com/Intergration-Automation-Testing/MailThunder) 实现自动化邮件发送（例如测试报告投递）
-- **测试框架** — 通过 [TestPioneer](https://github.com/Intergration-Automation-Testing/TestPioneer) 实现结构化 YAML 驱动的测试执行
+- **文件自动化** — 通过 [automation-file](https://github.com/Integration-Automation/FileAutomation) 模块实现自动化文件与目录操作
+- **邮件自动化** — 通过 [MailThunder](https://github.com/Integration-Automation/MailThunder) 实现自动化邮件发送（例如测试报告投递）
+- **测试框架** — 通过 [TestPioneer](https://github.com/Integration-Automation/TestPioneer) 实现结构化 YAML 驱动的测试执行
 
 ### IDE 核心功能
 
 PyBreeze 不仅仅是一个代码编辑器——它是自动化生命周期的指挥中心：
 
 - **语法高亮** — 内置 Python 语法高亮，针对自动化库（APITestka、AutoControl、WebRunner、LoadDensity 等）提供深度关键字识别。可通过插件添加自定义语法规则。
-- **代码编辑器** — 基于 [JEditor](https://github.com/Intergration-Automation-Testing/JEditor) 构建，提供完整的编辑器功能，包含标签页管理、文件树导航与项目工作区支持。
+- **代码编辑器** — 基于 [JEditor](https://github.com/Integration-Automation/JEDITOR) 构建，提供完整的编辑器功能，包含标签页管理、文件树导航与项目工作区支持。
 - **脚本执行** — 直接在 IDE 中执行自动化脚本，并实时显示输出。支持单脚本与多脚本批量执行。
 - **报告生成** — 自动化模块可在测试执行后生成 HTML、JSON 和 XML 报告，并支持可选的电子邮件投递。
 - **集成 JupyterLab** — 在 PyBreeze 中直接以标签页方式启动 JupyterLab，进行交互式笔记本开发。若未安装 JupyterLab 将自动安装。
@@ -227,7 +227,7 @@ pip install pybreeze
 ### 从源码安装
 
 ```bash
-git clone https://github.com/Intergration-Automation-Testing/AutomationEditor.git
+git clone https://github.com/Integration-Automation/PyBreeze.git
 cd AutomationEditor
 pip install -r requirements.txt
 ```

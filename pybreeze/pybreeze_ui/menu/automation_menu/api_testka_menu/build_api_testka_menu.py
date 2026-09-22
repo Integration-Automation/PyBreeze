@@ -34,7 +34,7 @@ def set_apitestka_menu(ui_we_want_to_set: PyBreezeMainWindow):
         doc_url="https://apitestka.readthedocs.io/en/latest/",
         doc_label_key="apitestka_doc_label",
         doc_tab_label_key="apitestka_doc_tab_label",
-        github_url="https://github.com/Intergration-Automation-Testing/APITestka",
+        github_url="https://github.com/Integration-Automation/APITestka",
         github_label_key="apitestka_github_label",
         github_tab_label_key="apitestka_github_tab_label",
         create_project_func=safe_create_project("je_api_testka"),

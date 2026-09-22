@@ -44,7 +44,7 @@ Creating Plugins
 
 For detailed information on creating custom plugins, including syntax highlighting
 plugins and UI translation plugins, see the
-`Plugin Guide <https://github.com/Intergration-Automation-Testing/AutomationEditor/blob/main/PLUGIN_GUIDE.md>`_.
+`Plugin Guide <https://github.com/Integration-Automation/PyBreeze/blob/main/PLUGIN_GUIDE.md>`_.
 
 Syntax Highlighting Plugin Example
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

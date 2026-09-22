@@ -32,7 +32,7 @@ def set_web_runner_menu(ui_we_want_to_set: PyBreezeMainWindow):
         doc_url="https://webrunner.readthedocs.io/en/latest/",
         doc_label_key="web_runner_doc_label",
         doc_tab_label_key="web_runner_doc_tab_label",
-        github_url="https://github.com/Intergration-Automation-Testing/WebRunner",
+        github_url="https://github.com/Integration-Automation/WebRunner",
         github_label_key="web_runner_github_label",
         github_tab_label_key="web_runner_github_tab_label",
         create_project_func=safe_create_project("je_web_runner"),
