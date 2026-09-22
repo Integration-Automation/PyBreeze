@@ -109,7 +109,7 @@ class TestTestPioneerRun:
         assert calls == [("test_pioneer", ["-e", "C:/tests/run.yml"], None)]
 
     def test_no_interpreter_is_reported_not_raised(self, qt_app, monkeypatch):
-        from je_editor.utils.exception.exceptions import JEditorExecException
+        from je_editor import JEditorExecException
 
         from pybreeze.extend.process_executor import python_task_process_manager as manager_module
         from pybreeze.extend.process_executor.test_pioneer import test_pioneer_process_manager

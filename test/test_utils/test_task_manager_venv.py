@@ -20,7 +20,7 @@ def qt_app():
 
 
 def _raise_no_python(_path):
-    from je_editor.utils.exception.exceptions import JEditorExecException
+    from je_editor import JEditorExecException
     raise JEditorExecException("no python interpreter found")
 
 

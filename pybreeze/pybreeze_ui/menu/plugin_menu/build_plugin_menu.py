@@ -5,8 +5,7 @@ from typing import TYPE_CHECKING
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QMessageBox
 
-from je_editor import language_wrapper
-from je_editor.plugins import get_all_plugin_metadata
+from je_editor import get_all_plugin_metadata, language_wrapper
 from je_editor.pyside_ui.main_ui.plugin_browser.plugin_browser_widget import PluginBrowserWidget
 
 from pybreeze.pybreeze_ui.menu.plugin_menu.build_run_with_menu import run_current_file_with

@@ -117,9 +117,27 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
 
 ## 6. Cross-project boundaries
 
-- **JEditor (upstream)**: `PyBreezeMainWindow` subclasses `je_editor.EditorMain` in extend mode.
-  `pybreeze/__init__.py` re-exports JEditor's plugin API. PyBreeze also imports JEditor internals
-  (e.g. `PluginBrowserWidget`, `DestroyDock`, `check_and_choose_venv`, `actually_color_dict`). It
+- **JEditor (upstream)**: `PyBreezeMainWindow` subclasses `je_editor.EditorMain` in extend mode
+  and calls `super().__init__(debug_mode, show_system_tray_ray, extend=True)`. `pybreeze/__init__.py`
+  re-exports JEditor's plugin API. Everything else PyBreeze takes from the top level is in
+  je_editor's `__all__`, except for these names, which it imports from module paths JEditor has not
+  promised to keep. `test/test_utils/test_jeditor_contract.py` pins each path and the shape
+  PyBreeze calls it with, and fails if the code imports an internal name that is not on this list:
+
+  | Name | JEditor module | Used in |
+  | --- | --- | --- |
+  | `PluginBrowserWidget` | `pyside_ui.main_ui.plugin_browser.plugin_browser_widget` | `menu/plugin_menu/build_plugin_menu.py` |
+  | `DestroyDock` | `pyside_ui.main_ui.dock.destroy_dock` | `menu/tools/tools_menu.py` |
+  | `check_and_choose_venv` | `utils.venv_check.check_venv` | `extend/process_executor/python_task_process_manager.py` |
+  | `choose_file_get_save_file_path` | `pyside_ui.dialog.file_dialog.save_file_dialog` | `menu/plugin_menu/build_run_with_menu.py` |
+  | `write_file_with_encoding` | `utils.file.save.save_file` | `menu/plugin_menu/build_run_with_menu.py` |
+  | `DEFAULT_ENCODING`, `LINE_ENDING_LF` | `utils.encodings.text_codec` | `menu/plugin_menu/build_run_with_menu.py` |
+  | `actually_color_dict` | `pyside_ui.main_ui.save_settings.user_color_setting_file` | `show_code_window/code_window.py`, `automation_menu/auto_control_menu/build_autocontrol_menu.py` |
+
+  PyBreeze also relies on `EditorWidget`'s `current_file`, `code_edit`, `file_encoding`,
+  `line_ending`, `mark_ignore_next_file_change()` and `mark_saved()`, and on `language_wrapper`'s
+  `choose_language_dict` serving English and Traditional Chinese from the exported dict objects
+  themselves. Having je_editor export the names in the table is workspace X-17. It
   merges its strings by mutating JEditor's `english_word_dict` and `traditional_chinese_word_dict`
   in place, and writes its `application_name` into every dict in
   `language_wrapper.choose_language_dict` (`extend_multi_language/update_language_dict.py`). That has

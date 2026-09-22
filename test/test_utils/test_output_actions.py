@@ -72,7 +72,7 @@ class TestOpenInEditor:
         parent, output, actions = _make(app, main_window=window)
         output.setPlainText("some code")
         with patch(
-            "je_editor.pyside_ui.main_ui.editor.editor_widget.EditorWidget", _FakeEditor
+            "je_editor.EditorWidget", _FakeEditor
         ):
             editor = actions.open_in_editor()
         assert editor.code_edit.text == "some code"

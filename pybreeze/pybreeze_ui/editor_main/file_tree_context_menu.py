@@ -13,8 +13,7 @@ from PySide6.QtWidgets import (
     QTreeView, QMenu, QFileSystemModel, QInputDialog,
     QMessageBox, QApplication,
 )
-from je_editor import language_wrapper
-from je_editor.pyside_ui.main_ui.editor.editor_widget import EditorWidget
+from je_editor import EditorWidget, language_wrapper
 
 from pybreeze.utils.logging.logger import pybreeze_logger
 

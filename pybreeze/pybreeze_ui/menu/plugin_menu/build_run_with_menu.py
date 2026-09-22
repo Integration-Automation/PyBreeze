@@ -12,8 +12,7 @@ from typing import TYPE_CHECKING
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QMessageBox
 
-from je_editor import EditorWidget, language_wrapper
-from je_editor.plugins import get_all_plugin_run_configs
+from je_editor import EditorWidget, get_all_plugin_run_configs, language_wrapper
 from je_editor.pyside_ui.dialog.file_dialog.save_file_dialog import choose_file_get_save_file_path
 from je_editor.utils.encodings.text_codec import DEFAULT_ENCODING, LINE_ENDING_LF
 from je_editor.utils.file.save.save_file import write_file_with_encoding

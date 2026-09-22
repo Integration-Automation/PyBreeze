@@ -141,7 +141,7 @@ class TestCurlImportActions:
         gui.input_edit.setPlainText("curl https://example.com/api")
         gui.convert()
         with patch(
-            "je_editor.pyside_ui.main_ui.editor.editor_widget.EditorWidget", _FakeEditor
+            "je_editor.EditorWidget", _FakeEditor
         ):
             editor = gui.actions.open_in_editor()
         assert len(window.tab_widget.added) == 1

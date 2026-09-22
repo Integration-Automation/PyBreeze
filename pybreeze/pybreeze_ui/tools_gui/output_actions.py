@@ -90,7 +90,7 @@ class OutputActions:
         if tab_widget is None:
             pybreeze_logger.info("output_actions.py no tab_widget to open editor in")
             return None
-        from je_editor.pyside_ui.main_ui.editor.editor_widget import EditorWidget
+        from je_editor import EditorWidget
         editor = EditorWidget(self._main_window)
         editor.code_edit.setPlainText(self._output.toPlainText())
         tab_widget.addTab(

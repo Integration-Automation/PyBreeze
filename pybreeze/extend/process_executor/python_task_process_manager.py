@@ -10,7 +10,7 @@ from queue import Queue
 from threading import Thread
 
 from PySide6.QtCore import QTimer
-from je_editor.utils.exception.exceptions import JEditorExecException
+from je_editor import JEditorExecException
 from je_editor.utils.venv_check.check_venv import check_and_choose_venv
 
 from pybreeze.extend.process_executor.queue_pump import pump_message_queue, read_stream_into_queue
