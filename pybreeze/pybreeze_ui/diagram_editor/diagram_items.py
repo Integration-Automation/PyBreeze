@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
 from enum import Enum, auto
 
 from PySide6.QtCore import QPointF, QRectF, Qt
@@ -121,12 +122,22 @@ def _safe_color(value: str | None, fallback: str) -> QColor:
         if color.isValid():
             return color
     return QColor(fallback)
+
+
 _LABEL_FONT_FAMILY = "Segoe UI"
 _LABEL_FONT_SIZE = 10
 _CONNECTION_COLOR = "#37474f"
 _CONNECTION_WIDTH = 2.0
 _ARROW_SIZE = 10.0
 _HANDLE_SIZE = 8.0
+
+
+@dataclass(frozen=True)
+class NodeStyle:
+    """How a node is drawn. ``None`` colours mean the defaults; unparseable ones fall back too."""
+    fill_color: str | None = None
+    border_color: str | None = None
+    font_size: int = _LABEL_FONT_SIZE
 
 
 # ---------------------------------------------------------------------------
@@ -233,10 +244,9 @@ class DiagramNode(QGraphicsRectItem):
         h: float = _DEFAULT_NODE_H,
         text: str = "Node",
         shape: NodeShape = NodeShape.RECTANGLE,
-        fill_color: str | None = None,
-        border_color: str | None = None,
-        font_size: int = _LABEL_FONT_SIZE,
+        style: NodeStyle | None = None,
     ):
+        style = style or NodeStyle()
         # Clamp to a positive minimum so a zero/negative size from corrupted data
         # can't cause a divide-by-zero when computing edge intersection points.
         w = max(_MIN_NODE_W, w)
@@ -257,9 +267,9 @@ class DiagramNode(QGraphicsRectItem):
         self._resizing = False
 
         # Colors
-        self._fill_color = _safe_color(fill_color, _NODE_BRUSH_COLOR)
-        self._border_color = _safe_color(border_color, _NODE_PEN_COLOR)
-        self._font_size = font_size
+        self._fill_color = _safe_color(style.fill_color, _NODE_BRUSH_COLOR)
+        self._border_color = _safe_color(style.border_color, _NODE_PEN_COLOR)
+        self._font_size = style.font_size
 
         # Shape body (child)
         self.body: QGraphicsItem = self._make_body(w, h)
@@ -482,9 +492,11 @@ class DiagramNode(QGraphicsRectItem):
             h=data.get("h", _DEFAULT_NODE_H),
             text=data.get("text", "Node"),
             shape=NodeShape[data.get("shape", "RECTANGLE")],
-            fill_color=data.get("fill_color", data.get("color")),
-            border_color=data.get("border_color"),
-            font_size=data.get("font_size", _LABEL_FONT_SIZE),
+            style=NodeStyle(
+                fill_color=data.get("fill_color", data.get("color")),
+                border_color=data.get("border_color"),
+                font_size=data.get("font_size", _LABEL_FONT_SIZE),
+            ),
         )
 
 

@@ -197,9 +197,9 @@ class TestCorruptedNodeData:
         assert node._fill_color.isValid()
 
     def test_valid_colour_preserved(self, qt_app):
-        from pybreeze.pybreeze_ui.diagram_editor.diagram_items import DiagramNode
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_items import DiagramNode, NodeStyle
 
-        node = DiagramNode(fill_color="#ff0000")
+        node = DiagramNode(style=NodeStyle(fill_color="#ff0000"))
         assert node._fill_color.name() == "#ff0000"
 
 
