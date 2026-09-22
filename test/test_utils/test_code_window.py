@@ -116,3 +116,33 @@ class TestAppendOutput:
         assert cursor.charFormat().foreground().color() == actually_color_dict["normal_output_color"]
         cursor.setPosition(len("ok\n") + 1)
         assert cursor.charFormat().foreground().color() == actually_color_dict["error_output_color"]
+
+
+class TestFollowOutput:
+    def test_the_view_follows_output_at_the_bottom(self, qt_app):
+        from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
+
+        window = CodeWindow()
+        window.show()
+        for i in range(300):
+            window.append_output(f"line {i}\n")
+
+        scroll_bar = window.code_result.verticalScrollBar()
+        assert scroll_bar.maximum() > 0
+        assert scroll_bar.value() == scroll_bar.maximum()
+
+    def test_a_reader_who_scrolled_up_is_left_alone(self, qt_app):
+        from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
+
+        window = CodeWindow()
+        window.show()
+        for i in range(300):
+            window.append_output(f"line {i}\n")
+        scroll_bar = window.code_result.verticalScrollBar()
+        scroll_bar.setValue(10)
+
+        for i in range(50):
+            window.append_output(f"more {i}\n")
+
+        assert scroll_bar.value() == 10
+        assert scroll_bar.maximum() > 10

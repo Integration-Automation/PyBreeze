@@ -54,6 +54,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260922-06 | 2026-09-22 | Run window follows its output | #incident #process-executor | [2026-09](2026-09.md) |
 | U-20260922-05 | 2026-09-22 | One output pipeline for every run window | #done #process-executor | [2026-09](2026-09.md) |
 | U-20260922-04 | 2026-09-22 | Run window keeps the output's indentation | #done #process-executor | [2026-09](2026-09.md) |
 | U-20260922-03 | 2026-09-22 | Point project URLs at the current repository | #done #metadata | [2026-09](2026-09.md) |
@@ -64,4 +65,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 5 |
+| [2026-09.md](2026-09.md) | 2026-09 | 6 |

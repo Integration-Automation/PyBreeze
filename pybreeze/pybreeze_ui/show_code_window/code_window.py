@@ -57,7 +57,12 @@ class CodeWindow(QWidget):
         the end, because the widget's own cursor follows the user's clicks and
         selections, and writing there would splice output into the middle or
         overwrite whatever the user had selected.
+
+        The view follows the output while it is scrolled to the bottom, like a
+        terminal; once the user scrolls up to read, it stays where they left it.
         """
+        scroll_bar = self.code_result.verticalScrollBar()
+        follow_output = scroll_bar.value() >= scroll_bar.maximum()
         cursor = QTextCursor(self.code_result.document())
         cursor.movePosition(QTextCursor.MoveOperation.End)
         if own_line and cursor.positionInBlock() > 0:
@@ -66,3 +71,5 @@ class CodeWindow(QWidget):
         color_key = "error_output_color" if is_error else "normal_output_color"
         text_format.setForeground(actually_color_dict.get(color_key))
         cursor.insertText(normalize_line_endings(text), text_format)
+        if follow_output:
+            scroll_bar.setValue(scroll_bar.maximum())
