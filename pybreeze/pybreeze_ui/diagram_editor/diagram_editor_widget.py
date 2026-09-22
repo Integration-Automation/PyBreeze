@@ -27,10 +27,10 @@ from PySide6.QtWidgets import (
 from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.diagram_editor.diagram_mermaid_parser import parse_mermaid
-from pybreeze.pybreeze_ui.diagram_editor.diagram_net_utils import safe_download_image
 from pybreeze.pybreeze_ui.diagram_editor.diagram_property_panel import DiagramPropertyPanel
-from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene, ToolMode
+from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene, ImageDownloadThread, ToolMode
 from pybreeze.pybreeze_ui.diagram_editor.diagram_view import DiagramView
+from pybreeze.pybreeze_ui.thread_keeper import let_run_out
 from pybreeze.utils.logging.logger import pybreeze_logger
 
 
@@ -126,6 +126,8 @@ class DiagramEditorWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._current_path: Path | None = None
+        # Images being fetched for Add Image from URL
+        self._url_fetches: set[ImageDownloadThread] = set()
 
         # --- MVC core ---
         self._scene = DiagramScene(self)
@@ -447,8 +449,12 @@ class DiagramEditorWidget(QWidget):
             )
 
     def closeEvent(self, event) -> None:
-        """Wait for the scene's image fetches before the editor goes."""
-        self._scene.stop_image_downloads()
+        """Let the image fetches still going run out, cut off from the editor."""
+        for fetch in tuple(self._url_fetches):
+            if fetch.isRunning():
+                let_run_out(fetch, fetch.fetched, fetch.failed)
+        self._url_fetches.clear()
+        self._scene.let_image_downloads_run_out()
         super().closeEvent(event)
 
     def _write_json(self, path: Path) -> None:
@@ -575,17 +581,28 @@ class DiagramEditorWidget(QWidget):
         )
         if not ok or not url.strip():
             return
-        url = url.strip()
-        try:
-            data = safe_download_image(url)
-            pix = QPixmap()
-            pix.loadFromData(data)
-            if pix.isNull():
-                raise ValueError("Invalid image data")
-            self._scene.add_image(pix, url)
-        except Exception as e:
-            pybreeze_logger.error(f"URL image load failed: {e}")
-            QMessageBox.warning(self, _lang("diagram_editor_error_title", "Error"), str(e))
+        # Fetched on its own thread: the download (and the DNS lookup its URL
+        # check makes) used to hold the IDE until the host answered.
+        fetch = ImageDownloadThread(url.strip())
+        fetch.fetched.connect(self._on_url_image_fetched)
+        fetch.failed.connect(self._on_url_image_failed)
+        fetch.finished.connect(lambda: self._url_fetches.discard(fetch))
+        self._url_fetches.add(fetch)
+        fetch.start()
+
+    def _on_url_image_fetched(self, url: str, data: bytes) -> None:
+        """Put a fetched image on the canvas, or say it was not one. UI thread."""
+        pix = QPixmap()
+        pix.loadFromData(data)
+        if pix.isNull():
+            self._on_url_image_failed(url, _lang("diagram_editor_image_load_failed", "Failed to load image."))
+            return
+        self._scene.add_image(pix, url)
+
+    def _on_url_image_failed(self, url: str, message: str) -> None:
+        """Say why the image at *url* could not be added. UI thread."""
+        pybreeze_logger.error("URL image load failed: %s", message)
+        QMessageBox.warning(self, _lang("diagram_editor_error_title", "Error"), message)
 
     # ------------------------------------------------------------------
     # View helpers

@@ -10,12 +10,17 @@ import os
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+import threading
+import time
+
 import pytest
 from PySide6.QtGui import QColor, QImage
 from PySide6.QtWidgets import QApplication
 
+from pybreeze.pybreeze_ui.diagram_editor import diagram_editor_widget as editor_module
 from pybreeze.pybreeze_ui.diagram_editor import diagram_scene as scene_module
 from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene
+from pybreeze.pybreeze_ui.thread_keeper import is_kept
 
 _A_URL = "https://pictures.example/logo.png"
 
@@ -66,8 +71,6 @@ def wait_for_downloads(scene: DiagramScene, app) -> None:
 
 class TestFetchingAnImage:
     def test_the_load_does_not_wait_for_the_network(self, app, monkeypatch):
-        import threading
-
         answering = threading.Event()
         started = threading.Event()
 
@@ -86,7 +89,7 @@ class TestFetchingAnImage:
         assert scene._image_downloads, "the load waited for the fetch"
         answering.set()
         wait_for_downloads(scene, app)
-        scene.stop_image_downloads()
+        scene.let_image_downloads_run_out()
 
     def test_what_comes_back_reaches_the_image(self, app, downloads):
         scene = DiagramScene()
@@ -96,7 +99,7 @@ class TestFetchingAnImage:
 
         assert downloads == [_A_URL]
         assert scene._pixmap_cache[_A_URL].isNull() is False
-        scene.stop_image_downloads()
+        scene.let_image_downloads_run_out()
 
     def test_an_undo_does_not_fetch_it_again(self, app, downloads):
         scene = DiagramScene()
@@ -110,7 +113,7 @@ class TestFetchingAnImage:
         assert downloads == [_A_URL], "the image was fetched again"
         images = scene.get_all_images()
         assert images and not images[0]._pix_item.pixmap().isNull()
-        scene.stop_image_downloads()
+        scene.let_image_downloads_run_out()
 
     def test_two_images_from_one_source_share_a_single_fetch(self, app, downloads):
         scene = DiagramScene()
@@ -125,7 +128,7 @@ class TestFetchingAnImage:
         wait_for_downloads(scene, app)
 
         assert downloads == [_A_URL]
-        scene.stop_image_downloads()
+        scene.let_image_downloads_run_out()
 
     def test_a_fetch_that_fails_is_only_logged(self, app, monkeypatch):
         def refuse(source: str) -> bytes:
@@ -139,21 +142,109 @@ class TestFetchingAnImage:
 
         assert _A_URL not in scene._pixmap_cache
         assert scene.get_all_images()
-        scene.stop_image_downloads()
+        scene.let_image_downloads_run_out()
+
+
+def _editor():
+    from pybreeze.extend_multi_language.update_language_dict import update_language_dict
+    from pybreeze.pybreeze_ui.diagram_editor.diagram_editor_widget import DiagramEditorWidget
+
+    update_language_dict()
+    return DiagramEditorWidget()
+
+
+def _wait_until(app, condition) -> None:
+    deadline = time.monotonic() + 5
+    while not condition():
+        assert time.monotonic() < deadline, "timed out"
+        app.processEvents()
+        time.sleep(0.01)
+
+
+@pytest.fixture()
+def slow_host(monkeypatch) -> threading.Event:
+    """A host that answers with an image once the returned event is set."""
+    answering = threading.Event()
+
+    def fetch(_source: str) -> bytes:
+        answering.wait(5)
+        return an_image()
+
+    monkeypatch.setattr(scene_module, "safe_download_image", fetch)
+    return answering
 
 
 class TestClosingTheEditor:
-    def test_it_waits_for_a_fetch_still_going(self, app, downloads):
-        from pybreeze.pybreeze_ui.diagram_editor.diagram_editor_widget import DiagramEditorWidget
-        from pybreeze.extend_multi_language.update_language_dict import update_language_dict
-
-        update_language_dict()
-        editor = DiagramEditorWidget()
+    def test_it_lets_a_fetch_still_going_run_out(self, app, slow_host):
+        editor = _editor()
         editor._scene.load_from_dict(_A_DIAGRAM)
+        (fetch,) = editor._scene._image_downloads.values()
+
+        editor.close()  # returns while the host is still answering
+
+        assert editor._scene._image_downloads == {}
+        assert is_kept(fetch)
+        slow_host.set()
+        _wait_until(app, lambda: not is_kept(fetch))
+
+
+class TestAddingAnImageFromAUrl:
+    def _ask_for(self, monkeypatch, url: str) -> None:
+        monkeypatch.setattr(editor_module.QInputDialog, "getText", lambda *args: (url, True))
+
+    def test_the_image_arrives_without_holding_the_ui(self, app, monkeypatch, slow_host):
+        editor = _editor()
+        self._ask_for(monkeypatch, _A_URL)
+
+        editor._add_image_from_url()
+        assert editor._scene.get_all_images() == []  # back before the host answered
+        slow_host.set()
+        _wait_until(app, lambda: editor._scene.get_all_images() and not editor._url_fetches)
+
+        assert editor._scene.get_all_images()[0].source() == _A_URL
+        editor.close()
+
+    def test_a_failed_fetch_is_reported(self, app, monkeypatch):
+        def refuse(_source: str) -> bytes:
+            raise scene_module.ImageDownloadError("nothing answered")
+
+        monkeypatch.setattr(scene_module, "safe_download_image", refuse)
+        warned = []
+        monkeypatch.setattr(editor_module.QMessageBox, "warning", lambda *args: warned.append(args[2]))
+        editor = _editor()
+        self._ask_for(monkeypatch, _A_URL)
+
+        editor._add_image_from_url()
+        _wait_until(app, lambda: warned)
+
+        assert warned == ["nothing answered"]
+        assert editor._scene.get_all_images() == []
+        editor.close()
+
+    def test_something_that_is_not_an_image_is_reported(self, app, monkeypatch):
+        monkeypatch.setattr(scene_module, "safe_download_image", lambda _source: b"<html></html>")
+        warned = []
+        monkeypatch.setattr(editor_module.QMessageBox, "warning", lambda *args: warned.append(args[2]))
+        editor = _editor()
+        self._ask_for(monkeypatch, _A_URL)
+
+        editor._add_image_from_url()
+        _wait_until(app, lambda: warned)
+
+        assert editor._scene.get_all_images() == []
+        editor.close()
+
+    def test_closing_mid_fetch_lets_it_run_out(self, app, monkeypatch, slow_host):
+        editor = _editor()
+        self._ask_for(monkeypatch, _A_URL)
+        editor._add_image_from_url()
+        (fetch,) = editor._url_fetches
 
         editor.close()
 
-        assert editor._scene._image_downloads == {}
+        assert is_kept(fetch)
+        slow_host.set()
+        _wait_until(app, lambda: not is_kept(fetch))
 
 
 class TestCopyingAnImage:

@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-35 | 2026-09-23 | Adding an image from a URL no longer freezes the IDE | #done #diagram | [2026-09](2026-09.md) |
 | U-20260923-34 | 2026-09-23 | Remote directories are listed without freezing the IDE | #done #ssh | [2026-09](2026-09.md) |
 | U-20260923-33 | 2026-09-23 | Connecting an SSH tab no longer freezes the IDE | #done #ssh | [2026-09](2026-09.md) |
 | U-20260923-32 | 2026-09-23 | A runaway regex no longer freezes the IDE | #done #tools | [2026-09](2026-09.md) |
@@ -115,4 +116,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 52 |
+| [2026-09.md](2026-09.md) | 2026-09 | 53 |

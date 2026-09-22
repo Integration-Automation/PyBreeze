@@ -23,6 +23,7 @@ from pybreeze.pybreeze_ui.diagram_editor.diagram_net_utils import (
     ImageDownloadError,
     safe_download_image,
 )
+from pybreeze.pybreeze_ui.thread_keeper import let_run_out
 from pybreeze.utils.logging.logger import pybreeze_logger
 
 # Allowlist of image extensions that a saved diagram may reference on disk.
@@ -85,7 +86,8 @@ class ImageDownloadThread(QThread):
     def run(self) -> None:
         try:
             data = safe_download_image(self._source)
-        except (ImageDownloadError, OSError, HTTPException) as err:
+        # ValueError: a URL urllib cannot parse at all
+        except (ImageDownloadError, OSError, HTTPException, ValueError) as err:
             self.failed.emit(self._source, str(err))
         else:
             self.fetched.emit(self._source, data)
@@ -781,15 +783,17 @@ class DiagramScene(QGraphicsScene):
     def _on_image_download_failed(source: str, message: str) -> None:
         pybreeze_logger.debug("safe_download_image failed for %s: %s", source, message)
 
-    def stop_image_downloads(self) -> None:
-        """Wait for every fetch still going, with its signals blocked.
+    def let_image_downloads_run_out(self) -> None:
+        """Cut every fetch still going off from the scene, and keep it until it ends.
 
         Called when the editor closes: a running QThread destroyed with the
         scene aborts the process, and a late signal would reach a dead scene.
+        Waiting for them instead would hold the UI for up to a download's
+        timeout.
         """
         for thread in tuple(self._image_downloads.values()):
-            thread.blockSignals(True)
-            thread.wait()
+            if thread.isRunning():
+                let_run_out(thread, thread.fetched, thread.failed)
         self._image_downloads.clear()
 
     def load_from_dict(self, data: dict) -> None:
