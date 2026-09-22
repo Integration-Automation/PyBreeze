@@ -193,17 +193,6 @@ def _action_new_folder(tree_view: QTreeView, path: Path | None) -> None:
     _perform_file_op(tree_view, lambda: new_path.mkdir(parents=True))
 
 
-def _find_editor_for_file(main_window, file_path: Path) -> EditorWidget | None:
-    """Find the EditorWidget that has the given file open."""
-    path_str = str(file_path)
-    for i in range(main_window.tab_widget.count()):
-        widget = main_window.tab_widget.widget(i)
-        if isinstance(widget, EditorWidget) and widget.current_file is not None:
-            if str(Path(widget.current_file)) == path_str:
-                return widget
-    return None
-
-
 def _editors_under(main_window, path: Path) -> list[tuple[EditorWidget, Path]]:
     """The editor tabs open on *path*, or on any file under it, with their files."""
     found = []
@@ -288,13 +277,14 @@ def _action_delete(tree_view: QTreeView, main_window, path: Path | None) -> None
     if reply != QMessageBox.StandardButton.Yes:
         return
 
-    # Close editor tab if this file is open
-    editor = _find_editor_for_file(main_window, path)
-    if editor is not None:
-        idx = main_window.tab_widget.indexOf(editor)
-        if idx >= 0:
-            editor.close()
-            main_window.tab_widget.removeTab(idx)
+    # Every tab open on the file, or on a file under the folder, closes first:
+    # closing stops its auto-save, which would otherwise keep writing the
+    # buffer back while the files are being removed.
+    for editor, _file in _editors_under(main_window, path):
+        index = main_window.tab_widget.indexOf(editor)
+        editor.close()
+        if index >= 0:
+            main_window.tab_widget.removeTab(index)
 
     def _delete() -> None:
         if path.is_dir():

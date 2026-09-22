@@ -20,7 +20,7 @@ from pybreeze.extend_multi_language.update_language_dict import update_language_
 from pybreeze.pybreeze_ui.editor_main import file_tree_context_menu as ctx
 from pybreeze.pybreeze_ui.editor_main.file_tree_context_menu import (
     _action_copy_path, _action_delete, _action_new_file, _action_new_folder,
-    _action_rename, _attach_context_menu, _find_editor_for_file, _get_tree_root_path,
+    _action_rename, _attach_context_menu, _editors_under, _get_tree_root_path,
     _perform_file_op, _resolve_parent_dir, setup_file_tree_context_menu
 )
 
@@ -265,12 +265,39 @@ class TestDeleting:
         window = FakeWindow()
         editor = FakeEditor(str(target))
         window.tab_widget.addTab(editor, "open.py")
-        monkeypatch.setattr(ctx, "_find_editor_for_file", lambda _w, _p: editor)
+        monkeypatch.setattr(ctx, "_editors_under", lambda _w, _p: [(editor, target)])
         confirm(monkeypatch, yes=True)
         _action_delete(tree, window, target)
         assert editor.closed
         assert window.tab_widget.count() == 0
         assert not target.exists()
+
+    def test_every_tab_inside_a_deleted_folder_is_closed(self, tree, tmp_path, monkeypatch):
+        folder = tmp_path / "pkg"
+        folder.mkdir()
+        inside = [folder / "a.py", folder / "b.py"]
+        for file in inside:
+            file.touch()
+        window = FakeWindow()
+        editors = [FakeEditor(str(file)) for file in inside]
+        outside = FakeEditor(str(tmp_path / "other.py"))
+        for editor in (*editors, outside):
+            window.tab_widget.addTab(editor, "tab")
+        asked = []
+
+        def under(_window, path):
+            asked.append(path)
+            return list(zip(editors, inside))
+
+        monkeypatch.setattr(ctx, "_editors_under", under)
+        confirm(monkeypatch, yes=True)
+        _action_delete(tree, window, folder)
+
+        assert asked == [folder]
+        assert all(editor.closed for editor in editors)
+        assert not outside.closed
+        assert window.tab_widget.count() == 1
+        assert not folder.exists()
 
 
 class TestCopyingThePath:
@@ -299,9 +326,9 @@ class TestCopyingThePath:
         assert QApplication.clipboard().text() == "untouched"
 
 
-class TestFindingTheOpenEditor:
+class TestFindingTheOpenEditors:
     def test_a_window_with_no_editor_tabs_finds_nothing(self, app, tmp_path):
-        assert _find_editor_for_file(FakeWindow(), tmp_path / "any.py") is None
+        assert _editors_under(FakeWindow(), tmp_path / "any.py") == []
 
 
 class TestAttachingTheMenu:
