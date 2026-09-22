@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 
 import pytest
 
@@ -9,7 +10,7 @@ from pybreeze.extend.prthinker_extend import prthinker_setting
 from pybreeze.extend.prthinker_extend.prthinker_setting import (
     DEFAULT_SETTING, INSTALL_EXTRAS, SECRET_SETTINGS, SETTING_ENVIRONMENT,
     environment_for, extra_arguments, install_target, load_setting, loggable,
-    review_file_arguments, review_pr_arguments, save_setting
+    review_file_arguments, review_pr_arguments, save_setting, split_arguments
 )
 
 
@@ -91,6 +92,20 @@ class TestTheCommandsAreBuilt:
     def test_a_quoted_argument_stays_in_one_piece(self):
         setting = {**DEFAULT_SETTING, "extra_arguments": '--marker "a b"'}
         assert extra_arguments(setting) == ["--marker", "a b"]
+
+    def test_a_windows_path_keeps_its_backslashes(self):
+        assert split_arguments(
+            r'--output-dir C:\reviews\out --marker "C:\with space\x"',
+            backslash_escapes=False,
+        ) == ["--output-dir", r"C:\reviews\out", "--marker", r"C:\with space\x"]
+
+    def test_where_backslash_escapes_it_still_does(self):
+        assert split_arguments(r"--marker a\ b", backslash_escapes=True) == ["--marker", "a b"]
+
+    def test_the_platform_decides_what_a_backslash_means(self):
+        setting = {**DEFAULT_SETTING, "extra_arguments": r"--output-dir out\here"}
+        expected = r"out\here" if os.sep == "\\" else "outhere"
+        assert extra_arguments(setting) == ["--output-dir", expected]
 
     def test_an_unclosed_quote_costs_only_the_extra_arguments(self):
         setting = {**DEFAULT_SETTING, "extra_arguments": '--marker "unclosed'}

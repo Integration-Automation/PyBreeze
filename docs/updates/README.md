@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260922-14 | 2026-09-22 | Extra prthinker arguments lost their Windows backslashes | #incident #prthinker | [2026-09](2026-09.md) |
 | U-20260922-13 | 2026-09-22 | Write down and test what PyBreeze takes from JEditor | #done #jeditor | [2026-09](2026-09.md) |
 | U-20260922-12 | 2026-09-22 | Run with rewrote the file in UTF-8 and CRLF | #incident #plugins | [2026-09](2026-09.md) |
 | U-20260922-11 | 2026-09-22 | IDE crashed on start with a non-English language saved | #done #i18n | [2026-09](2026-09.md) |
@@ -76,4 +77,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 13 |
+| [2026-09.md](2026-09.md) | 2026-09 | 14 |

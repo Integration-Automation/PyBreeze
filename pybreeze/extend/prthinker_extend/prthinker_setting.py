@@ -17,6 +17,7 @@ Pure logic, with no Qt: what it builds can be tested on its own.
 from __future__ import annotations
 
 import json
+import os
 import shlex
 from pathlib import Path
 from typing import Dict, List
@@ -178,10 +179,32 @@ def extra_arguments(setting: Dict[str, str]) -> List[str]:
     if not text:
         return []
     try:
-        return shlex.split(text)
+        return split_arguments(text, backslash_escapes=os.sep != "\\")
     except ValueError as error:
         pybreeze_logger.error("prthinker extra arguments could not be read: %r", error)
         return []
+
+
+def split_arguments(text: str, *, backslash_escapes: bool) -> List[str]:
+    """
+    以命令列的規則斷詞
+    Split *text* into arguments the way a command line is split.
+
+    Windows 的路徑用反斜線分隔，那裡的反斜線不能當跳脫字元，否則 ``C:\\reviews`` 會變成
+    ``C:reviews``。
+    Where a backslash separates path parts (Windows), it must not escape the
+    next character, or ``C:\\reviews`` would come out as ``C:reviews``.
+
+    :param text: 要斷詞的文字 / the text to split
+    :param backslash_escapes: 反斜線是否為跳脫字元 / whether a backslash escapes
+    :return: 參數 / the arguments
+    :raises ValueError: 引號沒有關上時 / when a quote is left open
+    """
+    lexer = shlex.shlex(text, posix=True)
+    lexer.whitespace_split = True
+    if not backslash_escapes:
+        lexer.escape = ""
+    return list(lexer)
 
 
 def review_file_arguments(file_path: str, setting: Dict[str, str]) -> List[str]:
