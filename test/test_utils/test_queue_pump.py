@@ -105,3 +105,33 @@ class TestReadStreamIntoQueue:
         while not q.empty():
             pieces.append(q.get())
         assert pieces == ["abcd", "efgh", "ij\n"]
+
+    def _pieces(self, data: bytes, buffer_size: int, encoding: str = "utf-8") -> list[str]:
+        q: Queue = Queue()
+        read_stream_into_queue(
+            io.BytesIO(data), q, buffer_size=buffer_size, encoding=encoding,
+            keep_reading=lambda: True)
+        items = []
+        while not q.empty():
+            items.append(q.get())
+        return items
+
+    def test_a_character_cut_by_the_buffer_is_joined(self):
+        # Each of these characters is three bytes; a four-byte buffer cuts them.
+        text = "中文輸出\n"
+        pieces = self._pieces(text.encode("utf-8"), buffer_size=4)
+        assert "".join(pieces) == text
+        assert "�" not in "".join(pieces)
+
+    def test_a_line_ending_cut_by_the_buffer_stays_one_line_ending(self):
+        pieces = self._pieces(b"abc\r\ndef\r\n", buffer_size=4)
+        # Normalised for display piece by piece, a lone "\r" then "\n" would be
+        # two line breaks.
+        assert not any(piece.endswith("\r") for piece in pieces)
+        assert "".join(pieces) == "abc\r\ndef\r\n"
+
+    def test_a_carriage_return_at_the_very_end_is_not_lost(self):
+        assert "".join(self._pieces(b"50%\r", buffer_size=1024)) == "50%\r"
+
+    def test_an_unknown_encoding_falls_back_to_utf8(self):
+        assert self._pieces("ok 中\n".encode("utf-8"), 1024, encoding="no-such-codec") == ["ok 中\n"]

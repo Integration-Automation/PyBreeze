@@ -7,6 +7,7 @@ handling, what counts as a line) is made in one place.
 """
 from __future__ import annotations
 
+import codecs
 import itertools
 import queue
 from collections.abc import Callable
@@ -37,7 +38,16 @@ def read_stream_into_queue(
     loop spins at 100% CPU re-reading a closed pipe until the QTimer notices the
     process exited. Lines keep their leading whitespace and line ending, and
     blank lines are kept, so the run window shows the output as it was written.
+
+    A line longer than *buffer_size* arrives in pieces, and a piece can end
+    inside a multi-byte character or between the ``\\r`` and ``\\n`` of a line
+    ending. The character is carried over by an incremental decoder, and a
+    trailing ``\\r`` is held for the next piece: decoded on its own, the
+    character showed as replacement marks, and the split line ending as a
+    blank line.
     """
+    decoder = _decoder_for(encoding)
+    held = ""
     while keep_reading():
         try:
             line = stream.readline(buffer_size)
@@ -48,8 +58,24 @@ def read_stream_into_queue(
         if not line:
             break
         if isinstance(line, bytes):
-            line = line.decode(encoding, "replace")
-        target_queue.put(line)
+            line = decoder.decode(line)
+        line, held = held + line, ""
+        if line.endswith("\r"):
+            line, held = line[:-1], "\r"
+        if line:
+            target_queue.put(line)
+    rest = held + decoder.decode(b"", final=True)
+    if rest:
+        target_queue.put(rest)
+
+
+def _decoder_for(encoding: str) -> codecs.IncrementalDecoder:
+    """An incremental decoder for *encoding*, or UTF-8's when there is no such codec."""
+    try:
+        return codecs.getincrementaldecoder(encoding)(errors="replace")
+    except LookupError:
+        pybreeze_logger.warning("Unknown output encoding %r; decoding as UTF-8", encoding)
+        return codecs.getincrementaldecoder("utf-8")(errors="replace")
 
 
 def pump_message_queue(
