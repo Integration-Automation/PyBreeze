@@ -59,6 +59,11 @@ class CodeWindow(QWidget):
         self.setLayout(self.grid_layout)
         self.setFocus()
 
+    def stop_runner(self) -> None:
+        """Stop the child this window shows, if one is still running."""
+        if self.runner is not None:
+            self.runner.stop()
+
     def append_output(self, text: str, is_error: bool = False, *, own_line: bool = False) -> None:
         """Append *text* to the end of the output, in the normal or the error colour.
 

@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-06 | 2026-09-23 | Runs outlived the IDE | #incident #process-executor | [2026-09](2026-09.md) |
 | U-20260923-05 | 2026-09-23 | parse_mermaid back under the cognitive complexity cap | #done #refactor #diagram | [2026-09](2026-09.md) |
 | U-20260923-04 | 2026-09-23 | DiagramNode takes its style as one NodeStyle | #done #refactor #diagram | [2026-09](2026-09.md) |
 | U-20260923-03 | 2026-09-23 | Automation menus described by one AutomationMenu | #done #refactor #menus | [2026-09](2026-09.md) |
@@ -86,4 +87,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 23 |
+| [2026-09.md](2026-09.md) | 2026-09 | 24 |

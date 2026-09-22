@@ -139,6 +139,15 @@ class FileRunnerProcess:
         self.timer.timeout.connect(self._pull_text)
         self.timer.start()
 
+    def stop(self) -> None:
+        """Stop the child if it is still running.
+
+        Only the child itself: processes it started are left to it. The run
+        window reports the exit on the next pump, as for any other exit.
+        """
+        if self.process is not None and self.process.poll() is None:
+            self.process.terminate()
+
     def _pull_text(self) -> None:
         """Timer callback: pump queues to UI."""
         pump_message_queue(self.output_queue, self.main_window.append_output, is_error=False)

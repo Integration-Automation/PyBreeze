@@ -16,6 +16,7 @@ from qt_material import apply_stylesheet
 from pybreeze.extend_multi_language.update_language_dict import update_language_dict
 from pybreeze.pybreeze_ui.editor_main.file_tree_context_menu import setup_file_tree_context_menu
 from pybreeze.pybreeze_ui.menu.build_menubar import add_menu_to_menubar
+from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
 from pybreeze.pybreeze_ui.syntax.syntax_extend import \
     syntax_extend_package
 from pybreeze.utils.logging.logger import pybreeze_logger
@@ -38,7 +39,7 @@ class PyBreezeMainWindow(EditorMain):
         # which auto-discovers jeditor_plugins/ in the current working directory.
         # Third-party plugins placed there will be loaded automatically.
 
-        self.current_run_code_window: list[QWidget] = []
+        self.current_run_code_window: list[CodeWindow] = []
         # Project compiler if user not choose this will use which to find
         self.python_compiler = None
         # Delete JEditor help
@@ -82,8 +83,11 @@ class PyBreezeMainWindow(EditorMain):
             close_timer.start()
 
     def closeEvent(self, event) -> None:
-        for widget in self.current_run_code_window:
-            widget.close()
+        # A run's child outlives the IDE unless stopped here: it is a separate
+        # process, and without a console nobody would see it still running.
+        for run_window in self.current_run_code_window:
+            run_window.stop_runner()
+            run_window.close()
         super().closeEvent(event)
 
     @staticmethod

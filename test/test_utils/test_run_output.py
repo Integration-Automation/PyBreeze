@@ -133,6 +133,68 @@ class TestFileRunnerOutput:
         assert "hello from the plugin run" in run_window.code_result.toPlainText()
 
 
+_SLEEP_SECONDS = "60"
+
+
+class TestStoppingARun:
+    """Stopping the child a run window shows: what closing the IDE does to every run."""
+
+    def test_a_python_run_is_stopped_and_reports_its_exit(self, qt_app):
+        from pybreeze.extend.process_executor.process_executor_utils import build_task_process
+
+        main_window = MainWindow(sys.executable)
+        manager = build_task_process(main_window)
+        manager.start_module_process(
+            "timeit", ["-n", "1", "-r", "1", f"import time; time.sleep({_SLEEP_SECONDS})"])
+        child = manager.process
+        run_window = main_window.current_run_code_window[0]
+
+        run_window.stop_runner()
+        _run_events_until(
+            qt_app, lambda: "Task exit with code" in run_window.code_result.toPlainText())
+
+        assert child.poll() is not None
+
+    def test_a_plugin_run_is_stopped_and_reports_its_exit(self, qt_app, tmp_path, monkeypatch):
+        from pybreeze.pybreeze_ui.menu.plugin_menu import build_run_with_menu as run_with
+
+        script = tmp_path / "wait.py"
+        script.write_text(f"import time\ntime.sleep({_SLEEP_SECONDS})\n", encoding="utf-8")
+        monkeypatch.setattr(run_with, "save_current_file_for_run", lambda _w: str(script))
+        main_window = MainWindow()
+
+        run_with.run_current_file_with(
+            main_window, {"name": "Python", "compiler": sys.executable, "suffixes": (".py",)})
+        run_window = main_window.current_run_code_window[0]
+        child = run_window.runner.process
+        run_window.stop_runner()
+        _run_events_until(
+            qt_app, lambda: "[Process exited with code" in run_window.code_result.toPlainText())
+
+        assert child.poll() is not None
+
+    def test_stopping_a_finished_run_changes_nothing(self, qt_app, tmp_path):
+        from pybreeze.extend.process_executor.process_executor_utils import build_task_process
+
+        data = tmp_path / "data.json"
+        data.write_text("{}", encoding="utf-8")
+        main_window = MainWindow(sys.executable)
+        manager = build_task_process(main_window)
+        manager.start_module_process("json.tool", [str(data)])
+        _run_events_until(qt_app, lambda: manager.process is None)
+        run_window = main_window.current_run_code_window[0]
+        before = run_window.code_result.toPlainText()
+
+        run_window.stop_runner()
+
+        assert run_window.code_result.toPlainText() == before
+
+    def test_a_window_that_never_ran_anything_can_be_stopped(self, qt_app):
+        from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
+
+        CodeWindow().stop_runner()
+
+
 class TestTestPioneerRun:
     def test_runs_the_chosen_yaml_through_the_task_manager(self, monkeypatch):
         from pybreeze.extend.process_executor.test_pioneer import test_pioneer_process_manager

@@ -182,7 +182,9 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
   alive: store it on the main window or parent it to its menu. Custom exceptions derive from `ITEException`. Log via `pybreeze_logger`
   (§ Conventions).
 - An executor is held by the run window it writes to (`CodeWindow.runner`): its QTimer connection does
-  not keep it alive, and a collected executor stops pumping output before the exit line.
+  not keep it alive, and a collected executor stops pumping output before the exit line. Closing the
+  IDE stops every run still going (`CodeWindow.stop_runner()`): a child is a separate, console-less
+  process that would otherwise outlive it unseen.
 - Every outbound request to a user URL passes SSRF validation (`utils/network/url_validation.py`)
   with timeouts and size caps (§ Security › Network).
 - SSH uses the interactive host-key policy, never auto-add (§ Security › SSH).
