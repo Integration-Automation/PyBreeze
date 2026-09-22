@@ -26,7 +26,13 @@ window = PyBreezeMainWindow(debug_mode=True)
 gc.collect()
 """
 
+# The window is closed before the child ends, even when the body did not close
+# it: leaving it open lets the interpreter tear down a JEditor toolbar thread
+# that may still be running, and Qt aborts the process (exit 0xC0000409) when a
+# running QThread is destroyed. That made this harness fail about one run in ten
+# on a busy machine, with nothing in the output to say why.
 _REPORT = """
+window.close()
 with open(sys.argv[1], "w", encoding="utf-8") as handle:
     json.dump(result, handle, ensure_ascii=False)
 """

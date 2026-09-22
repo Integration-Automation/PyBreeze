@@ -228,3 +228,36 @@ class TestATransfer:
 
         assert tree._transfer.waited and tree._transfer.blocked
         assert tree.client.closed
+
+
+class TestWhatTheStatusLabelSays:
+    """One Connect button opens two sessions; the label has to report both."""
+
+    def _tab(self, shell_up: bool, files_up: bool):
+        from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_main_widget import SSHMainWidget
+
+        tab = SSHMainWidget()
+        tab.command_widget.is_connected = lambda: shell_up
+
+        class Client:
+            connected = files_up
+
+            @staticmethod
+            def close() -> None:
+                """Nothing to close in a stand-in."""
+
+        tab.file_tree.client = Client()
+        return tab
+
+    @pytest.mark.parametrize("shell_up,files_up,expected", [
+        (True, True, "shell and files"),
+        (True, False, "shell only"),
+        (False, True, "files only"),
+        (False, False, "Disconnected"),
+    ], ids=["both", "shell only", "files only", "neither"])
+    def test_it_reports_both_halves(self, app, shell_up, files_up, expected):
+        tab = self._tab(shell_up, files_up)
+
+        tab.report_connection_state()
+
+        assert expected in tab.login_widget.status_label.text()

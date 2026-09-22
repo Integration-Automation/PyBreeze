@@ -255,6 +255,10 @@ class SSHCommandWidget(QWidget):
         self.login_widget.status_label.setText(
             self.word_dict.get('ssh_command_widget_status_label_disconnected'))
 
+    def is_connected(self) -> bool:
+        """Whether a shell session is open here."""
+        return self.shell_channel is not None and not self.shell_channel.closed
+
     def closeEvent(self, event) -> None:
         """End the session with the widget.
 
