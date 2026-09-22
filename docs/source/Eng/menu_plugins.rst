@@ -44,7 +44,8 @@ Creating Plugins
 
 For detailed information on creating custom plugins, including syntax highlighting
 plugins and UI translation plugins, see the
-`Plugin Guide <https://github.com/Integration-Automation/PyBreeze/blob/main/PLUGIN_GUIDE.md>`_.
+`Plugin Guide <https://github.com/Integration-Automation/JEDITOR/blob/main/PLUGIN_GUIDE.md>`_
+(the guide lives in the JEditor repository, since PyBreeze uses JEditor's plugin system).
 
 Syntax Highlighting Plugin Example
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

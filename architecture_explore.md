@@ -439,8 +439,6 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 5. **`PackageManager` 名實不符** — 類別名暗示 pip 管理，實際只承載 `syntax_check_list` 六個項目；pip 安裝落在 `install_utils.install_package()`。
 
-6. **`PLUGIN_GUIDE.md` 指向不存在的目錄** — 文件末尾說內建插件都在 `exe/jeditor_plugins/`，但該目錄不在 repo 裡，`je_editor` 套件內也只有 `plugin_loader.py`。README 已改為以「範例」描述這些插件。
-
 ---
 
 ## 20. 一句話總結

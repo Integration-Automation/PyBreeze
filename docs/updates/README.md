@@ -54,6 +54,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260922-08 | 2026-09-22 | PLUGIN_GUIDE.md points to JEditor's guide | #done #docs | [2026-09](2026-09.md) |
 | U-20260922-07 | 2026-09-22 | Install the checkout, not the published build | #done #dependencies | [2026-09](2026-09.md) |
 | U-20260922-06 | 2026-09-22 | Run window follows its output | #incident #process-executor | [2026-09](2026-09.md) |
 | U-20260922-05 | 2026-09-22 | One output pipeline for every run window | #done #process-executor | [2026-09](2026-09.md) |
@@ -66,4 +67,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 7 |
+| [2026-09.md](2026-09.md) | 2026-09 | 8 |
