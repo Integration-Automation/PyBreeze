@@ -44,6 +44,17 @@ class SSHMainWidget(QWidget):
         self.setLayout(main_layout)
 
 
+    def closeEvent(self, event) -> None:
+        """Close both halves with the tab.
+
+        Qt delivers the close event only to the widget being closed, and each
+        half owns its own session.
+        """
+        self.command_widget.close()
+        self.file_tree.close()
+        super().closeEvent(event)
+
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     win = SSHMainWidget()

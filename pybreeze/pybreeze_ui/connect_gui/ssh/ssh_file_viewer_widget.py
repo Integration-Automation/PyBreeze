@@ -132,15 +132,24 @@ class SFTPClientWrapper:
         """
         return self._ssh is not None and self._sftp is not None
 
-    def list_dir(self, path: str):
-        """
-        List directory entries with stat attributes.
-        列出目錄項目（含屬性）。
+    def _require_connection(self) -> None:
+        """Raise unless a session is open.
+
+        Every call below goes through this: without it an operation on a stale
+        tree (a dropped session, a closed connection) reaches ``None`` and the
+        tree's error box shows the user an ``AttributeError`` about ``NoneType``.
         """
         if not self.connected:
             raise RuntimeError(
                 self.word_dict.get("ssh_command_widget_dialog_title_not_connected")
             )
+
+    def list_dir(self, path: str):
+        """
+        List directory entries with stat attributes.
+        列出目錄項目（含屬性）。
+        """
+        self._require_connection()
         return self._sftp.listdir_attr(path)
 
     def is_dir(self, path: str) -> bool:
@@ -148,10 +157,7 @@ class SFTPClientWrapper:
         Determine if target path is a directory.
         判斷路徑是否為目錄。
         """
-        if not self.connected:
-            raise RuntimeError(self.word_dict.get(
-                "ssh_command_widget_dialog_title_not_connected"
-            ))
+        self._require_connection()
         try:
             st = self._sftp.stat(path)
             return stat.S_ISDIR(st.st_mode)
@@ -163,6 +169,7 @@ class SFTPClientWrapper:
         Create directory.
         建立目錄。
         """
+        self._require_connection()
         self._sftp.mkdir(path)
 
     def remove_file(self, path: str):
@@ -170,6 +177,7 @@ class SFTPClientWrapper:
         Remove file.
         刪除檔案。
         """
+        self._require_connection()
         self._sftp.remove(path)
 
     def remove_dir(self, path: str):
@@ -177,6 +185,7 @@ class SFTPClientWrapper:
         Remove empty directory.
         刪除空目錄。
         """
+        self._require_connection()
         self._sftp.rmdir(path)
 
     def rename(self, old_path: str, new_path: str):
@@ -184,6 +193,7 @@ class SFTPClientWrapper:
         Rename file/folder.
         重新命名檔案/資料夾。
         """
+        self._require_connection()
         self._sftp.rename(old_path, new_path)
 
     def download(self, remote_path: str, local_path: str):
@@ -191,6 +201,7 @@ class SFTPClientWrapper:
         Download remote to local.
         下載遠端檔案至本地。
         """
+        self._require_connection()
         self._sftp.get(remote_path, local_path)
 
     def upload(self, local_path: str, remote_path: str):
@@ -198,6 +209,7 @@ class SFTPClientWrapper:
         Upload local to remote.
         上傳本地檔案至遠端。
         """
+        self._require_connection()
         self._sftp.put(local_path, remote_path)
 
 
@@ -273,6 +285,16 @@ class SSHFileTreeManager(QWidget):
                 self,
                 self.word_dict.get("ssh_file_viewer_dialog_title_connection_failed"),
                 f"{self.word_dict.get('ssh_file_viewer_dialog_message_connection_failed')}: {e}")
+
+    def closeEvent(self, event) -> None:
+        """Close the SFTP session with the widget.
+
+        Qt delivers a close event only to the widget being closed, so a tab or a
+        dock closing takes this route; without it the paramiko transport stays
+        open, sending keepalives, for the rest of the session.
+        """
+        self.client.close()
+        super().closeEvent(event)
 
     def _disconnect(self):
         """

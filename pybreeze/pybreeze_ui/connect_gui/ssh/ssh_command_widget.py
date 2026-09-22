@@ -255,6 +255,16 @@ class SSHCommandWidget(QWidget):
         self.login_widget.status_label.setText(
             self.word_dict.get('ssh_command_widget_status_label_disconnected'))
 
+    def closeEvent(self, event) -> None:
+        """End the session with the widget.
+
+        The reader thread must not outlive it: Qt aborts the process when a
+        running QThread is destroyed, and a queued signal from one lands in a
+        widget that is already gone.
+        """
+        self._cleanup()
+        super().closeEvent(event)
+
     def _cleanup(self):
         try:
             if self.reader_thread:
