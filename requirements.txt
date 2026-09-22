@@ -5,7 +5,7 @@
 # What PyBreeze needs to run, kept in step with the dependencies in pyproject.toml
 # and dev.toml. It does not list pybreeze itself: that would install the published
 # build, so CI would be testing PyPI's code instead of the working tree.
-PySide6==6.11.0
+PySide6==6.11.1
 je-editor
 je_auto_control
 je_web_runner

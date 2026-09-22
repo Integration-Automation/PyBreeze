@@ -133,8 +133,9 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
 - **IDE_Plugins**: the plugin browser's default repo (set in JEditor). Its run configs execute here via
   `FileRunnerProcess`.
 - **PySide6 pin**: it must match JEditor and FrontEngine. PyBreeze pins it in `pyproject.toml`,
-  `dev.toml` and `requirements.txt`. At last verification PyBreeze pinned 6.11.0, while FrontEngine
-  and JEditor's stable `pyproject.toml` pinned 6.11.1.
+  `dev.toml` and `requirements.txt`. At last verification all three pinned 6.11.1, the pin of the
+  published je_editor 1.0.25 and frontengine; PySide6 6.11.2 is out and dependabot has proposed it
+  to JEditor and FrontEngine (workspace X-1). PyBreeze moves when the published je_editor does.
 
 ## 7. Design constraints
 
