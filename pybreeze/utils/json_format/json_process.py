@@ -13,9 +13,11 @@ from pybreeze.utils.logging.logger import pybreeze_logger
 def _process_json(json_string: str, **kwargs) -> str:
     try:
         return dumps(loads(json_string), indent=4, sort_keys=True, **kwargs)
-    except json.JSONDecodeError as error:
+    except (json.JSONDecodeError, RecursionError) as error:
         # Wrap in the project exception so reformat_json's caller sees a single,
-        # documented ITEJsonException type rather than a raw JSONDecodeError.
+        # documented ITEJsonException type rather than a raw JSONDecodeError --
+        # or a RecursionError, which the json module raises on input nested
+        # deeper than the interpreter's recursion limit.
         pybreeze_logger.error(wrong_json_data_error)
         raise ITEJsonException(wrong_json_data_error) from error
     except TypeError:
@@ -45,6 +47,6 @@ def minify_json(json_string: str) -> str:
     """
     try:
         return dumps(loads(json_string), separators=_MINIFY_SEPARATORS)
-    except json.JSONDecodeError as error:
+    except (json.JSONDecodeError, RecursionError) as error:
         pybreeze_logger.error(wrong_json_data_error)
         raise ITEJsonException(wrong_json_data_error) from error

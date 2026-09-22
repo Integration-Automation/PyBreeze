@@ -171,3 +171,26 @@ class TestHarImportFileDialog:
         ):
             assert widget.open_file() is None
         assert widget.output_edit.toPlainText() != ""
+
+
+class TestReadingAFileThatIsNotUsable:
+    def test_a_file_that_is_not_utf8_is_reported_not_raised(self, widget, tmp_path):
+        exported = tmp_path / "export.har"
+        exported.write_text('{"log": {"entries": []}}', encoding="utf-16")
+        with patch(
+            "pybreeze.pybreeze_ui.tools_gui.har_import_gui.QFileDialog.getOpenFileName",
+            return_value=(str(exported), ""),
+        ):
+            assert widget.open_file() is None
+        assert "UTF-8" in widget.output_edit.toPlainText()
+
+    def test_the_message_does_not_show_the_path(self, widget, tmp_path):
+        missing = tmp_path / "private-folder-name" / "gone.har"
+        with patch(
+            "pybreeze.pybreeze_ui.tools_gui.har_import_gui.QFileDialog.getOpenFileName",
+            return_value=(str(missing), ""),
+        ):
+            widget.open_file()
+        shown = widget.output_edit.toPlainText()
+        assert shown
+        assert "private-folder-name" not in shown

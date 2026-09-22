@@ -12,6 +12,7 @@ from urllib.parse import SplitResult, parse_qsl, urlencode, urlsplit, urlunsplit
 from pybreeze.utils.exception.exception_tags import (
     invalid_json_for_url_error,
     invalid_url_components_error,
+    unreadable_url_error,
 )
 from pybreeze.utils.exception.exceptions import UrlConvertException
 from pybreeze.utils.logging.logger import pybreeze_logger
@@ -53,8 +54,15 @@ def url_to_json(url: str) -> str:
 
     :param url: the URL to parse
     :return: a formatted JSON object of the URL's parts
+    :raises UrlConvertException: when *url* cannot be split into parts at all
+        (``http://[::1`` -- an unclosed IPv6 bracket -- is one)
     """
-    return json.dumps(parse_url(url), indent=4, ensure_ascii=False)
+    try:
+        components = parse_url(url)
+    except ValueError as error:
+        pybreeze_logger.error(unreadable_url_error)
+        raise UrlConvertException(unreadable_url_error) from error
+    return json.dumps(components, indent=4, ensure_ascii=False)
 
 
 def _build_netloc(components: dict, host: str) -> str:

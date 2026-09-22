@@ -109,9 +109,13 @@ class HarImportGUI(QWidget):
             return None
         try:
             text = Path(path).read_text(encoding="utf-8")
-        except OSError as error:
+        except (OSError, UnicodeDecodeError) as error:
             pybreeze_logger.info("har_import_gui.py read failed: %r", error)
-            self._report_error(word.get("har_import_read_error").format(error=str(error)))
+            # The reason without the path: str(OSError) carries the file's full
+            # path, which is not the user's business to be shown back.
+            reason = (word.get("har_import_not_utf8") if isinstance(error, UnicodeDecodeError)
+                      else error.strerror or type(error).__name__)
+            self._report_error(word.get("har_import_read_error").format(error=reason))
             return None
         self.load_text(text)
         return path

@@ -61,14 +61,21 @@ class UrlBuilderGUI(QWidget):
 
     def convert_to_json(self) -> None:
         """Parse the input URL into its JSON parts."""
+        word = language_wrapper.language_word_dict
         text = self.input_edit.toPlainText().strip()
         if not text:
             self._valid_output = False
-            self.output_edit.setPlainText(
-                language_wrapper.language_word_dict.get("url_builder_empty_hint"))
+            self.output_edit.setPlainText(word.get("url_builder_empty_hint"))
+            return
+        try:
+            result = url_to_json(text)
+        except UrlConvertException as error:
+            pybreeze_logger.info("url_builder_gui.py to-json failed: %r", error)
+            self._valid_output = False
+            self.output_edit.setPlainText(word.get("url_builder_parse_error").format(error=str(error)))
             return
         self._valid_output = True
-        self.output_edit.setPlainText(url_to_json(text))
+        self.output_edit.setPlainText(result)
 
     def convert_to_url(self) -> None:
         """Build a URL from the input JSON parts."""

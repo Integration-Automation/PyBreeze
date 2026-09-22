@@ -58,3 +58,23 @@ class TestReformatJson:
         result = reformat_json('{"key": "中文"}')
         parsed = json.loads(result)
         assert parsed["key"] == "中文"
+
+
+class TestInputNestedTooDeep:
+    """The json module recurses per level; deep nesting is a RecursionError, not a crash."""
+
+    _DEEP = "[" * 100_000 + "]" * 100_000
+
+    def test_reformat_reports_it_as_bad_json(self):
+        from pybreeze.utils.exception.exceptions import ITEJsonException
+        from pybreeze.utils.json_format.json_process import reformat_json
+
+        with pytest.raises(ITEJsonException):
+            reformat_json(self._DEEP)
+
+    def test_minify_reports_it_as_bad_json(self):
+        from pybreeze.utils.exception.exceptions import ITEJsonException
+        from pybreeze.utils.json_format.json_process import minify_json
+
+        with pytest.raises(ITEJsonException):
+            minify_json(self._DEEP)

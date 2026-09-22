@@ -69,3 +69,4 @@ invalid_regex_pattern_error: str = "invalid regular expression: {detail}"
 # URL parse / build
 invalid_json_for_url_error: str = "can't parse the input as JSON"
 invalid_url_components_error: str = "the input must be a JSON object of URL parts"
+unreadable_url_error: str = "the input is not a URL that can be read"

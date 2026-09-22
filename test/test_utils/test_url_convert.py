@@ -97,3 +97,12 @@ class TestJsonToUrl:
     def test_non_object_raises(self):
         with pytest.raises(UrlConvertException):
             json_to_url('["a", "b"]')
+
+
+class TestAUrlThatCannotBeSplit:
+    def test_an_unclosed_ipv6_bracket_is_a_convert_error(self):
+        from pybreeze.utils.exception.exceptions import UrlConvertException
+        from pybreeze.utils.url_tools.url_convert import url_to_json
+
+        with pytest.raises(UrlConvertException):
+            url_to_json("http://[::1")

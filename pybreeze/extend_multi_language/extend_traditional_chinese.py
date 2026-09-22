@@ -374,6 +374,7 @@ pybreeze_traditional_chinese_word_dict = {
     "har_import_empty_hint":
         "請開啟從瀏覽器開發者工具存出的 .har 檔（Network → Save all as HAR）。",
     "har_import_error": "無法讀取這份 HAR 匯出檔：{error}",
+    "har_import_not_utf8": "不是 UTF-8 文字檔",
     "har_import_read_error": "無法開啟檔案：{error}",
     # 共用輸出動作（複製 / 開成分頁 / 存檔）
     "output_actions_copy": "複製",
@@ -449,6 +450,7 @@ pybreeze_traditional_chinese_word_dict = {
     "url_builder_to_json_button": "URL → JSON",
     "url_builder_to_url_button": "JSON → URL",
     "url_builder_output_label": "結果：",
+    "url_builder_parse_error": "無法解析這個 URL：{error}",
     "url_builder_error": "無法組建 URL：{error}",
     "url_builder_empty_hint": "請在上方輸入 URL 或描述 URL 各部分的 JSON 物件。",
     # 正規表示式測試器 — 選單
