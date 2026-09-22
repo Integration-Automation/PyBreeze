@@ -1,18 +1,39 @@
 """A tool tab that tests a regular expression against sample text."""
 from __future__ import annotations
 
+from PySide6.QtCore import QThread, Signal
 from PySide6.QtWidgets import (
     QCheckBox, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QTextEdit, QVBoxLayout, QWidget
 )
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.thread_keeper import let_run_out
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.utils.exception.exceptions import RegexTesterException
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.regex_tools.regex_tester import (
-    MatchResult, available_flags, find_matches
+    MatchResult, available_flags, find_matches_bounded
 )
+
+
+class RegexMatchThread(QThread):
+    """One pattern run, waited for off the UI thread."""
+
+    matched = Signal(list)
+    failed = Signal(str)
+
+    def __init__(self, pattern: str, text: str, flag_names: list[str]) -> None:
+        super().__init__()
+        self._pattern = pattern
+        self._text = text
+        self._flag_names = flag_names
+
+    def run(self) -> None:
+        try:
+            self.matched.emit(find_matches_bounded(self._pattern, self._text, self._flag_names))
+        except RegexTesterException as error:
+            self.failed.emit(str(error))
 
 
 def build_matches_text(matches: list[MatchResult], no_match_message: str) -> str:
@@ -44,6 +65,7 @@ class RegexGUI(QWidget):
         """
         super().__init__()
         self._valid_output = False
+        self._match_thread: RegexMatchThread | None = None
         word = language_wrapper.language_word_dict
 
         self.pattern_label = QLabel(word.get("regex_pattern_label"))
@@ -91,16 +113,40 @@ class RegexGUI(QWidget):
         return [name for name, box in self.flag_checkboxes.items() if box.isChecked()]
 
     def test(self) -> None:
-        """Run the pattern against the sample text and show the matches."""
-        word = language_wrapper.language_word_dict
-        pattern = self.pattern_edit.text()
-        try:
-            matches = find_matches(pattern, self.text_edit.toPlainText(), self.selected_flags())
-        except RegexTesterException as error:
-            pybreeze_logger.info("regex_gui.py test failed: %r", error)
-            self._valid_output = False
-            self.output_edit.setPlainText(word.get("regex_error").format(error=str(error)))
+        """Run the pattern against the sample text; the matches arrive when it is done.
+
+        The pattern runs in a separate process that is stopped after a few
+        seconds (``find_matches_bounded``), and this tab waits for it on a
+        thread of its own: a pattern that backtracks catastrophically used to
+        run on the UI thread and freeze the IDE for minutes.
+        """
+        if self._match_thread is not None and self._match_thread.isRunning():
             return
+        word = language_wrapper.language_word_dict
+        self.test_button.setEnabled(False)
+        self.output_edit.setPlainText(word.get("regex_running"))
+        thread = RegexMatchThread(
+            self.pattern_edit.text(), self.text_edit.toPlainText(), self.selected_flags())
+        thread.matched.connect(self._show_matches)
+        thread.failed.connect(self._show_error)
+        thread.finished.connect(lambda: self.test_button.setEnabled(True))
+        self._match_thread = thread
+        thread.start()
+
+    def _show_matches(self, matches: list) -> None:
         self._valid_output = True
         self.output_edit.setPlainText(
-            build_matches_text(matches, word.get("regex_no_match")))
+            build_matches_text(matches, language_wrapper.language_word_dict.get("regex_no_match")))
+
+    def _show_error(self, message: str) -> None:
+        pybreeze_logger.info("regex_gui.py test failed: %s", message)
+        self._valid_output = False
+        self.output_edit.setPlainText(
+            language_wrapper.language_word_dict.get("regex_error").format(error=message))
+
+    def closeEvent(self, event) -> None:
+        """Let a pattern still running run out; its process is stopped on its own deadline."""
+        thread = self._match_thread
+        if thread is not None and thread.isRunning():
+            let_run_out(thread, thread.matched, thread.failed)
+        super().closeEvent(event)

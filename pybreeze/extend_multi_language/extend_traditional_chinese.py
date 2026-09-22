@@ -470,6 +470,7 @@ pybreeze_traditional_chinese_word_dict = {
     "regex_test_button": "尋找符合項",
     "regex_output_label": "符合項：",
     "regex_match_count": "{count} 個符合：",
+    "regex_running": "正在執行這個 pattern…",
     "regex_no_match": "沒有符合項。",
     "regex_error": "正規表示式錯誤：{error}",
     # HTTP 狀態碼參考 — 選單

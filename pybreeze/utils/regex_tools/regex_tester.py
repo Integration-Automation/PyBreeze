@@ -9,18 +9,25 @@ touches the UI or the network.
 """
 from __future__ import annotations
 
+import multiprocessing
 import re
 from dataclasses import dataclass, field
 
 from pybreeze.utils.exception.exception_tags import (
     empty_regex_pattern_error,
     invalid_regex_pattern_error,
+    regex_timeout_error,
+    regex_worker_error,
 )
 from pybreeze.utils.exception.exceptions import RegexTesterException
 from pybreeze.utils.logging.logger import pybreeze_logger
 
-# Cap on reported matches so a pathological pattern cannot flood the UI.
+# Cap on reported matches, so a pattern that matches everywhere cannot flood
+# the output. It bounds how many matches are reported, not how long one takes.
 _MAX_MATCHES = 1000
+
+# How long a pattern may run, in its own process, before it is stopped.
+MATCH_TIMEOUT_SECONDS = 5.0
 
 # Human-facing flag names mapped to their ``re`` values.
 _FLAG_NAMES: dict[str, int] = {
@@ -111,3 +118,64 @@ def find_matches(
         if len(results) >= _MAX_MATCHES:
             break
     return results
+
+
+def find_matches_bounded(
+        pattern: str, text: str, flag_names: list[str] | set[str] | None = None,
+        timeout_seconds: float = MATCH_TIMEOUT_SECONDS) -> list[MatchResult]:
+    """Like :func:`find_matches`, in a separate process stopped after *timeout_seconds*.
+
+    Python's ``re`` cannot be interrupted once a match attempt starts, and a
+    pattern with nested repetition backtracks exponentially: ``(a+)+$`` against
+    26 ``a``'s and a ``b`` takes seconds, and each further character doubles it.
+    Only a process can be stopped mid-match. The pattern is compiled here first,
+    so a malformed one is reported without starting anything.
+
+    :param pattern: the regular expression
+    :param text: the sample text to search
+    :param flag_names: optional flag names to apply
+    :param timeout_seconds: how long the pattern may run, process start included
+    :return: the matches, up to an internal cap
+    :raises RegexTesterException: when the pattern is empty or invalid, or ran too long
+    """
+    compile_pattern(pattern, flag_names)
+    context = multiprocessing.get_context("spawn")
+    receiving, sending = context.Pipe(duplex=False)
+    process = context.Process(
+        target=_matches_into_pipe, args=(sending, pattern, text, list(flag_names or [])),
+        daemon=True)
+    process.start()
+    sending.close()
+    try:
+        if not receiving.poll(timeout_seconds):
+            message = regex_timeout_error.format(seconds=timeout_seconds)
+            pybreeze_logger.error(message)
+            raise RegexTesterException(message)
+        kind, value = receiving.recv()
+    except (EOFError, OSError) as error:
+        message = regex_worker_error.format(detail=repr(error))
+        pybreeze_logger.error(message)
+        raise RegexTesterException(message) from error
+    finally:
+        if process.is_alive():
+            process.terminate()
+        process.join(timeout=_JOIN_SECONDS)
+        receiving.close()
+    if kind == "error":
+        raise RegexTesterException(value)
+    return value
+
+
+# How long to wait for the worker process to go once it is done or stopped
+_JOIN_SECONDS = 2.0
+
+
+def _matches_into_pipe(sending, pattern: str, text: str, flag_names: list[str]) -> None:
+    """Run :func:`find_matches` in the worker process and send back what happened."""
+    try:
+        sending.send(("matches", find_matches(pattern, text, flag_names)))
+    except RegexTesterException as error:
+        sending.send(("error", str(error)))
+    finally:
+        sending.close()
+

@@ -70,3 +70,7 @@ invalid_regex_pattern_error: str = "invalid regular expression: {detail}"
 invalid_json_for_url_error: str = "can't parse the input as JSON"
 invalid_url_components_error: str = "the input must be a JSON object of URL parts"
 unreadable_url_error: str = "the input is not a URL that can be read"
+regex_timeout_error: str = (
+    "the pattern was still running after {seconds} s and was stopped; nested "
+    "repetition such as (a+)+ can take exponentially long on text that almost matches")
+regex_worker_error: str = "the pattern could not be run: {detail}"

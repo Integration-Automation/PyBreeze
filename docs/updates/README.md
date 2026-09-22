@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-32 | 2026-09-23 | A runaway regex no longer freezes the IDE | #done #tools | [2026-09](2026-09.md) |
 | U-20260923-31 | 2026-09-23 | Importing a utility no longer imports the whole IDE | #done #refactor #performance | [2026-09](2026-09.md) |
 | U-20260923-30 | 2026-09-23 | Prompt files: other encodings, unsaved edits, half-written saves | #done #ai | [2026-09](2026-09.md) |
 | U-20260923-29 | 2026-09-23 | Closing a request panel no longer waits for its request | #done #ai | [2026-09](2026-09.md) |
@@ -112,4 +113,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 49 |
+| [2026-09.md](2026-09.md) | 2026-09 | 50 |

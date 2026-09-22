@@ -92,3 +92,35 @@ class TestFindMatches:
         # More potential matches than the cap; result is capped, not unbounded.
         text = "a" * (regex_tester._MAX_MATCHES + 50)
         assert len(find_matches("a", text)) == regex_tester._MAX_MATCHES
+
+
+class TestABoundedRun:
+    """find_matches_bounded runs the pattern in a process it can stop."""
+
+    def test_it_finds_what_find_matches_finds(self):
+        from pybreeze.utils.regex_tools.regex_tester import find_matches, find_matches_bounded
+
+        assert find_matches_bounded(r"\d+", "a1 b22") == find_matches(r"\d+", "a1 b22")
+
+    def test_a_malformed_pattern_is_reported_before_any_process(self, monkeypatch):
+        from pybreeze.utils.exception.exceptions import RegexTesterException
+        from pybreeze.utils.regex_tools import regex_tester
+
+        monkeypatch.setattr(
+            regex_tester.multiprocessing, "get_context",
+            lambda *_a: pytest.fail("a process was started for a pattern that cannot compile"))
+
+        with pytest.raises(RegexTesterException):
+            regex_tester.find_matches_bounded("(", "abc")
+
+    def test_catastrophic_backtracking_is_stopped(self):
+        import time
+
+        from pybreeze.utils.exception.exceptions import RegexTesterException
+        from pybreeze.utils.regex_tools.regex_tester import find_matches_bounded
+
+        started = time.monotonic()
+        with pytest.raises(RegexTesterException, match="still running"):
+            find_matches_bounded("(a+)+$", "a" * 40 + "b", timeout_seconds=2.0)
+
+        assert time.monotonic() - started < 10
