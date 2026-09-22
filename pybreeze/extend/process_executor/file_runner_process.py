@@ -10,6 +10,8 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+import time
+from collections.abc import Callable
 from pathlib import Path
 from queue import Queue
 from threading import Thread
@@ -20,6 +22,8 @@ from pybreeze.extend.process_executor.queue_pump import pump_message_queue, read
 from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.subprocess_util import no_window_creationflags, utf8_subprocess_env
+
+COMPILE_TIME_LIMIT_SECONDS = 60
 
 
 class FileRunnerProcess:
@@ -41,6 +45,11 @@ class FileRunnerProcess:
         self.timer: QTimer | None = None
         self._stdout_thread: Thread | None = None
         self._stderr_thread: Thread | None = None
+        self._cleanup_binary: str | None = None
+        # What to do with the exit code instead of reporting it (the compile
+        # step starts the run from here), and when to give up on the child
+        self._after_exit: Callable[[int], None] | None = None
+        self._deadline: float | None = None
 
     def run_file(self, run_config: dict, file_path: str) -> None:
         """
@@ -64,7 +73,12 @@ class FileRunnerProcess:
             self._start_process(command)
 
     def _compile_and_run(self, compiler: str, args: list, output_flag: str, file_path: str) -> None:
-        """Compile, then run the output binary."""
+        """Compile, then run the output binary.
+
+        The compiler is a child like the run: its output streams into the window
+        as it comes, and the IDE stays usable while it works. It used to run to
+        completion on the UI thread, which froze the IDE for up to a minute.
+        """
         path = Path(file_path)
         output_name = str(path.with_suffix(""))
         if sys.platform in ("win32", "cygwin", "msys"):
@@ -73,39 +87,27 @@ class FileRunnerProcess:
         compile_cmd = [compiler] + args + [file_path, output_flag, output_name]
         self.main_window.append_output(f"[Compile] {' '.join(compile_cmd)}\n", is_error=False)
 
-        try:
-            # Runs the plugin-configured compiler against a file the user opened.
-            # shell=False, bounded timeout. nosec B603.
-            result = subprocess.run(  # nosec B603  # nosemgrep  # noqa: S603
-                compile_cmd,
-                capture_output=True,
-                timeout=60,
-                check=False,
-                creationflags=no_window_creationflags(),
-            )
-        except FileNotFoundError:
-            self.main_window.append_output(f"[Error] Compiler not found: {compiler}\n", is_error=True)
-            return
-        except subprocess.TimeoutExpired:
-            self.main_window.append_output("[Error] Compilation timed out (60s)\n", is_error=True)
-            return
+        def run_if_compiled(exit_code: int) -> None:
+            if exit_code != 0:
+                self.main_window.append_output(f"[Compile failed] exit code {exit_code}\n", is_error=True)
+                return
+            self.main_window.append_output(f"[Run] {output_name}\n", is_error=False)
+            self._start_process([output_name], cleanup_binary=output_name)
 
-        if result.stdout:
-            self.main_window.append_output(result.stdout.decode(self.program_encoding, "replace"), is_error=False)
-        if result.stderr:
-            self.main_window.append_output(result.stderr.decode(self.program_encoding, "replace"), is_error=True)
+        self._start_process(
+            compile_cmd, after_exit=run_if_compiled, time_limit=COMPILE_TIME_LIMIT_SECONDS)
 
-        if result.returncode != 0:
-            self.main_window.append_output(f"[Compile failed] exit code {result.returncode}\n", is_error=True)
-            return
+    def _start_process(self, command: list[str], cleanup_binary: str | None = None,
+                       after_exit: Callable[[int], None] | None = None,
+                       time_limit: float | None = None) -> None:
+        """Launch subprocess and start output reading.
 
-        self.main_window.append_output(f"[Run] {output_name}\n", is_error=False)
-        self._start_process([output_name], cleanup_binary=output_name)
-
-    def _start_process(self, command: list[str], cleanup_binary: str | None = None) -> None:
-        """Launch subprocess and start output reading."""
-        self._cleanup_binary = cleanup_binary
-
+        :param command: the argv to run
+        :param cleanup_binary: a file to delete once the child has exited
+        :param after_exit: called with the exit code, on the UI thread, in place
+            of the exit line
+        :param time_limit: seconds after which the child is stopped
+        """
         cmd_display = " ".join(command)
         self.main_window.append_output(f"> {cmd_display}\n", is_error=False)
 
@@ -127,6 +129,9 @@ class FileRunnerProcess:
             self.main_window.append_output(f"[Error] Command not found: {command[0]}\n", is_error=True)
             return
 
+        self._cleanup_binary = cleanup_binary
+        self._after_exit = after_exit
+        self._deadline = None if time_limit is None else time.monotonic() + time_limit
         self.still_running = True
 
         self._stdout_thread = Thread(target=self._read_stdout, daemon=True)
@@ -136,9 +141,10 @@ class FileRunnerProcess:
         self._stderr_thread.start()
 
         self.main_window.show()
-        self.timer = QTimer(self.main_window)
-        self.timer.setInterval(50)
-        self.timer.timeout.connect(self._pull_text)
+        if self.timer is None:
+            self.timer = QTimer(self.main_window)
+            self.timer.setInterval(50)
+            self.timer.timeout.connect(self._pull_text)
         self.timer.start()
 
     def stop(self) -> None:
@@ -159,6 +165,11 @@ class FileRunnerProcess:
             self.process.poll()
             if self.process.returncode is not None:
                 self._finish()
+            elif self._deadline is not None and time.monotonic() > self._deadline:
+                self._deadline = None
+                self.main_window.append_output(
+                    f"[Error] Timed out after {COMPILE_TIME_LIMIT_SECONDS}s\n", is_error=True)
+                self.process.terminate()
 
     def _finish(self) -> None:
         """Clean up after process exits."""
@@ -177,12 +188,17 @@ class FileRunnerProcess:
         # Drain remaining output directly (not via _pull_text to avoid recursion)
         self._drain_queues()
 
+        after_exit, self._after_exit = self._after_exit, None
         if self.process is not None:
-            self.main_window.append_output(
-                f"\n[Process exited with code {self.process.returncode}]\n",
-                is_error=self.process.returncode != 0,
-            )
+            exit_code = self.process.returncode
             self.process = None
+            if after_exit is not None:
+                after_exit(exit_code)
+                return
+            self.main_window.append_output(
+                f"\n[Process exited with code {exit_code}]\n",
+                is_error=exit_code != 0,
+            )
 
         # Clean up compiled binary
         if self._cleanup_binary:
