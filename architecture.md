@@ -1,0 +1,171 @@
+# PyBreeze Architecture
+
+> Short overview for people and agents. Per-module detail lives in [`architecture_explore.md`](architecture_explore.md).
+> Last verified: 2026-09-22 against `d0068d2` on `dev`.
+
+## 1. Purpose
+
+PyBreeze is an automation-first Python IDE built on JEditor. It is published as `pybreeze`
+(stable, `pyproject.toml`) and `pybreeze_dev` (dev, `dev.toml`). It does not have its own editor.
+Instead it subclasses JEditor's main window and adds menus, tool tabs and docks around it:
+
+- menus that drive the automation packages (AutoControl, WebRunner, APITestka, LoadDensity,
+  FileAutomation, MailThunder, TestPioneer);
+- prthinker and chain-of-thought LLM code review;
+- SSH/SFTP, embedded JupyterLab and a diagram editor;
+- a set of HTTP developer tools.
+
+The central rule: the editor process never runs user scripts itself. They run in subprocesses, and
+their output reaches the UI through Queue + QTimer.
+
+## 2. Layers and directories
+
+| Path | Responsibility |
+| --- | --- |
+| `pybreeze/__init__.py` | Facade: `start_editor`, `PyBreezeMainWindow`, `EDITOR_EXTEND_TAB`, re-exported JEditor plugin functions |
+| `pybreeze/__main__.py`, `exe/start_pybreeze.py` | Launch scripts (module run, executable build) |
+| `pybreeze/pybreeze_ui/editor_main/` | `PyBreezeMainWindow(EditorMain)`, `start_editor()`, file-tree context menu |
+| `pybreeze/pybreeze_ui/menu/` | Menu builders; `build_menubar.py` is the single entry. Holds `automation_menu/` (factory, per-package menus, TestPioneer, prthinker), `install_menu/`, `tools/tools_menu.py`, `plugin_menu/`, `extend_jeditor_tab_menu/` |
+| `pybreeze/pybreeze_ui/tools_gui/` | Thin tool tabs (cURL/HAR import, JWT, regex, diff, headers, …) backed by `pybreeze/utils/` |
+| `pybreeze/pybreeze_ui/diagram_editor/` | Diagram editor (QGraphicsScene, Mermaid import, PNG/SVG export) |
+| `pybreeze/pybreeze_ui/extend_ai_gui/`, `dialog/` | LLM code-review chain and prompt editors; prthinker settings dialog |
+| `pybreeze/pybreeze_ui/connect_gui/` | `ssh/` terminal + SFTP tree; `url/` HTTP code-review client |
+| `pybreeze/pybreeze_ui/jupyter_lab_gui/`, `show_code_window/`, `syntax/` | JupyterLab tab; `CodeWindow` subprocess output window; automation keyword highlighting |
+| `pybreeze/extend/process_executor/` | Subprocess isolation layer: `TaskProcessManager`, `process_executor_utils.py`, `FileRunnerProcess`, `queue_pump.py`, one sub-package per automation package, plus `test_pioneer/` and `prthinker/` |
+| `pybreeze/extend/mail_thunder_extend/`, `prthinker_extend/` | Post-test email hook; prthinker settings and argument assembly (pure logic) |
+| `pybreeze/extend_multi_language/` | PyBreeze's English and Traditional Chinese strings, merged into JEditor's dictionaries |
+| `pybreeze/utils/` | Pure logic (only `file_process/get_dir_file_list.py` imports Qt): request parsing and codegen, HTTP tools, `network/` SSRF validation and capped reads, exceptions, logging, `app_dirs.py`, `subprocess_util.py` |
+| `test/test_utils/` | Unit tests (pure logic and headless widgets). `test/unit_test/start_automation/` holds the launch tests |
+| `pyproject.toml`, `dev.toml` | Stable and dev packaging (keep both in sync) |
+| `.github/workflows/` | `dev.yml`, `stable.yml` (unit tests on a Windows matrix, then SonarCloud) |
+| `docs/`, `linux_package_source/`, `architecture_diagram/` | Sphinx docs, Debian package source, architecture image |
+
+The layers are presentation (`pybreeze_ui/`), then execution (`extend/`), then foundation (`utils/`,
+`extend_multi_language/`), then external subprocesses.
+
+## 3. Entry points and public interfaces
+
+- **CLI**: `python -m pybreeze` (`pybreeze/__main__.py`). No console script is declared.
+- **Programmatic**: `pybreeze.start_editor(debug_mode=False, theme="dark_amber.xml", **kwargs)`.
+  `debug_mode=True` adds an auto-close timer, which CI uses.
+- **Main window**: `PyBreezeMainWindow` exposes `tab_widget`, `current_run_code_window` and
+  `python_compiler`.
+- **Custom tabs**: `EDITOR_EXTEND_TAB: dict[str, type[QWidget]]` in
+  `pybreeze/pybreeze_ui/editor_main/main_ui.py`. This is PyBreeze's own registry, separate from
+  JEditor's dict of the same name.
+- **Plugin API (re-exported)**: `load_external_plugins`, `register_programming_language`,
+  `register_natural_language`.
+- **Persisted state**: `~/.pybreeze/` via `utils/app_dirs.pybreeze_data_dir()` (SSH known hosts,
+  prthinker settings, edited prompts, review history). The editor settings inherited from JEditor
+  stay in `.jeditor/` under the working directory.
+
+## 4. Main flows
+
+**Startup**
+
+```
+python -m pybreeze → start_editor() → QApplication → PyBreezeMainWindow()
+  → EditorMain.__init__(extend=True)   [JEditor builds the editor, loads jeditor_plugins/]
+  → drop JEditor Help menu → update_language_dict() → add_menu_to_menubar()
+  → syntax_extend_package() → EDITOR_EXTEND_TAB tabs → setup_file_tree_context_menu()
+  → apply_stylesheet(theme) → showMaximized() → startup_setting() → exec() → os._exit()
+```
+
+Before PySide6 is imported, `main_ui.py` sets `LOCUST_SKIP_MONKEY_PATCH=1` to keep LoadDensity's
+gevent patching away from Qt.
+
+**Run an automation script**
+
+```
+Automation menu (automation_menu_factory.build_automation_menu) → call_<pkg>() in
+extend/process_executor/<pkg>/ → build_process() (process_executor_utils.py)
+  → CodeWindow + TaskProcessManager → python -m <package> --execute_str | --execute_file
+  → stdout/stderr reader threads → Queue → QTimer → pump_message_queue() → CodeWindow
+  → optional send_after_test() (mail_thunder_extend)
+```
+
+**Run a non-Python file through a plugin**
+
+```
+Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
+  → FileRunnerProcess.run_file() → interpret, or compile then run → CodeWindow
+```
+
+## 5. Extension points
+
+- **Custom tabs**: add entries to `EDITOR_EXTEND_TAB` (`pybreeze_ui/editor_main/main_ui.py`) before
+  `start_editor()`.
+- **File plugins**: `jeditor_plugins/` in the working directory, loaded by JEditor
+  (`je_editor/plugins/plugin_loader.py`). `PLUGIN_RUN_CONFIG` entries appear in the Run with… and
+  Plugins menus and execute via `FileRunnerProcess`. The plugin browser tab reuses JEditor's
+  `PluginBrowserWidget`. See `PLUGIN_GUIDE.md`.
+- **New automation package**:
+  - add a sub-package under `extend/process_executor/` with a `_PACKAGE` constant that calls
+    `build_process()`;
+  - add a menu via `pybreeze_ui/menu/automation_menu/automation_menu_factory.py`, wired in
+    `menu/build_menubar.py`;
+  - add an installer in `menu/install_menu/automation_menu/`;
+  - add keywords in `pybreeze_ui/syntax/syntax_keyword.py`.
+- **New tool tab or dock**: a widget in `pybreeze_ui/tools_gui/`, its logic in `pybreeze/utils/`, and
+  rows in `_WIDGET_FACTORIES` / `_TAB_ACTIONS` / `_DOCK_ACTIONS` / `_DOCK_TITLES`
+  (`pybreeze_ui/menu/tools/tools_menu.py`).
+- **UI strings**: add keys to both `extend_multi_language/extend_english.py` and
+  `extend_traditional_chinese.py`. `test/test_utils/test_language_parity.py` enforces parity.
+
+## 6. Cross-project boundaries
+
+- **JEditor (upstream)**: `PyBreezeMainWindow` subclasses `je_editor.EditorMain` in extend mode.
+  `pybreeze/__init__.py` re-exports JEditor's plugin API. PyBreeze also imports JEditor internals
+  (e.g. `PluginBrowserWidget`, `DestroyDock`, `check_and_choose_venv`, `actually_color_dict`). It
+  merges its strings by mutating JEditor's `english_word_dict` and `traditional_chinese_word_dict`
+  in place (`extend_multi_language/update_language_dict.py`). JEditor translation changes must keep
+  `test_language_parity.py` green.
+- **Automation packages**: `je_auto_control`, `je_web_runner`, `je_api_testka`, `je_load_density`,
+  `automation_file` and `je_mail_thunder` run as `python -m <pkg> --execute_str/--execute_file`
+  (`extend/process_executor/python_task_process_manager.py`). TestPioneer runs as
+  `python -m test_pioneer -e <yaml>` through its own `TestPioneerProcess`
+  (`extend/process_executor/test_pioneer/`).
+- **prthinker**: runs as `python -m prthinker` via `TaskProcessManager.start_module_process`
+  (`extend/process_executor/prthinker/`). Secrets are passed as environment variables, never argv.
+  It is not on PyPI: the Install menu asks for a local source folder and installs `<path>[runner]`.
+  README states it needs Python 3.12+.
+- **IDE_Plugins**: the plugin browser's default repo (set in JEditor). Its run configs execute here via
+  `FileRunnerProcess`.
+- **PySide6 pin**: it must match JEditor and FrontEngine. PyBreeze pins it in `pyproject.toml`,
+  `dev.toml` and `requirements.txt`. At last verification PyBreeze pinned 6.11.0, while FrontEngine
+  and JEditor's stable `pyproject.toml` pinned 6.11.1.
+
+## 7. Design constraints
+
+- Keep `architecture_explore.md` and the CLAUDE.md tree current in the same change
+  (CLAUDE.md § Architecture).
+- Never update UI from a worker thread: use Queue + QTimer or Signal/Slot. Store every menu `QAction`
+  on the main window. Custom exceptions derive from `ITEException`. Log via `pybreeze_logger`
+  (§ Conventions).
+- Every outbound request to a user URL passes SSRF validation (`utils/network/url_validation.py`)
+  with timeouts and size caps (§ Security › Network).
+- SSH uses the interactive host-key policy, never auto-add (§ Security › SSH).
+- Subprocesses use argument lists, `shell=False` and a `timeout`, and pass secrets through `env`
+  (§ Security › Subprocess).
+- The JupyterLab server stays localhost-only (§ Security › JupyterLab).
+- Persist data only under `~/.pybreeze/` (§ Security › File I/O).
+- Complexity, length and nesting caps; no silent `except`; no `assert` in runtime code
+  (§ Code quality gates).
+- `main` is stable and `dev` is development, and the version must be bumped in both toml files.
+  SonarCloud automatic analysis stays off (§ Branching & CI).
+- Commit and PR text must follow the attribution rules (§ Commit & PR rules).
+
+## 8. When to update this file
+
+Update it in the same change when any of these changes:
+
+- a top-level package or directory in §2;
+- an entry point or an export in `pybreeze/__init__.py`;
+- the startup, execution or plugin-run flow in §4;
+- an extension point in §5;
+- a cross-repo contract in §6 (JEditor base class or imports, the subprocess command-line protocol,
+  the prthinker install path, the PySide6 pin);
+- a CLAUDE.md section that §7 points to is renamed.
+
+Per-module changes go to `architecture_explore.md`. Refresh the "Last verified" line when you
+re-check this file.

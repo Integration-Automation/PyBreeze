@@ -2,7 +2,7 @@
 
 Automation-first Python IDE built on PySide6 + JEditor, integrating Web/API/GUI/Load testing into a single environment.
 
-**This file is the only home for project rules.** Anything that constrains how work is done here — conventions, security requirements, quality gates, commit policy — belongs in this file. Do not start a `progress.md`, a scratch notes file, or any other side document to hold rules: a rule kept somewhere else is a rule nobody reads. Reference material that is not a rule (the architecture map, the plugin API) lives in its own file and is linked from here.
+**This file is the only home for project rules.** Anything that constrains how work is done here — conventions, security requirements, quality gates, commit policy — belongs in this file. Do not put rules in `progress.md` (it holds outstanding work only), a scratch notes file, or any other side document: a rule kept somewhere else is a rule nobody reads. Reference material that is not a rule (the architecture map, the plugin API) lives in its own file and is linked from here.
 
 ## Architecture
 
@@ -127,6 +127,18 @@ Per function: cyclomatic and cognitive complexity ≤ 15 (hard cap 20) · ≤ 75
 - No hardcoded IPs or hostnames outside documented loopback
 - No `TODO` / `FIXME` without an issue reference (`# TODO(#123): ...`)
 - Justify each `# noqa: RULE` with a short reason — never blanket-disable
+
+## Stage commits, `progress.md`, `docs/updates/` and `architecture.md`
+
+Workspace rule shared by every repository under `D:\Codes` (full text: `D:\Codes\CLAUDE.md`).
+
+- **Commit at every stage.** A stage is the smallest piece of work that leaves the repository consistent and passes this project's checks (definition of done, tests, lint): one finished `progress.md` item, or one self-contained step of a larger one. Commit it before starting the next stage, before switching to another repository, and before the session ends. Do not leave work uncommitted across sessions; if a stage cannot be finished, commit the consistent part and record the rest in `progress.md`.
+  - Stage only the files that stage touched (`git add <path>`, never `git add -A`), follow this file's commit-message rules, and never add AI attribution.
+  - Committing is not pushing: push or open a PR only as this project's branch flow says or when asked.
+- **`progress.md`** (repository root, tracked) holds outstanding work only: no finished items, no history, no rules.
+- **`docs/updates/`** records finished work: one batch file per month (`YYYY-MM.md`), one entry per piece of work headed `## U-YYYYMMDD-NN · date · title · #tags`, and an index with query commands in `docs/updates/README.md`. When a `progress.md` item is done, delete it and add a `#done` entry plus its index row in the same commit.
+- **`architecture.md`** (repository root) is the short architecture overview: layers, entry points, main flows, extension points, cross-project boundaries. Update it in the same commit whenever a change alters any of those. `architecture_explore.md` stays the detailed per-module map under its own rule in this file.
+- **Cross-project contracts** are listed in `architecture.md` §6: what other repositories rely on here (CLI flags, import paths, constructor arguments, file layouts) and what this repository relies on elsewhere. No test here protects them, so never rename or remove one without changing its consumers in the same round, and update §6 whenever a contract is added or changes.
 
 ## Commit & PR rules
 
