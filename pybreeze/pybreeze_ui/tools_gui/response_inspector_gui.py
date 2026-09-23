@@ -85,6 +85,8 @@ class ResponseInspectorGUI(QWidget):
         super().__init__()
         self._main_window = main_window
         self._analysis: ResponseAnalysis | None = None
+        # The text that analysis is of: the input may have changed since
+        self._analysed_text = ""
         word = language_wrapper.language_word_dict
 
         self.input_label = QLabel(word.get("response_input_label"))
@@ -145,6 +147,7 @@ class ResponseInspectorGUI(QWidget):
             self.output_edit.setPlainText(word.get("response_empty_hint"))
             return
         self._analysis = analyze_response(text)
+        self._analysed_text = exact_text(self.input_edit)
         self.output_edit.setPlainText(build_report_text(self._analysis))
         self._set_cross_tool_enabled(
             jwt=bool(self._analysis.jwt_findings),
@@ -193,7 +196,9 @@ class ResponseInspectorGUI(QWidget):
             self._main_window,
             HeaderAnalyzerGUI(
                 main_window=self._main_window,
-                initial_headers=exact_text(self.input_edit)),
+                # What was analysed, as the other hand-offs use: the input box
+                # may hold another response by now
+                initial_headers=self._analysed_text),
             "extend_tools_menu_header_analyzer_tab_label")
 
     def open_body_in_json_format(self) -> QWidget | None:

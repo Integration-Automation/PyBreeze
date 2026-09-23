@@ -197,6 +197,18 @@ class TestResponseInspectorHeaderHandOff:
         opened = window.tab_widget.added[0][0]
         assert "set-cookie × 2" in opened.output_edit.toPlainText()
 
+    def test_the_analysed_headers_are_handed_over_not_newer_input(self, widget_with_window):
+        # The other buttons used the analysis; this one read the input box again
+        gui, window = widget_with_window
+        gui.input_edit.setPlainText("HTTP/1.1 200 OK\nServer: analysed/1\n\n{}")
+        gui.analyze()
+        gui.input_edit.setPlainText("HTTP/1.1 200 OK\nServer: pasted-later/2\n\n{}")
+
+        gui.open_headers_in_analyzer()
+
+        report = window.tab_widget.added[0][0].output_edit.toPlainText()
+        assert "analysed/1" in report and "pasted-later/2" not in report
+
     def test_open_headers_before_analyze_is_noop(self, widget_with_window):
         gui, window = widget_with_window
         assert gui.open_headers_in_analyzer() is None

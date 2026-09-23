@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-162 | 2026-09-24 | Hand the Response Inspector's analysed headers to the header analyzer, not whatever the input box holds now | #fix #tools #done | [2026-09](2026-09.md) |
 | U-20260923-161 | 2026-09-24 | Keep the diagram's Fit within the zoom range, and let zoom always step back toward it | #fix #diagram #done | [2026-09](2026-09.md) |
 | U-20260923-160 | 2026-09-24 | Keep the diagram property panel in step with the canvas, set only the side that changed, and make a run of steps on one property one undo step | #fix #diagram #done | [2026-09](2026-09.md) |
 | U-20260923-159 | 2026-09-24 | Refuse to open a HAR export or diagram over 100 MB, and report the diagram editor's read errors without the path | #fix #tools #diagram #done | [2026-09](2026-09.md) |
@@ -242,4 +243,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 179 |
+| [2026-09.md](2026-09.md) | 2026-09 | 180 |
