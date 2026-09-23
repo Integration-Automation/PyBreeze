@@ -252,3 +252,44 @@ def test_a_failed_step_does_not_log_the_url(monkeypatch):
     thread._run_templates(_Refusing(), "print('x')")
 
     assert logged and all("not-a-real-token" not in line for line in logged)
+
+
+def _sending_gui(monkeypatch):
+    """A CoT panel whose worker is built but never started."""
+    from pybreeze.pybreeze_ui.extend_ai_gui.code_review import code_review_thread
+    from pybreeze.pybreeze_ui.extend_ai_gui.code_review.cot_code_review_gui import CoTCodeReviewGUI
+
+    _qt_app()
+    monkeypatch.setattr(code_review_thread.SenderThread, "start", lambda self: None)
+    gui = CoTCodeReviewGUI()
+    gui.url_input.setText("https://review.example/api")
+    return gui
+
+
+def test_sending_resolves_nothing_on_the_ui_thread(monkeypatch):
+    # The panel checked the URL itself before the worker did, and that check's
+    # DNS lookup froze the IDE for as long as the resolver took.
+    import socket
+
+    looked_up: list = []
+    monkeypatch.setattr(socket, "getaddrinfo", lambda *a, **k: looked_up.append(a) or [])
+    gui = _sending_gui(monkeypatch)
+
+    gui.start_sending()
+
+    assert looked_up == []
+    assert gui.thread is not None
+    gui.deleteLater()
+
+
+def test_a_new_run_clears_the_last_runs_answers(monkeypatch):
+    gui = _sending_gui(monkeypatch)
+    gui.handle_response("error", "Cannot resolve hostname")
+    gui.handle_response("linter.md", "about the previous code")
+
+    gui.start_sending()
+
+    assert gui.responses == {}
+    assert gui.response_selector.count() == 0
+    assert gui.response_view.toPlainText() == ""
+    gui.deleteLater()

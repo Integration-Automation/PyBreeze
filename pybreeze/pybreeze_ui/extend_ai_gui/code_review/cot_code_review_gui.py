@@ -7,7 +7,6 @@ from je_editor import language_wrapper
 from pybreeze.pybreeze_ui.extend_ai_gui.ai_gui_global_variable import COT_TEMPLATE_FILES
 from pybreeze.pybreeze_ui.extend_ai_gui.code_review.code_review_thread import SenderThread
 from pybreeze.pybreeze_ui.thread_keeper import let_run_out
-from pybreeze.utils.network.url_validation import UnsafeURLError, validate_url
 
 
 class CoTCodeReviewGUI(QWidget):
@@ -72,16 +71,19 @@ class CoTCodeReviewGUI(QWidget):
         if not url:
             QMessageBox.warning(self, "Warning", language_wrapper.language_word_dict.get("cot_gui_error_no_url"))
             return
-        try:
-            validate_url(url)
-        except UnsafeURLError as e:
-            QMessageBox.warning(self, "Warning", str(e))
-            return
+        # The URL is checked by the worker, which reports a refusal as the
+        # "error" answer: checked here too, its DNS lookup froze the IDE.
 
         # Ignore re-submits while a run is in flight so we never drop a running
         # QThread or interleave two review passes into the same response store.
         if self.thread is not None and self.thread.isRunning():
             return
+
+        # A new run starts from nothing: answers about the previous code, or its
+        # "error", must not sit beside this run's.
+        self.responses.clear()
+        self.response_selector.clear()
+        self.response_view.clear()
 
         # 啟動傳送 Thread
         self.send_button.setEnabled(False)

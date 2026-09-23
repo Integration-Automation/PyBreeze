@@ -179,7 +179,9 @@ One settings form holds the inference backend (`remote`, `local`, OpenAI-compati
 
 ![CoT prompt editor](images/cot_prompt_editor.png)
 
-Create and manage the multi-step review chain: first summary → first code review → linter → code smell detector → total summary. Each step's result feeds the final summary. Files are watched, so an external edit shows up immediately.
+Create and manage the multi-step review chain: first summary → first code review → a judge of that review → linter → code smell detector → step-by-step analysis → total summary → a judge of the summary. Each step quotes the answers it needs from the steps before it. Files are watched, so an external edit shows up immediately.
+
+Run the chain from **Tools → AI → CoT Code Review** (a tab, or a dock from the Dock menu): paste the code, give the endpoint URL, and each step's answer appears in the selector as it arrives.
 
 ### Skill Prompt Editor & Skill Send
 

@@ -11,6 +11,8 @@ from PySide6.QtWidgets import QApplication, QMainWindow
 from je_editor.pyside_ui.main_ui.dock.destroy_dock import DestroyDock
 
 from pybreeze.extend_multi_language.update_language_dict import update_language_dict
+from pybreeze.pybreeze_ui.extend_ai_gui.code_review.cot_code_review_gui import CoTCodeReviewGUI
+from pybreeze.pybreeze_ui.menu.tools import tools_menu
 from pybreeze.pybreeze_ui.menu.tools.tools_menu import add_dock
 from pybreeze.pybreeze_ui.tools_gui.curl_import_gui import CurlImportGUI
 from pybreeze.pybreeze_ui.tools_gui.diff_gui import DiffGUI
@@ -37,6 +39,7 @@ def app():
 @pytest.mark.parametrize(
     "widget_type,widget_class",
     [
+        ("CoTCodeReview", CoTCodeReviewGUI),
         ("CurlImport", CurlImportGUI),
         ("HarImport", HarImportGUI),
         ("JwtDecoder", JwtDecoderGUI),
@@ -71,3 +74,13 @@ def test_add_dock_unknown_type_adds_nothing(app):
         assert attached == []
     finally:
         window.deleteLater()
+
+
+def test_every_tool_widget_has_a_tab_a_dock_and_a_dock_title():
+    # The CoT code review panel had a widget and no entry in any menu, so there
+    # was no way to open it.
+    factories = set(tools_menu._WIDGET_FACTORIES)
+
+    assert {entry[0] for entry in tools_menu._TAB_ACTIONS} == factories
+    assert {entry[0] for entry in tools_menu._DOCK_ACTIONS} == factories
+    assert set(tools_menu._DOCK_TITLES) == factories
