@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import os
 import posixpath
+import re
 import stat
 from collections.abc import Callable
 
@@ -49,6 +50,23 @@ UPLOAD_ASKED_WAIT_MS = 1000
 
 # Item data: the serial of the listing a directory item is waiting for
 LISTING_ROLE = Qt.ItemDataRole.UserRole
+
+
+# What a Windows file name cannot hold
+_NOT_IN_A_FILE_NAME = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
+
+
+def local_file_name(remote_path: str) -> str:
+    """A name to suggest for saving *remote_path* here: its last part, safe for this machine.
+
+    A server's file name may hold backslashes: ``..\\..\\Startup\\u.bat`` was
+    offered as the save name, which a save dialog can take as a path out of
+    the folder it shows. Everything up to the last ``/`` or ``\\`` goes, and
+    what Windows refuses in a name becomes ``_``.
+    """
+    name = re.split(r"[/\\]", remote_path)[-1]
+    name = _NOT_IN_A_FILE_NAME.sub("_", name).strip(" .")
+    return name or "download"
 
 
 def folder_item(item: QTreeWidgetItem | None) -> QTreeWidgetItem | None:
@@ -525,7 +543,7 @@ class SSHFileTreeManager(QWidget):
                 self.word_dict.get("ssh_file_viewer_dialog_message_select_file_to_download"))
             return
         remote_path = item.text(3)
-        suggested = posixpath.basename(remote_path)  # remote path uses POSIX separators
+        suggested = local_file_name(remote_path)
         local_path, _ = QFileDialog.getSaveFileName(
             self,
             self.word_dict.get("ssh_file_viewer_dialog_title_save_as"),

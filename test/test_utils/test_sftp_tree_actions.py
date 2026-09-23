@@ -212,3 +212,20 @@ class TestTheMenuDoesNotWaitOnTheServer:
 
         assert any("Permission denied" in text for text in shown)
         assert _child(root, "notes.txt").text(3) == "/notes.txt"
+
+
+class TestTheNameADownloadSuggests:
+    """A server's name may hold backslashes, and one climbing into Startup was offered as the save name."""
+
+    @pytest.mark.parametrize(("remote", "suggested"), [
+        ("/home/u/..\\..\\AppData\\Startup\\u.bat", "u.bat"),
+        ("/srv/a:b?.txt", "a_b_.txt"),
+        ("/data/report.csv", "report.csv"),
+        ("/x/..", "download"),
+        ("/x/ . ", "download"),
+    ])
+    def test_only_the_last_safe_part(self, remote, suggested):
+        from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_file_viewer_widget import local_file_name
+
+        assert local_file_name(remote) == suggested
+
