@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-163 | 2026-09-24 | Ask before the prompt editor's Create replaces typed text, and empty the editor when a template cannot be read | #fix #ai #done | [2026-09](2026-09.md) |
 | U-20260923-162 | 2026-09-24 | Hand the Response Inspector's analysed headers to the header analyzer, not whatever the input box holds now | #fix #tools #done | [2026-09](2026-09.md) |
 | U-20260923-161 | 2026-09-24 | Keep the diagram's Fit within the zoom range, and let zoom always step back toward it | #fix #diagram #done | [2026-09](2026-09.md) |
 | U-20260923-160 | 2026-09-24 | Keep the diagram property panel in step with the canvas, set only the side that changed, and make a run of steps on one property one undo step | #fix #diagram #done | [2026-09](2026-09.md) |
@@ -243,4 +244,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 180 |
+| [2026-09.md](2026-09.md) | 2026-09 | 181 |

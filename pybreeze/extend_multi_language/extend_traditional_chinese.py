@@ -213,6 +213,10 @@ pybreeze_traditional_chinese_word_dict = {
         "{filename} 還有沒存的編輯。要切換模板並捨棄它們嗎？",
     "prompt_editor_reload_button_over_edits":
         "{filename} 還有沒存的編輯。要從磁碟重新載入並捨棄它們嗎？",
+    "prompt_editor_create_over_edits":
+        "要用內建模板建立 {filename} 嗎？這裡輸入的內容會被取代。",
+    "prompt_editor_unreadable":
+        "{filename} 讀不出來：{error}",
     "prompt_editor_reload_over_edits":
         "{filename} 在磁碟上被改過了。要重新載入並捨棄這裡還沒存的編輯嗎？",
     "ssh_state_shell_and_files": "已連線：終端與檔案",

@@ -174,7 +174,13 @@ class PromptEditorWidget(QWidget):
             except OSError as error:
                 pybreeze_logger.error("Prompt file %s could not be opened: %r", path.name, error)
                 # Nothing was shown, so there is nothing a save may write back.
+                # The edit area is emptied: it kept the previous template's text,
+                # shown under this template's name
                 self.current_file = None
+                self.middle_editor.setPlaceholderText(
+                    language_wrapper.language_word_dict.get("prompt_editor_unreadable").format(
+                        filename=path.name, error=error.strerror or type(error).__name__))
+                self._show_text("")
                 return
             QMessageBox.information(
                 self, language_wrapper.language_word_dict.get(self._labels.info_title),
@@ -198,6 +204,9 @@ class PromptEditorWidget(QWidget):
                 word.get(self._labels.file_exists).format(filename=self.current_file))
             return
 
+        # Text typed into the empty editor would be replaced by the template
+        if not self._may_discard_edits("prompt_editor_create_over_edits", Path(self.current_file).name):
+            return
         content = self.templates.get(Path(self.current_file).name, "")
         if not save_prompt_text(
                 self, self.current_file, content, word.get(self._labels.error_title)):

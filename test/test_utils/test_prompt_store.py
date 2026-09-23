@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -464,3 +465,56 @@ class TestAnEditedPromptThatReachesIntoAPlaceholder:
         prompt = build_prompt("linter.md", {CODE_DIFF: CODE})
 
         assert "{literal}" in prompt and CODE in prompt
+
+
+def _prompt_editor():
+    from PySide6.QtWidgets import QApplication
+
+    from pybreeze.extend_multi_language.update_language_dict import update_language_dict
+    from pybreeze.pybreeze_ui.extend_ai_gui.prompt_edit_gui.cot_prompt_editor_widget import CoTPromptEditor
+
+    QApplication.instance() or QApplication([])
+    update_language_dict()
+    return CoTPromptEditor()
+
+
+class TestThePromptEditorKeepsWhatWasTyped:
+    def test_create_asks_before_replacing_typed_text(self, prompts, monkeypatch):
+        # Create wrote the built-in template over it without asking
+        from PySide6.QtWidgets import QMessageBox
+
+        editor = _prompt_editor()
+        editor.file_selector.setCurrentIndex(editor.prompt_files.index("linter.md"))
+        editor.middle_editor.setPlainText("my own prompt")
+        editor.middle_editor.document().setModified(True)
+        asked: list = []
+        monkeypatch.setattr(QMessageBox, "question",
+                            staticmethod(lambda *args: asked.append(args[2]) or QMessageBox.StandardButton.No))
+
+        editor.create_file()
+
+        assert asked
+        assert not (prompts / "linter.md").exists()
+        assert editor.middle_editor.toPlainText() == "my own prompt"
+        editor.deleteLater()
+
+    def test_a_file_that_cannot_be_read_does_not_show_the_previous_text(self, prompts, monkeypatch):
+        # The previous template's text stayed on screen under this one's name
+        from pybreeze.pybreeze_ui.extend_ai_gui.prompt_edit_gui import prompt_editor_widget
+
+        write(prompts, "linter.md", "the linter prompt")
+        editor = _prompt_editor()
+        editor.middle_editor.setPlainText("the previous template")
+        monkeypatch.setattr(prompt_editor_widget, "read_prompt_file", lambda _path: None)
+
+        def locked(_path):
+            raise PermissionError(13, "Permission denied")
+
+        monkeypatch.setattr(Path, "read_bytes", locked)
+        editor.load_file_content(editor.prompt_files.index("linter.md"))
+
+        assert editor.middle_editor.toPlainText() == ""
+        assert editor.current_file is None
+        assert "Permission denied" in editor.middle_editor.placeholderText()
+        editor.deleteLater()
+
