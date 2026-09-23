@@ -210,6 +210,8 @@ pybreeze_english_word_dict = {
     "ssh_state_shell_only": "Connected: shell only (the file tree did not connect)",
     "ssh_state_files_only": "Connected: files only (the shell did not connect)",
     "ssh_state_neither": "Disconnected",
+    "ssh_file_viewer_message_session_busy":
+        "The SFTP session is busy with a transfer or a listing. Try again when it is done.",
     "ssh_file_viewer_dialog_title_transfer_running": "A transfer is already running",
     "ssh_file_viewer_dialog_message_transfer_running":
         "One file at a time: wait for the transfer that is running to finish.",

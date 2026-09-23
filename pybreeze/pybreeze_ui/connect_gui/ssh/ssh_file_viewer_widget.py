@@ -4,6 +4,10 @@ import os
 import posixpath
 import re
 import stat
+import tempfile
+import threading
+from collections.abc import Iterator
+from contextlib import contextmanager, suppress
 
 import paramiko
 from PySide6.QtCore import Qt, QEvent, QThread, Signal
@@ -43,6 +47,9 @@ def format_size(num_bytes: int) -> str:
 # Keepalive interval (seconds) so an idle SFTP session is not dropped by the
 # TCP stack, a NAT/firewall, or the SSH server (≈ OpenSSH ServerAliveInterval).
 SSH_KEEPALIVE_SECONDS = 30
+# How long a menu action on the UI thread waits for the session before
+# saying it is busy: long enough for a listing, short enough not to freeze
+UI_WAIT_SECONDS = 1.0
 
 
 def natural_key(name: str) -> list:
@@ -87,6 +94,10 @@ def remote_join(directory: str, name: str) -> str:
     return joined if joined.startswith("/") else f"/{joined}"
 
 
+class SftpBusy(RuntimeError):
+    """Another request holds the SFTP session (a transfer, a listing); try again after it."""
+
+
 class ConnectAbandoned(RuntimeError):
     """The session came up after the connect was given up on, and was closed."""
 
@@ -102,6 +113,11 @@ class SFTPClientWrapper:
         self._ssh: paramiko.SSHClient | None = None
         self._sftp: paramiko.SFTPClient | None = None
         self.root_path: str = "/"
+        # One request at a time on the session: paramiko's SFTP client throws
+        # away a reply read by the wrong thread, and the thread that sent that
+        # request then waits for it forever. Listings, a transfer and the menu's
+        # own calls used to share it freely.
+        self._in_use = threading.Lock()
 
     def connect(self, host: str, port: int, username: str, password: str,
                 use_key: bool = False, key_path: str = "",
@@ -191,76 +207,100 @@ class SFTPClientWrapper:
                 self.word_dict.get("ssh_command_widget_dialog_title_not_connected")
             )
 
+    @contextmanager
+    def _session(self, wait: float | None = None) -> Iterator[paramiko.SFTPClient]:
+        """Hold the session for one request and yield it, open.
+
+        :param wait: seconds to wait for a request already running; ``None``
+            waits as long as it takes (worker threads). The menu's calls run on
+            the UI thread and wait briefly: a transfer can hold the session for
+            minutes, and they are refused with ``SftpBusy`` instead.
+        """
+        acquired = self._in_use.acquire() if wait is None else self._in_use.acquire(timeout=wait)
+        if not acquired:
+            raise SftpBusy(self.word_dict.get("ssh_file_viewer_message_session_busy"))
+        try:
+            self._require_connection()
+            sftp = self._sftp
+            if sftp is None:  # closed from the UI thread since the check
+                self._require_connection()
+            yield sftp
+        finally:
+            self._in_use.release()
+
     def list_dir(self, path: str):
         """
-        List directory entries with stat attributes.
+        List directory entries with stat attributes. Worker thread.
         列出目錄項目（含屬性）。
         """
-        self._require_connection()
-        sftp = self._sftp
-        if sftp is None:  # closed from the UI thread since the check
-            self._require_connection()
-        return sftp.listdir_attr(path)
-
-    def is_dir(self, path: str) -> bool:
-        """
-        Determine if target path is a directory.
-        判斷路徑是否為目錄。
-        """
-        self._require_connection()
-        try:
-            st = self._sftp.stat(path)
-            return stat.S_ISDIR(st.st_mode)
-        except OSError:
-            return False
+        with self._session() as sftp:
+            return sftp.listdir_attr(path)
 
     def mkdir(self, path: str):
         """
         Create directory.
         建立目錄。
         """
-        self._require_connection()
-        self._sftp.mkdir(path)
+        with self._session(UI_WAIT_SECONDS) as sftp:
+            sftp.mkdir(path)
 
     def remove_file(self, path: str):
         """
         Remove file.
         刪除檔案。
         """
-        self._require_connection()
-        self._sftp.remove(path)
+        with self._session(UI_WAIT_SECONDS) as sftp:
+            sftp.remove(path)
 
     def remove_dir(self, path: str):
         """
         Remove empty directory.
         刪除空目錄。
         """
-        self._require_connection()
-        self._sftp.rmdir(path)
+        with self._session(UI_WAIT_SECONDS) as sftp:
+            sftp.rmdir(path)
 
     def rename(self, old_path: str, new_path: str):
         """
         Rename file/folder.
         重新命名檔案/資料夾。
         """
-        self._require_connection()
-        self._sftp.rename(old_path, new_path)
+        with self._session(UI_WAIT_SECONDS) as sftp:
+            sftp.rename(old_path, new_path)
 
     def download(self, remote_path: str, local_path: str):
         """
-        Download remote to local.
+        Download remote to local. Worker thread.
         下載遠端檔案至本地。
+
+        The file arrives beside *local_path* under a temporary name and takes
+        its place only when complete: ``get`` empties its target before the
+        first byte, so a dropped link or a Disconnect used to leave the file
+        the user chose to replace cut short.
         """
         self._require_connection()
-        self._sftp.get(remote_path, local_path)
+        folder = os.path.dirname(os.path.abspath(local_path))
+        handle, partial = tempfile.mkstemp(
+            prefix=f".{os.path.basename(local_path)}.", suffix=".part", dir=folder)
+        os.close(handle)
+        complete = False
+        try:
+            with self._session() as sftp:
+                sftp.get(remote_path, partial)
+            os.replace(partial, local_path)
+            complete = True
+        finally:
+            if not complete:
+                with suppress(OSError):
+                    os.remove(partial)
 
     def upload(self, local_path: str, remote_path: str):
         """
-        Upload local to remote.
+        Upload local to remote. Worker thread.
         上傳本地檔案至遠端。
         """
-        self._require_connection()
-        self._sftp.put(local_path, remote_path)
+        with self._session() as sftp:
+            sftp.put(local_path, remote_path)
 
 
 class SftpTransferThread(QThread):

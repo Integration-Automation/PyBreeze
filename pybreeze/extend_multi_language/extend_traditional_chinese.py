@@ -210,6 +210,7 @@ pybreeze_traditional_chinese_word_dict = {
     "ssh_state_shell_only": "已連線：只有終端（檔案樹沒連上）",
     "ssh_state_files_only": "已連線：只有檔案（終端沒連上）",
     "ssh_state_neither": "未連線",
+    "ssh_file_viewer_message_session_busy": "SFTP 連線正在傳輸檔案或列出目錄，請等它完成後再試。",
     "ssh_file_viewer_dialog_title_transfer_running": "已有傳輸進行中",
     "ssh_file_viewer_dialog_message_transfer_running":
         "一次只傳一個檔案：請等目前的傳輸結束。",
