@@ -27,6 +27,7 @@ from pybreeze.pybreeze_ui.extend_ai_gui.prompt_store import (
 )
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.pybreeze_ui.plain_text import as_text
+from pybreeze.pybreeze_ui.exact_text import exact_text
 
 
 @dataclass(frozen=True)
@@ -264,7 +265,7 @@ class PromptEditorWidget(QWidget):
             return
 
         if not save_prompt_text(
-                self, self.current_file, self.middle_editor.toPlainText(),
+                self, self.current_file, exact_text(self.middle_editor),
                 word.get(self._labels.error_title)):
             return
         self.watcher.addPath(self.current_file)

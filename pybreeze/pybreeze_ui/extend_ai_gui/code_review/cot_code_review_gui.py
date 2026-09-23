@@ -7,6 +7,7 @@ from je_editor import language_wrapper
 from pybreeze.pybreeze_ui.extend_ai_gui.ai_gui_global_variable import COT_TEMPLATE_FILES
 from pybreeze.pybreeze_ui.extend_ai_gui.code_review.code_review_thread import SenderThread
 from pybreeze.pybreeze_ui.thread_keeper import let_run_out
+from pybreeze.pybreeze_ui.exact_text import exact_text
 
 
 class CoTCodeReviewGUI(QWidget):
@@ -87,7 +88,7 @@ class CoTCodeReviewGUI(QWidget):
 
         # 啟動傳送 Thread
         self.send_button.setEnabled(False)
-        self.thread = SenderThread(files=self.files, code=self.code_paste_area.toPlainText(), url=url)
+        self.thread = SenderThread(files=self.files, code=exact_text(self.code_paste_area), url=url)
         self.thread.update_response.connect(self.handle_response)
         self.thread.finished.connect(self._enable_send)
         self.thread.start()

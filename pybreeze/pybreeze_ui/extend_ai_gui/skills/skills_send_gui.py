@@ -24,6 +24,7 @@ from pybreeze.utils.network.http_client import (
 from pybreeze.utils.network.public_http import overall_deadline, public_session
 from pybreeze.utils.network.url_validation import UnsafeURLError, validate_url
 from pybreeze.pybreeze_ui.plain_text import as_text
+from pybreeze.pybreeze_ui.exact_text import exact_text
 
 
 # Where a skill template wants the code; the user puts it there before sending
@@ -191,7 +192,7 @@ class SkillsSendGUI(QWidget):
             return
 
         api_url = self.api_url_input.text().strip()
-        prompt_text = self.prompt_input.toPlainText().strip()
+        prompt_text = exact_text(self.prompt_input).strip()
 
         if not api_url or not prompt_text:
             self.response_output.setPlainText(language_wrapper.language_word_dict.get("skills_missing_input"))

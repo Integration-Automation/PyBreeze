@@ -518,3 +518,16 @@ class TestThePromptEditorKeepsWhatWasTyped:
         assert "Permission denied" in editor.middle_editor.placeholderText()
         editor.deleteLater()
 
+    def test_saving_writes_back_the_characters_it_did_not_touch(self, prompts, monkeypatch):
+        # Saved from toPlainText(), a no-break space became a space and U+2028 a newline
+        original = "Review\xa0this: {code_diff}\n"
+        write(prompts, "linter.md", original)
+        editor = _cot_editor(monkeypatch)
+        editor.file_selector.setCurrentIndex(editor.prompt_files.index("linter.md"))
+
+        editor.save_file()
+
+        assert (prompts / "linter.md").read_text(encoding="utf-8") == original
+        editor.close()
+        editor.deleteLater()
+

@@ -34,6 +34,7 @@ from pybreeze.pybreeze_ui.plain_text import as_text
 from pybreeze.utils.file_process.read_capped import read_text_capped
 from pybreeze.utils.file_process.replace_file import replace_text, replace_written
 from pybreeze.utils.logging.logger import pybreeze_logger
+from pybreeze.pybreeze_ui.exact_text import exact_text
 
 
 def _lang(key: str, fallback: str = "") -> str:
@@ -129,7 +130,7 @@ class MermaidImportDialog(QDialog):
         layout.addLayout(btn_row)
 
     def get_text(self) -> str:
-        return self._editor.toPlainText()
+        return exact_text(self._editor)
 
 
 class DiagramEditorWidget(QWidget):

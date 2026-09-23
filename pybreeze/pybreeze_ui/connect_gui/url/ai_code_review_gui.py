@@ -24,6 +24,7 @@ from pybreeze.utils.network.http_client import (
 )
 from pybreeze.utils.network.public_http import overall_deadline, public_session
 from pybreeze.utils.network.url_validation import UnsafeURLError, validate_url
+from pybreeze.pybreeze_ui.exact_text import exact_text
 
 
 # What the "seen this URL before" file keeps. An API URL can carry a token in
@@ -241,7 +242,7 @@ class AICodeReviewClient(QWidget):
             return
         url = self.url_input.text().strip()
         method = self.method_box.currentText()
-        code_content = self.code_input.toPlainText().strip()
+        code_content = exact_text(self.code_input).strip()
 
         if not url:
             self.response_panel.setPlainText(
