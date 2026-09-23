@@ -90,3 +90,20 @@ class TestInstantsDatetimeCannotHold:
         # In UTC these fall before year 1 or after year 9999: OverflowError, not ValueError.
         with pytest.raises(TimestampParseException):
             convert_timestamp(text)
+
+
+class TestSubSecondPrecision:
+    def test_milliseconds_keep_their_sub_second_part(self):
+        result = convert_timestamp("1700000000123")
+
+        assert result.epoch_millis == 1700000000123
+        assert result.epoch_seconds == 1700000000
+
+    def test_an_instant_before_1970_rounds_down_not_toward_zero(self):
+        result = convert_timestamp("-1.5")
+
+        assert result.epoch_millis == -1500
+        assert result.epoch_seconds == -2
+
+    def test_an_iso_time_with_milliseconds_keeps_them(self):
+        assert convert_timestamp("2021-01-01T00:00:00.250Z").epoch_millis == 1609459200250

@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-51 | 2026-09-23 | The timestamp tool keeps milliseconds and rounds times before 1970 down | #done #tools | [2026-09](2026-09.md) |
 | U-20260923-50 | 2026-09-23 | Five inputs that made a tool tab raise are reported instead | #done #tools | [2026-09](2026-09.md) |
 | U-20260923-49 | 2026-09-23 | The diff tab's summary no longer takes a minute on a large text | #done #tools #performance | [2026-09](2026-09.md) |
 | U-20260923-48 | 2026-09-23 | Generated scripts write JSON bodies and non-BMP characters as Python | #done #tools | [2026-09](2026-09.md) |
@@ -131,4 +132,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 68 |
+| [2026-09.md](2026-09.md) | 2026-09 | 69 |

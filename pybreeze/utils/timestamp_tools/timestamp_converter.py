@@ -10,7 +10,7 @@ which keeps the conversions deterministic and testable.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from pybreeze.utils.exception.exception_tags import (
     empty_timestamp_error,
@@ -26,14 +26,16 @@ from pybreeze.utils.logging.logger import pybreeze_logger
 _MILLISECONDS_THRESHOLD = 10 ** 11
 # Milliseconds per second
 _MS_PER_SECOND = 1000
+# The Unix epoch, in UTC
+_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
 
 @dataclass(frozen=True)
 class TimestampResult:
     """Every representation of one instant.
 
-    :param epoch_seconds: whole Unix seconds
-    :param epoch_millis: whole Unix milliseconds
+    :param epoch_seconds: whole Unix seconds, rounded down (toward the past)
+    :param epoch_millis: whole Unix milliseconds, rounded down
     :param iso_utc: ISO-8601 string in UTC
     """
 
@@ -98,9 +100,12 @@ def convert_timestamp(text: str) -> TimestampResult:
     :raises TimestampParseException: when *text* is empty or unrecognised
     """
     moment = _parse(text)
-    epoch_seconds = int(moment.timestamp())
+    # From the instant itself, not from whole seconds: milliseconds kept their
+    # sub-second part only as zeros, and int() moved an instant before 1970
+    # toward zero -- -1.5 s became -1 rather than -2.
+    epoch_millis = (moment - _EPOCH) // timedelta(milliseconds=1)
     return TimestampResult(
-        epoch_seconds=epoch_seconds,
-        epoch_millis=epoch_seconds * _MS_PER_SECOND,
+        epoch_seconds=epoch_millis // _MS_PER_SECOND,
+        epoch_millis=epoch_millis,
         iso_utc=moment.isoformat(),
     )
