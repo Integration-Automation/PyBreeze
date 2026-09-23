@@ -288,14 +288,12 @@ def _action_delete(tree_view: QTreeView, main_window, path: Path | None) -> None
     if reply != QMessageBox.StandardButton.Yes:
         return
 
-    # Every tab open on the file, or on a file under the folder, closes first:
-    # closing stops its auto-save, which would otherwise keep writing the
-    # buffer back while the files are being removed.
-    for editor, _file in _editors_under(main_window, path):
-        index = main_window.tab_widget.indexOf(editor)
-        editor.close()
-        if index >= 0:
-            main_window.tab_widget.removeTab(index)
+    # Every tab open on the file, or on a file under the folder, stops its
+    # auto-save first, which would otherwise write the buffer back -- recreating
+    # the file -- while it is being removed.
+    open_tabs = _editors_under(main_window, path)
+    for editor, _file in open_tabs:
+        _stop_auto_save(editor)
 
     def _delete() -> None:
         if path.is_dir():
@@ -304,6 +302,17 @@ def _action_delete(tree_view: QTreeView, main_window, path: Path | None) -> None
             path.unlink()
 
     _perform_file_op(tree_view, _delete)
+    # Only a tab whose file is gone closes. The delete can fail -- a locked or
+    # read-only file -- or remove only part of a folder, and closing the tabs
+    # beforehand lost a file's tab and its unsaved edits while the file stayed.
+    for editor, file_path in open_tabs:
+        if file_path.exists():
+            _start_auto_save(editor, file_path)
+            continue
+        index = main_window.tab_widget.indexOf(editor)
+        editor.close()
+        if index >= 0:
+            main_window.tab_widget.removeTab(index)
 
 
 def _action_copy_path(tree_view: QTreeView, path: Path | None, relative: bool = False) -> None:

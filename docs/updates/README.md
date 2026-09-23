@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-72 | 2026-09-23 | File tree Delete closes only the tabs whose files are gone | #done #filetree | [2026-09](2026-09.md) |
 | U-20260923-71 | 2026-09-23 | prthinker Review current file saves the file first | #done #prthinker | [2026-09](2026-09.md) |
 | U-20260923-70 | 2026-09-23 | TestPioneer Create template: in the working directory, asks before replacing | #done #testpioneer | [2026-09](2026-09.md) |
 | U-20260923-69 | 2026-09-23 | AutoControl Record Stop: stops from any tab, inserts runnable JSON | #done #autocontrol | [2026-09](2026-09.md) |
@@ -152,4 +153,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 89 |
+| [2026-09.md](2026-09.md) | 2026-09 | 90 |

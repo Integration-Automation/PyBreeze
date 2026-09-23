@@ -7,6 +7,7 @@ the user would have given is supplied directly.
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -82,6 +83,7 @@ class FakeEditor(QWidget):
         self.code_edit = type("Edit", (), {"current_file": path})()
         self.renamed = False
         self.closed = False
+        self.code_save_thread = None
 
     def rename_self_tab(self) -> None:
         self.renamed = True
@@ -310,6 +312,34 @@ class TestDeleting:
         assert not outside.closed
         assert window.tab_widget.count() == 1
         assert not folder.exists()
+
+    def test_a_delete_that_fails_keeps_the_tab_open(self, tree, tmp_path, monkeypatch):
+        # The tabs used to close before the delete ran, so a locked file stayed
+        # on disk while its tab, and any unsaved edits in it, were gone.
+        target = tmp_path / "locked.py"
+        target.touch()
+        window = FakeWindow()
+        editor = FakeEditor(str(target))
+        window.tab_widget.addTab(editor, "locked.py")
+        monkeypatch.setattr(ctx, "_editors_under", lambda _w, _p: [(editor, target)])
+        restarted: list = []
+        monkeypatch.setattr(
+            ctx, "init_new_auto_save_thread",
+            lambda file_path, widget: restarted.append(file_path))
+        monkeypatch.setattr(QMessageBox, "warning", staticmethod(lambda *a, **k: None))
+
+        def refuse(self, *args, **kwargs):
+            raise PermissionError(13, "The process cannot access the file")
+
+        monkeypatch.setattr(Path, "unlink", refuse)
+        confirm(monkeypatch, yes=True)
+        _action_delete(tree, window, target)
+
+        assert target.exists()
+        assert not editor.closed
+        assert window.tab_widget.count() == 1
+        # Its auto-save, stopped for the delete, runs again.
+        assert restarted == [str(target)]
 
 
 class TestCopyingThePath:
