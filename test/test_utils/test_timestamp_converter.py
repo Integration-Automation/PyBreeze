@@ -105,5 +105,13 @@ class TestSubSecondPrecision:
         assert result.epoch_millis == -1500
         assert result.epoch_seconds == -2
 
+    @pytest.mark.parametrize("text,iso", [
+        ("-86400", "1969-12-31T00:00:00+00:00"),
+        ("-315619200", "1960-01-01T00:00:00+00:00"),
+    ])
+    def test_a_day_or_more_before_1970_converts_on_every_platform(self, text, iso):
+        # fromtimestamp() refused these on Windows: "not a recognized epoch number"
+        assert convert_timestamp(text).iso_utc == iso
+
     def test_an_iso_time_with_milliseconds_keeps_them(self):
         assert convert_timestamp("2021-01-01T00:00:00.250Z").epoch_millis == 1609459200250

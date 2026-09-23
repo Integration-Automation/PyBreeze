@@ -14,7 +14,6 @@ import base64
 import json
 import re
 from dataclasses import dataclass
-from datetime import datetime, timezone
 
 from pybreeze.utils.exception.exception_tags import (
     empty_jwt_error,
@@ -23,6 +22,7 @@ from pybreeze.utils.exception.exception_tags import (
 )
 from pybreeze.utils.exception.exceptions import JwtDecodeException
 from pybreeze.utils.logging.logger import pybreeze_logger
+from pybreeze.utils.timestamp_tools.timestamp_converter import utc_from_epoch_seconds
 
 # A JWT is three base64url segments joined by dots
 _JWT_SEGMENT_COUNT = 3
@@ -119,8 +119,9 @@ def format_timestamp_claim(value: object) -> str | None:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return None
     try:
-        return datetime.fromtimestamp(value, tz=timezone.utc).isoformat()
-    except (OverflowError, OSError, ValueError):
+        # Not fromtimestamp: on Windows it refused claims before 1970
+        return utc_from_epoch_seconds(value).isoformat()
+    except (OverflowError, ValueError):
         return None
 
 

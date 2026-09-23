@@ -91,6 +91,13 @@ class TestFormatTimestampClaim:
     def test_out_of_range_returns_none(self):
         assert format_timestamp_claim(10 ** 30) is None
 
+    def test_a_claim_before_1970_is_shown(self):
+        # It was silently left out on Windows.
+        assert format_timestamp_claim(-86400) == "1969-12-31T00:00:00+00:00"
+
+    def test_not_a_number_returns_none(self):
+        assert format_timestamp_claim(float("nan")) is None
+
 
 class TestHumanizedTimestampClaims:
     def test_extracts_known_claims(self):

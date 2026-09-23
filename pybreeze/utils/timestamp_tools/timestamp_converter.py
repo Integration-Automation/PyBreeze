@@ -53,12 +53,24 @@ def detect_epoch_unit(value: float) -> str:
     return "ms" if abs(value) >= _MILLISECONDS_THRESHOLD else "s"
 
 
+def utc_from_epoch_seconds(seconds: float) -> datetime:
+    """The UTC instant *seconds* after (or before) the Unix epoch.
+
+    Not ``datetime.fromtimestamp``: on Windows it goes through the C runtime,
+    which refuses anything more than a few hours before 1970 with ``OSError``.
+
+    :raises OverflowError: outside the years datetime can hold, or infinite
+    :raises ValueError: not a number (NaN)
+    """
+    return _EPOCH + timedelta(seconds=seconds)
+
+
 def _from_epoch(value: float) -> datetime:
     """Build a UTC datetime from an epoch number, auto-detecting its unit."""
     seconds = value / _MS_PER_SECOND if detect_epoch_unit(value) == "ms" else value
     try:
-        return datetime.fromtimestamp(seconds, tz=timezone.utc)
-    except (OverflowError, OSError, ValueError) as error:
+        return utc_from_epoch_seconds(seconds)
+    except (OverflowError, ValueError) as error:
         pybreeze_logger.error(unrecognized_timestamp_error)
         raise TimestampParseException(unrecognized_timestamp_error) from error
 

@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-83 | 2026-09-23 | Epoch values and JWT claims before 1970 convert on Windows | #fix #tools | [2026-09](2026-09.md) |
 | U-20260923-82 | 2026-09-23 | SFTP: one request at a time on the session, and a download replaces its file only when complete | #fix #ssh | [2026-09](2026-09.md) |
 | U-20260923-81 | 2026-09-23 | Unknown SSH host key: asked once per Connect, and no accepted host written away | #fix #ssh #security | [2026-09](2026-09.md) |
 | U-20260923-80 | 2026-09-23 | SSH shell ended by the server closes its session and reports both halves | #fix #ssh | [2026-09](2026-09.md) |
@@ -163,4 +164,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 100 |
+| [2026-09.md](2026-09.md) | 2026-09 | 101 |
