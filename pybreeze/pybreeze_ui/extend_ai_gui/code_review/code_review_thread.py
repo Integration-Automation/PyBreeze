@@ -10,10 +10,11 @@ from pybreeze.pybreeze_ui.extend_ai_gui.code_review.cot_chain import (
 )
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.network.http_client import (
-    ResponseTooLargeError, read_capped_text, CONNECT_TIMEOUT, describe_request_error, succeeded,
+    DEFAULT_MAX_READ_SECONDS, ResponseTooLargeError, read_capped_text, CONNECT_TIMEOUT,
+    describe_request_error, succeeded,
     truncate_for_display,
 )
-from pybreeze.utils.network.public_http import public_session
+from pybreeze.utils.network.public_http import overall_deadline, public_session
 from pybreeze.utils.network.url_validation import UnsafeURLError, validate_url
 
 
@@ -65,12 +66,14 @@ class SenderThread(QThread):
     def _ask(self, session: requests.Session, file: str, prompt: str) -> tuple[str, bool]:
         """Send one step's prompt; return its answer and whether it arrived."""
         try:
-            # 傳送到指定 URL（重用 session 連線）
-            resp = session.post(
-                self.url, json={"prompt": prompt},
-                timeout=(CONNECT_TIMEOUT, 30), allow_redirects=False, stream=True,
-            )
-            body = read_capped_text(resp)
+            # 傳送到指定 URL（重用 session 連線）; the whole step bounded, headers
+            # included: a read timeout restarts with every byte
+            with overall_deadline(DEFAULT_MAX_READ_SECONDS):
+                resp = session.post(
+                    self.url, json={"prompt": prompt},
+                    timeout=(CONNECT_TIMEOUT, 30), allow_redirects=False, stream=True,
+                )
+                body = read_capped_text(resp)
         except (requests.RequestException, ResponseTooLargeError) as error:
             # Not %r: a requests error carries the whole URL, which may hold a token.
             pybreeze_logger.error(

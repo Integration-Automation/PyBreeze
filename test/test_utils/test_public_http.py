@@ -249,3 +249,57 @@ class TestInternationalNames:
 
         assert validate_url("http://straße.de/") == "http://straße.de/"
         assert looked_up == ["xn--strae-oqa.de"]
+
+
+class TestTheOverallDeadline:
+    """A read timeout restarts with every byte; the deadline bounds the whole request."""
+
+    @staticmethod
+    def _trickling_headers(stop: threading.Event) -> tuple[socket.socket, threading.Thread]:
+        server = socket.socket()
+        server.bind(("127.0.0.1", 0))
+        server.listen(1)
+
+        def serve() -> None:
+            try:
+                connection, _address = server.accept()
+            except OSError:
+                return
+            with connection:
+                connection.recv(65536)
+                for byte in b"HTTP/1.1 200 OK\r\nX-Slow: " + b"y" * 1000:
+                    if stop.wait(0.2):
+                        return
+                    try:
+                        connection.sendall(bytes([byte]))
+                    except OSError:
+                        return
+
+        thread = threading.Thread(target=serve, daemon=True)
+        thread.start()
+        return server, thread
+
+    def test_headers_sent_a_byte_at_a_time_are_cut_off(self, dns, loopback_allowed):
+        import time
+
+        from pybreeze.utils.network.public_http import overall_deadline
+
+        stop = threading.Event()
+        server, thread = self._trickling_headers(stop)
+        started = time.monotonic()
+        try:
+            with pytest.raises(requests.exceptions.ReadTimeout), overall_deadline(1), _session() as session:
+                session.get(f"http://service.test:{server.getsockname()[1]}/", timeout=(3, 3), stream=True)
+            assert time.monotonic() - started < 4
+        finally:
+            stop.set()
+            server.close()
+            thread.join(5)
+
+    def test_a_timely_answer_is_not_touched(self, dns, loopback_allowed, listener):
+        from pybreeze.utils.network.public_http import overall_deadline
+
+        with overall_deadline(5), _session() as session:
+            response = session.get(f"http://service.test:{listener.port}/", timeout=(3, 3))
+
+        assert response.text == "ok"

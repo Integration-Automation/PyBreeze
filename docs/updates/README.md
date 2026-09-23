@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-192 | 2026-09-24 | Bound a whole AI request, its status line and headers included | #fix #ai #security #done | [2026-09](2026-09.md) |
 | U-20260923-191 | 2026-09-24 | Cut a trickling AI answer off at its deadline, not only between chunks | #fix #ai #security | [2026-09](2026-09.md) |
 | U-20260923-190 | 2026-09-24 | Free the CoT review, Skill send, Diff and SSH panels once they are closed | #fix #ai #ssh #tools | [2026-09](2026-09.md) |
 | U-20260923-189 | 2026-09-24 | Let the TestPioneer menu's stand-in message box take the delete-on-close attribute | #test | [2026-09](2026-09.md) |
@@ -272,4 +273,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 209 |
+| [2026-09.md](2026-09.md) | 2026-09 | 210 |

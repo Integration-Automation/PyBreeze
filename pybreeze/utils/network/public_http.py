@@ -11,12 +11,18 @@ and the ``Host`` header still carries it.
 Only direct connections are pinned. Through a proxy it is the proxy that
 resolves and connects, and the connection made here is to the proxy, which may
 well be on the local network.
+
+``overall_deadline`` bounds a whole request, the wait for the status line and
+headers included, which a per-read timeout does not: every byte restarts it.
 """
 from __future__ import annotations
 
+import contextlib
 import http.client
 import socket
+import threading
 import urllib.request
+from collections.abc import Iterator
 from typing import Any
 
 import requests
@@ -26,6 +32,80 @@ from urllib3.connectionpool import HTTPConnectionPool, HTTPSConnectionPool
 from urllib3.exceptions import ConnectTimeoutError, NewConnectionError
 
 from pybreeze.utils.network.url_validation import UnsafeURLError, public_addresses
+
+
+# The overall deadline of the request each thread is making, if it set one
+_DEADLINES = threading.local()
+
+
+class _Deadline:
+    """Shuts every socket it watches down once *seconds* have passed."""
+
+    def __init__(self, seconds: float) -> None:
+        self._lock = threading.Lock()
+        self._sockets: list[socket.socket] = []
+        self._over = False
+        self.passed = False
+        self._timer = threading.Timer(seconds, self._pass)
+        self._timer.daemon = True
+        self._timer.start()
+
+    def watch(self, sock: socket.socket | None) -> None:
+        """Shut *sock* down when the deadline passes, or now if it has."""
+        if sock is None:
+            return
+        with self._lock:
+            if not self.passed:
+                self._sockets.append(sock)
+                return
+        _shut(sock)
+
+    def _pass(self) -> None:
+        with self._lock:
+            if self._over:
+                return
+            self.passed = True
+            watched, self._sockets = self._sockets, []
+        for sock in watched:
+            _shut(sock)
+
+    def end(self) -> None:
+        """The request is over: the timer stops, and nothing is shut down after this."""
+        with self._lock:
+            self._over = True
+            self._sockets.clear()
+        self._timer.cancel()
+
+
+def _shut(sock: socket.socket) -> None:
+    """End every read and write on *sock*, whichever thread is waiting in one."""
+    with contextlib.suppress(OSError):
+        sock.shutdown(socket.SHUT_RDWR)
+
+
+@contextlib.contextmanager
+def overall_deadline(seconds: float) -> Iterator[None]:
+    """Bound the requests this thread makes in the block to *seconds* in all.
+
+    A read timeout bounds each wait for data, and every byte restarts it: a
+    server sending its status line and headers a byte at a time held a request
+    for as long as it liked. A connection made here that waits for a response
+    within the block has its socket shut down when the time is up, and the
+    failure that causes is raised as ``requests.exceptions.ReadTimeout``.
+    """
+    deadline = _Deadline(seconds)
+    outer = getattr(_DEADLINES, "current", None)
+    _DEADLINES.current = deadline
+    try:
+        yield
+    except (requests.exceptions.RequestException, OSError) as error:
+        if deadline.passed and not isinstance(error, requests.exceptions.ReadTimeout):
+            raise requests.exceptions.ReadTimeout(
+                f"The request took more than {seconds:g} seconds.") from error
+        raise
+    finally:
+        deadline.end()
+        _DEADLINES.current = outer
 
 
 class AddressNotPublicError(OSError):
@@ -60,6 +140,13 @@ class _PinnedConnectionMixin:
         finally:
             self._dns_host = name
         raise failure  # type: ignore[misc]  # public_addresses never returns none
+
+    def getresponse(self, *args: Any, **kwargs: Any) -> Any:
+        """Wait for the response under the calling thread's ``overall_deadline``, if any."""
+        deadline = getattr(_DEADLINES, "current", None)
+        if deadline is not None:
+            deadline.watch(self.sock)  # type: ignore[attr-defined]
+        return super().getresponse(*args, **kwargs)  # type: ignore[misc]
 
 
 class _PinnedHTTPConnection(_PinnedConnectionMixin, HTTPConnection):

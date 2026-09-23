@@ -105,7 +105,7 @@ ruff check pybreeze/                              # before committing non-trivia
 **Network (SSRF)** — every outbound request to a user-supplied URL must first pass validation:
 1. `http://` / `https://` only — block `file://`, `ftp://`, `data:`, `gopher://`
 2. Resolve the hostname and reject private / loopback / link-local / reserved IPs
-3. Enforce timeouts (15 s downloads, 30 s API calls) and response size caps (20 MB binary)
+3. Enforce timeouts (15 s downloads, 30 s API calls) and response size caps (20 MB binary). A read timeout restarts with every byte, so a request that may run long also gets an overall bound: `public_http.overall_deadline()` around the request and `read_capped_text`'s `max_seconds`
 4. `allow_redirects=False`, or re-validate every redirect target
 5. Connect only to the address checked: send through `public_session()` (requests) or `PublicHTTPHandler` / `PublicHTTPSHandler` (urllib) from `utils/network/public_http.py`, which check again as they connect and connect only to the addresses checked (each in turn), so a name that resolves differently after validation (DNS rebinding) gets nowhere private. `test_http_goes_through_public_connections.py` fails on a direct `requests.*` or `urlopen` call
 

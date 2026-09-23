@@ -17,10 +17,11 @@ from pybreeze.pybreeze_ui.extend_ai_gui.prompt_store import load_prompt
 from pybreeze.pybreeze_ui.thread_keeper import let_run_out
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.network.http_client import (
-    ResponseTooLargeError, read_capped_text, CONNECT_TIMEOUT, describe_request_error, succeeded,
+    DEFAULT_MAX_READ_SECONDS, ResponseTooLargeError, read_capped_text, CONNECT_TIMEOUT,
+    describe_request_error, succeeded,
     truncate_for_display,
 )
-from pybreeze.utils.network.public_http import public_session
+from pybreeze.utils.network.public_http import overall_deadline, public_session
 from pybreeze.utils.network.url_validation import UnsafeURLError, validate_url
 
 
@@ -42,7 +43,8 @@ class RequestThread(QThread):
     def run(self):
         try:
             validate_url(self.api_url)
-            with public_session() as session:
+            # The whole request, headers included: a read timeout restarts with every byte
+            with overall_deadline(DEFAULT_MAX_READ_SECONDS), public_session() as session:
                 response = session.post(
                     self.api_url, json={"code": self.code_text},
                     timeout=(CONNECT_TIMEOUT, 30), allow_redirects=False, stream=True,

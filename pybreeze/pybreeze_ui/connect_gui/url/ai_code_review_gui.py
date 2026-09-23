@@ -18,10 +18,11 @@ from pybreeze.utils.file_process.replace_file import replace_text
 from pybreeze.utils.hash_tools.hash_text import hash_text
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.network.http_client import (
-    ResponseTooLargeError, read_capped_text, CONNECT_TIMEOUT, describe_request_error, succeeded,
+    DEFAULT_MAX_READ_SECONDS, ResponseTooLargeError, read_capped_text, CONNECT_TIMEOUT,
+    describe_request_error, succeeded,
     truncate_for_display,
 )
-from pybreeze.utils.network.public_http import public_session
+from pybreeze.utils.network.public_http import overall_deadline, public_session
 from pybreeze.utils.network.url_validation import UnsafeURLError, validate_url
 
 
@@ -71,7 +72,8 @@ class ReviewRequestThread(QThread):
     def run(self) -> None:
         try:
             validate_url(self._url)
-            with public_session() as session:
+            # The whole request, headers included: a read timeout restarts with every byte
+            with overall_deadline(DEFAULT_MAX_READ_SECONDS), public_session() as session:
                 response = self._send(session)
                 body = read_capped_text(response)
             if succeeded(response):
