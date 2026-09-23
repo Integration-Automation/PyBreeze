@@ -340,6 +340,12 @@ class DiagramEditorWidget(QWidget):
         ]
         for key, slot in shortcuts:
             sc = QShortcut(key, self)
+            # Only while the diagram editor has focus. Opened as a dock it
+            # shares the window with the code editor, whose own Ctrl+Z, Ctrl+C,
+            # Ctrl+D, Ctrl+= ... a window-wide shortcut would take over, or --
+            # where the editor binds the same key -- leave both ambiguous and
+            # doing nothing.
+            sc.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
             sc.activated.connect(slot)
 
     # ------------------------------------------------------------------

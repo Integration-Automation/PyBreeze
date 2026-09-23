@@ -90,3 +90,18 @@ class TestOpening:
         # The next save must still go to the file that is open, unharmed.
         editor._write_json(editor._current_path)
         assert json.loads(editor._current_path.read_text(encoding="utf-8"))["nodes"]
+
+
+class TestShortcuts:
+    def test_every_shortcut_applies_only_while_the_editor_has_focus(self, editor):
+        # Opened as a dock, the editor shares the window with the code editor;
+        # window-wide, its Ctrl+D or Ctrl+Z took over, or collided with, the code
+        # editor's own.
+        from PySide6.QtCore import Qt
+        from PySide6.QtGui import QShortcut
+
+        shortcuts = editor.findChildren(QShortcut)
+
+        assert len(shortcuts) >= 11
+        assert {shortcut.context() for shortcut in shortcuts} == {
+            Qt.ShortcutContext.WidgetWithChildrenShortcut}
