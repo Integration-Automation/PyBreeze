@@ -9,6 +9,7 @@ The parser is pure logic (no Qt, no network) and never executes the command.
 """
 from __future__ import annotations
 
+import math
 import re
 import shlex
 from dataclasses import dataclass, field
@@ -63,7 +64,10 @@ class CurlRequest:
     :param username: basic-auth user, or ``None``
     :param password: basic-auth password, or ``None``
     :param send_data_as_params: ``True`` when ``-G`` moves the body to the query
-    :param form_fields: multipart form fragments from ``-F`` / ``--form``
+    :param form_fields: multipart form fragments from ``-F`` / ``--form``, in
+        curl's syntax: a value starting with ``@`` is a file to upload
+    :param form_strings: multipart ``name=value`` fields taken literally, from
+        ``--form-string`` or a recorded text field; ``@`` means nothing there
     :param data_file_refs: filenames whose content forms the body (``-d @file``)
     :param timeout: request timeout in seconds from ``--max-time`` / ``-m``, or
         ``None`` when the command sets none
@@ -79,14 +83,20 @@ class CurlRequest:
     password: str | None = None
     send_data_as_params: bool = False
     form_fields: list[str] = field(default_factory=list)
+    form_strings: list[str] = field(default_factory=list)
     data_file_refs: list[str] = field(default_factory=list)
     timeout: str | None = None
     cookies: dict[str, str] = field(default_factory=dict)
 
     @property
+    def has_form(self) -> bool:
+        """Whether the request carries a multipart form."""
+        return bool(self.form_fields or self.form_strings)
+
+    @property
     def has_body(self) -> bool:
         """Whether the request carries any body, form or file payload."""
-        return bool(self.data_parts or self.form_fields or self.data_file_refs)
+        return bool(self.data_parts or self.has_form or self.data_file_refs)
 
     @property
     def body(self) -> str:
@@ -123,7 +133,7 @@ _VALUE_FLAGS: dict[str, str] = {
     "--data-ascii": "data_file", "--data-binary": "data_file",
     "--data-raw": "data", "--data-urlencode": "data_urlencode",
     "--json": "json_flag",
-    "-F": "form", "--form": "form", "--form-string": "form",
+    "-F": "form", "--form": "form", "--form-string": "form_string",
     "-u": "user", "--user": "user",
     "-b": "cookie", "--cookie": "cookie",
     "-A": "user_agent", "--user-agent": "user_agent",
@@ -267,8 +277,12 @@ def _urlencode_data_part(value: str) -> str:
 def _apply_timeout(request: CurlRequest, value: str) -> None:
     """Record a numeric timeout (seconds); ignore a non-numeric value."""
     try:
-        float(value)
+        seconds = float(value)
     except ValueError:
+        return
+    # float() also takes "nan" and "inf", which would be written into the
+    # script as an undefined name.
+    if not math.isfinite(seconds):
         return
     request.timeout = value
 
@@ -318,6 +332,8 @@ def _apply_value_flag(request: CurlRequest, kind: str, value: str) -> None:
         set_default_header(request.headers, "Accept", "application/json")
     elif kind == "form":
         request.form_fields.append(value)
+    elif kind == "form_string":
+        request.form_strings.append(value)
     elif kind == "cookie":
         _apply_cookie(request, value)
     elif kind == "user_agent":

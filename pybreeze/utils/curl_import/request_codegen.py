@@ -123,7 +123,7 @@ def payload_python_parts(request: CurlRequest) -> tuple[list[str], list[str]]:
     :param request: the parsed curl request
     :return: ``(assignment_lines, keyword_arguments)``
     """
-    if request.form_fields:
+    if request.has_form:
         data_fields, file_fields = form_parts(request)
         sections: list[str] = []
         kwargs: list[str] = []

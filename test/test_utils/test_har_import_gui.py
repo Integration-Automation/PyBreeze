@@ -155,6 +155,16 @@ class TestHarImportFileDialog:
         assert result == str(path)
         assert widget.entry_list.count() == 2
 
+    def test_an_export_with_a_byte_order_mark_loads(self, widget, tmp_path):
+        path = tmp_path / "session.har"
+        path.write_text(_HAR, encoding="utf-8-sig")  # starts with a BOM
+        with patch(
+            "pybreeze.pybreeze_ui.tools_gui.har_import_gui.QFileDialog.getOpenFileName",
+            return_value=(str(path), "HAR export (*.har *.json)"),
+        ):
+            assert widget.open_file() == str(path)
+        assert widget.entry_list.count() == 2
+
     def test_cancelled_dialog_changes_nothing(self, widget):
         with patch(
             "pybreeze.pybreeze_ui.tools_gui.har_import_gui.QFileDialog.getOpenFileName",

@@ -108,7 +108,8 @@ class HarImportGUI(QWidget):
         if not path:
             return None
         try:
-            text = Path(path).read_text(encoding="utf-8")
+            # utf-8-sig: an export saved with a byte-order mark is still JSON
+            text = Path(path).read_text(encoding="utf-8-sig")
         except (OSError, UnicodeDecodeError) as error:
             pybreeze_logger.info("har_import_gui.py read failed: %r", error)
             # The reason without the path: str(OSError) carries the file's full

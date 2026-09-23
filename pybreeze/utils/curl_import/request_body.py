@@ -64,4 +64,8 @@ def form_parts(request: CurlRequest) -> FormParts:
             file_fields[key] = value[1:].split(";", 1)[0]
         else:
             data_fields[key] = value
+    for fragment in request.form_strings:
+        key, separator, value = fragment.partition("=")
+        if separator:
+            data_fields[key] = value
     return data_fields, file_fields

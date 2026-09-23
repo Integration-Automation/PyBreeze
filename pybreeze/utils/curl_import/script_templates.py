@@ -40,7 +40,7 @@ def _inline_json(value: object) -> str:
 
 def _apitestka_payload_lines(request: CurlRequest) -> list[str]:
     """Return the inline ``data=`` / ``files=`` / ``json=`` kwargs for the payload."""
-    if request.form_fields:
+    if request.has_form:
         data_fields, file_fields = form_parts(request)
         lines = []
         if data_fields:
@@ -164,7 +164,7 @@ def _apply_action_payload(request: CurlRequest, params: dict) -> None:
     JSON cannot carry file handles, so multipart file uploads are not represented
     here; only the plain form fields are. Use a Python target for file uploads.
     """
-    if request.form_fields:
+    if request.has_form:
         data_fields, _file_fields = form_parts(request)
         if data_fields:
             params["data"] = data_fields

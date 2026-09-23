@@ -141,12 +141,17 @@ def _apply_query(request: CurlRequest, raw_request: dict, query: str) -> None:
         request.params.setdefault(name, value)
 
 
-def _multipart_fields(params: list[tuple[str, str, str]]) -> list[str]:
-    """Render multipart params in curl's ``-F`` syntax so form handling is shared."""
-    return [
-        f"{name}=@{file_name}" if file_name else f"{name}={value}"
-        for name, value, file_name in params
-    ]
+def _apply_multipart(request: CurlRequest, params: list[tuple[str, str, str]]) -> None:
+    """Add recorded multipart params: uploads in curl's ``-F`` syntax, text literally.
+
+    A text value goes to ``form_strings``: in ``-F`` syntax one starting with
+    ``@`` would have become a file to upload.
+    """
+    for name, value, file_name in params:
+        if file_name:
+            request.form_fields.append(f"{name}=@{file_name}")
+        else:
+            request.form_strings.append(f"{name}={value}")
 
 
 def _post_params(raw_post: dict) -> list[tuple[str, str, str]]:
@@ -170,7 +175,7 @@ def _apply_body(request: CurlRequest, raw_request: dict) -> None:
     media_type = str(raw_post.get("mimeType", "")).lower()
     params = _post_params(raw_post)
     if params and media_type.startswith(_MULTIPART_MEDIA_TYPE):
-        request.form_fields.extend(_multipart_fields(params))
+        _apply_multipart(request, params)
         return
     if params and _FORM_MEDIA_TYPE in media_type:
         request.data_parts.extend(f"{name}={value}" for name, value, _file in params)

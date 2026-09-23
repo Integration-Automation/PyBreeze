@@ -179,7 +179,17 @@ class TestRequestBody:
                 {"name": "note", "value": "hi"},
                 {"name": "file", "value": "", "fileName": "a.png"},
             ]})))[0]
-        assert entry.request.form_fields == ["note=hi", "file=@a.png"]
+        assert entry.request.form_strings == ["note=hi"]
+        assert entry.request.form_fields == ["file=@a.png"]
+
+    def test_a_text_field_starting_with_at_is_not_a_file(self):
+        from pybreeze.utils.curl_import.request_body import form_parts
+
+        entry = parse_har(_har(_entry(method="POST", post_data={
+            "mimeType": "multipart/form-data; boundary=x",
+            "params": [{"name": "handle", "value": "@alice"}]})))[0]
+
+        assert form_parts(entry.request) == ({"handle": "@alice"}, {})
 
     def test_no_post_data_leaves_no_body(self):
         assert not parse_har(_har(_entry()))[0].request.has_body

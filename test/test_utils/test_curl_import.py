@@ -472,7 +472,19 @@ class TestParseCurlForm:
 
     def test_form_string_flag(self):
         request = parse_curl("curl --form-string 'a=1' https://x")
-        assert request.form_fields == ["a=1"]
+        assert request.form_strings == ["a=1"]
+        assert request.has_form and request.has_body
+
+    def test_form_string_takes_an_at_sign_literally(self):
+        from pybreeze.utils.curl_import.request_body import form_parts
+
+        request = parse_curl("curl --form-string 'handle=@alice' -F 'photo=@me.png' https://x")
+
+        assert form_parts(request) == ({"handle": "@alice"}, {"photo": "me.png"})
+
+    @pytest.mark.parametrize("value", ["nan", "inf", "-inf"])
+    def test_a_timeout_that_is_not_finite_is_ignored(self, value):
+        assert parse_curl(f"curl -m {value} https://x").timeout is None
 
 
 class TestToRequestsCode:
