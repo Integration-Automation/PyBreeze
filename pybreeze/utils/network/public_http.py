@@ -91,28 +91,43 @@ def overall_deadline(seconds: float) -> Iterator[None]:
     server sending its status line and headers a byte at a time held a request
     for as long as it liked. A connection made here that waits for a response
     within the block has its socket shut down when the time is up, and the
-    failure that causes is raised as ``requests.exceptions.ReadTimeout``.
+    failure that causes is raised as ``requests.exceptions.ReadTimeout`` (an
+    ``OSError``). So is a block that returned after the time was up: a read cut
+    off where no length was announced ends as if the body had.
     """
     deadline = _Deadline(seconds)
     outer = getattr(_DEADLINES, "current", None)
     _DEADLINES.current = deadline
+    too_late = requests.exceptions.ReadTimeout(f"The request took more than {seconds:g} seconds.")
     try:
         yield
-    except (requests.exceptions.RequestException, OSError) as error:
+    except (requests.exceptions.RequestException, OSError, http.client.HTTPException) as error:
         if deadline.passed and not isinstance(error, requests.exceptions.ReadTimeout):
-            raise requests.exceptions.ReadTimeout(
-                f"The request took more than {seconds:g} seconds.") from error
+            raise too_late from error
         raise
     finally:
         deadline.end()
         _DEADLINES.current = outer
+    if deadline.passed:
+        raise too_late
 
 
 class AddressNotPublicError(OSError):
     """The host resolved to a blocked address when the connection was made."""
 
 
-class _PinnedConnectionMixin:
+class _UnderDeadlineMixin:
+    """A connection whose wait for a response, and the reads after it, the thread's deadline bounds."""
+
+    def getresponse(self, *args: Any, **kwargs: Any) -> Any:
+        """Wait for the response under the calling thread's ``overall_deadline``, if any."""
+        deadline = getattr(_DEADLINES, "current", None)
+        if deadline is not None:
+            deadline.watch(self.sock)  # type: ignore[attr-defined]
+        return super().getresponse(*args, **kwargs)  # type: ignore[misc]
+
+
+class _PinnedConnectionMixin(_UnderDeadlineMixin):
     """A urllib3 connection that opens its socket to an address ``public_addresses`` returns.
 
     urllib3 connects to ``_dns_host`` and takes ``host`` (TLS server name,
@@ -140,13 +155,6 @@ class _PinnedConnectionMixin:
         finally:
             self._dns_host = name
         raise failure  # type: ignore[misc]  # public_addresses never returns none
-
-    def getresponse(self, *args: Any, **kwargs: Any) -> Any:
-        """Wait for the response under the calling thread's ``overall_deadline``, if any."""
-        deadline = getattr(_DEADLINES, "current", None)
-        if deadline is not None:
-            deadline.watch(self.sock)  # type: ignore[attr-defined]
-        return super().getresponse(*args, **kwargs)  # type: ignore[misc]
 
 
 class _PinnedHTTPConnection(_PinnedConnectionMixin, HTTPConnection):
@@ -202,13 +210,13 @@ def _create_public_connection(address: tuple[str, int], *args: Any, **kwargs: An
     raise failure  # type: ignore[misc]  # public_addresses never returns none
 
 
-class _PinnedHTTPClientConnection(http.client.HTTPConnection):
+class _PinnedHTTPClientConnection(_UnderDeadlineMixin, http.client.HTTPConnection):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._create_connection = _create_public_connection
 
 
-class _PinnedHTTPSClientConnection(http.client.HTTPSConnection):
+class _PinnedHTTPSClientConnection(_UnderDeadlineMixin, http.client.HTTPSConnection):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._create_connection = _create_public_connection

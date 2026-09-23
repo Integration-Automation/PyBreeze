@@ -70,8 +70,8 @@ _MODE_SHAPE_MAP: dict[ToolMode, NodeShape] = {
 class ImageDownloadThread(QThread):
     """Fetch one image for the canvas, off the UI thread.
 
-    A download is bounded by ``safe_download_image``'s own 15 s timeout, which is
-    15 s the IDE would otherwise spend frozen -- once per image, and again on
+    A download is bounded by ``safe_download_image``: 15 s for each wait, 120 s
+    in all, time the IDE would otherwise spend frozen -- once per image, and again on
     every undo, because an undo rebuilds every item from the saved dictionary.
     Only the two signals reach the UI.
     """

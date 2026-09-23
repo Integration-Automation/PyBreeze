@@ -249,7 +249,7 @@ call_X_multi_file_and_send()   → run_dir_files_with_package(..., True)
 | `diagram_property_panel.py` (453) | 右側屬性側欄，依選取型別切換 node / connection / image 三組表單；每記一步 undo（場景的 `recorded`）就重新整理（在畫布上拖把手改大小時選取沒變）；寬、高各自只改自己那一邊；數字欄位不追鍵盤、輸入完才套用 |
 | `diagram_view.py` (195) | `QGraphicsView`：滾輪與按鈕縮放都經 `_step_zoom()`（有上下界，界外時仍可往界內走；橫向滾輪不縮放），`fit()` 把「符合視窗」夾在上下界內、中鍵平移、`drawBackground` 畫格線 |
 | `diagram_commands.py` (48) | `DiagramSnapshotCommand(QUndoCommand)` — 快照式 undo，存變更前後完整場景狀態；有 `merge_key` 的連續步驟（同一個項目的同一個屬性：大小、字級、線寬）合併成一步（`id()` / `mergeWith`） |
-| `diagram_net_utils.py` (108) | **SSRF 防護參考實作**：scheme 白名單、DNS 解析後比對私有/迴環/link-local/reserved 網段、`_ValidatingRedirectHandler` 對每一跳重驗、`_OPENER` 用 `PublicHTTPHandler` / `PublicHTTPSHandler`（連線當下再檢查一次並只連到那個位址）、20 MB 大小上限、15 秒 timeout |
+| `diagram_net_utils.py` (112) | **SSRF 防護參考實作**：scheme 白名單、DNS 解析後比對私有/迴環/link-local/reserved 網段、`_ValidatingRedirectHandler` 對每一跳重驗、`_OPENER` 用 `PublicHTTPHandler` / `PublicHTTPSHandler`（連線當下再檢查一次並只連到那個位址）、20 MB 大小上限、每次等資料 15 秒 timeout，整個下載另有 `overall_deadline(DOWNLOAD_DEADLINE_SECONDS)` 120 秒上限（慢慢送位元組的伺服器原本可以一直卡住下載執行緒） |
 
 `diagram_net_utils` 是 CLAUDE.md 指定的網路安全參考實作，其他 HTTP 呼叫端則統一走 `utils/network/url_validation.py` 驗證、經 `utils/network/public_http.py` 的 `public_session()` 送出。
 
@@ -449,7 +449,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 18. 測試與 CI
 
-- **單元測試** `test/test_utils/` — 119 個 `test_*.py`、1986 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
+- **單元測試** `test/test_utils/` — 119 個 `test_*.py`、1988 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
 - **整合測試** `test/unit_test/start_automation/` — 以 `debug_mode=True` 啟動 IDE，10 秒後自動關閉，驗證啟動流程與 extend tab
 - **CI** `.github/workflows/{dev,stable}.yml` — `unit-tests` job 跑 Windows runner、Python 3.10–3.14 矩陣，3.12 那一腳額外上傳 `coverage-xml` artifact；`sonarcloud` job 跑 ubuntu、`needs: unit-tests`。每日 02:00 排程 + push/PR 觸發。`stable.yml` 另有 `publish` job 負責版號遞增與 PyPI 發布
 - **覆蓋率** `.coveragerc` — `relative_files = True` 是必要的：報告在 Windows 產生、由 Linux 上的 scanner 讀取，路徑不能帶機器資訊。目前整體 60%（`utils/`、`tools_gui`、`dialog` 95–100%；`editor_main` 58%、`menu` 54%；仍低的是 `diagram_editor` 45%、`process_executor` 39%、`connect_gui` 28%）

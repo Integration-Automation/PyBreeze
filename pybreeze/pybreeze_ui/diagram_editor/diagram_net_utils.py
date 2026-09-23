@@ -11,11 +11,13 @@ from __future__ import annotations
 
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
-from pybreeze.utils.network.public_http import PublicHTTPHandler, PublicHTTPSHandler
+from pybreeze.utils.network.public_http import PublicHTTPHandler, PublicHTTPSHandler, overall_deadline
 from pybreeze.utils.network.url_validation import UnsafeURLError, validate_url
 
 MAX_DOWNLOAD_BYTES = 20 * 1024 * 1024  # 20 MB
 TIMEOUT_SECONDS = 15
+# The longest a whole download may take, however steadily its bytes come
+DOWNLOAD_DEADLINE_SECONDS = 120
 
 
 class ImageDownloadError(Exception):
@@ -85,7 +87,9 @@ def safe_download_image(url: str) -> bytes:
     # URL + every redirect hop are validated by _ValidatingRedirectHandler, so the
     # scheme can only ever be http/https by the time the request is opened.
     req = Request(url, headers={"User-Agent": "PyBreeze-DiagramEditor/1.0"})  # nosec B310  # noqa: S310
-    with _OPENER.open(req, timeout=TIMEOUT_SECONDS) as resp:
+    # TIMEOUT_SECONDS bounds each wait for data, and every byte restarts it: a
+    # server sending a byte now and then held the download thread for good
+    with overall_deadline(DOWNLOAD_DEADLINE_SECONDS), _OPENER.open(req, timeout=TIMEOUT_SECONDS) as resp:
         content_type = resp.headers.get("Content-Type", "")
         if _is_text_content_type(content_type):
             raise ImageDownloadError(

@@ -303,3 +303,57 @@ class TestTheOverallDeadline:
             response = session.get(f"http://service.test:{listener.port}/", timeout=(3, 3))
 
         assert response.text == "ok"
+
+    def test_the_urllib_opener_is_cut_off_too(self, dns, loopback_allowed):
+        # The diagram editor's image downloads: 15 s per wait, restarted by every byte
+        import time
+
+        from pybreeze.utils.network.public_http import overall_deadline
+
+        stop = threading.Event()
+        server, thread = self._trickling_headers(stop)
+        opener = urllib.request.build_opener(PublicHTTPHandler())
+        started = time.monotonic()
+        try:
+            with pytest.raises(requests.exceptions.ReadTimeout), overall_deadline(1):
+                opener.open(f"http://service.test:{server.getsockname()[1]}/", timeout=3).read()
+            assert time.monotonic() - started < 4
+        finally:
+            stop.set()
+            server.close()
+            thread.join(5)
+
+    def test_a_body_cut_short_without_a_length_is_not_taken_as_whole(self, dns, loopback_allowed):
+        # Shut down mid-body with no Content-Length, the read ends as if the body had
+        import time
+
+        from pybreeze.utils.network.public_http import overall_deadline
+
+        server = socket.socket()
+        server.bind(("127.0.0.1", 0))
+        server.listen(1)
+        stop = threading.Event()
+
+        def serve() -> None:
+            connection, _address = server.accept()
+            with connection:
+                connection.recv(65536)
+                connection.sendall(b"HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n")
+                while not stop.wait(0.2):
+                    try:
+                        connection.sendall(b"x")
+                    except OSError:
+                        return
+
+        thread = threading.Thread(target=serve, daemon=True)
+        thread.start()
+        opener = urllib.request.build_opener(PublicHTTPHandler())
+        started = time.monotonic()
+        try:
+            with pytest.raises(requests.exceptions.ReadTimeout), overall_deadline(1):
+                opener.open(f"http://service.test:{server.getsockname()[1]}/", timeout=3).read()
+            assert time.monotonic() - started < 4
+        finally:
+            stop.set()
+            server.close()
+            thread.join(5)
