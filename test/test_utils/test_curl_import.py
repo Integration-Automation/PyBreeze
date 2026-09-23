@@ -138,6 +138,16 @@ class TestParseCurlBodyAndAuth:
 
 
 class TestParseCurlRobustness:
+    @pytest.mark.parametrize("url", ["http://[::1/api", "http://host:port/x"])
+    def test_a_malformed_url_is_a_parse_error(self, url):
+        # It raised ValueError later, from the code generator, out of the tab,
+        # which kept showing the previous command's code.
+        with pytest.raises(CurlParseException):
+            parse_curl(f"curl '{url}'")
+
+    def test_an_ipv6_url_with_a_port_is_fine(self):
+        assert parse_curl("curl 'http://[::1]:8080/a'").url == "http://[::1]:8080/a"
+
     def test_line_continuations(self):
         command = "curl https://x \\\n  -H 'Accept: application/json' \\\n  -d 'a=1'"
         request = parse_curl(command)

@@ -15,12 +15,13 @@ import shlex
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from urllib.parse import parse_qsl, quote, urlencode
+from urllib.parse import parse_qsl, quote, urlencode, urlsplit
 
 from pybreeze.utils.exception.exception_tags import (
     empty_curl_command_error,
     invalid_http_method_error,
     malformed_curl_command_error,
+    malformed_url_error,
     not_a_curl_command_error,
 )
 from pybreeze.utils.exception.exceptions import CurlParseException
@@ -67,6 +68,9 @@ class CurlRequest:
     :param username: basic-auth user, or ``None``
     :param password: basic-auth password, or ``None``
     :param send_data_as_params: ``True`` when ``-G`` moves the body to the query
+    :param head_only: ``True`` when ``-I`` / ``--head`` asks for the headers only
+    :param bearer_token: the ``--oauth2-bearer`` token, or ``None``; sent as
+        the ``Authorization`` header unless ``-H`` gives one
     :param form_fields: multipart form fragments from ``-F`` / ``--form``, in
         curl's syntax: a value starting with ``@`` is a file to upload
     :param form_strings: multipart ``name=value`` fields taken literally, from
@@ -85,6 +89,8 @@ class CurlRequest:
     username: str | None = None
     password: str | None = None
     send_data_as_params: bool = False
+    head_only: bool = False
+    bearer_token: str | None = None
     form_fields: list[str] = field(default_factory=list)
     form_strings: list[str] = field(default_factory=list)
     data_file_refs: list[str] = field(default_factory=list)
@@ -143,16 +149,19 @@ _VALUE_FLAGS: dict[str, str] = {
     "-e": "referer", "--referer": "referer",
     "--url": "url",
     "-m": "timeout", "--max-time": "timeout",
+    "--oauth2-bearer": "oauth2_bearer",
 }
 
 # Value-less flags that still change behaviour.
 _GET_FLAGS = frozenset({"-G", "--get"})
+# -I fetches the headers only: a HEAD request, unless -X names another method
+_HEAD_FLAGS = frozenset({"-I", "--head"})
 
 # Value-less flags to accept and skip (they do not affect the generated request).
 _VALUELESS_FLAGS = frozenset({
     "--compressed", "-L", "--location", "-k", "--insecure", "-s", "--silent",
     "-S", "--show-error", "-q", "--disable",
-    "-v", "--verbose", "-i", "--include", "-I", "--head", "-f", "--fail",
+    "-v", "--verbose", "-i", "--include", "-f", "--fail",
     "--fail-with-body", "-g", "--globoff", "-O", "--remote-name",
     "-J", "--remote-header-name", "-#", "--progress-bar", "-N", "--no-buffer",
     "-j", "--junk-session-cookies", "--no-keepalive", "--no-progress-meter",
@@ -172,7 +181,7 @@ _IGNORED_VALUE_FLAGS = frozenset({
     "--cert-type", "--key-type", "--pass", "-T", "--upload-file", "--limit-rate",
     "-r", "--range", "-c", "--cookie-jar", "--resolve", "--interface",
     "--dns-servers", "--local-port", "--ciphers", "-y", "--speed-time",
-    "-Y", "--speed-limit", "--keepalive-time", "--oauth2-bearer", "--aws-sigv4",
+    "-Y", "--speed-limit", "--keepalive-time", "--aws-sigv4",
     "-C", "--continue-at", "-z", "--time-cond", "-D", "--dump-header",
     "-K", "--config",
 })
@@ -189,7 +198,7 @@ def _short_flags(*tables: object) -> frozenset[str]:
 # Short flags derived from the tables above so a bundled cluster like
 # ``-sXPOST`` can split into ``-s`` and ``-X`` + ``POST`` without a second list.
 _SHORT_VALUE_FLAGS = _short_flags(_VALUE_FLAGS, _IGNORED_VALUE_FLAGS)
-_SHORT_VALUELESS_FLAGS = _short_flags(_VALUELESS_FLAGS, _GET_FLAGS)
+_SHORT_VALUELESS_FLAGS = _short_flags(_VALUELESS_FLAGS, _GET_FLAGS, _HEAD_FLAGS)
 
 
 def _is_short_flag_cluster(token: str) -> bool:
@@ -401,6 +410,11 @@ def _apply_user(request: CurlRequest, value: str) -> None:
     request.username, _separator, request.password = value.partition(":")
 
 
+def _apply_oauth2_bearer(request: CurlRequest, value: str) -> None:
+    # Applied once every -H is in (_finalise_method): an explicit one wins
+    request.bearer_token = value
+
+
 def _set_url(request: CurlRequest, value: str) -> None:
     request.url = value
 
@@ -421,6 +435,7 @@ _VALUE_FLAG_HANDLERS: dict[str, Callable[[CurlRequest, str], None]] = {
     "url": _set_url,
     "timeout": _apply_timeout,
     "user": _apply_user,
+    "oauth2_bearer": _apply_oauth2_bearer,
 }
 
 
@@ -449,6 +464,8 @@ def _consume_tokens(tokens: list[str], request: CurlRequest) -> None:
             index += 1  # consume and discard the value
         elif token in _GET_FLAGS:
             request.send_data_as_params = True
+        elif token in _HEAD_FLAGS:
+            request.head_only = True
         elif token in _VALUELESS_FLAGS:
             pass  # a known valueless flag: nothing to do
         elif not token.startswith("-") and not request.url:
@@ -458,7 +475,15 @@ def _consume_tokens(tokens: list[str], request: CurlRequest) -> None:
 
 
 def _finalise_method(request: CurlRequest) -> None:
-    """Infer the method and move the body to the query when ``-G`` was given."""
+    """Settle what depends on the whole command.
+
+    The method (``-I``, or POST for a body), the ``--oauth2-bearer`` header
+    unless ``-H`` set one, and the body moved to the query when ``-G`` was given.
+    """
+    if request.head_only and request.method == _DEFAULT_METHOD:
+        request.method = "HEAD"
+    if request.bearer_token is not None:
+        set_default_header(request.headers, "Authorization", f"Bearer {request.bearer_token}")
     if request.method == _DEFAULT_METHOD and request.has_body and not request.send_data_as_params:
         request.method = _METHOD_WITH_BODY
     if request.send_data_as_params:
@@ -498,6 +523,9 @@ def _split_url_query(request: CurlRequest) -> None:
     :attr:`CurlRequest.full_url` can still rebuild the original address. Values
     are URL-decoded, and a key given more than once keeps every value.
     """
+    # The fragment is the browser's: curl never sends it, and left in, it
+    # became part of the last query value (?b=1#frag sent b="1#frag").
+    request.url = request.url.partition("#")[0]
     base, separator, query = request.url.partition("?")
     if not separator:
         return
@@ -506,13 +534,29 @@ def _split_url_query(request: CurlRequest) -> None:
         add_repeated_value(request.params, key, value)
 
 
+def url_is_well_formed(url: str) -> bool:
+    """Whether *url* can be taken apart: ``urllib`` raises ``ValueError`` on an
+    unclosed IPv6 bracket (``http://[::1/api``) or a port that is not a number.
+
+    Checked here, where the error can be reported: the code generators and
+    the HAR list call ``urlparse`` later, from a Qt slot that catches only
+    the parse errors.
+    """
+    try:
+        _ = urlsplit(url).port
+    except ValueError:
+        return False
+    return True
+
+
 def parse_curl(command: str) -> CurlRequest:
     """Parse a ``curl`` command string into a :class:`CurlRequest`.
 
     :param command: the full command, e.g. ``curl -X POST https://api/x -d '...'``
     :return: the structured request
     :raises CurlParseException: when the command is empty, is not a curl command,
-        or cannot be tokenised (for example, unbalanced quotes)
+        cannot be tokenised (for example, unbalanced quotes), or its URL is
+        malformed
     """
     normalised = _normalise_command(command)
     if not normalised:
@@ -528,5 +572,8 @@ def parse_curl(command: str) -> CurlRequest:
     _consume_tokens(_expand_short_flags(tokens[1:]), request)
     # The URL's own query first: curl appends -G data after it.
     _split_url_query(request)
+    if not url_is_well_formed(request.url):
+        pybreeze_logger.error(malformed_url_error)
+        raise CurlParseException(malformed_url_error)
     _finalise_method(request)
     return request

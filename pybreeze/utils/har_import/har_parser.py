@@ -14,7 +14,9 @@ import json
 from dataclasses import dataclass, field
 from urllib.parse import parse_qsl, urlparse
 
-from pybreeze.utils.curl_import.curl_parser import CurlRequest, add_repeated_value, http_method
+from pybreeze.utils.curl_import.curl_parser import (
+    CurlRequest, add_repeated_value, http_method, url_is_well_formed,
+)
 from pybreeze.utils.exception.exception_tags import (
     empty_har_error,
     invalid_har_json_error,
@@ -252,6 +254,11 @@ def parse_har(text: str) -> list[HarEntry]:
     for raw_entry in _load_entries(text):
         raw_request = raw_entry.get("request")
         if not isinstance(raw_request, dict) or not raw_request.get("url"):
+            continue
+        if not url_is_well_formed(str(raw_request["url"])):
+            # Skipped, not shown: listing or generating it raised from the
+            # tab. Not logged either -- a recorded URL may carry a token.
+            pybreeze_logger.info("HAR entry with a malformed URL skipped")
             continue
         status, media_type = _response_details(raw_entry.get("response"))
         entries.append(HarEntry(

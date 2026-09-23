@@ -96,6 +96,13 @@ class TestParseHarErrors:
         with pytest.raises(HarParseException):
             parse_har(_har())
 
+    def test_an_entry_with_a_malformed_url_is_skipped(self):
+        # Listing it raised ValueError out of the tab, which kept showing the
+        # previous file's requests, and "Generate all" generated those.
+        entries = parse_har(_har(_entry(url="http://[::1/api"), _entry()))
+
+        assert [entry.request.url for entry in entries] == ["https://api.example.com/v1/items"]
+
 
 class TestHeadersAndCookies:
     def test_headers_are_collected(self):

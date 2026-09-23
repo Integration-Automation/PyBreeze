@@ -17,7 +17,7 @@ import re
 from urllib.parse import urlparse
 
 from pybreeze.utils.curl_import.curl_parser import CurlRequest
-from pybreeze.utils.curl_import.request_body import body_kind, form_parts
+from pybreeze.utils.curl_import.request_body import body_kind, file_uploads, form_parts
 from pybreeze.utils.curl_import.request_codegen import (
     REQUESTS_IMPORT, data_from_file_expr, python_literal, request_statements, to_requests_code
 )
@@ -38,6 +38,18 @@ def _inline_json(value: object) -> str:
     return json.dumps(value, ensure_ascii=False)
 
 
+def _inline_files(file_fields: dict[str, str | list[str]]) -> str:
+    """The ``files`` value, one line: a dict, or pairs when a field repeats."""
+    uploads = file_uploads(file_fields)
+    if len(uploads) > len(file_fields):
+        pairs = ", ".join(
+            f"({_inline_json(field)}, open({_inline_json(name)}, \"rb\"))" for field, name in uploads)
+        return f"[{pairs}]"
+    entries = ", ".join(
+        f"{_inline_json(field)}: open({_inline_json(name)}, \"rb\")" for field, name in uploads)
+    return f"{{{entries}}}"
+
+
 def _apitestka_payload_lines(request: CurlRequest) -> list[str]:
     """Return the inline ``data=`` / ``files=`` / ``json=`` kwargs for the payload."""
     if request.has_form:
@@ -46,10 +58,7 @@ def _apitestka_payload_lines(request: CurlRequest) -> list[str]:
         if data_fields:
             lines.append(f"    data={_inline_json(data_fields)},")
         if file_fields:
-            uploads = ", ".join(
-                f"{_inline_json(field)}: open({_inline_json(name)}, \"rb\")"
-                for field, name in file_fields.items())
-            lines.append(f"    files={{{uploads}}},")
+            lines.append(f"    files={_inline_files(file_fields)},")
         return lines
     if request.data_file_refs:
         return [f"    data={data_from_file_expr(request)},"]

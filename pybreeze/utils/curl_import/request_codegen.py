@@ -11,7 +11,7 @@ import math
 import re
 
 from pybreeze.utils.curl_import.curl_parser import CurlRequest
-from pybreeze.utils.curl_import.request_body import body_kind, form_parts
+from pybreeze.utils.curl_import.request_body import body_kind, file_uploads, form_parts
 
 # Keyword argument passing the request body to ``requests.request``.
 _DATA_KWARG = "data=data"
@@ -37,14 +37,20 @@ def _format_dict(name: str, mapping: dict[str, str | list[str]]) -> str | None:
     return "\n".join(lines)
 
 
-def _format_files(file_fields: dict[str, str]) -> str:
-    """Render a ``files = { ... }`` block that opens each upload."""
-    lines = ["files = {"]
-    lines.extend(
-        f'    {python_string(field)}: open({python_string(filename)}, "rb"),'
-        for field, filename in file_fields.items()
-    )
-    lines.append("}")
+def _format_files(file_fields: dict[str, str | list[str]]) -> str:
+    """Render a ``files = ...`` block that opens each upload.
+
+    A dict while every field is given once; a list of ``(field, file)`` pairs
+    when one repeats, since a dict cannot hold the same key twice.
+    """
+    uploads = file_uploads(file_fields)
+    repeated = len(uploads) > len(file_fields)
+    lines = ["files = [" if repeated else "files = {"]
+    for field, filename in uploads:
+        opened = f'open({python_string(filename)}, "rb")'
+        lines.append(f"    ({python_string(field)}, {opened}),"
+                     if repeated else f"    {python_string(field)}: {opened},")
+    lines.append("]" if repeated else "}")
     return "\n".join(lines)
 
 

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 
-from pybreeze.utils.curl_import.curl_parser import CurlRequest
+from pybreeze.utils.curl_import.curl_parser import CurlRequest, add_repeated_value
 
 # Header that carries the body's media type
 _CONTENT_TYPE_HEADER = "content-type"
@@ -39,8 +39,9 @@ def body_kind(request: CurlRequest) -> BodyKind | None:
     return "data", request.body
 
 
-# Multipart form split into plain fields and file uploads (field -> filename)
-FormParts = tuple[dict[str, str], dict[str, str]]
+# Multipart form split into plain fields and file uploads (field -> filename);
+# a field given more than once maps to the list of its values
+FormParts = tuple[dict[str, str | list[str]], dict[str, str | list[str]]]
 
 
 def form_parts(request: CurlRequest) -> FormParts:
@@ -51,21 +52,33 @@ def form_parts(request: CurlRequest) -> FormParts:
     dropped).
 
     :param request: the parsed curl request
+    A field given more than once keeps every value, as a list: curl sends
+    each ``-F``, and a dict kept only the last (two ``-F f=@...`` uploaded one
+    file).
+
     :return: ``(data_fields, file_fields)`` where ``file_fields`` maps a field name
-        to its filename
+        to its filename, or to the list of them
     """
-    data_fields: dict[str, str] = {}
-    file_fields: dict[str, str] = {}
+    data_fields: dict[str, str | list[str]] = {}
+    file_fields: dict[str, str | list[str]] = {}
     for fragment in request.form_fields:
         key, separator, value = fragment.partition("=")
         if not separator:
             continue
         if value.startswith("@"):
-            file_fields[key] = value[1:].split(";", 1)[0]
+            add_repeated_value(file_fields, key, value[1:].split(";", 1)[0])
         else:
-            data_fields[key] = value
+            add_repeated_value(data_fields, key, value)
     for fragment in request.form_strings:
         key, separator, value = fragment.partition("=")
         if separator:
-            data_fields[key] = value
+            add_repeated_value(data_fields, key, value)
     return data_fields, file_fields
+
+
+def file_uploads(file_fields: dict[str, str | list[str]]) -> list[tuple[str, str]]:
+    """Every ``(field, filename)`` upload, a repeated field once per file."""
+    return [
+        (field, name) for field, names in file_fields.items()
+        for name in (names if isinstance(names, list) else [names])
+    ]
