@@ -81,6 +81,16 @@ class TestReadingAndWritingTheSettings:
         assert load_setting()["openai_api_key"] == "kept-key"
         assert [path.name for path in setting_path().parent.iterdir()] == [SETTING_FILE_NAME]
 
+    def test_a_lone_surrogate_loaded_from_the_file_fails_the_save_and_keeps_it(self, data_dir):
+        # The file may hold "\ud800" escaped; UTF-8 cannot write it back, and
+        # the error escaped the install menu's slot
+        (data_dir / SETTING_FILE_NAME).write_text('{"repository": "a\\ud800"}', encoding="utf-8")
+        before = (data_dir / SETTING_FILE_NAME).read_bytes()
+
+        assert save_setting(load_setting()) is False
+        assert (data_dir / SETTING_FILE_NAME).read_bytes() == before
+        assert [path.name for path in data_dir.iterdir()] == [SETTING_FILE_NAME]
+
     def test_the_file_is_created_for_its_owner_only(self, data_dir, monkeypatch):
         from pybreeze.utils.file_process import replace_file
 

@@ -86,3 +86,31 @@ class TestReplaceWritten:
 
         assert old.read_bytes() == b"old"
         assert list(tmp_path.iterdir()) == [old]
+
+    def test_a_writer_that_fails_otherwise_leaves_nothing_behind_either(self, tmp_path):
+        from pybreeze.utils.file_process.replace_file import replace_written
+
+        old = tmp_path / "out.svg"
+        old.write_bytes(b"old")
+
+        def write(target):
+            target.write_bytes(b"ha")
+            raise ValueError("not an image")
+
+        with pytest.raises(ValueError):
+            replace_written(old, write)
+
+        assert old.read_bytes() == b"old"
+        assert list(tmp_path.iterdir()) == [old]
+
+
+def test_text_utf8_cannot_encode_leaves_the_file_and_nothing_else(tmp_path):
+    # UnicodeEncodeError is no OSError: the partial <name>.saving stayed
+    target = tmp_path / "f.txt"
+    target.write_text("old", encoding="utf-8")
+
+    with pytest.raises(UnicodeEncodeError):
+        replace_text(target, "x" + chr(0xD800))
+
+    assert target.read_text(encoding="utf-8") == "old"
+    assert list(tmp_path.iterdir()) == [target]

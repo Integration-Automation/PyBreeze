@@ -189,7 +189,9 @@ def save_setting(setting: Dict[str, str]) -> bool:
         # Replaced in one step, readable by its owner only: written in place, a
         # failure part-way emptied the file and every key and token in it
         replace_text(path, json.dumps(to_store, indent=4, ensure_ascii=False), private=True)
-    except OSError as error:
+    # A lone surrogate, loaded from a hand-edited "\ud800", cannot be written
+    # as UTF-8: it raised out of the install menu's slot
+    except (OSError, UnicodeEncodeError) as error:
         pybreeze_logger.error("prthinker settings could not be saved: %r", error)
         return False
     return True

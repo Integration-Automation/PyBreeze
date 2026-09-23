@@ -29,10 +29,13 @@ def replace_text(path: Path, text: str, *, private: bool = False) -> None:
         POSIX; Windows keeps the profile's own access rules). For a file that
         holds keys or tokens, which ``write_text`` left readable by every
         local user.
-    :raises OSError: when it cannot be written; *path* is then unchanged and
-        the partial file removed
+    :raises OSError: when it cannot be written
+    :raises UnicodeEncodeError: when *text* holds a lone surrogate, which
+        UTF-8 cannot encode
+    Either way *path* is unchanged and the partial file removed.
     """
     beside = path.with_name(path.name + ".saving")
+    replaced = False
     try:
         # A leftover from an earlier failure would keep its own permissions
         with contextlib.suppress(FileNotFoundError):
@@ -42,10 +45,12 @@ def replace_text(path: Path, text: str, *, private: bool = False) -> None:
         with os.fdopen(descriptor, "w", encoding="utf-8") as file:
             file.write(text)
         os.replace(beside, path)
-    except OSError:
-        with contextlib.suppress(OSError):
-            beside.unlink()
-        raise
+        replaced = True
+    finally:
+        # Whatever stopped it: an encoding error is no OSError, and left
+        # <name>.saving behind
+        if not replaced:
+            _remove_partial(beside)
 
 
 def replace_written(path: Path, write: Callable[[Path], None]) -> None:
@@ -63,12 +68,20 @@ def replace_written(path: Path, write: Callable[[Path], None]) -> None:
         the partial file removed
     """
     beside = path.with_name(f"{path.stem}.saving{path.suffix}")
+    replaced = False
     try:
         with contextlib.suppress(FileNotFoundError):
             beside.unlink()
         write(beside)
         os.replace(beside, path)
-    except OSError:
-        with contextlib.suppress(OSError):
-            beside.unlink()
-        raise
+        replaced = True
+    finally:
+        # A writer may fail with more than OSError; its partial file goes too
+        if not replaced:
+            _remove_partial(beside)
+
+
+def _remove_partial(beside: Path) -> None:
+    """Remove the partial file *beside*, if a failed save left one."""
+    with contextlib.suppress(OSError):
+        beside.unlink()
