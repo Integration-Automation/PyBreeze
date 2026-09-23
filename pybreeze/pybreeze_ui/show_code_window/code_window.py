@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from je_editor.pyside_ui.main_ui.save_settings.user_color_setting_file import actually_color_dict
 from PySide6.QtCore import QTimer, Signal
 from PySide6.QtGui import QGuiApplication, QTextCharFormat, QTextCursor
-from PySide6.QtWidgets import QWidget, QGridLayout, QTextEdit, QScrollArea
+from PySide6.QtWidgets import QWidget, QGridLayout, QPlainTextEdit, QScrollArea
 
 if TYPE_CHECKING:
     from pybreeze.extend.process_executor.file_runner_process import FileRunnerProcess
@@ -14,6 +14,9 @@ if TYPE_CHECKING:
 # Cap the output scrollback so a runaway script (e.g. an infinite print loop)
 # cannot grow the document without bound and exhaust memory; the oldest lines
 # are dropped once the limit is reached, like a terminal's scrollback buffer.
+# The output is a QPlainTextEdit, which is built for this: in a QTextEdit
+# every line written past the cap cost about 15 ms to drop the oldest one, and
+# a chatty run froze the IDE for seconds a tick.
 MAX_OUTPUT_BLOCKS = 10000
 
 
@@ -44,7 +47,7 @@ class CodeWindow(QWidget):
         self.runner: TaskProcessManager | FileRunnerProcess | None = None
         self._closed_while_running = False
         self.grid_layout = QGridLayout()
-        self.code_result = QTextEdit()
+        self.code_result = QPlainTextEdit()
         self.code_result.setLineWrapMode(self.code_result.LineWrapMode.NoWrap)
         self.code_result.setReadOnly(True)
         self.code_result.document().setMaximumBlockCount(MAX_OUTPUT_BLOCKS)

@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-113 | 2026-09-23 | The run window shows output past its 10,000-line cap without freezing the IDE | #fix #executor #performance | [2026-09](2026-09.md) |
 | U-20260923-112 | 2026-09-23 | URL Builder rebuilds a query it cannot decode losslessly exactly as it was | #fix #tools | [2026-09](2026-09.md) |
 | U-20260923-111 | 2026-09-23 | cURL and HAR import send a query that would not survive re-encoding as it was written | #fix #tools | [2026-09](2026-09.md) |
 | U-20260923-110 | 2026-09-23 | The Diff tab matches the lines once and off the UI thread | #fix #tools #performance | [2026-09](2026-09.md) |
@@ -193,4 +194,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 130 |
+| [2026-09.md](2026-09.md) | 2026-09 | 131 |

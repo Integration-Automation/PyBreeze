@@ -45,6 +45,41 @@ class TestCodeWindowScrollbackCap:
         assert "line 0\n" not in text   # oldest dropped
 
 
+class TestOutputPastTheCap:
+    def test_a_line_written_past_the_cap_is_cheap(self, qt_app):
+        # In a QTextEdit each one took about 15 ms to drop the oldest line:
+        # 2000 of them, 30 s with the IDE frozen
+        import time
+
+        from pybreeze.pybreeze_ui.show_code_window.code_window import MAX_OUTPUT_BLOCKS, CodeWindow
+
+        window = CodeWindow()
+        for i in range(MAX_OUTPUT_BLOCKS):
+            window.append_output(f"line {i}\n")
+        started = time.perf_counter()
+        for i in range(2000):
+            window.append_output(f"more {i}\n", is_error=i % 2 == 0)
+        elapsed = time.perf_counter() - started
+
+        assert elapsed < 5
+        assert window.code_result.document().blockCount() <= MAX_OUTPUT_BLOCKS
+        assert window.code_result.toPlainText().endswith("more 1999\n")
+
+    def test_the_error_colour_still_applies(self, qt_app):
+        from je_editor.pyside_ui.main_ui.save_settings.user_color_setting_file import actually_color_dict
+        from PySide6.QtGui import QTextCursor
+
+        from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
+
+        window = CodeWindow()
+        window.append_output("fine\n")
+        window.append_output("broken\n", is_error=True)
+        cursor = QTextCursor(window.code_result.document().findBlockByNumber(1))
+        cursor.movePosition(QTextCursor.MoveOperation.Right)
+
+        assert cursor.charFormat().foreground().color() == actually_color_dict.get("error_output_color")
+
+
 class TestAppendOutput:
     def test_indentation_and_blank_lines_are_kept(self, qt_app):
         from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
