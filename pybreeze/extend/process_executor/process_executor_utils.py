@@ -5,7 +5,7 @@ import time
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import QCoreApplication, QObject, Signal
 from PySide6.QtWidgets import QFileDialog, QMessageBox
 from je_editor import EditorWidget, language_wrapper
 
@@ -178,10 +178,14 @@ def report_mail_hook(code_window: CodeWindow) -> Callable[[], None]:
     """
     report_path = os.path.abspath(DEFAULT_REPORT_PATH)
     started = time.time()
-    # No parent: the mail thread may answer after the window is gone. Its
-    # queued connection to the window is dropped with the window.
-    notice = _MailNotice()
+    # Owned by the application, not the window: the mail thread may answer
+    # after the window is gone (its queued connection to the window goes with
+    # the window). Without a C++ owner, the mail thread's closure held the last
+    # reference, and the QObject was destroyed on that thread when it ended.
+    # It is deleted on the GUI thread once its answer has been delivered there.
+    notice = _MailNotice(QCoreApplication.instance())
     notice.told.connect(code_window.append_output)
+    notice.told.connect(notice.deleteLater)
 
     def mail_the_report() -> None:
         send_after_test(report_path, not_before=started, on_done=notice.tell)

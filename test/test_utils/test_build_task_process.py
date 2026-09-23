@@ -220,3 +220,48 @@ class TestLettingGoOfARunWindow:
 
         assert main_window.current_run_code_window == []
         assert all(not window.isVisible() for window in windows)
+
+
+def test_the_mail_notice_is_freed_on_the_gui_thread(qt_app, monkeypatch):
+    # Its last reference was the mail thread's: with the run window gone, the
+    # QObject was destroyed on that thread, the crash class GC had caused
+    import threading
+    import time
+    import weakref
+
+    from pybreeze.extend.process_executor import process_executor_utils
+    from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
+
+    freed_on: list = []
+    sent = threading.Event()
+
+    def send_after_test(_path, not_before, on_done):
+        def send() -> None:
+            time.sleep(0.2)
+            on_done(None)
+            sent.set()
+
+        threading.Thread(target=send, name="mail").start()
+
+    monkeypatch.setattr(process_executor_utils, "send_after_test", send_after_test)
+    window = CodeWindow()
+    hook = process_executor_utils.report_mail_hook(window)
+    notices = [cell.cell_contents for cell in hook.__closure__
+               if isinstance(cell.cell_contents, process_executor_utils._MailNotice)]
+    notices[0].destroyed.connect(lambda *_: freed_on.append(threading.current_thread().name))
+    watch = weakref.ref(notices[0])
+    del notices
+
+    hook()
+    del hook
+    window.close()
+    window.deleteLater()
+    del window
+    assert sent.wait(5)
+    deadline = time.monotonic() + 5
+    while not freed_on and time.monotonic() < deadline:
+        qt_app.processEvents()
+        time.sleep(0.01)
+
+    assert freed_on == [threading.main_thread().name]
+    assert watch() is None or not __import__("shiboken6").isValid(watch())
