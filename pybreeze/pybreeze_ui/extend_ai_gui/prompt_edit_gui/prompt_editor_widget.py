@@ -62,13 +62,16 @@ class PromptEditorWidget(QWidget):
         self.templates = templates
         self._labels = labels
         self.current_file: str | None = None
+        # The template whose file is in the edit area, to go back to when the
+        # user keeps their edits rather than switch away from them.
+        self._shown_index = -1
 
         word = language_wrapper.language_word_dict
         self.setWindowTitle(word.get(labels.window_title))
 
         self.file_selector = QComboBox()
         self.file_selector.addItems(self.prompt_files)
-        self.file_selector.currentIndexChanged.connect(self.load_file_content)
+        self.file_selector.currentIndexChanged.connect(self._on_template_chosen)
 
         self.middle_editor = QTextEdit()
         group = QGroupBox(word.get(labels.edit_group))
@@ -77,8 +80,7 @@ class PromptEditorWidget(QWidget):
         group.setLayout(group_layout)
 
         self.reload_button = QPushButton(word.get(labels.reload_button))
-        self.reload_button.clicked.connect(
-            lambda: self.load_file_content(self.file_selector.currentIndex()))
+        self.reload_button.clicked.connect(self._on_reload_clicked)
         self.save_button = QPushButton(word.get(labels.save_button))
         self.save_button.clicked.connect(self.save_file)
         self.create_button = QPushButton(word.get(labels.create_button))
@@ -110,17 +112,56 @@ class PromptEditorWidget(QWidget):
         if self.prompt_files:
             self.load_file_content(0)
 
+    def _on_template_chosen(self, index: int) -> None:
+        """Show the chosen template, unless that would throw away unsaved edits."""
+        if index == self._shown_index:
+            return
+        if not self._may_discard_edits(
+                "prompt_editor_switch_over_edits", self._shown_name()):
+            # Put the selector back without coming here again.
+            self.file_selector.blockSignals(True)
+            self.file_selector.setCurrentIndex(self._shown_index)
+            self.file_selector.blockSignals(False)
+            return
+        self.load_file_content(index)
+
+    def _on_reload_clicked(self) -> None:
+        """Reload the file from disk, asking first when that loses edits."""
+        if self._may_discard_edits("prompt_editor_reload_button_over_edits", self._shown_name()):
+            self.load_file_content(self.file_selector.currentIndex())
+
+    def _shown_name(self) -> str:
+        """The file name of the template in the edit area."""
+        return Path(self.current_file).name if self.current_file else ""
+
+    def _may_discard_edits(self, question_key: str, filename: str) -> bool:
+        """True when nothing unsaved is in the edit area, or the user lets it go."""
+        if not self.middle_editor.document().isModified():
+            return True
+        word = language_wrapper.language_word_dict
+        reply = QMessageBox.question(
+            self, word.get(self._labels.info_title),
+            word.get(question_key).format(filename=filename),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No)
+        return reply == QMessageBox.StandardButton.Yes
+
     def load_file_content(self, index: int) -> None:
         """載入選擇的檔案內容 / Show the selected file, or say it is not there yet."""
         name = self.prompt_files[index]
+        self._shown_index = index
         self.current_file = str(prompt_path(name))
         path = Path(self.current_file)
         if path.is_file():
+            self.middle_editor.setPlaceholderText("")
             self._show_file(path)
             return
-        self._show_text(
+        # Said as a placeholder, not as text: text would be what a save writes,
+        # and a saved "does not exist" note overrode the built-in prompt.
+        self.middle_editor.setPlaceholderText(
             language_wrapper.language_word_dict.get(
                 self._labels.file_not_exist).format(filename=name))
+        self._show_text("")
 
     def _show_file(self, path: Path) -> None:
         """Put the prompt file in the edit area, however it was encoded."""
@@ -192,16 +233,8 @@ class PromptEditorWidget(QWidget):
         """
         if path != self.current_file:
             return
-        if self.middle_editor.document().isModified():
-            word = language_wrapper.language_word_dict
-            reply = QMessageBox.question(
-                self, word.get(self._labels.info_title),
-                word.get("prompt_editor_reload_over_edits").format(filename=Path(path).name),
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.No)
-            if reply != QMessageBox.StandardButton.Yes:
-                return
-        self.load_file_content(self.file_selector.currentIndex())
+        if self._may_discard_edits("prompt_editor_reload_over_edits", Path(path).name):
+            self.load_file_content(self.file_selector.currentIndex())
 
     def save_file(self) -> None:
         """把編輯區內容存回檔案 / Write the edit area back to the file."""

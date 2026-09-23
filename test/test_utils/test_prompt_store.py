@@ -333,3 +333,82 @@ class TestClosingThePromptEditor:
 
         assert editor.watcher.files() == []
         editor.deleteLater()
+
+
+class TestATemplateWithNoFileYet:
+    def test_saving_it_does_not_write_the_does_not_exist_note(self, prompts, monkeypatch):
+        # The note used to be the edit area's text, so Save wrote it to disk and
+        # every review then sent "(File linter.md does not exist)" as the prompt.
+        editor = _cot_editor(monkeypatch)
+        editor.file_selector.setCurrentIndex(editor.prompt_files.index("linter.md"))
+
+        assert editor.middle_editor.toPlainText() == ""
+        assert "linter.md" in editor.middle_editor.placeholderText()
+        editor.save_file()
+
+        assert load_prompt("linter.md", "built-in") == "built-in"
+        editor.close()
+        editor.deleteLater()
+
+
+class TestSwitchingTemplatesWithUnsavedEdits:
+    @staticmethod
+    def _typed(editor, text):
+        editor.middle_editor.selectAll()
+        editor.middle_editor.textCursor().insertText(text)
+
+    def test_keeping_the_edits_stays_on_the_template(self, prompts, monkeypatch):
+        from PySide6.QtWidgets import QMessageBox
+
+        write(prompts, "linter.md", "on disk")
+        editor = _cot_editor(monkeypatch)
+        linter = editor.prompt_files.index("linter.md")
+        editor.file_selector.setCurrentIndex(linter)
+        self._typed(editor, "MY EDITS")
+        monkeypatch.setattr(
+            QMessageBox, "question",
+            staticmethod(lambda *a, **k: QMessageBox.StandardButton.No))
+
+        editor.file_selector.setCurrentIndex((linter + 1) % len(editor.prompt_files))
+
+        assert editor.file_selector.currentIndex() == linter
+        assert editor.middle_editor.toPlainText() == "MY EDITS"
+        assert editor.current_file == str(prompt_path("linter.md"))
+        editor.close()
+        editor.deleteLater()
+
+    def test_letting_them_go_switches(self, prompts, monkeypatch):
+        from PySide6.QtWidgets import QMessageBox
+
+        editor = _cot_editor(monkeypatch)
+        linter = editor.prompt_files.index("linter.md")
+        editor.file_selector.setCurrentIndex(linter)
+        self._typed(editor, "MY EDITS")
+        monkeypatch.setattr(
+            QMessageBox, "question",
+            staticmethod(lambda *a, **k: QMessageBox.StandardButton.Yes))
+        other = (linter + 1) % len(editor.prompt_files)
+
+        editor.file_selector.setCurrentIndex(other)
+
+        assert editor.current_file == str(prompt_path(editor.prompt_files[other]))
+        assert editor.middle_editor.toPlainText() != "MY EDITS"
+        editor.close()
+        editor.deleteLater()
+
+    def test_reload_asks_before_losing_edits(self, prompts, monkeypatch):
+        from PySide6.QtWidgets import QMessageBox
+
+        write(prompts, "linter.md", "on disk")
+        editor = _cot_editor(monkeypatch)
+        editor.file_selector.setCurrentIndex(editor.prompt_files.index("linter.md"))
+        self._typed(editor, "MY EDITS")
+        monkeypatch.setattr(
+            QMessageBox, "question",
+            staticmethod(lambda *a, **k: QMessageBox.StandardButton.No))
+
+        editor.reload_button.click()
+
+        assert editor.middle_editor.toPlainText() == "MY EDITS"
+        editor.close()
+        editor.deleteLater()

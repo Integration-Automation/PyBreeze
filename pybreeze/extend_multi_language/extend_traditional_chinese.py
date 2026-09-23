@@ -195,6 +195,10 @@ pybreeze_traditional_chinese_word_dict = {
     "ssh_file_viewer_dialog_title_save_as": "另存新檔",
     "prompt_editor_not_utf8":
         "{filename} 不是 UTF-8 文字檔。讀不出來的字元已經換掉後顯示；存檔時會改存成 UTF-8。",
+    "prompt_editor_switch_over_edits":
+        "{filename} 還有沒存的編輯。要切換模板並捨棄它們嗎？",
+    "prompt_editor_reload_button_over_edits":
+        "{filename} 還有沒存的編輯。要從磁碟重新載入並捨棄它們嗎？",
     "prompt_editor_reload_over_edits":
         "{filename} 在磁碟上被改過了。要重新載入並捨棄這裡還沒存的編輯嗎？",
     "ssh_state_shell_and_files": "已連線：終端與檔案",
