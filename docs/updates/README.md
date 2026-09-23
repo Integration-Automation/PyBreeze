@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-71 | 2026-09-23 | prthinker Review current file saves the file first | #done #prthinker | [2026-09](2026-09.md) |
 | U-20260923-70 | 2026-09-23 | TestPioneer Create template: in the working directory, asks before replacing | #done #testpioneer | [2026-09](2026-09.md) |
 | U-20260923-69 | 2026-09-23 | AutoControl Record Stop: stops from any tab, inserts runnable JSON | #done #autocontrol | [2026-09](2026-09.md) |
 | U-20260923-68 | 2026-09-23 | Run with: a save that fails is reported and runs nothing | #fix #plugins | [2026-09](2026-09.md) |
@@ -151,4 +152,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 88 |
+| [2026-09.md](2026-09.md) | 2026-09 | 89 |

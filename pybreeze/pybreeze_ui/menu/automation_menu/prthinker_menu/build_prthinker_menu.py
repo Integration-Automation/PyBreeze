@@ -13,13 +13,14 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QInputDialog, QMessageBox
-from je_editor import language_wrapper
+from je_editor import EditorWidget, language_wrapper
 
 from pybreeze.extend.process_executor.prthinker.prthinker_process import (
     review_current_file, review_pull_request
 )
 from pybreeze.pybreeze_ui.dialog.prthinker_setting_dialog import PRThinkerSettingDialog
 from pybreeze.pybreeze_ui.menu.menu_utils import open_web_browser
+from pybreeze.pybreeze_ui.menu.plugin_menu.build_run_with_menu import save_current_file_for_run
 
 if TYPE_CHECKING:
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
@@ -78,7 +79,17 @@ def set_prthinker_menu(ui_we_want_to_set: PyBreezeMainWindow) -> None:
 
 
 def _review_current_file(ui_we_want_to_set: PyBreezeMainWindow) -> None:
-    """審查目前的檔案，沒有存檔就說一聲 / Review the current file, saying so when there is none."""
+    """先存檔再審查目前的檔案 / Save the current file, then review it.
+
+    審查讀的是磁碟上的內容：先存檔，未存的編輯才會被審到，跟 Run with... 一樣。
+    The review reads the file on disk, so it is saved first, the way Run with...
+    does: an unsaved edit used to be left out of the review without a word. A
+    cancelled Save As reviews nothing; a failed save has already said why.
+    """
+    if save_current_file_for_run(ui_we_want_to_set) is None:
+        if not isinstance(ui_we_want_to_set.tab_widget.currentWidget(), EditorWidget):
+            _tell(ui_we_want_to_set, "prthinker_need_saved_file_message")
+        return
     if not review_current_file(ui_we_want_to_set):
         _tell(ui_we_want_to_set, "prthinker_need_saved_file_message")
 
