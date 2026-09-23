@@ -716,7 +716,14 @@ class DiagramScene(QGraphicsScene):
             self.addItem(item)
 
     def _clear_items(self) -> None:
-        """Remove all diagram items without clearing the scene entirely."""
+        """Remove all diagram items without clearing the scene entirely.
+
+        A connection half made (its first node clicked) is dropped too: every
+        rebuild (undo, redo, Open, New, a Mermaid import) comes through here,
+        and a connection finished from a node no longer on the canvas made
+        every later snapshot, and so Save, fail with ``KeyError``.
+        """
+        self._cancel_connection()
         # snapshot: removeItem() mutates scene items during iteration
         for item in tuple(self.items()):
             if isinstance(item, (DiagramNode, DiagramConnection, DiagramImage)):

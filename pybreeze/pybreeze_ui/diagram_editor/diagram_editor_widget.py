@@ -505,7 +505,9 @@ class DiagramEditorWidget(QWidget):
         try:
             data = self._scene.to_dict()
             replace_text(path, json.dumps(data, indent=2, ensure_ascii=False))
-        except (OSError, TypeError, ValueError) as e:
+        # KeyError: a connection whose node is not on the canvas; it escaped the
+        # slot, and Save did nothing without a word
+        except (OSError, TypeError, ValueError, KeyError) as e:
             pybreeze_logger.error("Save diagram failed: %r", e)
             reason = e.strerror if isinstance(e, OSError) and e.strerror else str(e)
             QMessageBox.warning(self, _lang("diagram_editor_error_title", "Error"), as_text(reason))

@@ -102,3 +102,36 @@ def test_a_mouse_move_is_still_one_step(app):
     scene.end_undo()
 
     assert scene.undo_stack.count() == 1
+
+
+def _click(scene: DiagramScene, x: float, y: float) -> None:
+    press = QGraphicsSceneMouseEvent(QEvent.Type.GraphicsSceneMousePress)
+    press.setScenePos(QPointF(x, y))
+    press.setButton(Qt.MouseButton.LeftButton)
+    press.setButtons(Qt.MouseButton.LeftButton)
+    scene.mousePressEvent(press)
+
+
+@pytest.mark.parametrize("rebuild", ["undo and redo", "load"])
+def test_a_half_made_connection_does_not_outlive_a_rebuild(app, rebuild):
+    # Its first node was replaced by the rebuild; finished, the connection
+    # pointed at a node no longer on the canvas, and every snapshot (so Save,
+    # and Delete) raised KeyError from then on
+    from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import ToolMode
+
+    scene = DiagramScene()
+    with scene.undo_scope("Add"):
+        scene.addItem(DiagramNode(x=0, y=0, w=100, h=60, text="A"))
+        scene.addItem(DiagramNode(x=300, y=0, w=100, h=60, text="B"))
+    scene.mode = ToolMode.ADD_CONNECTION
+    _click(scene, 50, 30)
+    if rebuild == "load":
+        scene.load_from_dict(scene.to_dict())
+    else:
+        scene.undo_stack.undo()
+        scene.undo_stack.redo()
+
+    _click(scene, 350, 30)
+
+    assert scene.get_all_connections() == []
+    scene.to_dict()
