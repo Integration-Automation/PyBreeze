@@ -114,3 +114,39 @@ def test_the_questions_come_one_at_a_time(asked, keys, monkeypatch):
         worker.join(5)
 
     assert overlapping == [False, False]
+
+
+class TestAQuestionNobodyCanAnswer:
+    """A closed panel's question is a No, never the previous question's answer."""
+
+    def _closed_panel(self):
+        import shiboken6
+        from PySide6.QtWidgets import QWidget
+
+        panel = QWidget()
+        shiboken6.delete(panel)
+        return panel
+
+    def test_on_the_ui_thread(self, app):
+        # The previous Yes used to come back, and the key was stored for good
+        asker = policy_mod.HostKeyAsker()
+        asker._answer = True
+
+        assert asker.ask(self._closed_panel(), "title", "message") is False
+
+    def test_from_the_connecting_thread(self, app):
+        import time
+
+        asker = policy_mod.HostKeyAsker()
+        asker._answer = True
+        panel = self._closed_panel()
+        answers: list = []
+        worker = threading.Thread(target=lambda: answers.append(asker.ask(panel, "title", "message")))
+        worker.start()
+        deadline = time.monotonic() + 10
+        while worker.is_alive() and time.monotonic() < deadline:
+            app.processEvents()
+            time.sleep(0.01)
+        worker.join(1)
+
+        assert answers == [False]

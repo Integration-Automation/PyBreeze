@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-120 | 2026-09-24 | Answer No for an SSH host key nobody could be asked about, instead of the previous question's Yes | #fix #security #ssh | [2026-09](2026-09.md) |
 | U-20260923-119 | 2026-09-24 | Highlight TestPioneer scripts saved as .yaml, the other suffix its menu runs | #fix #syntax | [2026-09](2026-09.md) |
 | U-20260923-118 | 2026-09-24 | Collect cyclic garbage on the GUI thread only, so a worker never destroys a Qt object | #fix #threading #crash | [2026-09](2026-09.md) |
 | U-20260923-117 | 2026-09-23 | A data folder the log creates is its owner's only, like the one pybreeze_data_dir creates | #fix #security | [2026-09](2026-09.md) |
@@ -200,4 +201,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 137 |
+| [2026-09.md](2026-09.md) | 2026-09 | 138 |

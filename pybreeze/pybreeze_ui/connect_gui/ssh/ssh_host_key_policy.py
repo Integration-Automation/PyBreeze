@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import paramiko
+import shiboken6
 from je_editor import language_wrapper
 from PySide6.QtCore import QObject, Qt, QThread, Signal, Slot
 from PySide6.QtWidgets import QMessageBox
@@ -162,7 +163,13 @@ class HostKeyAsker(QObject):
         self._asked.connect(self._show, Qt.ConnectionType.BlockingQueuedConnection)
 
     def ask(self, parent: QWidget | None, title: str, message: str) -> bool:
-        """Show the question and return whether the user trusts the key."""
+        """Show the question and return whether the user trusts the key.
+
+        Every question starts from No: a question that could not be shown
+        returned the previous one's answer, and a Yes given to one host trusted
+        the next host unasked.
+        """
+        self._answer = False
         if QThread.currentThread() is self.thread():
             # Already on the UI thread: a blocking queued signal to ourselves
             # would wait for itself forever.
@@ -173,6 +180,11 @@ class HostKeyAsker(QObject):
 
     @Slot(object, str, str)
     def _show(self, parent: QWidget | None, title: str, message: str) -> None:
+        if parent is not None and not shiboken6.isValid(parent):
+            # The panel that connected was closed while it connected (a dock
+            # is deleted on close): nobody is there to answer, so it is No
+            pybreeze_logger.warning("SSH host key question dropped: its panel was closed")
+            return
         box = QMessageBox(parent)
         box.setIcon(QMessageBox.Icon.Warning)
         box.setWindowTitle(title)
