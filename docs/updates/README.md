@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-90 | 2026-09-23 | SSRF check refuses a URL whose host urlparse and urllib3 read differently | #fix #security #network | [2026-09](2026-09.md) |
 | U-20260923-89 | 2026-09-23 | Diagram undo keeps text typed on the canvas and images it cannot reload | #done #diagram | [2026-09](2026-09.md) |
 | U-20260923-88 | 2026-09-23 | Tools work on the text as entered, not Qt's display copy | #fix #tools | [2026-09](2026-09.md) |
 | U-20260923-87 | 2026-09-23 | curl and HAR import: malformed URLs reported, -I, --oauth2-bearer, fragments, repeated -F | #fix #tools | [2026-09](2026-09.md) |
@@ -170,4 +171,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 107 |
+| [2026-09.md](2026-09.md) | 2026-09 | 108 |

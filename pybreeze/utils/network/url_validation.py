@@ -4,6 +4,9 @@ import ipaddress
 import socket
 from urllib.parse import urlparse
 
+from urllib3.exceptions import LocationParseError
+from urllib3.util import parse_url
+
 _ALLOWED_SCHEMES = frozenset({"http", "https"})
 
 # RFC 6598 shared address space (Carrier-Grade NAT). Not covered by
@@ -60,6 +63,40 @@ def _is_blocked_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
     return any(_is_blocked_ip(embedded) for embedded in _embedded_ipv4(ip))
 
 
+def _check_one_reading(url: str) -> None:
+    """Refuse a URL whose host ``urlparse`` and ``urllib3`` would read differently.
+
+    The check below reads the host with ``urlparse``; ``requests`` connects to
+    the host ``urllib3`` reads. They disagree over a backslash:
+    ``http://127.0.0.1\\@example.com/`` is ``example.com`` to the first, which
+    passed, and ``127.0.0.1`` to the second, which was then connected to.
+    Whitespace and control characters are refused for the same reason, and the
+    two readings of the host are compared whatever the URL holds.
+    """
+    if any(character == "\\" or character.isspace() or ord(character) < 0x20 or ord(character) == 0x7F
+           for character in url):
+        raise UnsafeURLError("URL contains a backslash, whitespace or a control character.")
+    # Not the parsers' messages: they quote the whole URL, which may hold a token
+    try:
+        connected_host = (parse_url(url).host or "").strip("[]").lower()
+    except LocationParseError:
+        raise UnsafeURLError("URL cannot be parsed.") from None
+    try:
+        checked_host = (urlparse(url).hostname or "").lower()
+    except ValueError:
+        raise UnsafeURLError("URL cannot be parsed.") from None
+    if _as_ascii(connected_host) != _as_ascii(checked_host):
+        raise UnsafeURLError("URL names its host ambiguously.")
+
+
+def _as_ascii(host: str) -> str:
+    """*host* as it goes on the wire: urllib3 IDNA-encodes a Unicode name, urlparse does not."""
+    try:
+        return host.encode("idna").decode("ascii")
+    except UnicodeError:
+        return host
+
+
 def validate_url(url: str) -> str:
     """Validate a user-supplied URL against SSRF rules.
 
@@ -72,8 +109,12 @@ def validate_url(url: str) -> str:
          (IPv4-mapped, 6to4, Teredo, NAT64) that tunnel to a blocked IPv4
          endpoint.
 
+    The host checked must be the host connected to, so a URL the parsers can
+    read two ways is refused before anything else: see ``_check_one_reading``.
+
     Returns the original *url* on success; raises ``UnsafeURLError`` on failure.
     """
+    _check_one_reading(url)
     parsed = urlparse(url)
 
     if parsed.scheme.lower() not in _ALLOWED_SCHEMES:
