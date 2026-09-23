@@ -250,3 +250,48 @@ class TestThePropertyPanelAndTheCanvas:
         assert not panel._node_w.keyboardTracking()
         assert not panel._node_font.keyboardTracking()
 
+
+class TestZooming:
+    """Fit went outside the zoom range, and then no step was allowed either way."""
+
+    def _view(self, *nodes):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_view import DiagramView
+
+        scene = DiagramScene()
+        for node in nodes:
+            scene.addItem(node)
+        view = DiagramView(scene)
+        view.resize(1200, 800)
+        return scene, view
+
+    def test_fitting_one_node_stays_within_the_range_and_can_zoom_out(self, app):
+        from pybreeze.pybreeze_ui.diagram_editor import diagram_view
+
+        scene, view = self._view(DiagramNode(x=0, y=0, w=40, h=20))
+        view.resize(4000, 3000)
+        view.fit(scene.itemsBoundingRect())
+
+        assert view.transform().m11() == pytest.approx(diagram_view._MAX_SCALE)
+        view.zoom_out()
+        assert view.transform().m11() < diagram_view._MAX_SCALE
+
+    def test_fitting_nodes_far_apart_stays_within_the_range(self, app):
+        from pybreeze.pybreeze_ui.diagram_editor import diagram_view
+
+        scene, view = self._view(DiagramNode(x=0, y=0), DiagramNode(x=50000, y=0))
+        view.fit(scene.itemsBoundingRect())
+
+        assert view.transform().m11() == pytest.approx(diagram_view._MIN_SCALE)
+
+    def test_a_scale_outside_the_range_can_step_back_toward_it(self, app):
+        from pybreeze.pybreeze_ui.diagram_editor import diagram_view
+
+        _scene, view = self._view(DiagramNode(x=0, y=0))
+        view.scale(8, 8)  # as a fit used to leave it
+
+        view.zoom_in()
+        assert view.transform().m11() == pytest.approx(8)  # further out: refused
+        view.zoom_out()
+        assert view.transform().m11() < 8
+        assert diagram_view._MAX_SCALE < 8
+

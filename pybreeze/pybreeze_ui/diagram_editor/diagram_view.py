@@ -124,11 +124,32 @@ class DiagramView(QGraphicsView):
             # A sideways wheel or trackpad swipe: not a zoom (it used to zoom out)
             super().wheelEvent(event)
             return
-        factor = _ZOOM_FACTOR if vertical > 0 else 1.0 / _ZOOM_FACTOR
+        self._step_zoom(_ZOOM_FACTOR if vertical > 0 else 1.0 / _ZOOM_FACTOR)
+
+    def _step_zoom(self, factor: float) -> None:
+        """Scale by *factor*, unless that ends outside the zoom range and not closer to it.
+
+        A step back toward the range is always taken: after a fit to one node
+        (604%) or to nodes far apart (1%), every step used to be refused, and
+        neither the wheel nor the buttons could zoom at all.
+        """
         current = self.transform().m11()
-        if current * factor < _MIN_SCALE or current * factor > _MAX_SCALE:
+        wanted = current * factor
+        inside = _MIN_SCALE <= wanted <= _MAX_SCALE
+        closer = (current > _MAX_SCALE and factor < 1) or (current < _MIN_SCALE and factor > 1)
+        if not inside and not closer:
             return
         self.scale(factor, factor)
+        self.zoom_changed.emit(int(self.transform().m11() * 100))
+
+    def fit(self, rect) -> None:
+        """Show *rect* whole, as large as the zoom range allows, centred."""
+        self.fitInView(rect, Qt.AspectRatioMode.KeepAspectRatio)
+        current = self.transform().m11()
+        clamped = max(_MIN_SCALE, min(current, _MAX_SCALE))
+        if clamped != current:
+            self.scale(clamped / current, clamped / current)
+            self.centerOn(rect.center())
         self.zoom_changed.emit(int(self.transform().m11() * 100))
 
     def set_zoom(self, percent: int) -> None:
@@ -139,16 +160,10 @@ class DiagramView(QGraphicsView):
         self.zoom_changed.emit(int(factor * 100))
 
     def zoom_in(self) -> None:
-        current = self.transform().m11()
-        if current * _ZOOM_FACTOR <= _MAX_SCALE:
-            self.scale(_ZOOM_FACTOR, _ZOOM_FACTOR)
-            self.zoom_changed.emit(int(self.transform().m11() * 100))
+        self._step_zoom(_ZOOM_FACTOR)
 
     def zoom_out(self) -> None:
-        current = self.transform().m11()
-        if current / _ZOOM_FACTOR >= _MIN_SCALE:
-            self.scale(1.0 / _ZOOM_FACTOR, 1.0 / _ZOOM_FACTOR)
-            self.zoom_changed.emit(int(self.transform().m11() * 100))
+        self._step_zoom(1.0 / _ZOOM_FACTOR)
 
     # --- middle-button / right-button pan ---
 

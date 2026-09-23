@@ -637,5 +637,5 @@ class DiagramEditorWidget(QWidget):
         rect = self._scene.itemsBoundingRect()
         if rect.isNull():
             return
-        self._view.fitInView(rect.marginsAdded(QMarginsF(20, 20, 20, 20)), Qt.AspectRatioMode.KeepAspectRatio)
-        self._zoom_label.setText(f"{int(self._view.transform().m11() * 100)}%")
+        # Within the zoom range: fitted outside it, the wheel could not zoom back
+        self._view.fit(rect.marginsAdded(QMarginsF(20, 20, 20, 20)))
