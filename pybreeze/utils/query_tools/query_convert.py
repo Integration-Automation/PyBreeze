@@ -16,6 +16,7 @@ from urllib.parse import parse_qsl, urlencode
 from pybreeze.utils.exception.exception_tags import (
     invalid_json_for_query_error,
     invalid_json_object_error,
+    nested_query_value_error,
 )
 from pybreeze.utils.exception.exceptions import QueryConvertException
 from pybreeze.utils.logging.logger import pybreeze_logger
@@ -55,9 +56,21 @@ def query_to_json(query: str) -> str:
 
 
 def _coerce_scalar(value: object) -> str:
-    """Render a scalar JSON value as the string a query string would carry."""
+    """Render a scalar JSON value as the string a query string would carry.
+
+    ``null`` is an empty value (``a=``), not Python's ``None``; an object or a
+    list inside a list has no query form and is refused rather than sent as
+    its Python repr.
+
+    :raises QueryConvertException: for an object, or a list nested in a list
+    """
+    if value is None:
+        return ""
     if isinstance(value, bool):
         return "true" if value else "false"
+    if isinstance(value, (dict, list)):
+        pybreeze_logger.error(nested_query_value_error)
+        raise QueryConvertException(nested_query_value_error)
     return str(value)
 
 

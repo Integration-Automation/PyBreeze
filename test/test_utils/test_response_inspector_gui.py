@@ -238,3 +238,13 @@ class TestResponseInspectorBodyHandOff:
     def test_open_body_before_analyze_is_noop(self, widget_with_window):
         gui, _window = widget_with_window
         assert gui.open_body_in_json_format() is None
+
+
+def test_the_report_lists_every_value_of_a_repeated_header(app):
+    from pybreeze.pybreeze_ui.tools_gui.response_inspector_gui import build_report_text
+    from pybreeze.utils.response_inspector.response_analyzer import analyze_response
+
+    text = build_report_text(analyze_response(
+        "HTTP/1.1 200 OK\nSet-Cookie: a=1\nSet-Cookie: b=2\n\nok"))
+
+    assert "Set-Cookie: a=1" in text and "Set-Cookie: b=2" in text

@@ -13,6 +13,7 @@ from pybreeze.utils.exception.exception_tags import (
     invalid_json_for_url_error,
     invalid_url_components_error,
     unreadable_url_error,
+    url_port_out_of_range_error,
 )
 from pybreeze.utils.exception.exceptions import UrlConvertException
 from pybreeze.utils.logging.logger import pybreeze_logger
@@ -57,14 +58,26 @@ def url_to_json(url: str) -> str:
     :param url: the URL to parse
     :return: a formatted JSON object of the URL's parts
     :raises UrlConvertException: when *url* cannot be split into parts at all
-        (``http://[::1`` -- an unclosed IPv6 bracket -- is one)
+        (``http://[::1`` -- an unclosed IPv6 bracket -- is one), or names a
+        port outside 0-65535
     """
     try:
         components = parse_url(url)
     except ValueError as error:
         pybreeze_logger.error(unreadable_url_error)
         raise UrlConvertException(unreadable_url_error) from error
+    if components["port"] is None and _has_port_text(url):
+        # parse_url leaves such a port out; shown that way, the URL built back
+        # from these parts would silently lose it.
+        pybreeze_logger.error(url_port_out_of_range_error)
+        raise UrlConvertException(url_port_out_of_range_error)
     return json.dumps(components, indent=4, ensure_ascii=False)
+
+
+def _has_port_text(url: str) -> bool:
+    """Whether *url*'s authority names a port at all, readable or not."""
+    host_and_port = urlsplit(url.strip()).netloc.rpartition("@")[2]
+    return bool(host_and_port.rpartition("]")[2].partition(":")[1])
 
 
 def _build_netloc(components: dict, host: str) -> str:

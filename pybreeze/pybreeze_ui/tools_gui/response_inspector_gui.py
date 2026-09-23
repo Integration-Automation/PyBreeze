@@ -63,7 +63,9 @@ def build_report_text(analysis: ResponseAnalysis) -> str:
     lines.extend(_status_section(analysis))
     if analysis.headers:
         lines.append(word.get("response_headers_label"))
-        lines.extend(f"{name}: {value}" for name, value in analysis.headers.items())
+        for name, value in analysis.headers.items():
+            values = value if isinstance(value, list) else [value]
+            lines.extend(f"{name}: {one}" for one in values)
         lines.append("")
     lines.extend(_jwt_section(analysis))
     lines.append(word.get("response_body_label"))

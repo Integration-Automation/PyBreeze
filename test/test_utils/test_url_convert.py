@@ -118,3 +118,19 @@ class TestARepeatedKey:
         from pybreeze.utils.url_tools.url_convert import build_url, parse_url
 
         assert build_url(parse_url("https://x/?tag=a&tag=b&one=1")) == "https://x/?tag=a&tag=b&one=1"
+
+
+class TestAPortOutOfRange:
+    def test_it_is_reported_rather_than_dropped(self):
+        from pybreeze.utils.url_tools.url_convert import url_to_json
+
+        with pytest.raises(UrlConvertException):
+            url_to_json("http://host:99999/")
+
+    @pytest.mark.parametrize("url", [
+        "http://host/", "http://host:8080/", "http://[::1]:8080/", "http://[::1]/",
+        "http://user:pa:ss@host/"])
+    def test_urls_without_a_bad_port_still_convert(self, url):
+        from pybreeze.utils.url_tools.url_convert import url_to_json
+
+        assert json.loads(url_to_json(url))["scheme"] == "http"

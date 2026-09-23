@@ -62,6 +62,8 @@ unrecognized_timestamp_error: str = "not a recognized epoch number or ISO-8601 d
 
 # Query <-> JSON conversion
 invalid_json_object_error: str = "the input must be a JSON object of key/value pairs"
+nested_query_value_error: str = (
+    "a query value must be a string, number, true/false or null, or a list of them")
 invalid_json_for_query_error: str = "can't parse the input as JSON"
 
 # Regex testing
@@ -72,6 +74,7 @@ invalid_regex_pattern_error: str = "invalid regular expression: {detail}"
 invalid_json_for_url_error: str = "can't parse the input as JSON"
 invalid_url_components_error: str = "the input must be a JSON object of URL parts"
 unreadable_url_error: str = "the input is not a URL that can be read"
+url_port_out_of_range_error: str = "the port must be a number from 0 to 65535"
 regex_timeout_error: str = (
     "the pattern was still running after {seconds} s and was stopped; nested "
     "repetition such as (a+)+ can take exponentially long on text that almost matches")

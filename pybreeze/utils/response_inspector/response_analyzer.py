@@ -14,6 +14,7 @@ import json
 import re
 from dataclasses import dataclass, field
 
+from pybreeze.utils.curl_import.curl_parser import add_repeated_value
 from pybreeze.utils.header_tools.header_analyzer import HEADER_LINE_RE
 from pybreeze.utils.http_reference.status_codes import StatusInfo, lookup
 from pybreeze.utils.jwt_tools.jwt_decoder import DecodedJwt, decode_jwt, find_tokens
@@ -40,7 +41,8 @@ class ResponseAnalysis:
     """The structured result of inspecting a response.
 
     :param status: the looked-up status, or ``None`` when no status line was found
-    :param headers: parsed response headers
+    :param headers: parsed response headers; a name sent more than once (``Set-Cookie``)
+        maps to the list of its values, which cannot be joined into one
     :param body: the raw response body
     :param pretty_body: the body pretty-printed when it is JSON, else ``None``
     :param is_json_body: whether the body parsed as JSON
@@ -48,7 +50,7 @@ class ResponseAnalysis:
     """
 
     status: StatusInfo | None = None
-    headers: dict[str, str] = field(default_factory=dict)
+    headers: dict[str, str | list[str]] = field(default_factory=dict)
     body: str = ""
     pretty_body: str | None = None
     is_json_body: bool = False
@@ -73,7 +75,7 @@ def _parse_head_and_body(text: str) -> tuple[int | None, dict[str, str], str]:
         status_code = int(_STATUS_LINE_RE.match(lines[0]).group(1))
         index = 1
 
-    headers: dict[str, str] = {}
+    headers: dict[str, str | list[str]] = {}
     while index < len(lines):
         line = lines[index]
         if line.strip() == "":
@@ -82,7 +84,7 @@ def _parse_head_and_body(text: str) -> tuple[int | None, dict[str, str], str]:
         match = HEADER_LINE_RE.match(line)
         if match is None:
             break
-        headers[match.group(1)] = match.group(2).strip()
+        add_repeated_value(headers, match.group(1), match.group(2).strip())
         index += 1
 
     body = "\n".join(lines[index:]).strip()

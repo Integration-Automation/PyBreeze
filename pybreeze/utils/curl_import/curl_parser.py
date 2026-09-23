@@ -467,16 +467,18 @@ def _finalise_method(request: CurlRequest) -> None:
         # decoded here, or full_url would encode it a second time.
         for part in request.data_parts:
             for key, value in parse_qsl(part, keep_blank_values=True):
-                add_query_value(request.params, key, value)
+                add_repeated_value(request.params, key, value)
         request.data_parts = []
 
 
-def add_query_value(params: dict[str, str | list[str]], key: str, value: str) -> None:
+def add_repeated_value(params: dict[str, str | list[str]], key: str, value: str) -> None:
     """Add *value* under *key*, keeping the values already there.
 
-    ``?id=1&id=2`` sends both; a plain dict kept only one of them. A key seen
-    once maps to its value, a repeated one to the list of its values, which is
-    what ``requests`` and ``urlencode(doseq=True)`` both expand back.
+    For anything that may repeat a name: ``?id=1&id=2`` sends both, and a
+    response may carry several ``Set-Cookie`` lines; a plain dict kept only one
+    of each. A key seen once maps to its value, a repeated one to the list of
+    its values, which ``requests`` and ``urlencode(doseq=True)`` both expand
+    back.
     """
     if key not in params:
         params[key] = value
@@ -501,7 +503,7 @@ def _split_url_query(request: CurlRequest) -> None:
         return
     request.url = base
     for key, value in parse_qsl(query, keep_blank_values=True):
-        add_query_value(request.params, key, value)
+        add_repeated_value(request.params, key, value)
 
 
 def parse_curl(command: str) -> CurlRequest:

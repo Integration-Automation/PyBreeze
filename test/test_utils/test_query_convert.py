@@ -76,3 +76,17 @@ class TestRoundTrip:
 
     def test_repeated_key_round_trip(self):
         assert json_to_query(query_to_json("a=1&a=2")) == "a=1&a=2"
+
+
+class TestValuesWithoutAQueryForm:
+    def test_null_is_an_empty_value(self):
+        from pybreeze.utils.query_tools.query_convert import json_to_query
+
+        assert json_to_query('{"a": null, "b": 1}') == "a=&b=1"
+
+    @pytest.mark.parametrize("text", ['{"a": {"c": 1}}', '{"a": [[1]]}', '{"a": [{"c": 1}]}'])
+    def test_an_object_or_a_nested_list_is_refused(self, text):
+        from pybreeze.utils.query_tools.query_convert import json_to_query
+
+        with pytest.raises(QueryConvertException):
+            json_to_query(text)

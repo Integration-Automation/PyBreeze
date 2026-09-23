@@ -126,3 +126,10 @@ def test_a_body_nested_past_the_recursion_limit_is_not_json():
     analysis = analyze_response("HTTP/1.1 200 OK\n\n" + "[" * 100000 + "]" * 100000)
 
     assert analysis.pretty_body is None
+
+
+def test_a_header_sent_twice_keeps_both_values():
+    analysis = analyze_response(
+        "HTTP/1.1 200 OK\nSet-Cookie: a=1\nSet-Cookie: b=2\nContent-Type: text/plain\n\nok")
+
+    assert analysis.headers == {"Set-Cookie": ["a=1", "b=2"], "Content-Type": "text/plain"}
