@@ -106,3 +106,53 @@ class TestShortcuts:
         assert len(shortcuts) >= 11
         assert {shortcut.context() for shortcut in shortcuts} == {
             Qt.ShortcutContext.WidgetWithChildrenShortcut}
+
+
+class TestExporting:
+    """An export replaces the chosen file only once the new one is whole."""
+
+    def _export(self, editor, monkeypatch, target, kind: str) -> list:
+        from pybreeze.pybreeze_ui.diagram_editor import diagram_editor_widget
+
+        warned: list = []
+        monkeypatch.setattr(diagram_editor_widget.QFileDialog, "getSaveFileName",
+                            staticmethod(lambda *args, **kwargs: (str(target), "")))
+        monkeypatch.setattr(diagram_editor_widget.QMessageBox, "warning",
+                            staticmethod(lambda *args, **kwargs: warned.append(args)))
+        editor._scene.load_from_dict(_A_DIAGRAM)
+        getattr(editor, f"_export_{kind}")()
+        return warned
+
+    def test_a_png_export_writes_a_png(self, editor, tmp_path, monkeypatch):
+        target = tmp_path / "diagram.png"
+
+        assert self._export(editor, monkeypatch, target, "png") == []
+
+        assert target.read_bytes().startswith(b"\x89PNG")
+        assert list(tmp_path.iterdir()) == [target]
+
+    def test_an_svg_export_writes_an_svg(self, editor, tmp_path, monkeypatch):
+        target = tmp_path / "diagram.svg"
+
+        assert self._export(editor, monkeypatch, target, "svg") == []
+
+        assert "<svg" in target.read_text(encoding="utf-8")
+        assert list(tmp_path.iterdir()) == [target]
+
+    @pytest.mark.parametrize("kind", ["png", "svg"])
+    def test_an_export_that_fails_leaves_the_previous_one(self, editor, tmp_path, monkeypatch, kind):
+        # It was written in place: a failure part-way left the last export cut short
+        from pybreeze.utils.file_process import replace_file
+
+        target = tmp_path / f"diagram.{kind}"
+        target.write_bytes(b"the previous export")
+
+        def refuse(*_args, **_kwargs):
+            raise OSError("no room on the disk")
+
+        monkeypatch.setattr(replace_file.os, "replace", refuse)
+        warned = self._export(editor, monkeypatch, target, kind)
+
+        assert warned
+        assert target.read_bytes() == b"the previous export"
+        assert list(tmp_path.iterdir()) == [target], "a half-written file was left behind"

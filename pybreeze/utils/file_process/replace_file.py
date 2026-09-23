@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import contextlib
 import os
+from collections.abc import Callable
 from pathlib import Path
 
 # Owner read and write only, for a file that holds secrets; others as the umask allows
@@ -40,6 +41,32 @@ def replace_text(path: Path, text: str, *, private: bool = False) -> None:
         descriptor = os.open(beside, flags, _PRIVATE_MODE if private else _SHARED_MODE)
         with os.fdopen(descriptor, "w", encoding="utf-8") as file:
             file.write(text)
+        os.replace(beside, path)
+    except OSError:
+        with contextlib.suppress(OSError):
+            beside.unlink()
+        raise
+
+
+def replace_written(path: Path, write: Callable[[Path], None]) -> None:
+    """Have *write* produce the file at *path*, replacing it in one step.
+
+    For a file something else writes (an image, an SVG): *write* is given
+    ``<stem>.saving<suffix>`` beside *path*, with *path*'s extension so a
+    writer that goes by it picks the same format, and that file then takes
+    *path*'s place.
+
+    :param path: the file to produce; its folder must exist
+    :param write: writes the whole file to the path it is given; raises
+        ``OSError`` when it cannot
+    :raises OSError: when it cannot be written; *path* is then unchanged and
+        the partial file removed
+    """
+    beside = path.with_name(f"{path.stem}.saving{path.suffix}")
+    try:
+        with contextlib.suppress(FileNotFoundError):
+            beside.unlink()
+        write(beside)
         os.replace(beside, path)
     except OSError:
         with contextlib.suppress(OSError):

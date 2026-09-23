@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-132 | 2026-09-24 | Export a diagram to PNG or SVG through a file beside the target, so a failed export leaves the previous one | #fix #diagram #done | [2026-09](2026-09.md) |
 | U-20260923-131 | 2026-09-24 | Read capitalised keywords as nodes, class suffixes, open-link chains, percent signs and quoted edge labels right in the Mermaid import | #fix #diagram #mermaid #done | [2026-09](2026-09.md) |
 | U-20260923-130 | 2026-09-24 | Keep diagram images and nodes stacked as they were across save, load and undo | #fix #diagram #done | [2026-09](2026-09.md) |
 | U-20260923-129 | 2026-09-24 | Skip diagram items a file places nowhere, keep far ones within reach, and leave nodes alone when a connection cannot be built | #fix #diagram #done | [2026-09](2026-09.md) |
@@ -212,4 +213,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 149 |
+| [2026-09.md](2026-09.md) | 2026-09 | 150 |

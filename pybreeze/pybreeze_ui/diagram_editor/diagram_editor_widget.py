@@ -30,7 +30,7 @@ from pybreeze.pybreeze_ui.diagram_editor.diagram_property_panel import DiagramPr
 from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene, ImageDownloadThread, ToolMode
 from pybreeze.pybreeze_ui.diagram_editor.diagram_view import DiagramView
 from pybreeze.pybreeze_ui.thread_keeper import let_run_out
-from pybreeze.utils.file_process.replace_file import replace_text
+from pybreeze.utils.file_process.replace_file import replace_text, replace_written
 from pybreeze.utils.logging.logger import pybreeze_logger
 
 
@@ -82,6 +82,16 @@ graph TD
     B -->|No| D((End))
     C --> D
 """
+
+
+def _save_png(image: QImage, target: Path) -> None:
+    """Save *image* as a PNG file at *target*; ``OSError`` when it cannot.
+
+    ``QImage.save`` returns False (without raising) on permission, path or
+    format errors.
+    """
+    if not image.save(str(target), "PNG"):
+        raise OSError("QImage.save returned False")
 
 
 class MermaidImportDialog(QDialog):
@@ -526,10 +536,9 @@ class DiagramEditorWidget(QWidget):
             self._scene.clearSelection()
             self._scene.render(painter, QRectF(), rect)
             painter.end()
-            # QImage.save returns False (without raising) on permission/path/format
-            # errors, so the result must be checked to avoid a silent failure.
-            if not image.save(path):
-                self._warn_export_failed(path, "QImage.save returned False")
+            # Written beside the file and moved into place: a save that failed
+            # part-way used to leave the previous export cut short
+            replace_written(Path(path), lambda target: _save_png(image, target))
         except Exception as error:  # noqa: BLE001 — export must not crash the editor
             self._warn_export_failed(path, repr(error))
 
@@ -542,21 +551,27 @@ class DiagramEditorWidget(QWidget):
             return
         try:
             rect = self._get_content_rect()
-            gen = QSvgGenerator()
-            gen.setFileName(path)
-            gen.setSize(QSizeF(rect.width(), rect.height()).toSize())
-            gen.setViewBox(QRectF(0, 0, rect.width(), rect.height()))
-            painter = QPainter(gen)
-            if not painter.isActive():
-                self._warn_export_failed(path, "could not open SVG for writing")
-                return
-            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-            painter.translate(-rect.topLeft())
             self._scene.clearSelection()
-            self._scene.render(painter, QRectF(), rect)
-            painter.end()
+            # QSvgGenerator empties its file as soon as painting starts: it
+            # writes beside the chosen file, which is replaced only when done
+            replace_written(Path(path), lambda target: self._write_svg(target, rect))
         except Exception as error:  # noqa: BLE001 — export must not crash the editor
             self._warn_export_failed(path, repr(error))
+
+    def _write_svg(self, target: Path, rect: QRectF) -> None:
+        """Render the scene's *rect* as an SVG file at *target*; ``OSError`` when it cannot."""
+        gen = QSvgGenerator()
+        gen.setFileName(str(target))
+        gen.setSize(QSizeF(rect.width(), rect.height()).toSize())
+        gen.setViewBox(QRectF(0, 0, rect.width(), rect.height()))
+        painter = QPainter(gen)
+        if not painter.isActive():
+            raise OSError("could not open SVG for writing")
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.translate(-rect.topLeft())
+        self._scene.render(painter, QRectF(), rect)
+        if not painter.end():
+            raise OSError("could not finish writing the SVG")
 
     # ------------------------------------------------------------------
     # Image operations

@@ -241,7 +241,7 @@ call_X_multi_file_and_send()   → run_dir_files_with_package(..., True)
 
 | 檔案 | 職責 |
 |---|---|
-| `diagram_editor_widget.py` (621) | 外層 widget：兩排工具列（工具模式列 + 檔案/undo/對齊/格線/匯出/縮放列）、canvas 與屬性面板的 splitter、快捷鍵（只在編輯器有焦點時作用，當 dock 開著也不搶程式碼編輯器的按鍵）；PNG/SVG 匯出；Mermaid 匯入對話框。「從 URL 加入圖片」也交給 `ImageDownloadThread`，圖片回來才放上畫布，失敗或不是圖片就跳警告；關閉時還在跑的下載交給 `let_run_out()`。存檔經 `replace_text()` 先寫 `<name>.saving` 再換上去，存檔失敗不會毀掉上一份 |
+| `diagram_editor_widget.py` (636) | 外層 widget：兩排工具列（工具模式列 + 檔案/undo/對齊/格線/匯出/縮放列）、canvas 與屬性面板的 splitter、快捷鍵（只在編輯器有焦點時作用，當 dock 開著也不搶程式碼編輯器的按鍵）；PNG/SVG 匯出；Mermaid 匯入對話框。「從 URL 加入圖片」也交給 `ImageDownloadThread`，圖片回來才放上畫布，失敗或不是圖片就跳警告；關閉時還在跑的下載交給 `let_run_out()`。存檔經 `replace_text()` 先寫 `<name>.saving` 再換上去，存檔失敗不會毀掉上一份 |
 | `diagram_scene.py` (888) | `DiagramScene(QGraphicsScene)`：**State pattern** 的 `ToolMode` 決定滑鼠行為；undo/redo、複製貼上（節點、連線與圖片）、多選對齊與分佈、z-order、序列化 `to_dict()` / `load_from_dict()`。`get_all_nodes/connections/images()` 由下往上列出（`_bottom_first()`），存檔與 undo 還原時同 z 值的重疊項目維持原本的上下；右鍵選單先選取點到的項目；置頂／置底放到所有其他節點與圖片之上／之下；`to_dict()` 給每個節點與圖片記下它在兩者之間由下往上的位置（`stack`），載入後 `_restore_stacking()` 照這個順序重新加回場景（同 z 值時後加的在上面），圖片也存 `z`。`load_from_dict()` 先用 `_check_is_a_diagram()` 確認資料形狀才清空畫布（不合就丟 `ValueError`，畫布原封不動），每一筆節點／連線／圖片再各自容錯；清空前先 `to_dict()` 留一份，載入途中還是出錯就放回原樣再往上丟——載入要嘛成功、要嘛什麼都沒變（編輯器存檔寫回上次開的檔案，半途清空的畫布會蓋掉使用者的檔）。圖片的 `source` 不是字串就丟掉。`undo_scope` 用 `try/finally`，本體丟例外也一定收掉快照；圖片來源先看副檔名、拒絕 UNC（`_is_on_this_machine()`）才碰檔案系統；URL 圖片交給 `ImageDownloadThread(QThread)` 下載並快取在 `_pixmap_cache`，undo/redo 重建項目時直接用快取，不會再連一次網路；編輯器關閉時 `let_image_downloads_run_out()` 把還在跑的下載交給 `let_run_out()`，不在 UI 執行緒等 |
 | `diagram_items.py` (960) | 圖元：`DiagramNode`（矩形/圓角/橢圓/菱形 4 種 body + 置中標籤 + 4 個 `ResizeHandle`；填色、框線色、字級收在 frozen dataclass `NodeStyle`）、`DiagramConnection`（三次貝茲 + 箭頭，連到節點邊界交點）、`DiagramImage`。`_EditableLabel` 刻意預設唯讀、雙擊才進編輯（對應 CLAUDE.md 的 Qt 規範）；雙擊時記下場景快照，失去焦點時經 `DiagramScene.record_change()` 記成一步「Edit Text」undo（有改才記）。`add_image()` 把圖放進 `_pixmap_cache`，undo 重建時不必重讀檔案或重新下載。檔案裡的字級經 `_clamped_font_size()`：不是有限數字（`1e999` 讀進來是無限大、NaN、字串）就用預設字級；位置經 `_coordinate()`：不是有限數字就跳過這一筆，超過 `MAX_COORDINATE`（一百萬）就夾回來；連線建好所有東西之後才掛到兩端節點上 |
 | `diagram_mermaid_parser.py` (603) | Mermaid flowchart → diagram dict。切箭頭與 `;` 之前先用 `_protect()` 把引號與括號裡的標籤換成佔位符，解析節點時再 `_restore()`（標籤裡的 `-->`、`;` 不會被當成語法）。含 **Sugiyama 風格自動排版**：分層 → 交叉最小化掃描 → 交叉軸偏移解析 |
@@ -350,7 +350,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 | `header_tools/` | `header_analyzer.py`(318) 安全稽核；`header_merge.py` 依 HTTP 規則合併重複 header（Cookie 用 `; ` 其餘用 `, `） |
 | `jwt_tools/`、`hash_tools/`、`timestamp_tools/`、`regex_tools/`、`query_tools/`、`url_tools/`、`diff_tools/`、`http_reference/`、`json_format/`、`response_inspector/` | 對應 §6 工具分頁的純邏輯。`json_format` 的 Format / Minify 不改內容：數字保留原文（先換成帶隨機標記的佔位字串、輸出後一次換回）、非 ASCII 原樣輸出、同一物件重複的 key 與 `NaN`/`Infinity` 報錯 |
 | `file_process/get_dir_file_list.py` | 遞迴收集指定副檔名的檔案（大小寫不敏感） |
-| `file_process/replace_file.py` | `replace_text(path, text, private=False)`：寫到旁邊的 `<名稱>.saving` 再 `os.replace` 過去，失敗時原檔不動、半成品刪掉；`private` 以 `0600` 建立（存金鑰的檔案用） |
+| `file_process/replace_file.py` | `replace_text(path, text, private=False)`：寫到旁邊的 `<名稱>.saving` 再 `os.replace` 過去，失敗時原檔不動、半成品刪掉；`private` 以 `0600` 建立（存金鑰的檔案用）；`replace_written(path, write)` 給別人寫的檔案（圖片、SVG）：`write` 拿到旁邊的 `<主檔名>.saving<副檔名>`（副檔名不變，看副檔名決定格式的寫入器照樣用），寫完才換上 |
 | `manager/package_manager/` | `PackageManager`（單例 `package_manager`）持有 `syntax_check_list` |
 
 **分層原則**：`utils/` 不 import Qt 或 JEditor，由 `test_utils_has_no_qt.py` 守著，所以全部是不需要視窗的純邏輯測試。
@@ -446,7 +446,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 18. 測試與 CI
 
-- **單元測試** `test/test_utils/` — 111 個 `test_*.py`、1773 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
+- **單元測試** `test/test_utils/` — 111 個 `test_*.py`、1779 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
 - **整合測試** `test/unit_test/start_automation/` — 以 `debug_mode=True` 啟動 IDE，10 秒後自動關閉，驗證啟動流程與 extend tab
 - **CI** `.github/workflows/{dev,stable}.yml` — `unit-tests` job 跑 Windows runner、Python 3.10–3.14 矩陣，3.12 那一腳額外上傳 `coverage-xml` artifact；`sonarcloud` job 跑 ubuntu、`needs: unit-tests`。每日 02:00 排程 + push/PR 觸發。`stable.yml` 另有 `publish` job 負責版號遞增與 PyPI 發布
 - **覆蓋率** `.coveragerc` — `relative_files = True` 是必要的：報告在 Windows 產生、由 Linux 上的 scanner 讀取，路徑不能帶機器資訊。目前整體 60%（`utils/`、`tools_gui`、`dialog` 95–100%；`editor_main` 58%、`menu` 54%；仍低的是 `diagram_editor` 45%、`process_executor` 39%、`connect_gui` 28%）
