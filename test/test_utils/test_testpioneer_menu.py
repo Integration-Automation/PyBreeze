@@ -38,6 +38,9 @@ def chosen(monkeypatch) -> dict:
         def setText(self, _text) -> None:
             """Text is not checked."""
 
+        def setAttribute(self, _attribute) -> None:
+            """Deleted once answered (test_answered_boxes_are_deleted.py checks it)."""
+
         def exec(self) -> None:
             state["told"] += 1
 
