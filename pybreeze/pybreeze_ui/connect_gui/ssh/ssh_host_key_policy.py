@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import threading
+import time
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -34,6 +36,55 @@ def _fingerprint_sha256(key: paramiko.PKey) -> str:
     """Return an OpenSSH-style SHA256 fingerprint (``SHA256:base64`` without padding)."""
     digest = hashlib.sha256(key.asbytes()).digest()
     return "SHA256:" + base64.b64encode(digest).rstrip(b"=").decode("ascii")
+
+
+# Held while a host key is looked up, asked about and stored. Only connect
+# threads take it (both SSH widgets connect off the UI thread), so the UI
+# thread that shows the question never waits on it.
+_DECISION_LOCK = threading.Lock()
+# (host, fingerprint) -> when the user said no: the other half of the same
+# Connect is refused without a second question.
+_RECENT_DECLINES: dict[tuple[str, str], float] = {}
+_DECLINE_REMEMBERED_SECONDS = 10.0
+
+
+def _declined_just_now(hostname: str, fingerprint: str) -> bool:
+    declined_at = _RECENT_DECLINES.get((hostname, fingerprint))
+    return declined_at is not None and time.monotonic() - declined_at < _DECLINE_REMEMBERED_SECONDS
+
+
+def _read_known_hosts() -> paramiko.HostKeys:
+    """The known hosts file as it is now; empty when it is missing or unreadable."""
+    known = paramiko.HostKeys()
+    path = _known_hosts_path()
+    if path.is_file():
+        try:
+            known.load(str(path))
+        except OSError as err:
+            pybreeze_logger.warning("Failed to load PyBreeze known_hosts: %s", err)
+    return known
+
+
+def _is_trusted_on_disk(hostname: str, key: paramiko.PKey) -> bool:
+    """Whether *key* was accepted for *hostname* since this connect read the file."""
+    entry = _read_known_hosts().lookup(hostname)
+    return entry is not None and entry.get(key.get_name()) == key
+
+
+def _store(hostname: str, key_type: str, key: paramiko.PKey) -> None:
+    """Add the key to the file as it is now.
+
+    Not ``client.save_host_keys``: that writes the client's own copy, read at
+    its Connect, over hosts another tab accepted since.
+    """
+    known = _read_known_hosts()
+    known.add(hostname, key_type, key)
+    try:
+        known.save(str(_known_hosts_path()))
+    except OSError as err:
+        pybreeze_logger.warning(
+            "Failed to persist SSH host key for %s: %s", hostname, err
+        )
 
 
 class InteractiveHostKeyPolicy(paramiko.MissingHostKeyPolicy):
@@ -71,21 +122,24 @@ class InteractiveHostKeyPolicy(paramiko.MissingHostKeyPolicy):
             host=hostname, key_type=key_type, fingerprint=fingerprint
         )
 
-        if not host_key_asker().ask(self._parent, title, message):
-            pybreeze_logger.warning(
-                "SSH host key for %s rejected by user (%s)", hostname, fingerprint
-            )
-            raise paramiko.SSHException(
-                f"Host key for {hostname} rejected by user."
-            )
-
-        client.get_host_keys().add(hostname, key_type, key)
-        try:
-            client.save_host_keys(str(_known_hosts_path()))
-        except OSError as err:
-            pybreeze_logger.warning(
-                "Failed to persist SSH host key for %s: %s", hostname, err
-            )
+        # One Connect starts two connects (shell and file tree), each with the
+        # file as it was at the click: one at a time, and each looks at the
+        # file again first, so the user is asked once.
+        with _DECISION_LOCK:
+            if _is_trusted_on_disk(hostname, key):
+                client.get_host_keys().add(hostname, key_type, key)
+                return
+            if _declined_just_now(hostname, fingerprint) or not host_key_asker().ask(
+                    self._parent, title, message):
+                _RECENT_DECLINES[(hostname, fingerprint)] = time.monotonic()
+                pybreeze_logger.warning(
+                    "SSH host key for %s rejected by user (%s)", hostname, fingerprint
+                )
+                raise paramiko.SSHException(
+                    f"Host key for {hostname} rejected by user."
+                )
+            client.get_host_keys().add(hostname, key_type, key)
+            _store(hostname, key_type, key)
         pybreeze_logger.info(
             "SSH host key for %s accepted and stored (%s)", hostname, fingerprint
         )

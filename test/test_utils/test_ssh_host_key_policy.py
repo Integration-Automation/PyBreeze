@@ -1,0 +1,116 @@
+"""An unknown SSH host key: asked about once per Connect, and never written away."""
+from __future__ import annotations
+
+import os
+
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+import threading
+
+import paramiko
+import pytest
+from PySide6.QtWidgets import QApplication
+
+from pybreeze.extend_multi_language.update_language_dict import update_language_dict
+from pybreeze.pybreeze_ui.connect_gui.ssh import ssh_host_key_policy as policy_mod
+
+
+@pytest.fixture(scope="module")
+def app():
+    instance = QApplication.instance() or QApplication([])
+    update_language_dict()
+    return instance
+
+
+@pytest.fixture(scope="module")
+def keys():
+    return paramiko.RSAKey.generate(1024), paramiko.RSAKey.generate(1024)
+
+
+@pytest.fixture()
+def asked(app, tmp_path, monkeypatch):
+    """Answers every question with ``asked["answer"]`` and counts them."""
+    state = {"answer": True, "count": 0}
+
+    class Asker:
+        def ask(self, _parent, _title, _message) -> bool:
+            state["count"] += 1
+            return state["answer"]
+
+    monkeypatch.setattr(policy_mod, "pybreeze_data_dir", lambda: tmp_path)
+    monkeypatch.setattr(policy_mod, "host_key_asker", Asker)
+    monkeypatch.setattr(policy_mod, "_RECENT_DECLINES", {})
+    return state
+
+
+def _meet(hostname: str, key) -> paramiko.SSHClient:
+    """What a connect does on meeting *key*: the client read the file at its Connect."""
+    client = paramiko.SSHClient()
+    policy_mod.InteractiveHostKeyPolicy().missing_host_key(client, hostname, key)
+    return client
+
+
+def test_both_halves_of_one_connect_ask_once(asked, keys):
+    # The shell and the file tree each met the unknown key; there used to be
+    # two identical questions, one on top of the other.
+    _meet("host.example", keys[0])
+    second = _meet("host.example", keys[0])
+
+    assert asked["count"] == 1
+    assert second.get_host_keys().lookup("host.example")
+
+
+def test_a_no_is_not_asked_again_by_the_other_half(asked, keys):
+    asked["answer"] = False
+
+    for _ in range(2):
+        with pytest.raises(paramiko.SSHException):
+            _meet("host.example", keys[0])
+
+    assert asked["count"] == 1
+
+
+def test_two_tabs_accepting_two_hosts_keep_both(asked, keys):
+    # Each client saved its own copy of the file, read at its Connect, so the
+    # last one to save wrote the other host away.
+    first, second = paramiko.SSHClient(), paramiko.SSHClient()
+    policy = policy_mod.InteractiveHostKeyPolicy()
+    policy.missing_host_key(first, "one.example", keys[0])
+    policy.missing_host_key(second, "two.example", keys[1])
+
+    known = paramiko.HostKeys(str(policy_mod._known_hosts_path()))
+    assert known.lookup("one.example") and known.lookup("two.example")
+
+
+def test_another_key_for_a_known_host_is_still_asked_about(asked, keys):
+    _meet("host.example", keys[0])
+
+    _meet("host.example", keys[1])
+
+    assert asked["count"] == 2
+
+
+def test_the_questions_come_one_at_a_time(asked, keys, monkeypatch):
+    inside = threading.Event()
+    release = threading.Event()
+    overlapping: list = []
+
+    class SlowAsker:
+        def ask(self, *_args) -> bool:
+            overlapping.append(inside.is_set())
+            inside.set()
+            release.wait(5)
+            inside.clear()
+            return True
+
+    monkeypatch.setattr(policy_mod, "host_key_asker", SlowAsker)
+    workers = [threading.Thread(target=_meet, args=(name, keys[0]))
+               for name in ("one.example", "two.example")]
+    for worker in workers:
+        worker.start()
+    inside.wait(5)
+    release.set()
+    for worker in workers:
+        worker.join(5)
+
+    assert overlapping == [False, False]
