@@ -78,3 +78,13 @@ class TestInputNestedTooDeep:
 
         with pytest.raises(ITEJsonException):
             minify_json(self._DEEP)
+
+
+def test_an_integer_past_the_conversion_limit_is_a_json_error():
+    from pybreeze.utils.json_format.json_process import minify_json
+
+    huge = '{"n": ' + "9" * 5000 + "}"
+    with pytest.raises(ITEJsonException):
+        reformat_json(huge)
+    with pytest.raises(ITEJsonException):
+        minify_json(huge)

@@ -120,3 +120,9 @@ class TestEmptyInput:
         assert analysis.status is None
         assert analysis.headers == {}
         assert analysis.body == ""
+
+
+def test_a_body_nested_past_the_recursion_limit_is_not_json():
+    analysis = analyze_response("HTTP/1.1 200 OK\n\n" + "[" * 100000 + "]" * 100000)
+
+    assert analysis.pretty_body is None

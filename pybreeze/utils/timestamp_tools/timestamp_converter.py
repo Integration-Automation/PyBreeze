@@ -67,12 +67,14 @@ def _from_iso(text: str) -> datetime:
     normalised = text[:-1] + "+00:00" if text.endswith("Z") else text
     try:
         parsed = datetime.fromisoformat(normalised)
-    except ValueError as error:
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        # Moving 0001-01-01 +01:00 (or 9999-12-31 -01:00) to UTC leaves the
+        # range datetime can hold: OverflowError, not ValueError.
+        return parsed.astimezone(timezone.utc)
+    except (ValueError, OverflowError) as error:
         pybreeze_logger.error(unrecognized_timestamp_error)
         raise TimestampParseException(unrecognized_timestamp_error) from error
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed.astimezone(timezone.utc)
 
 
 def _parse(text: str) -> datetime:

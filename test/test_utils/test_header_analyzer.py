@@ -188,3 +188,8 @@ class TestAnalysisShape:
 
     def test_text_without_headers_yields_no_fields(self):
         assert analyze_headers("just some prose").fields == []
+
+
+def test_a_max_age_too_long_for_int_is_long_enough():
+    assert "hsts_weak_max_age" not in _codes(
+        "Strict-Transport-Security: max-age=" + "9" * 5000)

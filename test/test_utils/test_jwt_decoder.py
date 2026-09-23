@@ -107,3 +107,12 @@ class TestHumanizedTimestampClaims:
     def test_nbf_and_auth_time(self):
         payload = {"nbf": 1609459200, "auth_time": 1609459200}
         assert set(humanized_timestamp_claims(payload)) == {"nbf", "auth_time"}
+
+
+def test_a_payload_nested_past_the_recursion_limit_is_a_decode_error():
+    def segment(obj_text: str) -> str:
+        return base64.urlsafe_b64encode(obj_text.encode("utf-8")).decode("ascii").rstrip("=")
+
+    token = ".".join([segment('{"alg": "none"}'), segment("[" * 100000 + "]" * 100000), ""])
+    with pytest.raises(JwtDecodeException):
+        decode_jwt(token)

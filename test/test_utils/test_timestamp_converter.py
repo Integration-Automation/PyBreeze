@@ -82,3 +82,11 @@ class TestConvertErrors:
     def test_out_of_range_epoch_raises(self):
         with pytest.raises(TimestampParseException):
             convert_timestamp("1" * 40)
+
+
+class TestInstantsDatetimeCannotHold:
+    @pytest.mark.parametrize("text", ["0001-01-01T00:00:00+01:00", "9999-12-31T23:30:00-01:00"])
+    def test_a_date_that_leaves_the_range_in_utc_is_a_parse_error(self, text):
+        # In UTC these fall before year 1 or after year 9999: OverflowError, not ValueError.
+        with pytest.raises(TimestampParseException):
+            convert_timestamp(text)

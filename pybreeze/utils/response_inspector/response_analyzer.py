@@ -92,10 +92,10 @@ def _parse_head_and_body(text: str) -> tuple[int | None, dict[str, str], str]:
 def _pretty_json(body: str) -> str | None:
     """Return *body* pretty-printed if it is JSON, else ``None`` (key order kept)."""
     try:
-        parsed = json.loads(body)
-    except (ValueError, TypeError):
+        return json.dumps(json.loads(body), indent=4, ensure_ascii=False)
+    # RecursionError: a body nested past the recursion limit
+    except (ValueError, TypeError, RecursionError):
         return None
-    return json.dumps(parsed, indent=4, ensure_ascii=False)
 
 
 def _find_jwts(text: str) -> list[JwtFinding]:

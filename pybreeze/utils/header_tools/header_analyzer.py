@@ -39,6 +39,8 @@ _SET_COOKIE_HEADER = "set-cookie"
 # An HSTS policy shorter than 180 days is too short to survive a browser restart
 # cycle and is below what the preload list accepts.
 _MIN_HSTS_MAX_AGE = 15_552_000
+# More digits than this is centuries of max-age: long enough, without int()
+_MAX_AGE_DIGITS = 18
 
 # Headers that are legitimately sent more than once, so a repeat is not a finding
 _REPEATABLE_HEADERS = frozenset({
@@ -177,6 +179,9 @@ def _check_content_type_options(header: HeaderField) -> list[HeaderFinding]:
 def _check_hsts(header: HeaderField) -> list[HeaderFinding]:
     """Flag an HSTS policy whose ``max-age`` is missing or too short to matter."""
     match = _MAX_AGE_RE.search(header.value)
+    # A value too long for int() to convert is far past any minimum anyway.
+    if match is not None and len(match.group(1)) > _MAX_AGE_DIGITS:
+        return []
     max_age = int(match.group(1)) if match is not None else 0
     if max_age >= _MIN_HSTS_MAX_AGE:
         return []

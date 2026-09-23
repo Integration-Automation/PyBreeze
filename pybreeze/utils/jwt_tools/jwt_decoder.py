@@ -60,8 +60,9 @@ def _decode_segment(segment: str) -> dict:
     try:
         raw = base64.urlsafe_b64decode(segment + padding)
         decoded = json.loads(raw.decode("utf-8"))
-    # binascii.Error and UnicodeDecodeError both derive from ValueError.
-    except ValueError as error:
+    # binascii.Error and UnicodeDecodeError both derive from ValueError; a
+    # payload nested past the recursion limit raises RecursionError.
+    except (ValueError, RecursionError) as error:
         pybreeze_logger.error(jwt_segment_decode_error)
         raise JwtDecodeException(jwt_segment_decode_error) from error
     if not isinstance(decoded, dict):
