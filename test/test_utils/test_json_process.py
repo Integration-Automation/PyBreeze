@@ -80,11 +80,56 @@ class TestInputNestedTooDeep:
             minify_json(self._DEEP)
 
 
-def test_an_integer_past_the_conversion_limit_is_a_json_error():
+def test_an_integer_past_the_conversion_limit_comes_back_as_written():
+    # Converted to int, it raised ValueError past Python's 4300-digit limit;
+    # it is valid JSON, and the number is now kept as its own text
     from pybreeze.utils.json_format.json_process import minify_json
 
-    huge = '{"n": ' + "9" * 5000 + "}"
-    with pytest.raises(ITEJsonException):
-        reformat_json(huge)
-    with pytest.raises(ITEJsonException):
-        minify_json(huge)
+    digits = "9" * 5000
+    assert minify_json('{"n": ' + digits + "}") == '{"n":' + digits + "}"
+    assert digits in reformat_json('{"n": ' + digits + "}")
+
+
+class TestTheDataIsNotChanged:
+    """Format and Minify re-lay the JSON out; what it says stays the same."""
+
+    @pytest.mark.parametrize("number", [
+        "1e400", "12345678901234567890123.0", "0.10000000000000000555", "1.50", "2E3", "-0.0", "1e-400"])
+    def test_a_number_is_written_as_it_was(self, number):
+        from pybreeze.utils.json_format.json_process import minify_json
+
+        # float() made 1e400 Infinity, which is not JSON, and rounded the rest
+        assert minify_json(f"[{number}]") == f"[{number}]"
+        assert f"    {number}\n" in reformat_json(f"[{number}]")
+
+    def test_characters_are_written_as_they_were(self):
+        from pybreeze.utils.json_format.json_process import minify_json
+
+        assert minify_json('{"n": "中文"}') == '{"n":"中文"}'
+        assert '"中文"' in reformat_json('{"n": "中文"}')
+
+    def test_a_string_that_looks_like_a_placeholder_stays_a_string(self):
+        from pybreeze.utils.json_format.json_process import minify_json
+
+        assert minify_json('["\\u0000abc:0\\u0000", 5]') == '["\\u0000abc:0\\u0000",5]'
+
+    def test_a_key_given_twice_is_reported_not_dropped(self):
+        from pybreeze.utils.json_format.json_process import minify_json
+
+        with pytest.raises(ITEJsonException) as raised:
+            minify_json('{"a": 1, "a": 2}')
+        assert "'a'" in str(raised.value)
+        with pytest.raises(ITEJsonException):
+            reformat_json('{"a": 1, "a": 2}')
+
+    def test_the_same_key_in_two_objects_is_fine(self):
+        from pybreeze.utils.json_format.json_process import minify_json
+
+        assert minify_json('[{"a": 1}, {"a": 2}]') == '[{"a":1},{"a":2}]'
+
+    @pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+    def test_nan_and_infinity_are_not_json(self, constant):
+        from pybreeze.utils.json_format.json_process import minify_json
+
+        with pytest.raises(ITEJsonException):
+            minify_json(f"[{constant}]")

@@ -32,6 +32,7 @@ not_install_package_error: str = "required package not installed"
 # json exception
 cant_reformat_json_error: str = "can't reformat JSON: is the type correct?"
 wrong_json_data_error: str = "can't parse JSON"
+json_duplicate_key_error: str = "the JSON gives the key {key!r} twice in one object"
 
 # XML
 cant_read_xml_error: str = "can't read XML"
