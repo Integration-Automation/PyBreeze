@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-173 | 2026-09-24 | Name every line ending the diff tool compares, and a changed line that starts with dashes | #fix #tools | [2026-09](2026-09.md) |
 | U-20260923-172 | 2026-09-24 | Keep a query's order in the URL Builder and refuse a port written in other digits | #fix #tools | [2026-09](2026-09.md) |
 | U-20260923-171 | 2026-09-24 | Remove fourteen error messages nothing raises | #refactor | [2026-09](2026-09.md) |
 | U-20260923-170 | 2026-09-24 | Remove an unused upload helper and type the output actions' name arguments | #refactor #tools | [2026-09](2026-09.md) |
@@ -253,4 +254,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 190 |
+| [2026-09.md](2026-09.md) | 2026-09 | 191 |

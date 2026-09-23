@@ -111,6 +111,30 @@ class TestOnlyTheLineEndingsDiffer:
         assert diff_summary("a", "a\nb").added == 1
 
 
+class TestAnotherLineSeparator:
+    """splitlines also ends a line at U+2028, \\v, \\f, ...: the diff must name it."""
+
+    def test_a_line_separator_is_named_not_mistaken_for_no_newline(self):
+        diff = unified_diff("a b", "a\nb")
+
+        assert "-a  (line ends with '\\u2028')" in diff
+        assert "No newline" not in diff
+
+    def test_two_separators_that_look_alike_are_told_apart(self):
+        diff = unified_diff("a\x0bb", "a\x0cb")
+
+        assert "-a  (line ends with '\\x0b')" in diff
+        assert "+a  (line ends with '\\x0c')" in diff
+
+
+def test_a_removed_line_starting_with_dashes_gets_its_ending_named():
+    # "---x" was taken for the diff's header line and left without a note
+    diff = unified_diff("--x\r\n", "--x\n")
+
+    assert diff.splitlines()[:2] == ["--- expected", "+++ actual"]
+    assert "---x  (line ends with '\\r\\n')" in diff
+
+
 _LINES = st.lists(st.sampled_from(["a", "b", "c", "", "d e"]), max_size=25)
 
 
@@ -125,7 +149,7 @@ def test_the_diff_is_the_one_difflib_writes(left, right):
 
     left_text, right_text = "\n".join(left), "\n".join(right)
     left_lines, right_lines = _line_lists(left_text, right_text)
-    expected = "\n".join(_shown(line) for line in difflib.unified_diff(
-        left_lines, right_lines, "expected", "actual", lineterm="", n=3))
+    written = list(difflib.unified_diff(left_lines, right_lines, "expected", "actual", lineterm="", n=3))
+    expected = "\n".join(written[:2] + [_shown(line) for line in written[2:]])
 
     assert compare_texts(left_text, right_text).diff == expected

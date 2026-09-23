@@ -14,6 +14,8 @@ _LEFT_LABEL = "expected"
 _RIGHT_LABEL = "actual"
 # Lines of unchanged context kept around each change in the unified diff
 _CONTEXT_LINES = 3
+# The "--- left" and "+++ right" lines a non-empty unified diff starts with
+_HEADER_LINES = 2
 # diff's own note under a last line that has no newline
 _NO_NEWLINE_MARK = "\\ No newline at end of file"
 
@@ -47,15 +49,16 @@ def _line_lists(left: str, right: str) -> tuple[list[str], list[str]]:
 
 
 def _shown(diff_line: str) -> str:
-    """One line of the unified diff, its line ending taken off for display.
+    """One line of the unified diff's body, its line ending taken off for display.
 
     An added or removed line with no newline gets diff's own marker on the
-    next line; one with another ending (``\\r\\n``, a lone ``\\r``) names it.
+    next line; one with another ending (``\\r\\n``, a lone ``\\r``, or any other
+    separator ``str.splitlines`` ends a line at, such as U+2028) names it.
     Unchanged context lines are shown without comment.
     """
-    content = diff_line.rstrip("\r\n")
+    content = diff_line.splitlines()[0] if diff_line else ""
     ending = diff_line[len(content):]
-    if diff_line[:1] not in ("+", "-") or diff_line.startswith(("+++", "---")) or ending == "\n":
+    if diff_line[:1] not in ("+", "-") or ending == "\n":
         return content
     if not ending:
         return f"{content}\n{_NO_NEWLINE_MARK}"
@@ -126,8 +129,10 @@ def compare_texts(
             removed += left_end - left_start
         if tag in ("replace", "insert"):
             added += right_end - right_start
-    diff = "\n".join(
-        _shown(line) for line in _unified_lines(matcher, left_lines, right_lines, (left_label, right_label)))
+    lines = _unified_lines(matcher, left_lines, right_lines, (left_label, right_label))
+    # The two header lines are shown as they are: told apart by position, not
+    # by their "---"/"+++", which a removed "--x" or an added "++x" also has
+    diff = "\n".join(lines[:_HEADER_LINES] + [_shown(line) for line in lines[_HEADER_LINES:]])
     return Comparison(DiffSummary(added=added, removed=removed, is_equal=left == right), diff)
 
 
