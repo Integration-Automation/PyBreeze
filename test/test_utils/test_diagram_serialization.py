@@ -88,6 +88,37 @@ class TestSceneLoadRobustness:
         # Only the valid self-connection survives.
         assert len(scene.get_all_connections()) == 1
 
+    @pytest.mark.parametrize("source", [5, None, ["a.png"], {"x": 1}])
+    def test_an_image_source_that_is_not_text_is_dropped(self, qt_app, source):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene
+
+        scene = DiagramScene()
+        scene.load_from_dict({
+            "nodes": [{"id": 0, "x": 0, "y": 0, "text": "Kept"}],
+            "images": [{"x": 0, "y": 0, "w": 10, "h": 10, "source": source}],
+        })
+
+        # It used to raise TypeError after the canvas was cleared.
+        assert [node.text() for node in scene.get_all_nodes()] == ["Kept"]
+        (image,) = scene.get_all_images()
+        assert image.source() == ""
+
+    def test_a_load_that_fails_part_way_leaves_the_canvas_as_it_was(self, qt_app, monkeypatch):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene
+
+        scene = DiagramScene()
+        scene.load_from_dict({"nodes": [{"id": 0, "x": 0, "y": 0, "text": "Before"}]})
+
+        def broken(_image_dicts):
+            raise RuntimeError("something nobody foresaw")
+
+        monkeypatch.setattr(scene, "_load_images", broken)
+        with pytest.raises(RuntimeError):
+            scene.load_from_dict({"nodes": [{"id": 0, "x": 0, "y": 0, "text": "After"}], "images": []})
+        monkeypatch.undo()
+
+        assert [node.text() for node in scene.get_all_nodes()] == ["Before"]
+
     def test_invalid_connection_style_falls_back_to_solid(self, qt_app):
         from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene
         from pybreeze.pybreeze_ui.diagram_editor.diagram_items import ConnectionStyle

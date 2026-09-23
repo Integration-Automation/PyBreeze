@@ -873,10 +873,13 @@ class DiagramImage(QGraphicsRectItem):
 
     @classmethod
     def from_dict(cls, data: dict) -> DiagramImage:
+        source = data.get("source", "")
         img = cls(
             x=data["x"], y=data["y"],
             w=data.get("w", 200), h=data.get("h", 200),
-            source=data.get("source", ""),
+            # A file is anyone's to edit: a source that is not text is dropped,
+            # not carried on into a path lookup that raises mid-load.
+            source=source if isinstance(source, str) else "",
         )
         caption = data.get("caption", "")
         if caption:

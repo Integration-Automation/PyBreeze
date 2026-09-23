@@ -721,8 +721,9 @@ class DiagramScene(QGraphicsScene):
                 pybreeze_logger.debug("Skipping malformed diagram image %r: %s", img_d, err)
                 continue
             self.addItem(img)
-            # Try to reload pixmap from source
-            source = img_d.get("source", "")
+            # Try to reload pixmap from source; from_dict has already dropped
+            # one that is not text, which raised here after the canvas was cleared
+            source = img.source()
             if source:
                 self._try_load_image_source(img, source)
 
@@ -804,11 +805,21 @@ class DiagramScene(QGraphicsScene):
         canvas half-way would be written over the user's own file by the next
         save.
 
+        Each entry is loaded on its own guard, and should anything still fail
+        part-way, the canvas is put back as it was before the error goes on:
+        a load either happens or changes nothing.
+
         :param data: a diagram, as :meth:`to_dict` writes it
         :raises ValueError: when *data* is not a diagram; nothing is cleared then
         """
         self._check_is_a_diagram(data)
+        previous = self.to_dict()
         self._clear_items()
-        self._load_items(data)
+        try:
+            self._load_items(data)
+        except Exception:  # restores the canvas, then re-raises
+            self._clear_items()
+            self._load_items(previous)
+            raise
         self.undo_stack.clear()
         self.item_count_changed.emit()
