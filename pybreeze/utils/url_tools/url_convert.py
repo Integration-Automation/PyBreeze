@@ -11,10 +11,12 @@ from urllib.parse import SplitResult, urlsplit, urlunsplit
 from pybreeze.utils.exception.exception_tags import (
     invalid_json_for_url_error,
     invalid_url_components_error,
+    json_duplicate_key_error,
     unreadable_url_error,
     url_port_out_of_range_error,
 )
 from pybreeze.utils.exception.exceptions import QueryConvertException, UrlConvertException
+from pybreeze.utils.json_format.json_process import DuplicateKeyError
 from pybreeze.utils.json_format.view_safe import dumps_for_view
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.query_tools.query_convert import (
@@ -191,6 +193,10 @@ def json_to_url(json_text: str) -> str:
     try:
         # Numbers as written: a query value 1E3 went into the URL as 1000.0
         components = load_json_verbatim(json_text)
+    except DuplicateKeyError as error:
+        message = json_duplicate_key_error.format(key=error.args[0])
+        pybreeze_logger.error(message)
+        raise UrlConvertException(message) from error
     # RecursionError: JSON nested deeper than the parser goes, which escaped
     # the tab's slot
     except (ValueError, RecursionError) as error:

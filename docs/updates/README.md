@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-182 | 2026-09-24 | Refuse a query byte that is not UTF-8 and a JSON key given twice instead of losing them | #fix #tools | [2026-09](2026-09.md) |
 | U-20260923-181 | 2026-09-24 | Show a response's status when its code is not a registered one | #fix #tools | [2026-09](2026-09.md) |
 | U-20260923-180 | 2026-09-24 | End a pasted JWT where it ends, and find one whose header is not written eyJ | #fix #tools | [2026-09](2026-09.md) |
 | U-20260923-179 | 2026-09-24 | Lay out the Response Inspector's body and a JWT's segments as JSON Format does | #fix #tools | [2026-09](2026-09.md) |
@@ -262,4 +263,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 199 |
+| [2026-09.md](2026-09.md) | 2026-09 | 200 |

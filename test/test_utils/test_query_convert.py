@@ -119,3 +119,22 @@ class TestValuesAsWritten:
         # The UnicodeEncodeError escaped the tab's slot
         with pytest.raises(QueryConvertException):
             json_to_query('{"q": "\ud83d"}')
+
+
+class TestNothingIsLostWithoutAWord:
+    def test_a_percent_escape_that_is_not_utf8_is_refused(self):
+        # It became U+FFFD and the byte was gone
+        with pytest.raises(QueryConvertException, match="not UTF-8"):
+            query_to_json("a=%B0")
+
+    def test_a_repeated_json_key_is_refused(self):
+        # {"a": 1, "a": 2} went out as a=2; a list is how a key repeats
+        with pytest.raises(QueryConvertException, match="twice"):
+            json_to_query('{"a": 1, "a": 2}')
+
+    def test_a_repeated_url_part_is_refused(self):
+        from pybreeze.utils.exception.exceptions import UrlConvertException
+        from pybreeze.utils.url_tools.url_convert import json_to_url
+
+        with pytest.raises(UrlConvertException, match="twice"):
+            json_to_url('{"scheme": "http", "host": "a", "host": "b"}')

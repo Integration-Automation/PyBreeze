@@ -20,8 +20,8 @@ from pybreeze.utils.json_format.view_safe import escape_for_view
 from pybreeze.utils.logging.logger import pybreeze_logger
 
 
-class _DuplicateKey(ValueError):
-    """A key given twice in one object."""
+class DuplicateKeyError(ValueError):
+    """A key given twice in one JSON object; ``args[0]`` is the key."""
 
 
 class _Numbers:
@@ -60,12 +60,17 @@ def _refuse_constant(name: str) -> None:
     raise ValueError(f"{name} is not JSON")
 
 
-def _unique_pairs(pairs: list[tuple[str, object]]) -> dict:
-    """An object's members as a dict, refusing a key given twice."""
+def unique_pairs(pairs: list[tuple[str, object]]) -> dict:
+    """An object's members as a dict, refusing a key given twice (``object_pairs_hook``).
+
+    ``json.loads`` keeps a repeated key's last value without a word.
+
+    :raises DuplicateKeyError: for a key given twice
+    """
     members: dict = {}
     for key, value in pairs:
         if key in members:
-            raise _DuplicateKey(key)
+            raise DuplicateKeyError(key)
         members[key] = value
     return members
 
@@ -74,19 +79,19 @@ def _parse(json_string: str, numbers: _Numbers) -> object:
     """Parse *json_string*, numbers held as their text.
 
     :raises ValueError: when it is not JSON, repeats a key in one object
-        (``_DuplicateKey``), or uses ``NaN`` or ``Infinity``
+        (``DuplicateKeyError``), or uses ``NaN`` or ``Infinity``
     :raises RecursionError: when it is nested past the recursion limit
     """
     return loads(
         json_string, parse_float=numbers.hold, parse_int=numbers.hold,
-        parse_constant=_refuse_constant, object_pairs_hook=_unique_pairs)
+        parse_constant=_refuse_constant, object_pairs_hook=unique_pairs)
 
 
 def _load(json_string: str, numbers: _Numbers) -> object:
     """Parse *json_string*, numbers held as their text; raise ``ITEJsonException`` when it is not JSON."""
     try:
         return _parse(json_string, numbers)
-    except _DuplicateKey as error:
+    except DuplicateKeyError as error:
         message = json_duplicate_key_error.format(key=error.args[0])
         pybreeze_logger.error(message)
         raise ITEJsonException(message) from error

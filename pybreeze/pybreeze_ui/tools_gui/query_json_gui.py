@@ -63,8 +63,16 @@ class QueryJsonGUI(QWidget):
             self.output_edit.setPlainText(
                 language_wrapper.language_word_dict.get("query_json_empty_hint"))
             return
+        try:
+            result = query_to_json(text)
+        except QueryConvertException as error:
+            pybreeze_logger.info("query_json_gui.py to-json failed: %r", error)
+            self._valid_output = False
+            self.output_edit.setPlainText(
+                language_wrapper.language_word_dict.get("query_json_error").format(error=str(error)))
+            return
         self._valid_output = True
-        self.output_edit.setPlainText(query_to_json(text))
+        self.output_edit.setPlainText(result)
 
     def convert_to_query(self) -> None:
         """Convert the input JSON to a query string."""
