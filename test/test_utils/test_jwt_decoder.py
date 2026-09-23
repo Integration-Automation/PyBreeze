@@ -190,3 +190,30 @@ class TestTheSegmentsAsShown:
             shown_json(decoded.payload_json, decoded.payload).index('"z"')
         unsorted = shown_json(decoded.payload_json, decoded.payload, sort_keys=False)
         assert unsorted.index('"z"') < unsorted.index('"a"')
+
+
+class TestWhereTheTokenEnds:
+    TOKEN = _make_jwt({"alg": "none"}, {"a": 1})
+
+    def test_the_line_after_it_is_not_part_of_the_signature(self):
+        # All whitespace went: the signature read "signextline"
+        assert decode_jwt(self.TOKEN + "\nnext line").signature == "sig"
+
+    def test_a_token_wrapped_across_lines_is_joined(self):
+        wrapped = f'"{self.TOKEN[:20]}\n    {self.TOKEN[20:]}",'
+        assert decode_jwt(wrapped).payload == {"a": 1}
+
+    def test_a_fourth_segment_is_refused_not_dropped(self):
+        with pytest.raises(JwtDecodeException, match="three"):
+            decode_jwt(self.TOKEN + ".extra")
+
+    def test_a_closing_full_stop_is_not_a_segment(self):
+        assert decode_jwt(f"The token is {self.TOKEN}.").signature == "sig"
+
+
+def test_a_header_whose_encoding_is_not_eyj_is_found_after_bearer():
+    # '{ "alg"' encodes to "eyAi", '{\n' to "ewo": only "eyJ" was looked for
+    header = base64.urlsafe_b64encode(b'{ "alg": "none"}').decode("ascii").rstrip("=")
+    token = f"{header}.{_segment({'a': 1})}.s"
+
+    assert decode_jwt(f"Bearer {token}").header == {"alg": "none"}

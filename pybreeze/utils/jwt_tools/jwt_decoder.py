@@ -32,7 +32,14 @@ _JWT_SEGMENT_COUNT = 3
 _TIMESTAMP_CLAIMS = ("exp", "iat", "nbf", "auth_time")
 # Matches a JWT-looking token anywhere in a larger text, such as the value of an
 # ``Authorization: Bearer ...`` header. The signature segment may be empty.
-JWT_TOKEN_RE = re.compile(r"eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*")
+# A header is a JSON object, so its encoding starts "ey" ('{"') or "ew" ('{'
+# then a space, tab or line break), not always "eyJ". The token must start and
+# end where the match does: not inside a word or another token (its payload
+# starts "ey" too), and not before a fourth segment (a sentence's closing full
+# stop is fine).
+JWT_TOKEN_RE = re.compile(
+    r"(?<![A-Za-z0-9_.-])e[wy][A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*"
+    r"(?![A-Za-z0-9_-]|\.[A-Za-z0-9_-])")
 
 
 @dataclass
@@ -123,11 +130,26 @@ def _the_token(text: str) -> str:
     ``Authorization`` header, the quotes of a JSON string, line breaks where it
     wrapped. Those used to reach the decoder, and ``Bearer eyJ...`` always failed.
     """
-    compact = "".join(text.split())
-    if JWT_TOKEN_RE.fullmatch(compact):
-        return compact
-    found = find_tokens(compact)
-    return found[0] if found else compact
+    unwrapped = _unwrapped(text)
+    if JWT_TOKEN_RE.fullmatch(unwrapped):
+        return unwrapped
+    found = find_tokens(unwrapped)
+    return found[0] if found else unwrapped
+
+
+def _unwrapped(text: str) -> str:
+    """*text* with the line breaks a wrapped token was cut at taken out.
+
+    A line joins the one above when it is a single word: a token wrapped
+    across lines has no space inside, while a line of other text does. All
+    whitespace used to go, so the text after a token (``next line``) became
+    part of its signature.
+    """
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    joined = lines[0] if lines else ""
+    for line in lines[1:]:
+        joined += line if len(line.split()) == 1 else f"\n{line}"
+    return joined
 
 
 def find_tokens(text: str) -> list[str]:

@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-180 | 2026-09-24 | End a pasted JWT where it ends, and find one whose header is not written eyJ | #fix #tools | [2026-09](2026-09.md) |
 | U-20260923-179 | 2026-09-24 | Lay out the Response Inspector's body and a JWT's segments as JSON Format does | #fix #tools | [2026-09](2026-09.md) |
 | U-20260923-178 | 2026-09-24 | Write JSON a tool shows so that its text box gives it back as it was | #fix #tools | [2026-09](2026-09.md) |
 | U-20260923-177 | 2026-09-24 | Check that every header finding and level has a message | #test #tools #i18n | [2026-09](2026-09.md) |
@@ -260,4 +261,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 197 |
+| [2026-09.md](2026-09.md) | 2026-09 | 198 |
