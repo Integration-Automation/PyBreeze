@@ -1,8 +1,10 @@
 """Mailing a run's report: off the UI thread, and every failure logged rather than raised."""
 from __future__ import annotations
 
+import os
 import sys
 import threading
+import time
 import types
 from unittest.mock import MagicMock
 
@@ -90,7 +92,7 @@ class TestSendAfterTest:
         sending = threading.Event()
         release = threading.Event()
 
-        def slow_send(_path) -> None:
+        def slow_send(_path, *, not_before=None) -> None:
             sending.set()
             release.wait(5)
 
@@ -132,10 +134,11 @@ class TestSendReport:
         assert "mail user" in _logged(logger)
 
     def test_a_missing_report_means_no_connection(self, mail_thunder, logger, tmp_path):
-        mail.send_report(str(tmp_path / "absent.html"))
+        reason = mail.send_report(str(tmp_path / "absent.html"))
 
         assert FakeSmtp.instances == []
-        assert "not found" in _logged(logger)
+        assert reason == "the run wrote no absent.html"
+        assert reason in _logged(logger)
 
     def test_a_failed_login_is_logged_and_the_connection_closed(self, mail_thunder, logger, report):
         FakeSmtp.logs_in = False
@@ -177,3 +180,65 @@ class TestSendReport:
         mail.send_report(report)
 
         assert "je_mail_thunder" in _logged(logger)
+
+
+class TestAReportFromAnEarlierRun:
+    """A run that wrote no report used to mail the one an earlier run left."""
+
+    def test_a_report_older_than_the_run_is_not_sent(self, mail_thunder, logger, report):
+        an_hour_ago = time.time() - 3600
+        os.utime(report, (an_hour_ago, an_hour_ago))
+
+        reason = mail.send_report(report, not_before=time.time())
+
+        assert FakeSmtp.instances == []
+        assert "earlier run" in reason
+
+    def test_a_report_the_run_wrote_is_sent(self, mail_thunder, logger, report):
+        assert mail.send_report(report, not_before=time.time() - 1) is None
+        assert len(FakeSmtp.instances[0].sent) == 1
+
+    def test_a_folder_in_its_place_is_not_sent(self, mail_thunder, logger, tmp_path):
+        folder = tmp_path / "default_name.html"
+        folder.mkdir()
+
+        assert mail.send_report(str(folder)) == "default_name.html is not a file"
+
+
+class TestTheAnswer:
+    """What send_report says, for the run window: never a path, address or server reply."""
+
+    def test_sent(self, mail_thunder, logger, report):
+        assert mail.send_report(report) is None
+
+    def test_no_user(self, mail_thunder, logger, report):
+        mail_thunder.read_output_content = lambda: {}
+
+        assert mail.send_report(report) == "no mail user is set"
+
+    def test_login_failed(self, mail_thunder, logger, report):
+        FakeSmtp.logs_in = False
+
+        assert mail.send_report(report) == "the mail server login failed"
+
+    def test_send_failed_names_only_the_error_kind(self, mail_thunder, logger, report):
+        FakeSmtp.send_error = ConnectionRefusedError("refused by mail.example.com for tester@example.com")
+
+        reason = mail.send_report(report)
+
+        assert reason == "sending failed (ConnectionRefusedError)"
+
+    def test_without_je_mail_thunder(self, monkeypatch, logger, report):
+        monkeypatch.setitem(sys.modules, "je_mail_thunder", None)
+
+        assert mail.send_report(report) == "je_mail_thunder is not installed"
+
+    def test_the_answer_reaches_on_done(self, monkeypatch):
+        answered = threading.Event()
+        answers: list = []
+        monkeypatch.setattr(mail, "send_report", lambda _path, *, not_before=None: "why")
+
+        mail.send_after_test("report.html", on_done=lambda reason: (answers.append(reason), answered.set()))
+
+        assert answered.wait(5)
+        assert answers == ["why"]

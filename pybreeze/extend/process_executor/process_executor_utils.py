@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import json
+import os
+import time
+from collections.abc import Callable
 from typing import TYPE_CHECKING
 
+from PySide6.QtCore import QObject, Signal
 from PySide6.QtWidgets import QFileDialog, QMessageBox
 from je_editor import EditorWidget, language_wrapper
 
 from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
-from pybreeze.extend.mail_thunder_extend.mail_thunder_setting import send_after_test
+from pybreeze.extend.mail_thunder_extend.mail_thunder_setting import DEFAULT_REPORT_PATH, send_after_test
 from pybreeze.extend.process_executor.python_task_process_manager import TaskProcessManager
 from pybreeze.utils.exception.exception_tags import wrong_test_data_format_exception_tag
 from pybreeze.utils.exception.exceptions import ITETestExecutorException
@@ -158,6 +162,40 @@ def forget_run_window(main_window: PyBreezeMainWindow, code_window: CodeWindow) 
         main_window.current_run_code_window.remove(code_window)
 
 
+class _MailNotice(QObject):
+    """Carries the mail thread's answer to the run window, on the UI thread."""
+
+    told = Signal(str, bool)
+
+    def tell(self, reason: str | None) -> None:
+        """Called on the mail thread with ``send_report``'s answer."""
+        if reason is None:
+            self.told.emit("[Mail] The test report was sent\n", False)
+        else:
+            self.told.emit(f"[Mail] The test report was not sent: {reason}\n", True)
+
+
+def report_mail_hook(code_window: CodeWindow) -> Callable[[], None]:
+    """The done-hook that mails this run's report and says in *code_window* how that went.
+
+    Made as the run starts, so it knows where the child writes its report (the
+    working directory it starts in) and when it started: a report older than
+    the run is an earlier run's, and is not sent. The mail used to go out, or
+    fail, with nothing but a log line to say so.
+    """
+    report_path = os.path.abspath(DEFAULT_REPORT_PATH)
+    started = time.time()
+    # No parent: the mail thread may answer after the window is gone. Its
+    # queued connection to the window is dropped with the window.
+    notice = _MailNotice()
+    notice.told.connect(code_window.append_output)
+
+    def mail_the_report() -> None:
+        send_after_test(report_path, not_before=started, on_done=notice.tell)
+
+    return mail_the_report
+
+
 def build_task_process(
         main_window: PyBreezeMainWindow,
         send_mail: bool = False,
@@ -176,7 +214,7 @@ def build_task_process(
     main_window.clear_code_result()
     code_window.runner = TaskProcessManager(
         code_window,
-        task_done_trigger_function=send_after_test if send_mail else None,
+        task_done_trigger_function=report_mail_hook(code_window) if send_mail else None,
         program_buffer_size=program_buffer,
         program_encoding=main_window.encoding,
     )

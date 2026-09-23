@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import threading
+from collections.abc import Callable
 
 from pybreeze.utils.exception.exception_tags import send_html_exception_tag
 from pybreeze.utils.exception.exceptions import ITESendHtmlReportException
@@ -9,8 +10,17 @@ from pybreeze.utils.logging.logger import pybreeze_logger
 
 DEFAULT_REPORT_PATH = "default_name.html"
 
+# How much older than the run a report may look and still be its own: file
+# systems keep modification times to a second or two
+_MTIME_SLACK_SECONDS = 2.0
 
-def send_after_test(html_report_path: str | None = None) -> None:
+
+def send_after_test(
+        html_report_path: str | None = None,
+        *,
+        not_before: float | None = None,
+        on_done: Callable[[str | None], None] | None = None,
+) -> None:
     """Mail a finished run's HTML report, on a thread of its own.
 
     This is a run's done-hook, called on the UI thread as the run ends. The
@@ -19,35 +29,46 @@ def send_after_test(html_report_path: str | None = None) -> None:
     it. Whatever goes wrong is logged by that thread, never raised.
 
     :param html_report_path: the report to send; ``default_name.html`` when None
+    :param not_before: see ``send_report``
+    :param on_done: called on the mail thread with ``send_report``'s answer
     """
-    threading.Thread(
-        target=send_report, args=(html_report_path,), name="pybreeze-report-mail", daemon=True
-    ).start()
+    def send() -> None:
+        outcome = send_report(html_report_path, not_before=not_before)
+        if on_done is not None:
+            on_done(outcome)
+
+    threading.Thread(target=send, name="pybreeze-report-mail", daemon=True).start()
 
 
-def send_report(html_report_path: str | None = None) -> None:
+def send_report(html_report_path: str | None = None, *, not_before: float | None = None) -> str | None:
     """Mail the HTML report to the configured mail user, and log what went wrong.
 
     Blocks for as long as the mail server takes; ``send_after_test`` runs it
     off the UI thread.
 
     :param html_report_path: the report to send; ``default_name.html`` when None
+    :param not_before: when the run started (``time.time()``). A report last
+        written before then is an earlier run's, left behind by a run that
+        wrote none, and is not sent.
+    :return: None once the report is sent, else why it was not, in words for
+        the run window (no path, address or server reply: those are logged)
     """
     try:
         from je_mail_thunder import SMTPWrapper, get_mail_thunder_os_environ, read_output_content
         from je_mail_thunder.utils.exception.exceptions import MailThunderException
     except ImportError as error:
         pybreeze_logger.error("Cannot send the report without je_mail_thunder: %r", error)
-        return
+        return "je_mail_thunder is not installed"
 
     report_path = html_report_path if html_report_path is not None else DEFAULT_REPORT_PATH
-    if not os.path.isfile(report_path):
-        pybreeze_logger.error("Report file not found: %s", report_path)
-        return
+    problem = _report_problem(report_path, not_before)
+    if problem is not None:
+        pybreeze_logger.error("Report not sent (%s): %s", problem, report_path)
+        return problem
     user = _mail_user(read_output_content, get_mail_thunder_os_environ)
     if user is None:
         pybreeze_logger.error("Cannot determine mail user for sending report")
-        return
+        return "no mail user is set"
     try:
         with open(report_path, encoding="utf-8") as file:
             html_string = file.read()
@@ -64,10 +85,27 @@ def send_report(html_report_path: str | None = None) -> None:
             mail_thunder_smtp.send_message(message)
     except ITESendHtmlReportException as error:
         pybreeze_logger.error("%r %s", error, send_html_exception_tag)
+        return "the mail server login failed"
     # OSError covers the socket and every smtplib error; ValueError a report
     # that is not UTF-8
     except (OSError, ValueError, MailThunderException) as error:
         pybreeze_logger.error("Failed to send report: %r", error)
+        return f"sending failed ({type(error).__name__})"
+    return None
+
+
+def _report_problem(report_path: str, not_before: float | None) -> str | None:
+    """Why *report_path* is not this run's report to send, or None when it is."""
+    name = os.path.basename(report_path)
+    try:
+        written = os.stat(report_path)
+    except OSError:
+        return f"the run wrote no {name}"
+    if not os.path.isfile(report_path):
+        return f"{name} is not a file"
+    if not_before is not None and written.st_mtime < not_before - _MTIME_SLACK_SECONDS:
+        return f"the run wrote no new {name}; the one there is from an earlier run"
+    return None
 
 
 def _mail_user(read_output_content, get_mail_thunder_os_environ) -> str | None:

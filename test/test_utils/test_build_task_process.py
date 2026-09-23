@@ -68,12 +68,74 @@ class TestBuildTaskProcess:
         assert main_window.cleared
 
     def test_the_report_mail_is_sent_only_when_asked(self, qt_app):
-        from pybreeze.extend.mail_thunder_extend.mail_thunder_setting import send_after_test
         from pybreeze.extend.process_executor.process_executor_utils import build_task_process
 
         assert build_task_process(MainWindow()).task_done_trigger_function is None
-        assert build_task_process(
-            MainWindow(), send_mail=True).task_done_trigger_function is send_after_test
+        assert callable(build_task_process(MainWindow(), send_mail=True).task_done_trigger_function)
+
+
+class TestTheReportMailSaysHowItWent:
+    """The run window tells the user whether the report went out; it was only logged."""
+
+    @staticmethod
+    def _run_the_hook(qt_app, monkeypatch, answer):
+        import time
+
+        from pybreeze.extend.mail_thunder_extend import mail_thunder_setting as mail
+        from pybreeze.extend.process_executor.process_executor_utils import build_task_process
+
+        asked: list = []
+
+        def send_report(path, *, not_before=None):
+            asked.append((path, not_before))
+            return answer
+
+        monkeypatch.setattr(mail, "send_report", send_report)
+        before = time.time()
+        runner = build_task_process(MainWindow(), send_mail=True)
+        runner.task_done_trigger_function()
+        window = runner.main_window
+        deadline = time.monotonic() + 10
+        while "[Mail]" not in window.code_result.toPlainText() and time.monotonic() < deadline:
+            qt_app.processEvents()
+            time.sleep(0.01)
+        return window.code_result.toPlainText(), asked, before
+
+    def test_a_sent_report_is_reported(self, qt_app, monkeypatch):
+        text, asked, before = self._run_the_hook(qt_app, monkeypatch, None)
+
+        assert "[Mail] The test report was sent" in text
+        ((path, not_before),) = asked
+        # The report the child writes in the directory it starts in, from this run on
+        assert os.path.isabs(path) and path.endswith("default_name.html")
+        assert not_before >= before
+
+    def test_a_report_not_sent_says_why(self, qt_app, monkeypatch):
+        text, _asked, _before = self._run_the_hook(qt_app, monkeypatch, "no mail user is set")
+
+        assert "[Mail] The test report was not sent: no mail user is set" in text
+
+    def test_an_answer_after_the_window_is_gone_is_dropped(self, qt_app, monkeypatch):
+        import threading
+
+        from pybreeze.extend.mail_thunder_extend import mail_thunder_setting as mail
+        from pybreeze.extend.process_executor.process_executor_utils import build_task_process
+        from shiboken6 import delete
+
+        release = threading.Event()
+        raised: list = []
+        monkeypatch.setattr(threading, "excepthook", raised.append)
+        monkeypatch.setattr(mail, "send_report", lambda _path, *, not_before=None: release.wait(5) and None)
+        runner = build_task_process(MainWindow(), send_mail=True)
+        runner.task_done_trigger_function()
+        (mail_thread,) = [one for one in threading.enumerate() if one.name == "pybreeze-report-mail"]
+        delete(runner.main_window)
+        release.set()
+
+        mail_thread.join(5)
+        qt_app.processEvents()
+        assert not mail_thread.is_alive()
+        assert raised == []
 
 
 class TestRunningWithoutAScriptTab:

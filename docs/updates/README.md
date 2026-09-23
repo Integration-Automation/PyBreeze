@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-93 | 2026-09-23 | Run and send: an earlier run's report is not mailed, and the run window says whether the mail went | #fix #executor #mail | [2026-09](2026-09.md) |
 | U-20260923-92 | 2026-09-23 | A run whose started process keeps its output open no longer freezes the IDE when it ends | #fix #executor | [2026-09](2026-09.md) |
 | U-20260923-91 | 2026-09-23 | A run that cannot start says so in its window, and a Python run no longer reads the IDE's stdin | #fix #executor | [2026-09](2026-09.md) |
 | U-20260923-90 | 2026-09-23 | SSRF check refuses a URL whose host urlparse and urllib3 read differently | #fix #security #network | [2026-09](2026-09.md) |
@@ -173,4 +174,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 110 |
+| [2026-09.md](2026-09.md) | 2026-09 | 111 |
