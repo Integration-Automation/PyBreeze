@@ -14,6 +14,7 @@ them; values that could be secrets are never copied into a finding's detail.
 from __future__ import annotations
 
 import re
+import textwrap
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
@@ -133,7 +134,10 @@ def parse_headers(text: str) -> list[HeaderField]:
     :return: the headers found, in order, duplicates kept
     """
     fields: list[HeaderField] = []
-    for line in text.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+    # The block's common indent is not folding: a block copied from an indented
+    # document read as one header folded over every line, and nothing was checked
+    block = textwrap.dedent(text.replace("\r\n", "\n").replace("\r", "\n"))
+    for line in block.split("\n"):
         if not line.strip():
             if fields:
                 break  # the blank line between the headers and the body

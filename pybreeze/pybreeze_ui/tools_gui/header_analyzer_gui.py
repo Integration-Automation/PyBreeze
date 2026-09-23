@@ -7,6 +7,8 @@ headers that are missing.
 """
 from __future__ import annotations
 
+import textwrap
+
 from PySide6.QtWidgets import QLabel, QPushButton, QTextEdit, QVBoxLayout, QWidget
 from je_editor import language_wrapper
 
@@ -111,7 +113,9 @@ class HeaderAnalyzerGUI(QWidget):
     def analyze(self) -> None:
         """Analyse the pasted headers and show the report."""
         word = language_wrapper.language_word_dict
-        text = exact_text(self.input_edit).strip()
+        # Dedented before stripped: stripping first took the indent off the first
+        # line only, and every other line then read as folded into it
+        text = textwrap.dedent(exact_text(self.input_edit)).strip()
         if not text:
             self._clear_analysis(word.get("header_analyzer_empty_hint"))
             return

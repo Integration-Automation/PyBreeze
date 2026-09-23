@@ -214,3 +214,21 @@ class TestWhatHeadersActuallySay:
         (field,) = parse_headers("X-Long: a\n\tb")
 
         assert field.value == "a b"
+
+
+class TestAnIndentedBlock:
+    def test_every_line_is_its_own_header(self):
+        # Every line after the first read as folded into it, and nothing was checked
+        from pybreeze.utils.header_tools.header_analyzer import parse_headers
+
+        fields = parse_headers("    Content-Type: text/html\n    Server: nginx\n    Set-Cookie: sid=1")
+
+        assert [field.name for field in fields] == ["Content-Type", "Server", "Set-Cookie"]
+
+    def test_a_folded_line_inside_it_still_folds(self):
+        from pybreeze.utils.header_tools.header_analyzer import parse_headers
+
+        fields = parse_headers("  Content-Security-Policy: default-src 'self';\n      script-src 'self'\n  Server: x")
+
+        assert [field.name for field in fields] == ["Content-Security-Policy", "Server"]
+        assert fields[0].value == "default-src 'self'; script-src 'self'"

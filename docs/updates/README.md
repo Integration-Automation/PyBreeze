@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-142 | 2026-09-24 | Read an indented header block line by line in the header analyzer | #fix #tools #done | [2026-09](2026-09.md) |
 | U-20260923-141 | 2026-09-24 | Keep numbers as written in the query and URL tools, refuse lone surrogates there, and keep them escaped in the JSON formatter | #fix #tools #done | [2026-09](2026-09.md) |
 | U-20260923-140 | 2026-09-24 | Run regex patterns in a plain worker script, stop it when the tab closes, and keep a running tab's output from being saved | #fix #tools #done | [2026-09](2026-09.md) |
 | U-20260923-139 | 2026-09-24 | Try every checked address of a host in turn, and check international names as they are looked up | #fix #network #security #done | [2026-09](2026-09.md) |
@@ -222,4 +223,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 159 |
+| [2026-09.md](2026-09.md) | 2026-09 | 160 |
