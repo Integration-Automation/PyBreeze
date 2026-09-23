@@ -218,7 +218,7 @@ call_X_multi_file_and_send()   → run_dir_files_with_package(..., True)
 | `CurlImportGUI` | `utils/curl_import/` | 貼上 curl 指令 → 產生 requests / pytest / APITestka(py & json) / LoadDensity 腳本 |
 | `HarImportGUI` | `utils/har_import/` | 開 `.har` → 列出錄到的請求（可只看 API-like）→ 批次產生腳本 |
 | `JwtDecoderGUI` | `utils/jwt_tools/` | 解 JWT header/payload（不驗簽），時間戳轉可讀 UTC |
-| `TimestampGUI` | `utils/timestamp_tools/` | epoch（自動判秒／毫秒）↔ ISO-8601。epoch 換算用 `utc_from_epoch_seconds()`（epoch + `timedelta`；`datetime.fromtimestamp` 在 Windows 上拒絕 1970 年前幾小時以外的值），JWT 的時間戳 claim 也用它 |
+| `TimestampGUI` | `utils/timestamp_tools/` | epoch（依大小自動判秒／毫秒／微秒／奈秒，整數用 `int()` 精確換算）↔ ISO-8601（`_ISO_RE` 自己解析，3.10 到 3.14 讀法一致：`Z`/`z`、`±HH`、`±HHMM`、任意位數小數、basic 格式；八位數而且是合法日期就當 `YYYYMMDD`）。epoch 換算用 `utc_from_epoch_seconds()`（epoch + `timedelta`；`datetime.fromtimestamp` 在 Windows 上拒絕 1970 年前幾小時以外的值），JWT 的時間戳 claim 也用它 |
 | `HashGUI` | `utils/hash_tools/` | 多演算法摘要 |
 | `QueryJsonGUI` | `utils/query_tools/` | query string ↔ JSON 雙向 |
 | `UrlBuilderGUI` | `utils/url_tools/` | URL 拆成 JSON 元件 / 由元件組回 URL |
@@ -446,7 +446,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 18. 測試與 CI
 
-- **單元測試** `test/test_utils/` — 111 個 `test_*.py`、1779 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
+- **單元測試** `test/test_utils/` — 111 個 `test_*.py`、1792 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
 - **整合測試** `test/unit_test/start_automation/` — 以 `debug_mode=True` 啟動 IDE，10 秒後自動關閉，驗證啟動流程與 extend tab
 - **CI** `.github/workflows/{dev,stable}.yml` — `unit-tests` job 跑 Windows runner、Python 3.10–3.14 矩陣，3.12 那一腳額外上傳 `coverage-xml` artifact；`sonarcloud` job 跑 ubuntu、`needs: unit-tests`。每日 02:00 排程 + push/PR 觸發。`stable.yml` 另有 `publish` job 負責版號遞增與 PyPI 發布
 - **覆蓋率** `.coveragerc` — `relative_files = True` 是必要的：報告在 Windows 產生、由 Linux 上的 scanner 讀取，路徑不能帶機器資訊。目前整體 60%（`utils/`、`tools_gui`、`dialog` 95–100%；`editor_main` 58%、`menu` 54%；仍低的是 `diagram_editor` 45%、`process_executor` 39%、`connect_gui` 28%）

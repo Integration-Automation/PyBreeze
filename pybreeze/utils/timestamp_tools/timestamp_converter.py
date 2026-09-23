@@ -9,6 +9,7 @@ which keeps the conversions deterministic and testable.
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
@@ -19,11 +20,16 @@ from pybreeze.utils.exception.exception_tags import (
 from pybreeze.utils.exception.exceptions import TimestampParseException
 from pybreeze.utils.logging.logger import pybreeze_logger
 
-# Values at or above this magnitude are treated as milliseconds, not seconds.
-# Epoch seconds around the year 2020 are ~1.6e9; the same instant in
-# milliseconds is ~1.6e12, so 1e11 cleanly separates the two for any plausible
-# modern timestamp.
+# An epoch's unit, by magnitude: the same instant around 2020 is ~1.6e9 in
+# seconds, ~1.6e12 in milliseconds, ~1.6e15 in microseconds and ~1.6e18 in
+# nanoseconds, so each thousandfold step from 1e11 separates two of them for
+# any plausible timestamp. (Microseconds and nanoseconds, from time.time_ns()
+# or Go's UnixNano, used to be read as milliseconds and overflow.)
 _MILLISECONDS_THRESHOLD = 10 ** 11
+_MICROSECONDS_THRESHOLD = 10 ** 14
+_NANOSECONDS_THRESHOLD = 10 ** 17
+# How many of each unit make a second
+_PER_SECOND = {"s": 1, "ms": 1000, "us": 10 ** 6, "ns": 10 ** 9}
 # Milliseconds per second
 _MS_PER_SECOND = 1000
 # The Unix epoch, in UTC
@@ -45,12 +51,17 @@ class TimestampResult:
 
 
 def detect_epoch_unit(value: float) -> str:
-    """Return ``"ms"`` or ``"s"`` for an epoch *value* by magnitude.
+    """Return ``"s"``, ``"ms"``, ``"us"`` or ``"ns"`` for an epoch *value* by magnitude.
 
     :param value: an epoch number whose unit is unknown
-    :return: ``"ms"`` when the value looks like milliseconds, else ``"s"``
+    :return: the unit the value's size suggests
     """
-    return "ms" if abs(value) >= _MILLISECONDS_THRESHOLD else "s"
+    magnitude = abs(value)
+    if magnitude >= _NANOSECONDS_THRESHOLD:
+        return "ns"
+    if magnitude >= _MICROSECONDS_THRESHOLD:
+        return "us"
+    return "ms" if magnitude >= _MILLISECONDS_THRESHOLD else "s"
 
 
 def utc_from_epoch_seconds(seconds: float) -> datetime:
@@ -65,22 +76,70 @@ def utc_from_epoch_seconds(seconds: float) -> datetime:
     return _EPOCH + timedelta(seconds=seconds)
 
 
-def _from_epoch(value: float) -> datetime:
-    """Build a UTC datetime from an epoch number, auto-detecting its unit."""
-    seconds = value / _MS_PER_SECOND if detect_epoch_unit(value) == "ms" else value
+def _from_epoch(value: int | float) -> datetime:
+    """Build a UTC datetime from an epoch number, auto-detecting its unit.
+
+    A whole number is divided exactly (to the microsecond, rounding toward the
+    past): as a float, a nanosecond epoch has lost its last digits already.
+    """
+    per_second = _PER_SECOND[detect_epoch_unit(value)]
     try:
-        return utc_from_epoch_seconds(seconds)
+        if isinstance(value, int):
+            return _EPOCH + timedelta(microseconds=value * 10 ** 6 // per_second)
+        return utc_from_epoch_seconds(value / per_second)
     except (OverflowError, ValueError) as error:
         pybreeze_logger.error(unrecognized_timestamp_error)
         raise TimestampParseException(unrecognized_timestamp_error) from error
 
 
+# ISO-8601 as tools write it, parsed the same way on every Python this runs on:
+# before 3.11 datetime.fromisoformat took only what isoformat() writes, and
+# refused "Z", "+0000", "+08", fractions of other than 3 or 6 digits (Go and
+# Kubernetes write 9) and the basic format 20240101T000000Z. A lower-case "z"
+# was refused on every version.
+_ISO_RE = re.compile(
+    r"(?P<year>\d{4})-?(?P<month>\d{2})-?(?P<day>\d{2})"
+    r"(?:[Tt ](?P<hour>\d{2})(?::?(?P<minute>\d{2})(?::?(?P<second>\d{2})(?:[.,](?P<fraction>\d+))?)?)?"
+    r"(?P<zone>[Zz]|[+-]\d{2}(?::?\d{2})?)?)?"
+)
+
+
+def _zone(text: str | None) -> timezone:
+    """The time zone an ISO-8601 designator names; none means UTC."""
+    if not text or text in ("Z", "z"):
+        return timezone.utc
+    sign = -1 if text[0] == "-" else 1
+    digits = text[1:].replace(":", "")
+    offset = timedelta(hours=int(digits[:2]), minutes=int(digits[2:4] or 0))
+    return timezone(sign * offset)
+
+
+def _iso_match(text: str) -> datetime | None:
+    """*text* as an ISO-8601 date or date-time in UTC, or ``None`` when it is not one.
+
+    :raises ValueError: a field out of range (month 13, hour 25)
+    :raises OverflowError: moving it to UTC leaves the years datetime can hold
+    """
+    match = _ISO_RE.fullmatch(text)
+    if match is None:
+        return None
+    fields = match.groupdict()
+    fraction = (fields["fraction"] or "")[:6].ljust(6, "0")
+    moment = datetime(
+        int(fields["year"]), int(fields["month"]), int(fields["day"]),
+        int(fields["hour"] or 0), int(fields["minute"] or 0), int(fields["second"] or 0),
+        int(fraction), tzinfo=_zone(fields["zone"]))
+    return moment.astimezone(timezone.utc)
+
+
 def _from_iso(text: str) -> datetime:
-    """Parse an ISO-8601 string (accepting a trailing ``Z``) into a UTC datetime."""
-    # datetime.fromisoformat does not accept the 'Z' suffix before Python 3.11.
-    normalised = text[:-1] + "+00:00" if text.endswith("Z") else text
+    """Parse an ISO-8601 string into a UTC datetime; no offset means UTC."""
     try:
-        parsed = datetime.fromisoformat(normalised)
+        parsed = _iso_match(text)
+        if parsed is not None:
+            return parsed
+        # Anything else fromisoformat takes on this Python (3.11+ reads more)
+        parsed = datetime.fromisoformat(text)
         if parsed.tzinfo is None:
             parsed = parsed.replace(tzinfo=timezone.utc)
         # Moving 0001-01-01 +01:00 (or 9999-12-31 -01:00) to UTC leaves the
@@ -91,17 +150,36 @@ def _from_iso(text: str) -> datetime:
         raise TimestampParseException(unrecognized_timestamp_error) from error
 
 
+def _eight_digit_date(text: str) -> datetime | None:
+    """*text* as a ``YYYYMMDD`` date, when it is eight digits that make one.
+
+    20240101 used to be read as seconds, landing in August 1970.
+    """
+    if len(text) != 8 or not text.isdigit():
+        return None
+    try:
+        return _iso_match(text)
+    except ValueError:
+        return None
+
+
 def _parse(text: str) -> datetime:
     """Parse *text* as an epoch number or an ISO date-time into a UTC datetime."""
     stripped = text.strip()
     if not stripped:
         pybreeze_logger.error(empty_timestamp_error)
         raise TimestampParseException(empty_timestamp_error)
-    try:
-        return _from_epoch(float(stripped))
-    except ValueError:
-        # Not a plain number; fall through to ISO parsing.
-        return _from_iso(stripped)
+    date = _eight_digit_date(stripped)
+    if date is not None:
+        return date
+    for number_type in (int, float):
+        try:
+            number = number_type(stripped)
+        except ValueError:
+            continue
+        return _from_epoch(number)
+    # Not a plain number; fall through to ISO parsing.
+    return _from_iso(stripped)
 
 
 def convert_timestamp(text: str) -> TimestampResult:

@@ -115,3 +115,51 @@ class TestSubSecondPrecision:
 
     def test_an_iso_time_with_milliseconds_keeps_them(self):
         assert convert_timestamp("2021-01-01T00:00:00.250Z").epoch_millis == 1609459200250
+
+
+class TestFormsToolsWrite:
+    """Read the same on Python 3.10 as on 3.14: fromisoformat took less before 3.11."""
+
+    @pytest.mark.parametrize("text", [
+        "2024-01-01T00:00:00+0000",
+        "2024-01-01T00:00:00+00",
+        "2024-01-01T08:00:00+08",
+        "2024-01-01T00:00:00z",
+        "20240101T000000Z",
+        "2024-01-01 00:00:00Z",
+    ])
+    def test_offsets_and_designators(self, text):
+        from pybreeze.utils.timestamp_tools.timestamp_converter import convert_timestamp
+
+        assert convert_timestamp(text).epoch_seconds == 1704067200
+
+    @pytest.mark.parametrize(("text", "millis"), [
+        ("2024-01-01T00:00:00.1Z", 1704067200100),
+        ("2024-01-01T00:00:00.12Z", 1704067200120),
+        ("2024-01-01T00:00:00.123456789Z", 1704067200123),
+    ])
+    def test_any_number_of_fraction_digits(self, text, millis):
+        from pybreeze.utils.timestamp_tools.timestamp_converter import convert_timestamp
+
+        assert convert_timestamp(text).epoch_millis == millis
+
+    @pytest.mark.parametrize("text", ["1700000000123456", "1700000000123456789"])
+    def test_microseconds_and_nanoseconds(self, text):
+        # Both were divided by 1000 as milliseconds and overflowed
+        from pybreeze.utils.timestamp_tools.timestamp_converter import convert_timestamp
+
+        assert convert_timestamp(text).epoch_millis == 1700000000123
+
+    def test_an_eight_digit_date_is_a_date(self):
+        # 20240101 was read as seconds: August 1970
+        from pybreeze.utils.timestamp_tools.timestamp_converter import convert_timestamp
+
+        assert convert_timestamp("20240101").iso_utc == "2024-01-01T00:00:00+00:00"
+        assert convert_timestamp("12345678").epoch_seconds == 12345678  # not a date: seconds
+
+    def test_a_field_out_of_range_is_refused(self):
+        from pybreeze.utils.exception.exceptions import TimestampParseException
+        from pybreeze.utils.timestamp_tools.timestamp_converter import convert_timestamp
+
+        with pytest.raises(TimestampParseException):
+            convert_timestamp("2024-13-01T00:00:00Z")
