@@ -24,7 +24,7 @@ import warnings
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
-from pybreeze.utils.app_dirs import pybreeze_data_path
+from pybreeze.utils.app_dirs import DATA_DIR_MODE, pybreeze_data_path
 
 # A library must not reconfigure the root logger: forcing it to DEBUG makes
 # every third-party logger verbose and robs the host application of control
@@ -118,6 +118,11 @@ class PyBreezeLogger(RotatingFileHandler):
         """Create the directory and rotate before opening; fall back to ``os.devnull``."""
         path = Path(self.baseFilename)
         try:
+            data_dir = pybreeze_data_path()
+            if data_dir in path.parents:
+                # The log is often the first thing written: made here with the
+                # default mode, ~/.pybreeze stayed readable by every local user
+                data_dir.mkdir(mode=DATA_DIR_MODE, parents=True, exist_ok=True)
             path.parent.mkdir(parents=True, exist_ok=True)
             _rotate_if_large(path, _rotate_at_bytes())
             return super()._open()

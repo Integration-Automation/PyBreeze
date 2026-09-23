@@ -78,6 +78,29 @@ class TestWhereTheLogGoes:
 
         assert logger_module.default_log_file() == tmp_path / "elsewhere.log"
 
+    def test_a_data_folder_the_log_makes_is_its_owners_only(self, monkeypatch, tmp_path):
+        # The log is often written first: it made ~/.pybreeze with the default
+        # mode, and pybreeze_data_dir then left that folder as it was
+        from pathlib import Path
+
+        from pybreeze.utils.logging import logger as logger_module
+
+        data = tmp_path / ".pybreeze"
+        monkeypatch.setattr(logger_module, "pybreeze_data_path", lambda: data)
+        modes: dict = {}
+        made = Path.mkdir
+
+        def record(path, mode=0o777, parents=False, exist_ok=False):
+            modes.setdefault(Path(path), mode)
+            made(path, mode=mode, parents=parents, exist_ok=exist_ok)
+
+        monkeypatch.setattr(Path, "mkdir", record)
+        handler = PyBreezeLogger(filename=str(data / "logs" / "PyBreeze.log"))
+        handler.close()
+
+        assert modes[data] == 0o700
+        assert (data / "logs").is_dir()
+
     def test_the_package_handler_opens_nothing_at_import(self):
         from pybreeze.utils.logging.logger import file_handler
 
