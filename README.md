@@ -72,7 +72,7 @@ Each module gets the same menu shape: **Run** (single script, batch directory, w
 
 ### IDE core
 
-- **Automation-aware syntax highlighting** — the `AT_*` / GUI / Web / Load keyword sets are registered for `.json`, and TestPioneer's schema for `.yml`, on top of JEditor's language support
+- **Automation-aware syntax highlighting** — the `AT_*` / GUI / Web / Load keyword sets are registered for `.json`, and TestPioneer's schema for `.yml` and `.yaml`, on top of JEditor's language support
 - **Code editor** — built on [JEditor](https://github.com/Integration-Automation/JEDITOR): tabs, project tree, format checker, debugger, terminal, variable inspector and a git client pane
 - **Script execution** — single or batch; large action files are passed by path, never through the command line, so Windows' ~32 KB argv limit is never a factor
 - **Report generation** — HTML / JSON / XML after a run, with optional email delivery
