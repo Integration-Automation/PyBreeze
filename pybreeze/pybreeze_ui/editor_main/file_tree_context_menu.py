@@ -232,6 +232,15 @@ def _start_auto_save(editor: EditorWidget, file_path: Path) -> None:
     editor.rename_self_tab()
 
 
+def _is_the_same_file(first: Path, second: Path) -> bool:
+    """Whether *first* and *second* name one file (a different case of one name, say)."""
+    try:
+        return first.samefile(second)
+    except OSError as error:
+        pybreeze_logger.debug("Could not compare %s and %s: %r", first, second, error)
+        return False
+
+
 def _action_rename(tree_view: QTreeView, main_window, path: Path | None) -> None:
     if path is None:
         return
@@ -245,7 +254,9 @@ def _action_rename(tree_view: QTreeView, main_window, path: Path | None) -> None
     if not ok or not new_name.strip() or new_name.strip() == path.name:
         return
     target = path.parent / new_name.strip()
-    if target.exists():
+    # On a case-insensitive filesystem "A.py" already exists when renaming
+    # "a.py" to it -- it is the same file, and a change of case is a rename.
+    if target.exists() and not _is_the_same_file(target, path):
         QMessageBox.warning(
             tree_view,
             word.get("file_tree_ctx_error"),

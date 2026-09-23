@@ -212,6 +212,18 @@ class TestRenaming:
         assert occupied.read_text(encoding="utf-8") == "keep me"
         assert warnings
 
+    def test_a_change_of_case_is_a_rename(self, tree, tmp_path, monkeypatch, warnings):
+        # On Windows "Main.py" already "exists" -- as the very file being renamed.
+        original = tmp_path / "main.py"
+        original.write_text("print(1)", encoding="utf-8")
+        answer(monkeypatch, "Main.py")
+
+        _action_rename(tree, FakeWindow(), original)
+
+        assert warnings == []
+        assert [child.name for child in tmp_path.iterdir()] == ["Main.py"]
+        assert (tmp_path / "Main.py").read_text(encoding="utf-8") == "print(1)"
+
     def test_an_open_tab_follows_the_rename(self, tree, tmp_path, monkeypatch):
         original = tmp_path / "open.py"
         original.touch()

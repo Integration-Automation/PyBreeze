@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-61 | 2026-09-23 | A file can be renamed to a different case of its name on Windows | #done #editor | [2026-09](2026-09.md) |
 | U-20260923-60 | 2026-09-23 | Three menu actions that did nothing or raised now work | #done #menu | [2026-09](2026-09.md) |
 | U-20260923-59 | 2026-09-23 | A hand-edited null no longer becomes the prthinker API key "None" | #done #prthinker #security | [2026-09](2026-09.md) |
 | U-20260923-58 | 2026-09-23 | A diagram load either happens or leaves the canvas as it was | #done #diagram | [2026-09](2026-09.md) |
@@ -141,4 +142,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 78 |
+| [2026-09.md](2026-09.md) | 2026-09 | 79 |
