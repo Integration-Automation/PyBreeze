@@ -127,6 +127,26 @@ class TestSaving:
         # It said so: the reason used to go to the log only
         assert warned and str(prthinker_setting.setting_path()) in warned[0]
 
+    def test_extra_arguments_with_an_open_quote_are_not_saved(self, dialog, data_dir, monkeypatch):
+        # Saved, they were dropped whole at run time, and the review ran
+        # without the arguments the user thought it had
+        warned: list = []
+        monkeypatch.setattr(QMessageBox, "warning", staticmethod(lambda _p, _t, text: warned.append(text)))
+        dialog.editors["extra_arguments"].setText('--rules "only these')
+
+        dialog.save()
+
+        assert warned
+        assert dialog.result() != QDialog.DialogCode.Accepted
+        assert not (data_dir / SETTING_FILE_NAME).exists()
+
+    def test_readable_extra_arguments_are_saved(self, dialog, data_dir):
+        dialog.editors["extra_arguments"].setText('--rules "only these"')
+
+        dialog.save()
+
+        assert stored(data_dir)["extra_arguments"] == '--rules "only these"'
+
     def test_a_field_left_untouched_keeps_its_stored_value(self, app, data_dir):
         save_setting({**DEFAULT_SETTING, "model_name": "kept"})
         made = PRThinkerSettingDialog()

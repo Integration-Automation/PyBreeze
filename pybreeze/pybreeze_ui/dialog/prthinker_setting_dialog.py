@@ -20,7 +20,7 @@ from PySide6.QtWidgets import (
 from je_editor import language_wrapper
 
 from pybreeze.extend.prthinker_extend.prthinker_setting import (
-    BACKENDS, PLATFORMS, RAG_MODES, load_setting, save_setting, setting_path
+    BACKENDS, PLATFORMS, RAG_MODES, load_setting, read_extra_arguments, save_setting, setting_path
 )
 
 # 以圓點顯示的欄位 / The fields shown as dots
@@ -114,7 +114,18 @@ class PRThinkerSettingDialog(QDialog):
 
     def save(self) -> None:
         """存檔並關閉；存不起來就留在視窗上 / Store and close, or stay open if it cannot be stored."""
-        self.setting.update(self.values())
+        values = self.values()
+        try:
+            read_extra_arguments(values.get("extra_arguments", ""))
+        except ValueError:
+            # 以前照存，執行時整串被丟掉，審查少了使用者以為有加上的參數
+            # It used to be stored, then dropped whole at run time: a review ran
+            # without the arguments the user thought it had
+            QMessageBox.warning(
+                self, self.word_dict.get("prthinker_setting_dialog_title"),
+                self.word_dict.get("prthinker_setting_bad_extra_arguments"))
+            return
+        self.setting.update(values)
         if save_setting(self.setting):
             self.accept()
             return

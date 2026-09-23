@@ -247,14 +247,27 @@ def extra_arguments(setting: Dict[str, str]) -> List[str]:
     :param setting: 目前的設定 / the settings in use
     :return: 參數 / the arguments
     """
-    text = setting.get("extra_arguments", "").strip()
-    if not text:
-        return []
     try:
-        return split_arguments(text, backslash_escapes=os.sep != "\\")
+        return read_extra_arguments(setting.get("extra_arguments", ""))
     except ValueError as error:
         pybreeze_logger.error("prthinker extra arguments could not be read: %r", error)
         return []
+
+
+def read_extra_arguments(text: str) -> List[str]:
+    """
+    把「額外參數」欄位斷成參數，斷不了就丟 ValueError；設定視窗存檔前用它先檢查
+    Split the extra-arguments field into arguments, raising ValueError when it
+    cannot be; the settings dialog checks with it before saving.
+
+    :param text: 欄位內容 / what the field holds
+    :return: 參數 / the arguments
+    :raises ValueError: 引號沒有關上時 / when a quote is left open
+    """
+    text = text.strip()
+    if not text:
+        return []
+    return split_arguments(text, backslash_escapes=os.sep != "\\")
 
 
 def split_arguments(text: str, *, backslash_escapes: bool) -> List[str]:
