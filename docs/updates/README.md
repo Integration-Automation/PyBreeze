@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-197 | 2026-09-24 | Free the diagram editor after it has fetched an image from a URL | #fix #diagram | [2026-09](2026-09.md) |
 | U-20260923-196 | 2026-09-24 | Drop a half-made connection when the diagram is rebuilt | #fix #diagram | [2026-09](2026-09.md) |
 | U-20260923-195 | 2026-09-24 | Show file names, paths, hosts and errors in message boxes as text, and check every box | #fix #security #ui | [2026-09](2026-09.md) |
 | U-20260923-194 | 2026-09-24 | Wrap the three code lines past 120 characters | #refactor | [2026-09](2026-09.md) |
@@ -277,4 +278,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 214 |
+| [2026-09.md](2026-09.md) | 2026-09 | 215 |

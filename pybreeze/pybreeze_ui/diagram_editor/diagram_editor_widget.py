@@ -632,9 +632,20 @@ class DiagramEditorWidget(QWidget):
         fetch = ImageDownloadThread(url.strip())
         fetch.fetched.connect(self._on_url_image_fetched)
         fetch.failed.connect(self._on_url_image_failed)
-        fetch.finished.connect(lambda: self._url_fetches.discard(fetch))
+        # A bound method: a lambda holding this editor and the fetch, on the
+        # fetch, kept the closed editor, its scene and every image alive
+        fetch.finished.connect(self._forget_fetch)
         self._url_fetches.add(fetch)
         fetch.start()
+
+    def _forget_fetch(self) -> None:
+        """Let go of the fetch that just finished. UI thread."""
+        fetch = self.sender()
+        if isinstance(fetch, ImageDownloadThread):
+            # finished is emitted just before the thread ends; freed while it
+            # still runs, Qt would abort
+            fetch.wait()
+            self._url_fetches.discard(fetch)
 
     def _on_url_image_fetched(self, url: str, data: bytes) -> None:
         """Put a fetched image on the canvas, or say it was not one. UI thread."""

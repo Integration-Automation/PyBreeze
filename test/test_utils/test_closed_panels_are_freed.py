@@ -110,3 +110,39 @@ def test_the_ssh_shell_after_a_failed_connect(app, monkeypatch):
     # The client's host-key policy held the panel as its dialog parent
     assert _freed_after_a_run(
         app, ssh_command_widget.SSHCommandWidget, connect, lambda widget: widget._connecting)
+
+
+def test_the_diagram_editor_after_an_image_from_a_url(app, monkeypatch):
+    # The fetch's finished held a lambda holding the editor: the closed editor,
+    # its scene and every image in it stayed
+    from PySide6.QtCore import QBuffer, QByteArray, QIODevice
+    from PySide6.QtGui import QColor, QImage
+    from PySide6.QtWidgets import QInputDialog
+
+    from pybreeze.pybreeze_ui.diagram_editor import diagram_scene
+    from pybreeze.pybreeze_ui.diagram_editor.diagram_editor_widget import DiagramEditorWidget
+
+    image = QImage(4, 4, QImage.Format.Format_ARGB32)
+    image.fill(QColor("red"))
+    png = QByteArray()
+    buffer = QBuffer(png)
+    buffer.open(QIODevice.OpenModeFlag.WriteOnly)
+    image.save(buffer, "PNG")
+    monkeypatch.setattr(diagram_scene, "safe_download_image", lambda _url: bytes(png.data()))
+    monkeypatch.setattr(QInputDialog, "getText", staticmethod(lambda *_args, **_kwargs: ("http://x.test/a.png", True)))
+
+    def add_image(widget) -> None:
+        widget._add_image_from_url()
+        (fetch,) = widget._url_fetches
+        _wait_for(app, fetch)
+        deadline = time.monotonic() + 5
+        while widget._url_fetches and time.monotonic() < deadline:
+            app.processEvents()
+        assert len(widget._scene.get_all_images()) == 1
+
+    class _Done:
+        @staticmethod
+        def isRunning() -> bool:
+            return False
+
+    assert _freed_after_a_run(app, DiagramEditorWidget, add_image, lambda _widget: _Done)
