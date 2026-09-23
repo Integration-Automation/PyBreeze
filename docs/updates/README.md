@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-125 | 2026-09-24 | Refactor: move the SFTP session and its threads out of the file tree's module | #refactor #ssh | [2026-09](2026-09.md) |
 | U-20260923-124 | 2026-09-24 | Run the SFTP menu's requests off the UI thread, and upload through a temporary name after asking before a replace | #fix #ssh #threading #done | [2026-09](2026-09.md) |
 | U-20260923-123 | 2026-09-24 | Open the SSH shell's channel on the connect thread, not the UI thread | #fix #ssh #threading #done | [2026-09](2026-09.md) |
 | U-20260923-122 | 2026-09-24 | Send a whole SSH command however long, and strip the escapes and controls the terminal still showed | #fix #ssh #done | [2026-09](2026-09.md) |
@@ -205,4 +206,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 142 |
+| [2026-09.md](2026-09.md) | 2026-09 | 143 |

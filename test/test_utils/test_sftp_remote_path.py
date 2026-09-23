@@ -5,15 +5,15 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from pybreeze.pybreeze_ui.connect_gui.ssh import ssh_file_viewer_widget as sftp_mod
-from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_file_viewer_widget import (
-    sort_entries,
+from pybreeze.pybreeze_ui.connect_gui.ssh import sftp_session as sftp_mod
+from pybreeze.pybreeze_ui.connect_gui.ssh.sftp_session import (
     SSH_KEEPALIVE_SECONDS,
     SFTPClientWrapper,
-    format_size,
     natural_key,
     remote_join,
+    sort_entries,
 )
+from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_file_viewer_widget import format_size
 
 
 class TestKeepalive:

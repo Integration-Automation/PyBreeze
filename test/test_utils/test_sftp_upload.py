@@ -13,6 +13,7 @@ import pytest
 from PySide6.QtWidgets import QApplication, QMessageBox
 
 from pybreeze.extend_multi_language.update_language_dict import update_language_dict
+from pybreeze.pybreeze_ui.connect_gui.ssh import sftp_session
 from pybreeze.pybreeze_ui.connect_gui.ssh import ssh_file_viewer_widget as viewer
 
 WAIT_SECONDS = 5
@@ -67,8 +68,8 @@ class FakeSftp:
         del self.files[path]
 
 
-def _wrapper(sftp: FakeSftp) -> viewer.SFTPClientWrapper:
-    wrapper = viewer.SFTPClientWrapper()
+def _wrapper(sftp: FakeSftp) -> sftp_session.SFTPClientWrapper:
+    wrapper = sftp_session.SFTPClientWrapper()
     wrapper._ssh = SimpleNamespace(close=lambda: None)
     wrapper._sftp = sftp
     return wrapper

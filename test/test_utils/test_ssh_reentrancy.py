@@ -14,6 +14,7 @@ from PySide6.QtWidgets import QApplication
 
 from pybreeze.extend_multi_language.update_language_dict import update_language_dict
 from pybreeze.pybreeze_ui.connect_gui.ssh import ssh_command_widget as shell_mod
+from pybreeze.pybreeze_ui.connect_gui.ssh import sftp_session
 from pybreeze.pybreeze_ui.connect_gui.ssh import ssh_file_viewer_widget as tree_mod
 from pybreeze.pybreeze_ui.connect_gui.ssh import ssh_host_key_policy as host_key_mod
 from pybreeze.pybreeze_ui.thread_keeper import is_kept
@@ -274,9 +275,9 @@ class TestTheRealWrapperGivenUpOn:
     """Closed while it connects, the SFTP wrapper closes the session it still brings up."""
 
     def _connect_in_background(self, monkeypatch, client: FakeClient):
-        monkeypatch.setattr(tree_mod.paramiko, "SSHClient", lambda: client)
-        monkeypatch.setattr(tree_mod, "apply_host_key_policy", lambda _client, _parent: None)
-        wrapper = tree_mod.SFTPClientWrapper()
+        monkeypatch.setattr(sftp_session.paramiko, "SSHClient", lambda: client)
+        monkeypatch.setattr(sftp_session, "apply_host_key_policy", lambda _client, _parent: None)
+        wrapper = sftp_session.SFTPClientWrapper()
         raised: list = []
 
         def connect() -> None:
@@ -304,7 +305,7 @@ class TestTheRealWrapperGivenUpOn:
 
         # It used to log in, fail on the emptied wrapper with an AttributeError
         # no one caught, and leave the session open until the IDE exited.
-        assert isinstance(raised[0], tree_mod.ConnectAbandoned)
+        assert isinstance(raised[0], sftp_session.ConnectAbandoned)
         assert client.closed
         assert not wrapper.connected
 
@@ -398,10 +399,10 @@ class TestSha1IsRefused:
             def close(self) -> None:
                 """Nothing to close."""
 
-        monkeypatch.setattr(tree_mod.paramiko, "SSHClient", Client)
-        monkeypatch.setattr(tree_mod, "apply_host_key_policy", lambda _client, _parent: None)
+        monkeypatch.setattr(sftp_session.paramiko, "SSHClient", Client)
+        monkeypatch.setattr(sftp_session, "apply_host_key_policy", lambda _client, _parent: None)
 
         with pytest.raises(OSError):
-            tree_mod.SFTPClientWrapper().connect("host", 22, "user", "pw")
+            sftp_session.SFTPClientWrapper().connect("host", 22, "user", "pw")
 
-        assert connects[0]["disabled_algorithms"] is tree_mod.SHA1_ALGORITHMS
+        assert connects[0]["disabled_algorithms"] is sftp_session.SHA1_ALGORITHMS

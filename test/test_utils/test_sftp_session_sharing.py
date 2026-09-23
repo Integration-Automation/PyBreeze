@@ -11,7 +11,7 @@ import pytest
 from PySide6.QtWidgets import QApplication
 
 from pybreeze.extend_multi_language.update_language_dict import update_language_dict
-from pybreeze.pybreeze_ui.connect_gui.ssh import ssh_file_viewer_widget as viewer
+from pybreeze.pybreeze_ui.connect_gui.ssh import sftp_session as viewer
 
 WAIT_SECONDS = 5
 
