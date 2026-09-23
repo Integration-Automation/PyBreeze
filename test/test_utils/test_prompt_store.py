@@ -22,7 +22,7 @@ CODE = "def f():\n    pass\n"
 @pytest.fixture()
 def prompts(tmp_path, monkeypatch):
     """Point the prompt directory at a temporary one, never the real home."""
-    monkeypatch.setattr(prompt_store, "pybreeze_data_dir", lambda: tmp_path)
+    monkeypatch.setattr(prompt_store, "pybreeze_data_path", lambda: tmp_path)
     return tmp_path / "prompts"
 
 
@@ -36,6 +36,34 @@ class TestWhereThePromptsLive:
         # Opening the editor on a built-in prompt must leave nothing behind.
         load_prompt("linter.md", "built-in")
         assert not prompt_dir().exists()
+
+    def test_looking_at_a_prompt_does_not_create_the_data_directory_either(self, tmp_path, monkeypatch):
+        data = tmp_path / "home" / ".pybreeze"
+        monkeypatch.setattr(prompt_store, "pybreeze_data_path", lambda: data)
+
+        assert load_prompt("linter.md", "built-in") == "built-in"
+        assert not data.exists()
+
+    def test_a_file_where_the_data_directory_should_be_gives_the_built_in(self, tmp_path, monkeypatch):
+        # Making the directory raised FileExistsError on the review's worker
+        # thread, and the review stopped with nothing in the panel.
+        data = tmp_path / ".pybreeze"
+        data.write_text("not a folder", encoding="utf-8")
+        monkeypatch.setattr(prompt_store, "pybreeze_data_path", lambda: data)
+
+        assert load_prompt("linter.md", "built-in") == "built-in"
+
+    def test_a_prompt_folder_that_cannot_be_looked_into_gives_the_built_in(self, prompts, monkeypatch):
+        looked_up = prompt_store.Path.is_file
+
+        def refuse(path) -> bool:
+            if path.name == "linter.md":
+                raise PermissionError(13, "Access is denied")
+            return looked_up(path)
+
+        monkeypatch.setattr(prompt_store.Path, "is_file", refuse)
+
+        assert load_prompt("linter.md", "built-in") == "built-in"
 
     def test_saving_creates_the_directory(self, prompts, tmp_path):
         from pybreeze.pybreeze_ui.extend_ai_gui.prompt_edit_gui.prompt_file_io import (

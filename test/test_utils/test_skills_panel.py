@@ -32,7 +32,7 @@ def app():
 @pytest.fixture()
 def panel(tmp_path, monkeypatch):
     # The built-in prompts, never the user's own
-    monkeypatch.setattr(prompt_store, "pybreeze_data_dir", lambda: tmp_path)
+    monkeypatch.setattr(prompt_store, "pybreeze_data_path", lambda: tmp_path)
     widget = SkillsSendGUI()
     yield widget
     widget.deleteLater()

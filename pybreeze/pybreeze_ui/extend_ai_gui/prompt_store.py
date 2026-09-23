@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pybreeze.utils.app_dirs import pybreeze_data_dir
+from pybreeze.utils.app_dirs import pybreeze_data_path
 from pybreeze.utils.logging.logger import pybreeze_logger
 
 _PROMPT_DIR_NAME = "prompts"
@@ -24,9 +24,11 @@ def prompt_dir() -> Path:
 
     Reading and naming a prompt must not create anything: opening the editor to
     look at a built-in prompt should leave no directory behind. ``save_prompt_text``
-    makes the directory when there is finally something to put in it.
+    makes the directory when there is finally something to put in it. Not even
+    ``~/.pybreeze``: making it here raised on a review's worker thread when a
+    file stood in its place, and the review stopped without a word.
     """
-    return pybreeze_data_dir() / _PROMPT_DIR_NAME
+    return pybreeze_data_path() / _PROMPT_DIR_NAME
 
 
 def prompt_path(name: str) -> Path:
@@ -46,7 +48,13 @@ def load_prompt(name: str, default: str) -> str:
     :return: the prompt text to use
     """
     path = prompt_path(name)
-    if not path.is_file():
+    try:
+        exists = path.is_file()
+    except OSError as error:
+        # A folder the user may not look into raises instead of answering
+        pybreeze_logger.error("Prompt %s could not be looked up: %r", name, error)
+        return default
+    if not exists:
         return default
     edited = read_prompt_file(path)
     if edited is None:
