@@ -4,6 +4,7 @@ from __future__ import annotations
 import os
 import sys
 import time
+from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -47,11 +48,11 @@ def _runner(monkeypatch):
     runs: list = []
     real_start = runner._start_process
 
-    def start(command, cleanup_binary=None, after_exit=None, time_limit=None):
+    def start(command, cleanup_dir=None, after_exit=None, time_limit=None):
         if after_exit is None:  # the run of the compiled binary
-            runs.append((command, cleanup_binary))
+            runs.append((command, cleanup_dir))
             return
-        real_start(command, cleanup_binary, after_exit, time_limit)
+        real_start(command, cleanup_dir, after_exit, time_limit)
 
     monkeypatch.setattr(runner, "_start_process", start)
     return window, runner, runs
@@ -77,9 +78,13 @@ class TestCompileThenRun:
         go.touch()
         _run_events_until(qt_app, lambda: runs)
 
-        expected = str(source.with_suffix("")) + (".exe" if sys.platform == "win32" else "")
-        assert runs == [([expected], expected)]
-        assert f"[Run] {expected}" in window.code_result.toPlainText()
+        # Built in a folder of its own, which goes once it has run: beside the
+        # source it replaced a file of that name there
+        [(command, build_dir)] = runs
+        built = Path(command[0])
+        assert built.name == "main" + (".exe" if sys.platform == "win32" else "")
+        assert built.parent == Path(build_dir) and built.parent != tmp_path
+        assert f"[Run] {built}" in window.code_result.toPlainText()
 
     def test_a_failed_compile_is_reported_and_nothing_runs(self, qt_app, tmp_path, monkeypatch):
         config = _compiler(tmp_path, "print('main.c:1: error', file=sys.stderr)\nsys.exit(3)\n")

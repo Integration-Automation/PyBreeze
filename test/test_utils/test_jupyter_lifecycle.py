@@ -220,14 +220,17 @@ class TestStoppingBeforeTheServerStarts:
 def test_a_closed_tab_is_deleted_with_its_web_view(app, monkeypatch):
     # close_tab removes the tab but keeps the widget: every closed tab kept a
     # web view and its renderer until the IDE exited
-    from PySide6.QtCore import QCoreApplication, QEvent
+    from PySide6.QtCore import QCoreApplication, QEvent, Qt
 
     monkeypatch.setattr(jupyter_lab_widget, "JupyterLauncherThread", FinishedLauncher)
     tab = jupyter_lab_widget.JupyterLabWidget()
     gone: list = []
     tab.browser.destroyed.connect(lambda *_: gone.append("browser"))
 
+    # Read before close(), which clears it as it schedules the delete
+    assert tab.testAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
     tab.close()
-    QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+    # Only this tab's: every deferred delete reached objects earlier tests had left
+    QCoreApplication.sendPostedEvents(tab, QEvent.Type.DeferredDelete)
 
     assert gone == ["browser"]
