@@ -231,7 +231,9 @@ def _load_entries(text: str) -> list[dict]:
         raise HarParseException(empty_har_error)
     try:
         document = json.loads(text)
-    except ValueError as error:
+    # RecursionError: JSON nested deeper than the parser goes, which escaped
+    # the tab's slot
+    except (ValueError, RecursionError) as error:
         pybreeze_logger.error(invalid_har_json_error)
         raise HarParseException(invalid_har_json_error) from error
     log = document.get("log") if isinstance(document, dict) else None

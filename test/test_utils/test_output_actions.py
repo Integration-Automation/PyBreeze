@@ -160,3 +160,37 @@ class TestSuggestedFilename:
             app, basename=lambda: "dyn", extension=lambda: "py")
         assert actions.suggested_filename() == "dyn.py"
         parent.deleteLater()
+
+
+class TestTheTextIsWhatWasGenerated:
+    """Copy, Save and Open in editor read the output as written, not Qt's display copy."""
+
+    # A no-break space and a line separator: toPlainText() turned them into a
+    # space and a newline, and a saved script no longer parsed
+    _GENERATED = 'data = "x=1\u00a0y\u2028z"\n'
+
+    def test_copy_keeps_every_character(self, app):
+        parent, output, actions = _make(app)
+        output.setPlainText(self._GENERATED)
+
+        actions.copy()
+
+        assert QApplication.clipboard().text() == self._GENERATED
+        parent.deleteLater()
+
+    def test_a_saved_file_keeps_every_character(self, app, tmp_path):
+        import ast
+
+        parent, output, actions = _make(app, basename="request", extension="py")
+        output.setPlainText(self._GENERATED)
+        target = tmp_path / "request.py"
+        with patch(
+            "pybreeze.pybreeze_ui.tools_gui.output_actions.QFileDialog.getSaveFileName",
+            return_value=(str(target), "Python (*.py)"),
+        ):
+            actions.save_to_file()
+
+        saved = target.read_text(encoding="utf-8")
+        assert saved == self._GENERATED
+        ast.parse(saved)
+        parent.deleteLater()

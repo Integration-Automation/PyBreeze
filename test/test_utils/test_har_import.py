@@ -358,3 +358,12 @@ class TestRepeatedQueryKeys:
                    {"name": "tag", "value": "x"}, {"name": "tag", "value": "y"}])))[0]
 
         assert entry.request.params == {"q": "a", "tag": ["x", "y"]}
+
+
+def test_json_nested_too_deep_is_reported_not_raised_out_of_the_tab():
+    from pybreeze.utils.exception.exceptions import HarParseException
+    from pybreeze.utils.har_import.har_parser import parse_har
+
+    # json.loads raises RecursionError, which the tab did not catch
+    with pytest.raises(HarParseException):
+        parse_har("[" * 100000)

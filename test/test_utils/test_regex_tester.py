@@ -124,3 +124,21 @@ class TestABoundedRun:
             find_matches_bounded("(a+)+$", "a" * 40 + "b", timeout_seconds=2.0)
 
         assert time.monotonic() - started < 10
+
+
+class TestPatternsTheCompilerCannotTake:
+    """They escaped the worker, and the tab stayed on "Running the pattern..."."""
+
+    def test_a_repeat_count_too_large_is_reported(self):
+        from pybreeze.utils.exception.exceptions import RegexTesterException
+        from pybreeze.utils.regex_tools.regex_tester import compile_pattern
+
+        with pytest.raises(RegexTesterException):
+            compile_pattern("a{4294967296}")
+
+    def test_groups_nested_too_deep_are_reported(self):
+        from pybreeze.utils.exception.exceptions import RegexTesterException
+        from pybreeze.utils.regex_tools.regex_tester import compile_pattern
+
+        with pytest.raises(RegexTesterException):
+            compile_pattern("(" * 5000 + "a" + ")" * 5000)

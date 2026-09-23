@@ -86,7 +86,10 @@ def compile_pattern(pattern: str, flag_names: list[str] | set[str] | None = None
         raise RegexTesterException(empty_regex_pattern_error)
     try:
         return re.compile(pattern, build_flags(flag_names or []))
-    except re.error as error:
+    # OverflowError: a repeat count past what re takes (a{4294967296});
+    # RecursionError: groups nested deeper than the compiler goes. Either
+    # escaped the worker, and the tab stayed on "Running the pattern..."
+    except (re.error, OverflowError, RecursionError) as error:
         message = invalid_regex_pattern_error.format(detail=str(error))
         pybreeze_logger.error(message)
         raise RegexTesterException(message) from error

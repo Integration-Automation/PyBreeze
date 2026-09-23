@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.tools_gui.exact_text import exact_text
 from pybreeze.utils.logging.logger import pybreeze_logger
 
 # A value that is either fixed or computed on demand (e.g. depends on a selector)
@@ -71,13 +72,13 @@ class OutputActions:
 
     def _has_output(self) -> bool:
         """Whether the output has real content the actions should act on."""
-        if not self._output.toPlainText().strip():
+        if not exact_text(self._output).strip():
             return False
         return self._is_valid() if self._is_valid is not None else True
 
     def copy(self) -> None:
         """Copy the output to the clipboard, if there is any."""
-        text = self._output.toPlainText()
+        text = exact_text(self._output)
         clipboard = QApplication.clipboard()
         if text and clipboard is not None:
             clipboard.setText(text)
@@ -92,7 +93,7 @@ class OutputActions:
             return None
         from je_editor import EditorWidget
         editor = EditorWidget(self._main_window)
-        editor.code_edit.setPlainText(self._output.toPlainText())
+        editor.code_edit.setPlainText(exact_text(self._output))
         tab_widget.addTab(
             editor, language_wrapper.language_word_dict.get("output_actions_editor_tab_label"))
         tab_widget.setCurrentWidget(editor)
@@ -124,7 +125,7 @@ class OutputActions:
         if not path:
             return None
         try:
-            Path(path).write_text(self._output.toPlainText(), encoding="utf-8")
+            Path(path).write_text(exact_text(self._output), encoding="utf-8")
         except OSError as error:
             pybreeze_logger.error("output_actions.py save failed: %r", error)
             # It used to go to the log only, and the user took it as saved.
