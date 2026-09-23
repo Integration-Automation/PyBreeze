@@ -321,7 +321,7 @@ class TestAChangeOnDiskWhileEditing:
 
 class TestSavingAPrompt:
     def test_a_save_that_fails_leaves_the_last_good_file(self, prompts, monkeypatch):
-        from pybreeze.pybreeze_ui.extend_ai_gui.prompt_edit_gui import prompt_file_io
+        from pybreeze.utils.file_process import replace_file
 
         write(prompts, "linter.md", "the last good prompt")
         editor = _cot_editor(monkeypatch)
@@ -331,7 +331,7 @@ class TestSavingAPrompt:
         def refuse(*_args):
             raise OSError(28, "No space left on device")
 
-        monkeypatch.setattr(prompt_file_io.os, "replace", refuse)
+        monkeypatch.setattr(replace_file.os, "replace", refuse)
         editor.save_file()
 
         assert (prompts / "linter.md").read_text(encoding="utf-8") == "the last good prompt"

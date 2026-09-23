@@ -38,6 +38,7 @@ _A_DIAGRAM = {
 class TestSaving:
     def test_a_save_that_fails_leaves_the_last_good_file(self, editor, tmp_path, monkeypatch):
         from pybreeze.pybreeze_ui.diagram_editor import diagram_editor_widget
+        from pybreeze.utils.file_process import replace_file
 
         target = tmp_path / "keep.diagram.json"
         target.write_text(json.dumps(_A_DIAGRAM), encoding="utf-8")
@@ -49,7 +50,7 @@ class TestSaving:
         def refuse(*_args, **_kwargs):
             raise OSError("no room on the disk")
 
-        monkeypatch.setattr(diagram_editor_widget.os, "replace", refuse)
+        monkeypatch.setattr(replace_file.os, "replace", refuse)
         editor._write_json(target)
 
         assert json.loads(target.read_text(encoding="utf-8")) == _A_DIAGRAM

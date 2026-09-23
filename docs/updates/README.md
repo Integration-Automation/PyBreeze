@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-102 | 2026-09-23 | Prompt and diagram saves use the shared replace_text (refactor) | #refactor #tools | [2026-09](2026-09.md) |
 | U-20260923-101 | 2026-09-23 | prthinker settings: a failed save keeps the stored keys, the file is its owner's only, reading creates nothing, and a failure is shown | #fix #security #prthinker | [2026-09](2026-09.md) |
 | U-20260923-100 | 2026-09-23 | URL Builder and Query JSON: deeply nested JSON reported, null parts empty, ports checked, an empty port accepted | #fix #tools | [2026-09](2026-09.md) |
 | U-20260923-99 | 2026-09-23 | Plugin runs match suffixes registered in any case or without the dot, and the Plugins menu has one run entry per plugin | #fix #plugin | [2026-09](2026-09.md) |
@@ -182,4 +183,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 119 |
+| [2026-09.md](2026-09.md) | 2026-09 | 120 |
