@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QInputDialog, QMessageBox
 from je_editor import EditorWidget, language_wrapper
@@ -111,6 +112,7 @@ def _review_pull_request(ui_we_want_to_set: PyBreezeMainWindow) -> None:
 def _open_setting(ui_we_want_to_set: PyBreezeMainWindow) -> None:
     """開設定視窗 / Open the settings window."""
     dialog = PRThinkerSettingDialog(ui_we_want_to_set)
+    dialog.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
     dialog.exec()
 
 
@@ -118,6 +120,7 @@ def _tell(ui_we_want_to_set: PyBreezeMainWindow, message_key: str) -> None:
     """把一句話說給使用者聽 / Put one sentence in front of the user."""
     lang = language_wrapper.language_word_dict
     messagebox = QMessageBox(ui_we_want_to_set)
+    messagebox.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
     messagebox.setWindowTitle(lang.get("prthinker_menu_label"))
     messagebox.setText(lang.get(message_key))
     messagebox.exec()

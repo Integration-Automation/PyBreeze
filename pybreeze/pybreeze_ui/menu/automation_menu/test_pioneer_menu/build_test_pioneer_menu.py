@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QFileDialog, QMessageBox
 from je_editor import language_wrapper
@@ -99,6 +100,7 @@ def check_file(ui_we_want_to_set: PyBreezeMainWindow):
             show_messagebox = True
     if show_messagebox:
         messagebox = QMessageBox(ui_we_want_to_set)
+        messagebox.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         messagebox.setWindowTitle(language_wrapper.language_word_dict.get("test_pioneer_not_choose_yaml"))
         messagebox.setText(language_wrapper.language_word_dict.get("test_pioneer_not_choose_yaml"))
         messagebox.exec()

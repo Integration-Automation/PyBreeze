@@ -189,6 +189,7 @@ class HostKeyAsker(QObject):
             pybreeze_logger.warning("SSH host key question dropped: its panel was closed")
             return
         box = QMessageBox(parent)
+        box.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         box.setIcon(QMessageBox.Icon.Warning)
         box.setWindowTitle(title)
         box.setText(message)

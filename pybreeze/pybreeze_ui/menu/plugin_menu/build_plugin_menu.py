@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QMessageBox
 
@@ -130,6 +131,7 @@ def _make_about_callback(parent: PyBreezeMainWindow, name: str, version: str, au
     """
     def callback():
         message_box = QMessageBox(parent)
+        message_box.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         message_box.setWindowTitle(name)
         message_box.setText(as_text(
             f"{name}\n"

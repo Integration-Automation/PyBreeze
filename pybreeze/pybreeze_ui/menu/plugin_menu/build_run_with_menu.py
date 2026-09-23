@@ -11,6 +11,7 @@ import locale
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QMessageBox
 
@@ -128,6 +129,7 @@ def run_current_file_with(main_window: PyBreezeMainWindow, run_config: dict) -> 
     supported = run_config_suffixes(run_config)
     if supported and suffix not in supported:
         msg = QMessageBox(main_window)
+        msg.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         msg.setWindowTitle(language_wrapper.language_word_dict.get("run_with_menu_label"))
         msg.setText(
             language_wrapper.language_word_dict.get("run_with_suffix_mismatch").format(
