@@ -25,8 +25,10 @@ LEVEL_INFO = "info"
 HEADER_LINE_RE = re.compile(r"^([A-Za-z0-9!#$%&'*+.^_`|~-]+):[ \t]?(.*)$")
 # Matches a leading response status line, e.g. "HTTP/1.1 200 OK"
 _STATUS_LINE_RE = re.compile(r"^\s*HTTP/\d(?:\.\d)?\s+\d{3}\b")
-# Matches the max-age directive of an HSTS policy
-_MAX_AGE_RE = re.compile(r"max-age\s*=\s*(\d+)", re.IGNORECASE)
+# Matches the max-age directive of an HSTS policy, whose value RFC 6797 lets be quoted
+_MAX_AGE_RE = re.compile(r'max-age\s*=\s*"?(\d+)"?', re.IGNORECASE)
+# The start of a line that continues the header above it (obs-fold, RFC 9112 5.2)
+FOLDED_LINE_START = (" ", "\t")
 
 # Header names referenced from more than one table below
 _HSTS_HEADER = "strict-transport-security"
@@ -135,6 +137,12 @@ def parse_headers(text: str) -> list[HeaderField]:
         if not line.strip():
             if fields:
                 break  # the blank line between the headers and the body
+            continue
+        if line.startswith(FOLDED_LINE_START) and fields:
+            # A folded continuation: part of the value above, joined by one
+            # space. Dropped, a CSP directive written on it went unchecked.
+            last = fields[-1]
+            fields[-1] = HeaderField(name=last.name, value=f"{last.value} {line.strip()}".strip())
             continue
         match = HEADER_LINE_RE.match(line)
         if match is not None:

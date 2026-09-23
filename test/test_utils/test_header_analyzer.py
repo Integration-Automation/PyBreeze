@@ -193,3 +193,24 @@ class TestAnalysisShape:
 def test_a_max_age_too_long_for_int_is_long_enough():
     assert "hsts_weak_max_age" not in _codes(
         "Strict-Transport-Security: max-age=" + "9" * 5000)
+
+
+class TestWhatHeadersActuallySay:
+    def test_a_quoted_max_age_is_read(self):
+        # RFC 6797 lets the value be quoted; it read as 0 and was called weak
+        text = 'Strict-Transport-Security: max-age="31536000"; includeSubDomains'
+
+        assert "hsts_weak_max_age" not in _codes(text)
+
+    def test_a_folded_line_is_part_of_the_value_above(self):
+        # Dropped, the directive written on it was never checked
+        text = "Content-Security-Policy: default-src 'self';\n  script-src 'unsafe-inline'"
+
+        assert "csp_unsafe_directive" in _codes(text)
+        (field,) = parse_headers(text)
+        assert field.value == "default-src 'self'; script-src 'unsafe-inline'"
+
+    def test_a_tab_folds_too(self):
+        (field,) = parse_headers("X-Long: a\n\tb")
+
+        assert field.value == "a b"

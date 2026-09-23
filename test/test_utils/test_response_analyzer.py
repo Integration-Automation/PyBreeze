@@ -133,3 +133,25 @@ def test_a_header_sent_twice_keeps_both_values():
         "HTTP/1.1 200 OK\nSet-Cookie: a=1\nSet-Cookie: b=2\nContent-Type: text/plain\n\nok")
 
     assert analysis.headers == {"Set-Cookie": ["a=1", "b=2"], "Content-Type": "text/plain"}
+
+
+class TestHeadersAsHttpDefinesThem:
+    def test_a_folded_line_continues_the_header_and_the_body_is_still_json(self):
+        # It ended the headers: the value was cut and the body no longer JSON
+        analysis = analyze_response('HTTP/1.1 200 OK\nX-Long: a\n b\n\n{"a": 1}')
+
+        assert analysis.headers["X-Long"] == "a b"
+        assert analysis.is_json_body
+
+    def test_names_differing_only_in_case_are_one_header(self):
+        analysis = analyze_response("HTTP/1.1 200 OK\nSet-Cookie: a=1\nset-cookie: b=2\n\n")
+
+        assert analysis.headers == {"Set-Cookie": ["a=1", "b=2"]}
+
+    def test_an_http2_status_pseudo_header_gives_the_status_and_keeps_the_headers(self):
+        # It ended the headers, and everything after it was read as the body
+        analysis = analyze_response(':status: 404\ncontent-type: application/json\n\n{"a": 1}')
+
+        assert analysis.status is not None and analysis.status.code == 404
+        assert analysis.headers == {"content-type": "application/json"}
+        assert analysis.is_json_body

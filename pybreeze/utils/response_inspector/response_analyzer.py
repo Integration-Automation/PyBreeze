@@ -15,13 +15,15 @@ import re
 from dataclasses import dataclass, field
 
 from pybreeze.utils.curl_import.curl_parser import add_repeated_value
-from pybreeze.utils.header_tools.header_analyzer import HEADER_LINE_RE
+from pybreeze.utils.header_tools.header_analyzer import FOLDED_LINE_START, HEADER_LINE_RE
 from pybreeze.utils.http_reference.status_codes import StatusInfo, lookup
 from pybreeze.utils.jwt_tools.jwt_decoder import DecodedJwt, decode_jwt, find_tokens
 from pybreeze.utils.exception.exceptions import JwtDecodeException
 
 # Matches the response status line, e.g. "HTTP/1.1 200 OK"
 _STATUS_LINE_RE = re.compile(r"^HTTP/\d(?:\.\d)?\s+(\d{3})\b")
+# An HTTP/2 or HTTP/3 pseudo-header as browsers' tools copy it, e.g. ":status: 200"
+_PSEUDO_HEADER_RE = re.compile(r"^:([a-z]+):[ \t]?(.*)$")
 
 
 @dataclass
@@ -76,19 +78,47 @@ def _parse_head_and_body(text: str) -> tuple[int | None, dict[str, str], str]:
         index = 1
 
     headers: dict[str, str | list[str]] = {}
+    last_name: str | None = None
     while index < len(lines):
         line = lines[index]
         if line.strip() == "":
             index += 1
             break
-        match = HEADER_LINE_RE.match(line)
-        if match is None:
+        if line.startswith(FOLDED_LINE_START) and last_name is not None:
+            # A folded continuation of the header above; it ended the headers
+            # and began the body, which then no longer read as JSON
+            _continue_value(headers, last_name, line.strip())
+        elif (pseudo := _PSEUDO_HEADER_RE.match(line)) is not None:
+            # It ended the headers, and the rest was read as the body
+            if pseudo.group(1) == "status" and status_code is None and pseudo.group(2).strip().isdigit():
+                status_code = int(pseudo.group(2).strip())
+        elif (match := HEADER_LINE_RE.match(line)) is not None:
+            last_name = _same_name(headers, match.group(1))
+            add_repeated_value(headers, last_name, match.group(2).strip())
+        else:
             break
-        add_repeated_value(headers, match.group(1), match.group(2).strip())
         index += 1
 
     body = "\n".join(lines[index:]).strip()
     return status_code, headers, body
+
+
+def _same_name(headers: dict[str, str | list[str]], name: str) -> str:
+    """The spelling *name* is already kept under, header names being case-insensitive.
+
+    ``Set-Cookie`` and ``set-cookie`` were two entries instead of one list.
+    """
+    lowered = name.lower()
+    return next((known for known in headers if known.lower() == lowered), name)
+
+
+def _continue_value(headers: dict[str, str | list[str]], name: str, more: str) -> None:
+    """Join *more* to the last value kept under *name*, with one space."""
+    value = headers[name]
+    if isinstance(value, list):
+        value[-1] = f"{value[-1]} {more}".strip()
+    else:
+        headers[name] = f"{value} {more}".strip()
 
 
 def _pretty_json(body: str) -> str | None:
