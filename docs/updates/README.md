@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-49 | 2026-09-23 | The diff tab's summary no longer takes a minute on a large text | #done #tools #performance | [2026-09](2026-09.md) |
 | U-20260923-48 | 2026-09-23 | Generated scripts write JSON bodies and non-BMP characters as Python | #done #tools | [2026-09](2026-09.md) |
 | U-20260923-47 | 2026-09-23 | A request's method or URL can no longer write code into a generated script | #done #security #tools | [2026-09](2026-09.md) |
 | U-20260923-46 | 2026-09-23 | Package installs no longer go through cmd.exe | #done #security #install | [2026-09](2026-09.md) |
@@ -129,4 +130,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 66 |
+| [2026-09.md](2026-09.md) | 2026-09 | 67 |

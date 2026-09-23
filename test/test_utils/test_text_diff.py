@@ -56,3 +56,35 @@ class TestDiffSummary:
     def test_whitespace_only_difference(self):
         summary = diff_summary("a", "a ")
         assert not summary.is_equal
+
+
+class TestSummaryMatchesTheShownDiff:
+    def test_the_counts_are_the_diffs_own_plus_and_minus_lines(self):
+        from hypothesis import given, settings
+        from hypothesis import strategies as st
+
+        lines = st.lists(st.sampled_from(["a", "b", "c", "d", ""]), max_size=12)
+
+        @settings(max_examples=200, deadline=None)
+        @given(lines, lines)
+        def agree(left, right):
+            left_text, right_text = "\n".join(left), "\n".join(right)
+            shown = unified_diff(left_text, right_text).splitlines()[2:]  # skip the ---/+++ header
+            summary = diff_summary(left_text, right_text)
+            assert summary.added == sum(line.startswith("+") for line in shown)
+            assert summary.removed == sum(line.startswith("-") for line in shown)
+
+        agree()
+
+    def test_every_line_changed_in_a_large_text_is_quick(self):
+        import time
+
+        left = "\n".join(f"line {number} alpha" for number in range(3000))
+        right = "\n".join(f"line {number} beta" for number in range(3000))
+
+        started = time.perf_counter()
+        summary = diff_summary(left, right)
+
+        # ndiff took over a minute here; the opcodes take milliseconds.
+        assert time.perf_counter() - started < 5
+        assert (summary.added, summary.removed) == (3000, 3000)

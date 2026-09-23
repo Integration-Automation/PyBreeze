@@ -60,17 +60,22 @@ def unified_diff(
 def diff_summary(left: str, right: str) -> DiffSummary:
     """Summarise how *left* and *right* differ, line by line.
 
+    The counts come from the same line matching ``unified_diff`` uses, so they
+    agree with the diff shown beside them. ``difflib.ndiff`` also compared the
+    characters inside every changed line, which the counts never needed: two
+    3000-line texts with every line changed took over a minute, on the UI
+    thread.
+
     :param left: the first (expected) text
     :param right: the second (actual) text
     :return: the counts of added and removed lines and whether they are equal
     """
-    left_lines = _split_lines(left)
-    right_lines = _split_lines(right)
+    matcher = difflib.SequenceMatcher(None, _split_lines(left), _split_lines(right))
     added = 0
     removed = 0
-    for line in difflib.ndiff(left_lines, right_lines):
-        if line.startswith("+ "):
-            added += 1
-        elif line.startswith("- "):
-            removed += 1
+    for tag, left_start, left_end, right_start, right_end in matcher.get_opcodes():
+        if tag in ("replace", "delete"):
+            removed += left_end - left_start
+        if tag in ("replace", "insert"):
+            added += right_end - right_start
     return DiffSummary(added=added, removed=removed, is_equal=left == right)
