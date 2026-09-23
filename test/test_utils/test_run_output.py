@@ -411,3 +411,25 @@ def test_a_runaway_run_holds_a_bounded_backlog_and_stops_promptly(qt_app, tmp_pa
     runner.stop()
     _run_events_until(qt_app, lambda: not runner.still_running)
     assert "[Process exited with code" in window.code_result.toPlainText()
+
+
+def test_a_line_without_its_newline_shows_while_the_run_goes_on(qt_app, tmp_path):
+    # Read by line, a status line or a progress bar showed nothing until the
+    # run's next newline
+    from pybreeze.extend.process_executor.process_executor_utils import build_task_process
+
+    (tmp_path / "status.py").write_text(
+        "import sys, time\n"
+        "sys.stdout.write('working... 50%'); sys.stdout.flush()\n"
+        "time.sleep(4)\n"
+        "print(' done')\n",
+        encoding="utf-8")
+    main_window = MainWindow(python_compiler=sys.executable)
+    build_task_process(main_window).start_module_process(
+        "status", [], environment={"PYTHONPATH": str(tmp_path)})
+    run_window = main_window.current_run_code_window[0]
+
+    _run_events_until(qt_app, lambda: "50%" in run_window.code_result.toPlainText())
+    assert "done" not in run_window.code_result.toPlainText()
+    _run_events_until(qt_app, lambda: "Task exit with code" in run_window.code_result.toPlainText())
+    assert "working... 50% done" in run_window.code_result.toPlainText()

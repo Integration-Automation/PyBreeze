@@ -90,13 +90,32 @@ class TestAppendOutput:
 
         assert window.code_result.toPlainText() == "def f():\n    return 1\n\n\tdone\n"
 
-    def test_windows_and_carriage_return_endings_become_line_breaks(self, qt_app):
+    def test_a_windows_line_ending_is_a_line_break(self, qt_app):
         from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
 
         window = CodeWindow()
-        window.append_output("one\r\ntwo\r 50%\r100%\n")
+        window.append_output("one\r\ntwo\r\n")
 
-        assert window.code_result.toPlainText() == "one\ntwo\n 50%\n100%\n"
+        assert window.code_result.toPlainText() == "one\ntwo\n"
+
+    def test_a_lone_carriage_return_redraws_the_line(self, qt_app):
+        # As a terminal does: a progress bar made one line per step
+        from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
+
+        window = CodeWindow()
+        window.append_output("one\n")
+        for step in ["  0%", "\r 50%", "\r100%", "\rdone\n"]:
+            window.append_output(step)
+
+        assert window.code_result.toPlainText() == "one\ndone\n"
+
+    def test_a_bar_that_ends_on_a_carriage_return_stays_shown(self, qt_app):
+        from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
+
+        window = CodeWindow()
+        window.append_output(" 50%\r100%\r")
+
+        assert window.code_result.toPlainText() == "100%"
 
     def test_pieces_of_one_line_join_up(self, qt_app):
         from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
@@ -281,10 +300,10 @@ class TestTerminalCodes:
 
         assert window.code_result.toPlainText() == shown
 
-    def test_a_progress_bars_carriage_return_still_breaks_the_line(self, qt_app):
+    def test_a_coloured_progress_bar_still_redraws_its_line(self, qt_app):
         from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
 
         window = CodeWindow()
         window.append_output("10%\r\x1b[32m20%\x1b[0m\r\n")
 
-        assert window.code_result.toPlainText() == "10%\n20%\n"
+        assert window.code_result.toPlainText() == "20%\n"

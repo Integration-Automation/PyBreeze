@@ -76,10 +76,29 @@ class TestPumpBatching:
 class TestReadStreamIntoQueue:
     def test_lines_keep_indentation_blank_lines_and_endings(self):
         data = b"def f():\n    return 1\n\n\tdone\r\n"
-        assert _read_all(data) == ["def f():\n", "    return 1\n", "\n", "\tdone\r\n"]
+        assert "".join(_read_all(data)) == "def f():\n    return 1\n\n\tdone\r\n"
 
     def test_bytes_are_decoded_with_replacement(self):
-        assert _read_all("café\n".encode() + b"\xff\n") == ["café\n", "�\n"]
+        assert "".join(_read_all("café\n".encode() + b"\xff\n")) == "café\n�\n"
+
+    def test_what_has_arrived_is_passed_on_without_waiting_for_a_newline(self):
+        # readline waited for one: a progress bar rewinding with \r showed nothing
+        # until the run's next newline
+        class Trickle:
+            def __init__(self) -> None:
+                self.pieces = [b"0%\r", b"50%\r", b"100%\r", b"done\n"]
+
+            def read1(self, _size: int) -> bytes:
+                return self.pieces.pop(0) if self.pieces else b""
+
+        target: Queue = Queue()
+        read_stream_into_queue(Trickle(), target, buffer_size=1024, encoding="utf-8", keep_reading=lambda: True)
+
+        got = []
+        while not target.empty():
+            got.append(target.get())
+        # Each piece as it came (a trailing \r held for the next one)
+        assert got == ["0%", "\r50%", "\r100%", "\rdone\n"]
 
     def test_stops_when_told_to(self):
         assert _read_all(b"one\ntwo\n", keep_reading=lambda: False) == []
@@ -145,9 +164,17 @@ class TestABoundedQueue:
 
         from pybreeze.extend.process_executor import queue_pump
 
+        class LineByLine:
+            """A pipe that has one line ready each time it is read."""
+
+            def __init__(self) -> None:
+                self.lines = [f"{i}\n".encode() for i in range(10)]
+
+            def read1(self, _size: int) -> bytes:
+                return self.lines.pop(0) if self.lines else b""
+
         target: Queue = Queue(maxsize=3)
-        data = b"".join(f"{i}\n".encode() for i in range(10))
-        reader = threading.Thread(target=queue_pump.read_stream_into_queue, args=(io.BytesIO(data), target),
+        reader = threading.Thread(target=queue_pump.read_stream_into_queue, args=(LineByLine(), target),
                                   kwargs={"buffer_size": 1024, "encoding": "utf-8", "keep_reading": lambda: True})
         reader.start()
         reader.join(0.5)

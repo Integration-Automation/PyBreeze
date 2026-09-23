@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-146 | 2026-09-24 | Show run output as it arrives, and let a carriage return redraw the line as a terminal does | #fix #executor #done | [2026-09](2026-09.md) |
 | U-20260923-145 | 2026-09-24 | Free the report mail's notice on the GUI thread, not on the mail thread | #fix #crash #threading #done | [2026-09](2026-09.md) |
 | U-20260923-144 | 2026-09-24 | Store an accepted SSH host key by replacing known_hosts in one step | #fix #ssh | [2026-09](2026-09.md) |
 | U-20260923-143 | 2026-09-24 | Save tool output by replacing the chosen file in one step, and say that pasted line endings come back as LF | #fix #tools #done | [2026-09](2026-09.md) |
@@ -226,4 +227,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 163 |
+| [2026-09.md](2026-09.md) | 2026-09 | 164 |

@@ -21,21 +21,12 @@ if TYPE_CHECKING:
 MAX_OUTPUT_BLOCKS = 10000
 
 
-def normalize_line_endings(text: str) -> str:
-    """Turn ``\r\n`` and a lone ``\r`` into ``\n``.
-
-    A child on Windows writes ``\r\n``, and a progress bar rewinds its line
-    with a bare ``\r``; the text widget only breaks lines on ``\n``.
-    """
-    return text.replace("\r\n", "\n").replace("\r", "\n")
-
-
 # A terminal's control sequences: CSI (colours, cursor moves: ESC [ ... final
 # byte), OSC (titles, links: ESC ] ... BEL or ESC \), and any other two-byte
 # escape
 _TERMINAL_SEQUENCE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[@-Z\\-_]")
 # Control characters a text view cannot show: all of C0 but tab, newline and
-# carriage return (which normalize_line_endings turns into a line break), and DEL
+# carriage return (which _insert_rewinding handles), and DEL
 _CONTROL_CHARACTER = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 
 
@@ -45,9 +36,27 @@ def strip_terminal_codes(text: str) -> str:
     A script that colours its output (``colorama``, ``rich``, ``pytest
     --color=yes``, ``FORCE_COLOR``) filled the window with ``←[31m``; a
     backspace or form feed showed as a box. Carriage returns are left for
-    :func:`normalize_line_endings`.
+    :func:`_insert_rewinding`.
     """
     return _CONTROL_CHARACTER.sub("", _TERMINAL_SEQUENCE.sub("", text))
+
+
+def _insert_rewinding(cursor: QTextCursor, text: str, text_format: QTextCharFormat) -> None:
+    """Insert *text* at *cursor*, a lone ``\\r`` going back to the start of the line.
+
+    As a terminal does: a progress bar that rewinds with ``\\r`` redraws its
+    line instead of adding one per step. ``\\r\\n`` and ``\\n`` are line breaks.
+    """
+    pieces = text.replace("\r\n", "\n").split("\r")
+    cursor.insertText(pieces[0], text_format)
+    for index, piece in enumerate(pieces[1:], start=1):
+        if not piece and index == len(pieces) - 1:
+            # A trailing \r waits for what comes next: rewound now, a finished
+            # progress bar's last line would be erased with nothing to replace it
+            break
+        cursor.movePosition(QTextCursor.MoveOperation.StartOfBlock, QTextCursor.MoveMode.KeepAnchor)
+        cursor.removeSelectedText()
+        cursor.insertText(piece, text_format)
 
 
 class CodeWindow(QWidget):
@@ -148,6 +157,6 @@ class CodeWindow(QWidget):
         text_format = QTextCharFormat()
         color_key = "error_output_color" if is_error else "normal_output_color"
         text_format.setForeground(actually_color_dict.get(color_key))
-        cursor.insertText(normalize_line_endings(strip_terminal_codes(text)), text_format)
+        _insert_rewinding(cursor, strip_terminal_codes(text), text_format)
         if follow_output:
             scroll_bar.setValue(scroll_bar.maximum())

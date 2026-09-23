@@ -68,7 +68,7 @@ def read_stream_into_queue(
     encoding: str,
     keep_reading: Callable[[], bool],
 ) -> None:
-    """Copy *stream* into *target_queue* line by line, exactly as read.
+    """Copy *stream* into *target_queue* as it arrives, exactly as read.
 
     Runs on a reader thread. Stops when *keep_reading* turns false or the pipe
     reaches EOF. Stopping on EOF (an empty read) is essential: without it the
@@ -76,7 +76,12 @@ def read_stream_into_queue(
     process exited. Lines keep their leading whitespace and line ending, and
     blank lines are kept, so the run window shows the output as it was written.
 
-    A line longer than *buffer_size* arrives in pieces, and a piece can end
+    Whatever has arrived is read (``read1``), not a whole line: waiting for
+    a newline hid a progress bar that rewinds with ``\\r``, and a status line
+    printed without one, until the run's next newline, and then showed every
+    step at once. A stream without ``read1`` (text mode) is read by line.
+
+    A piece can end
     inside a multi-byte character or between the ``\\r`` and ``\\n`` of a line
     ending. The character is carried over by an incremental decoder, and a
     trailing ``\\r`` is held for the next piece: decoded on its own, the
@@ -85,9 +90,10 @@ def read_stream_into_queue(
     """
     decoder = _decoder_for(encoding)
     held = ""
+    read = getattr(stream, "read1", None) or stream.readline
     while keep_reading():
         try:
-            line = stream.readline(buffer_size)
+            line = read(buffer_size)
         except (OSError, ValueError) as error:
             # The pipe was closed underneath us during shutdown.
             pybreeze_logger.debug("Output reader stopped: %s", error)
