@@ -614,6 +614,10 @@ test_pioneer_keys: list = [
     "open_program", "close_program", "redirect_stdout", "redirect_stderr",
 ]
 
+# A TestPioneer script is YAML, under either of YAML's extensions: the menu
+# runs both, and both are highlighted
+TEST_PIONEER_SUFFIXES = (".yml", ".yaml")
+
 package_keyword_list = {
     "je_auto_control": auto_control_keys,
     "je_load_density": load_density_keys,

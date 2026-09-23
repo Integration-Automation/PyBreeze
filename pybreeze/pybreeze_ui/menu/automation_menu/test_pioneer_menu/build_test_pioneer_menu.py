@@ -10,15 +10,14 @@ from test_pioneer import create_template_dir
 
 from pybreeze.extend.process_executor.test_pioneer.test_pioneer_process_manager import \
     init_and_start_test_pioneer_process
+from pybreeze.pybreeze_ui.syntax.syntax_keyword import TEST_PIONEER_SUFFIXES
 from pybreeze.utils.logging.logger import pybreeze_logger
 
 if TYPE_CHECKING:
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
 
 
-# A TestPioneer script is YAML, under either of YAML's extensions
-_YAML_SUFFIXES = (".yml", ".yaml")
-_YAML_FILTER = "YAML (*.yml *.yaml)"
+_YAML_FILTER = "YAML ({})".format(" ".join(f"*{suffix}" for suffix in TEST_PIONEER_SUFFIXES))
 # Where TestPioneer puts its template, under the project directory
 _TEMPLATE_DIR = ".TestPioneer"
 
@@ -94,7 +93,7 @@ def check_file(ui_we_want_to_set: PyBreezeMainWindow):
         ui_we_want_to_set, filter=_YAML_FILTER)[0]
     show_messagebox = False
     if file_path:
-        if Path(file_path).is_file() and Path(file_path).suffix.lower() in _YAML_SUFFIXES:
+        if Path(file_path).is_file() and Path(file_path).suffix.lower() in TEST_PIONEER_SUFFIXES:
             init_and_start_test_pioneer_process(ui_we_want_to_set, file_path)
         else:
             show_messagebox = True
