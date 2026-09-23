@@ -183,15 +183,19 @@ class DiagramScene(QGraphicsScene):
     def end_undo(self) -> None:
         if self._pending_undo_snapshot is None:
             return
-        new = self._snapshot()
-        if new != self._pending_undo_snapshot:
-            cmd = DiagramSnapshotCommand(
-                self, self._pending_undo_desc or "Edit",
-                self._pending_undo_snapshot, new,
-            )
-            self.undo_stack.push(cmd)
+        self.record_change(self._pending_undo_desc or "Edit", self._pending_undo_snapshot)
         self._pending_undo_snapshot = None
         self._pending_undo_desc = None
+
+    def record_change(self, description: str, before: dict) -> None:
+        """Put one undo step on the stack, from *before* to the scene as it is now.
+
+        Nothing is recorded when nothing changed. The command skips its first
+        redo, so the scene is not rebuilt under the caller.
+        """
+        after = self._snapshot()
+        if after != before:
+            self.undo_stack.push(DiagramSnapshotCommand(self, description, before, after))
 
     @contextmanager
     def undo_scope(self, description: str):
@@ -634,6 +638,11 @@ class DiagramScene(QGraphicsScene):
                 pos = views[0].mapToScene(views[0].viewport().rect().center())
             else:
                 pos = QPointF(0, 0)
+        if source and not pixmap.isNull():
+            # An undo rebuilds every image from its source: without this, one
+            # the editor cannot reload (a .tiff picked through "All Files")
+            # went blank, and one from a URL was downloaded again.
+            self._pixmap_cache[source] = pixmap
         with self.undo_scope("Add Image"):
             img = DiagramImage(x=pos.x() - w / 2, y=pos.y() - h / 2, w=w, h=h, source=source, pixmap=pixmap)
             self.addItem(img)

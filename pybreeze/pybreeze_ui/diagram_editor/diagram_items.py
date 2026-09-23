@@ -190,7 +190,15 @@ class NodeStyle:
 # ---------------------------------------------------------------------------
 
 class _EditableLabel(QGraphicsTextItem):
-    """Label that is read-only by default; double-click to edit, focus-out to commit."""
+    """Label that is read-only by default; double-click to edit, focus-out to commit.
+
+    The edit is one undo step, from the double-click to the focus leaving. It
+    used to be none: undo restores whole-scene snapshots, so the next undo or
+    redo brought the old text back and what was typed could not be recovered.
+    """
+
+    # The scene as it was when editing began, until the edit is committed
+    _before_edit: dict | None = None
 
     def focusOutEvent(self, event) -> None:
         self.setTextInteractionFlags(Qt.TextInteractionFlag.NoTextInteraction)
@@ -200,9 +208,20 @@ class _EditableLabel(QGraphicsTextItem):
         parent = self.parentItem()
         if parent is not None and hasattr(parent, "_center_label"):
             parent._center_label()
+        self._record_edit()
         super().focusOutEvent(event)
 
+    def _record_edit(self) -> None:
+        """Record the text typed since the double-click as one undo step."""
+        before, self._before_edit = self._before_edit, None
+        scene = self.scene()
+        if before is not None and hasattr(scene, "record_change"):
+            scene.record_change("Edit Text", before)
+
     def mouseDoubleClickEvent(self, event) -> None:
+        scene = self.scene()
+        if self._before_edit is None and hasattr(scene, "record_change"):
+            self._before_edit = scene.to_dict()
         self.setTextInteractionFlags(Qt.TextInteractionFlag.TextEditorInteraction)
         self.setFocus(Qt.FocusReason.MouseFocusReason)
         super().mouseDoubleClickEvent(event)
