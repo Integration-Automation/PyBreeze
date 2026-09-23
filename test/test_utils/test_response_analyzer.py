@@ -4,6 +4,8 @@ from __future__ import annotations
 import base64
 import json
 
+import pytest
+
 from pybreeze.utils.response_inspector.response_analyzer import analyze_response
 
 
@@ -155,3 +157,38 @@ class TestHeadersAsHttpDefinesThem:
         assert analysis.status is not None and analysis.status.code == 404
         assert analysis.headers == {"content-type": "application/json"}
         assert analysis.is_json_body
+
+
+class TestCurlShowsEveryResponse:
+    """curl -i prints interim and earlier responses before the final one."""
+
+    @pytest.mark.parametrize("first", [
+        "HTTP/1.1 100 Continue\n\n",
+        "HTTP/1.1 200 Connection established\n\n",
+        "HTTP/1.1 301 Moved Permanently\nLocation: /new\n\n",
+    ])
+    def test_the_final_response_is_the_one_read(self, first):
+        # The first status line was taken and the real response read as its body
+        from pybreeze.utils.response_inspector.response_analyzer import analyze_response
+
+        result = analyze_response(first + 'HTTP/1.1 404 Not Found\nContent-Type: application/json\n\n{"a": 1}')
+
+        assert result.status.code == 404
+        assert result.headers == {"Content-Type": "application/json"}
+        assert result.is_json_body
+
+    def test_a_body_alone_is_not_a_header(self):
+        from pybreeze.utils.response_inspector.response_analyzer import analyze_response
+
+        result = analyze_response("Error: invalid token supplied")
+
+        assert result.headers == {}
+        assert result.body == "Error: invalid token supplied"
+
+    def test_a_header_block_is_still_headers(self):
+        from pybreeze.utils.response_inspector.response_analyzer import analyze_response
+
+        result = analyze_response("Content-Type: text/plain\nX-Id: 7\n\nhello")
+
+        assert result.headers == {"Content-Type": "text/plain", "X-Id": "7"}
+        assert result.body == "hello"

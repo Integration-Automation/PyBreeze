@@ -65,12 +65,30 @@ def _normalise(text: str) -> str:
 
 
 def _parse_head_and_body(text: str) -> tuple[int | None, dict[str, str], str]:
-    """Split *text* into a status code, headers and body.
+    """Split *text* into the final response's status code, headers and body.
+
+    ``curl -i`` prints every response it read: ``100 Continue``, a proxy's
+    ``200 Connection established``, each redirect with ``-L``. The first status
+    line used to be taken, and the real response read as its body; while a
+    body starts with a status line, it is parsed again from there.
+    """
+    lines = _normalise(text).split("\n")
+    if len(lines) == 1 and not _STATUS_LINE_RE.match(lines[0]):
+        # One line and no status line is a body: "Error: invalid token" is
+        # not a header
+        return None, {}, text.strip()
+    status_code, headers, body = _parse_one_response(lines)
+    while _STATUS_LINE_RE.match(body):
+        status_code, headers, body = _parse_one_response(body.split("\n"))
+    return status_code, headers, body
+
+
+def _parse_one_response(lines: list[str]) -> tuple[int | None, dict[str, str], str]:
+    """Split *lines* into a status code, headers and body.
 
     Headers run from an optional status line until a blank line or the first line
     that is not a ``Name: Value`` header; everything after is the body.
     """
-    lines = _normalise(text).split("\n")
     index = 0
     status_code: int | None = None
     if lines and _STATUS_LINE_RE.match(lines[0]):
