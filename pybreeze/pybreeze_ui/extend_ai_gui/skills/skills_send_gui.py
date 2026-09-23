@@ -47,7 +47,8 @@ class RequestThread(QThread):
                 status_code=response.status_code, text=text)
             (self.error if is_error else self.answered).emit(message)
         except (requests.RequestException, ResponseTooLargeError, UnsafeURLError) as e:
-            pybreeze_logger.error("Skills send request failed: %r", e)
+            # Not %r: a requests error carries the whole URL, which may hold a token.
+            pybreeze_logger.error("Skills send request failed: %s", type(e).__name__)
             self.error.emit(language_wrapper.language_word_dict.get("skills_exception").format(error=str(e)))
 
 

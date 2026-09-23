@@ -93,3 +93,16 @@ class TestWhatARequestReports:
 
         assert answered == []
         assert "refused" in errors[0]
+
+
+def test_a_failed_request_does_not_log_the_url(monkeypatch):
+    # A requests error names the whole URL, and an API URL may carry a token.
+    logged: list = []
+    monkeypatch.setattr(
+        skills_send_gui.pybreeze_logger, "error",
+        lambda message, *args: logged.append(message % args))
+
+    _run(monkeypatch, requests.ConnectionError(
+        "Max retries exceeded with url: /v1?token=not-a-real-token"))
+
+    assert logged and all("not-a-real-token" not in line for line in logged)

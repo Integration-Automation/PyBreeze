@@ -412,3 +412,27 @@ class TestSwitchingTemplatesWithUnsavedEdits:
         assert editor.middle_editor.toPlainText() == "MY EDITS"
         editor.close()
         editor.deleteLater()
+
+
+class TestAnEditedPromptThatReachesIntoAPlaceholder:
+    @pytest.mark.parametrize("edited", [
+        "Review {code_diff[x]}",      # a TypeError that used to end the whole chain
+        "Review {code_diff.upper}",   # quietly sent "<built-in method upper ...>"
+        "Review {code_diff[0]}",      # quietly sent one character of the code
+        "Review {0}",
+        "Review {}",
+    ])
+    def test_it_falls_back_to_the_built_in(self, prompts, edited):
+        write(prompts, "linter.md", edited)
+
+        prompt = build_prompt("linter.md", {CODE_DIFF: CODE})
+
+        assert CODE in prompt
+        assert "built-in method" not in prompt
+
+    def test_escaped_braces_and_a_format_spec_still_work(self, prompts):
+        write(prompts, "linter.md", "{{literal}} then {code_diff!s:>1}")
+
+        prompt = build_prompt("linter.md", {CODE_DIFF: CODE})
+
+        assert "{literal}" in prompt and CODE in prompt

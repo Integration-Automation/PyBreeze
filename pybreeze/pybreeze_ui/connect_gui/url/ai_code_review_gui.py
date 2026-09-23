@@ -110,6 +110,22 @@ def read_stats(path: str) -> tuple[int, int]:
     return totals["Accepted"], totals["Rejected"]
 
 
+def _read_recorded_lines(path: Path) -> list[str]:
+    """Return the non-empty lines of the sent-URLs file, none when it cannot be read.
+
+    A damaged or locked file must not stop the request: raised from the Send
+    slot, it did so on every click.
+    """
+    try:
+        text = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return []
+    except (OSError, UnicodeDecodeError) as error:
+        pybreeze_logger.debug("Sent URLs not read: %r", error)
+        return []
+    return [line.strip() for line in text.splitlines() if line.strip()]
+
+
 class AICodeReviewClient(QWidget):
     def __init__(self):
         super().__init__()
@@ -269,30 +285,43 @@ class AICodeReviewClient(QWidget):
         sitting in the user's home directory.
         """
         path = Path(self.url_file)
-        lines = []
-        if path.is_file():
-            lines = [line.strip() for line in path.read_text(encoding="utf-8").splitlines()
-                     if line.strip()]
+        lines = _read_recorded_lines(path)
         seen = {line if looks_like_a_fingerprint(line) else url_fingerprint(line)
                 for line in lines}
         fingerprint = url_fingerprint(url)
         is_new = fingerprint not in seen
         if is_new or any(not looks_like_a_fingerprint(line) for line in lines):
             seen.add(fingerprint)
-            path.write_text("\n".join(sorted(seen)) + "\n", encoding="utf-8")
+            try:
+                path.write_text("\n".join(sorted(seen)) + "\n", encoding="utf-8")
+            except OSError as error:
+                # Only the "seen before" note is lost; the request still goes out.
+                pybreeze_logger.debug("Sent URLs not recorded: %r", error)
         return is_new
 
     def accept_response(self):
         """Accept response code and save"""
-        self.accept_count += 1
+        self._count_verdict(accepted=True)
         self.response_panel.append(f"\n{self.word_dict.get('ai_code_review_gui_status_accepted')}")
         self.save_stats()
 
     def reject_response(self):
         """Reject response code and save"""
-        self.reject_count += 1
+        self._count_verdict(accepted=False)
         self.response_panel.append(f"\n{self.word_dict.get('ai_code_review_gui_status_rejected')}")
         self.save_stats()
+
+    def _count_verdict(self, accepted: bool) -> None:
+        """Add one verdict to the totals on disk, not to this panel's copy of them.
+
+        Another review panel may have saved since this one opened; counting on
+        from the numbers read at opening wrote its votes away.
+        """
+        self.accept_count, self.reject_count = read_stats(self.stats_file)
+        if accepted:
+            self.accept_count += 1
+        else:
+            self.reject_count += 1
 
     def save_stats(self):
         """Save accept/reject counts"""

@@ -11,6 +11,7 @@ Pure logic with no Qt and no network, so the wiring can be tested on its own.
 from __future__ import annotations
 
 from collections.abc import Mapping
+from string import Formatter
 
 from pybreeze.pybreeze_ui.extend_ai_gui.ai_gui_global_variable import COT_TEMPLATE_RELATION
 from pybreeze.pybreeze_ui.extend_ai_gui.prompt_edit_gui.cot_code_review_prompt_templates.global_rule import (
@@ -88,8 +89,8 @@ def build_prompt(step: str, results: Mapping[str, str]) -> str | None:
     }
     template = load_prompt(step, built_in)
     try:
-        body = template.format(**filled)
-    except (KeyError, IndexError, ValueError) as error:
+        body = _fill(template, filled)
+    except (KeyError, IndexError, ValueError, TypeError) as error:
         # An edited prompt that names a placeholder the chain cannot fill would
         # otherwise take the whole review down. Fall back to the built-in and say
         # so, rather than failing a step the user cannot debug from the UI.
@@ -98,3 +99,19 @@ def build_prompt(step: str, results: Mapping[str, str]) -> str | None:
             step, error)
         body = built_in.format(**filled)
     return build_global_rule_template(prompt=body)
+
+
+def _fill(template: str, filled: Mapping[str, str]) -> str:
+    """Fill *template*'s placeholders from *filled*, by plain name only.
+
+    An edited prompt may say ``{code_diff.upper}`` or ``{code_diff[0]}``:
+    ``str.format`` would quietly put a bound method's repr, or one character,
+    into the prompt, or raise a ``TypeError`` that ended the whole chain. A
+    field that is not a bare name is refused like an unknown one.
+
+    :raises ValueError: when a field is not a bare placeholder name
+    """
+    for _literal, field, _spec, _conversion in Formatter().parse(template):
+        if field is not None and not field.isidentifier():
+            raise ValueError(f"placeholder {field!r} is not a plain name")
+    return template.format_map(filled)

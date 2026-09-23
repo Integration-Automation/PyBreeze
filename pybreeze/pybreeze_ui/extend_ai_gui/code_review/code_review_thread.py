@@ -70,7 +70,9 @@ class SenderThread(QThread):
             )
             body = read_capped_text(resp)
         except (requests.RequestException, ResponseTooLargeError) as error:
-            pybreeze_logger.error("CoT code review send failed for %s: %r", file, error)
+            # Not %r: a requests error carries the whole URL, which may hold a token.
+            pybreeze_logger.error(
+                "CoT code review send failed for %s: %s", file, type(error).__name__)
             word = language_wrapper.language_word_dict
             return f"{word.get('cot_gui_error_sending')} {file} {error}", False
         if not succeeded(resp):

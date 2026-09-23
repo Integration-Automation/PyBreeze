@@ -228,3 +228,27 @@ def test_an_error_status_is_a_failed_step_not_an_answer():
     assert "HTTP 500" in received["linter.md"]
     later = _prompts(session)[linter_step + 1:]
     assert not any("Internal Server Error" in prompt for prompt in later)
+
+
+def test_a_failed_step_does_not_log_the_url(monkeypatch):
+    # A requests error names the whole URL, and an API URL may carry a token.
+    _qt_app()
+    from pybreeze.pybreeze_ui.extend_ai_gui.code_review import code_review_thread
+    from pybreeze.pybreeze_ui.extend_ai_gui.code_review.code_review_thread import SenderThread
+
+    logged: list = []
+    monkeypatch.setattr(
+        code_review_thread.pybreeze_logger, "error",
+        lambda message, *args: logged.append(message % args))
+
+    class _Refusing(_FakeSession):
+        def post(self, url, **kwargs):
+            import requests
+
+            raise requests.ConnectionError(f"Max retries exceeded with url: {url}")
+
+    thread = SenderThread(files=["linter.md"], code="print('x')",
+                          url="https://example.com/api?token=not-a-real-token")
+    thread._run_templates(_Refusing(), "print('x')")
+
+    assert logged and all("not-a-real-token" not in line for line in logged)

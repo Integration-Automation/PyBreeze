@@ -239,3 +239,40 @@ class TestTheRunningTotals:
         binary.write_bytes(b"\xff\xfe\x00")
         assert read_stats(str(binary)) == (0, 0)
 
+
+class TestASentUrlsFileThatCannotBeUsed:
+    def test_a_damaged_file_does_not_stop_the_request(self, client):
+        from pathlib import Path
+
+        Path(client.url_file).write_bytes(b"\xff\xfe not utf-8")
+
+        # It used to raise from the Send slot, on every click.
+        assert client.record_url(_A_URL) is True
+        assert url_fingerprint(_A_URL) in stored(client)
+
+    def test_a_file_that_cannot_be_written_does_not_stop_the_request(self, client, monkeypatch):
+        from pathlib import Path
+
+        def refuse(*_args, **_kwargs):
+            raise PermissionError(13, "Access is denied")
+
+        monkeypatch.setattr(Path, "write_text", refuse)
+
+        assert client.record_url(_A_URL) is True
+
+
+class TestTwoPanelsOpenAtOnce:
+    def test_neither_writes_away_the_others_votes(self, app, tmp_path, monkeypatch):
+        (tmp_path / "response_stats.txt").write_text("Accepted: 5\nRejected: 5\n", encoding="utf-8")
+        monkeypatch.setattr(ai_code_review_gui, "pybreeze_data_dir", lambda: tmp_path)
+        first, second = AICodeReviewClient(), AICodeReviewClient()
+
+        for _ in range(3):
+            first.accept_response()
+        second.reject_response()
+
+        # The second panel used to count on from the 5/5 it read at opening
+        # and save 5/6, losing the first panel's three accepts.
+        assert (tmp_path / "response_stats.txt").read_text(encoding="utf-8") == "Accepted: 8\nRejected: 6\n"
+        first.deleteLater()
+        second.deleteLater()
