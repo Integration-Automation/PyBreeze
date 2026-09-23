@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import os
 import time
 from collections.abc import Callable
@@ -13,8 +12,6 @@ from je_editor import EditorWidget, language_wrapper
 from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
 from pybreeze.extend.mail_thunder_extend.mail_thunder_setting import DEFAULT_REPORT_PATH, send_after_test
 from pybreeze.extend.process_executor.python_task_process_manager import TaskProcessManager
-from pybreeze.utils.exception.exception_tags import wrong_test_data_format_exception_tag
-from pybreeze.utils.exception.exceptions import ITETestExecutorException
 from pybreeze.utils.file_process.get_dir_file_list import get_dir_files_as_list
 from pybreeze.utils.logging.logger import pybreeze_logger
 
@@ -29,20 +26,19 @@ def build_process(
         send_mail: bool = False,
         program_buffer: int = 1024000,
 ):
-    """Run *package* against a script: *exec_str*, or the code in the tab in front."""
-    try:
-        test_format_code = exec_str
-        if test_format_code is None:
-            widget = main_window.tab_widget.currentWidget()
-            if not isinstance(widget, EditorWidget):
-                report_no_script_tab(main_window, package, program_buffer)
-                return
-            test_format_code = widget.code_edit.toPlainText()
-        start_process(main_window, package, test_format_code, send_mail, program_buffer)
-    except json.decoder.JSONDecodeError as error:
-        pybreeze_logger.error(f"{error!r}\n{wrong_test_data_format_exception_tag}")
-    except ITETestExecutorException as error:
-        pybreeze_logger.error(repr(error))
+    """Run *package* against a script: *exec_str*, or the code in the tab in front.
+
+    The script is handed to the package as written; the package parses it and
+    reports its own errors in the run window.
+    """
+    test_format_code = exec_str
+    if test_format_code is None:
+        widget = main_window.tab_widget.currentWidget()
+        if not isinstance(widget, EditorWidget):
+            report_no_script_tab(main_window, package, program_buffer)
+            return
+        test_format_code = widget.code_edit.toPlainText()
+    start_process(main_window, package, test_format_code, send_mail, program_buffer)
 
 
 def report_no_script_tab(
@@ -88,11 +84,8 @@ def build_process_from_file(
     the Windows ~32K argv limit. Useful for batch / multi-file flows where
     the file is already on disk.
     """
-    try:
-        process = build_task_process(main_window, send_mail, program_buffer)
-        process.start_test_process_file(package, file_path)
-    except ITETestExecutorException as error:
-        pybreeze_logger.error(repr(error))
+    process = build_task_process(main_window, send_mail, program_buffer)
+    process.start_test_process_file(package, file_path)
 
 
 def run_dir_files_with_package(
@@ -105,9 +98,9 @@ def run_dir_files_with_package(
 
     Each file is executed via its on-disk path (``--execute_file``) so large
     action JSON never trips the Windows ~32K command-line limit, and one run
-    window is opened per file. ``build_process_from_file`` already logs and
-    contains per-file executor errors; the broad guard here only keeps a single
-    bad directory pick from crashing the menu callback.
+    window is opened per file, which reports that file's run, a run that cannot
+    start included. The broad guard here only keeps a single bad directory pick
+    from crashing the menu callback.
     """
     try:
         execute_list = _ask_for_action_files(main_window)

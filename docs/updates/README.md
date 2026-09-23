@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-127 | 2026-09-24 | Refactor: drop the executor's exception handlers that nothing could reach | #refactor #executor | [2026-09](2026-09.md) |
 | U-20260923-126 | 2026-09-24 | Keep a Connect click from cutting an SFTP transfer short | #fix #ssh | [2026-09](2026-09.md) |
 | U-20260923-125 | 2026-09-24 | Refactor: move the SFTP session and its threads out of the file tree's module | #refactor #ssh | [2026-09](2026-09.md) |
 | U-20260923-124 | 2026-09-24 | Run the SFTP menu's requests off the UI thread, and upload through a temporary name after asking before a replace | #fix #ssh #threading #done | [2026-09](2026-09.md) |
@@ -207,4 +208,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 144 |
+| [2026-09.md](2026-09.md) | 2026-09 | 145 |
