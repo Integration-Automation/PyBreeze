@@ -12,13 +12,16 @@ from typing import TYPE_CHECKING
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QMessageBox
 
-from je_editor import EditorWidget, get_all_plugin_run_configs, language_wrapper
+from je_editor import (
+    EditorWidget, JEditorSaveFileException, get_all_plugin_run_configs, language_wrapper
+)
 from je_editor.pyside_ui.dialog.file_dialog.save_file_dialog import choose_file_get_save_file_path
 from je_editor.utils.encodings.text_codec import DEFAULT_ENCODING, LINE_ENDING_LF
 from je_editor.utils.file.save.save_file import write_file_with_encoding
 
 from pybreeze.extend.process_executor.file_runner_process import FileRunnerProcess
 from pybreeze.extend.process_executor.process_executor_utils import open_run_window
+from pybreeze.utils.logging.logger import pybreeze_logger
 
 if TYPE_CHECKING:
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
@@ -32,20 +35,41 @@ def save_current_file_for_run(main_window: PyBreezeMainWindow) -> str | None:
     one), with the tab's file watcher told to expect the write (otherwise it asks
     whether to reload the file PyBreeze just wrote), and with the tab's unsaved
     marker cleared. A tab without a file goes through JEditor's Save As dialog.
+
+    A save that fails -- a character the tab's encoding cannot hold, a read-only
+    or locked file -- is reported and runs nothing: the run would otherwise use
+    what is on disk, not what is in the tab.
     """
     widget = main_window.tab_widget.currentWidget()
     if not isinstance(widget, EditorWidget):
         return None
+    try:
+        return _save(main_window, widget)
+    except JEditorSaveFileException as error:
+        pybreeze_logger.error("Save before run failed: %r", error.__cause__ or error)
+        QMessageBox.warning(
+            main_window, language_wrapper.language_word_dict.get("run_with_menu_label"),
+            language_wrapper.language_word_dict.get("run_with_save_failed").format(
+                file=Path(str(widget.current_file or "")).name,
+                error=error.__cause__ or error))
+        return None
+
+
+def _save(main_window: PyBreezeMainWindow, widget: EditorWidget) -> str | None:
+    """Write *widget* to its file, or through Save As; the path, or None if cancelled."""
     if not widget.current_file:
         if not choose_file_get_save_file_path(main_window):
             return None
         # The save dialog can be accepted without a path being set.
         return widget.current_file or None
-    widget.mark_ignore_next_file_change()
     write_file_with_encoding(
         str(widget.current_file), widget.code_edit.toPlainText(),
         getattr(widget, "file_encoding", DEFAULT_ENCODING),
         getattr(widget, "line_ending", LINE_ENDING_LF))
+    # Only after a write that happened: set before one that failed, the flag
+    # stayed on and swallowed the next real change made outside the editor.
+    # The watcher's signal is queued, so it still arrives after this.
+    widget.mark_ignore_next_file_change()
     widget.mark_saved()
     return widget.current_file
 

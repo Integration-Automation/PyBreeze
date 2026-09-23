@@ -322,6 +322,26 @@ class TestSavingBeforeARun:
         assert save_current_file_for_run(window) is None
 
 
+class TestASaveThatFailsBeforeARun:
+    """A read-only or locked file, or a character the tab's encoding cannot hold."""
+
+    def test_it_is_reported_and_runs_nothing(self, window, editor_tab, tmp_path, monkeypatch):
+        from PySide6.QtWidgets import QMessageBox
+
+        warned: list = []
+        monkeypatch.setattr(QMessageBox, "warning", staticmethod(lambda *a, **k: warned.append(a)))
+        target = tmp_path / "legacy.txt"
+        target.write_bytes("舊".encode("big5"))
+        tab = editor_tab(current_file=str(target), text="€ is not in Big5\n", file_encoding="big5")
+
+        # It used to raise out of the menu slot, so nothing said why nothing ran.
+        assert save_current_file_for_run(window) is None
+        assert warned and "legacy.txt" in warned[0][2]
+        # ... and the tab still expects no write of its own, so the next real
+        # change made outside the editor is not swallowed.
+        assert tab.events == []
+
+
 class TestRunConfigsJEditorDoesNotCheck:
     def test_a_config_without_a_name_still_runs(self, window, tmp_path, monkeypatch):
         script = tmp_path / "main.go"

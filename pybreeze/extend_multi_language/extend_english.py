@@ -348,6 +348,7 @@ pybreeze_english_word_dict = {
     "plugin_menu_run_with": "Run with {name}",
     # Run with Menu
     "run_with_menu_label": "Run with...",
+    "run_with_save_failed": "{file} could not be saved, so it was not run: {error}",
     "run_with_suffix_mismatch": "Current file ({suffix}) does not match expected suffixes: {expected}",
     # File Tree Context Menu
     "file_tree_ctx_new_file": "New File",
