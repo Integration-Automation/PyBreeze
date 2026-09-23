@@ -99,7 +99,7 @@ Targets: Python `requests`, a ready-to-run **pytest** test, **APITestka** (Pytho
 
 ![HAR import](images/tool_har_import.png)
 
-Select what you want — or take everything listed — and generate one script using the same targets as the cURL importer. Repeated endpoints get numbered test names so no test silently replaces another; HTTP/2 pseudo-headers are dropped, and a `Cookie` header duplicating the recorded cookie list is removed so each value is sent once. A single selected request produces exactly what the cURL importer would. HAR is JSON, so this needs nothing beyond the standard library, and nothing is ever replayed for you.
+Select what you want — or take everything listed — and generate one script using the same targets as the cURL importer. Repeated endpoints get numbered test names so no test silently replaces another; HTTP/2 pseudo-headers are dropped, and a `Cookie` header duplicating the recorded cookie list is removed so each value is sent once (cookies sharing a name, which a dictionary cannot hold, go as the header instead). An entry that cannot become a request, such as one with a malformed URL or method, is skipped and the rest load. A single selected request produces exactly what the cURL importer would. HAR is JSON, so this needs nothing beyond the standard library, and nothing is ever replayed for you.
 
 ### Response Inspector — paste a response, read everything in it
 

@@ -119,12 +119,20 @@ def _apply_cookies(request: CurlRequest, raw_request: dict) -> None:
     A HAR records cookies both as a structured list and inside the ``Cookie``
     header. Keeping both would send every cookie twice, so the structured list
     wins — it is the one the generated code can edit.
+
+    A browser sends two cookies of one name when their paths differ; a
+    dictionary keeps only the last, so then the cookies go as the ``Cookie``
+    header instead, in the order recorded.
     """
-    for name, value in _header_pairs(raw_request.get("cookies")):
-        request.cookies[name] = value
-    if not request.cookies:
+    pairs = _header_pairs(raw_request.get("cookies"))
+    if not pairs:
         return
     stored = stored_header_name(request.headers, _COOKIE_HEADER)
+    if len({name for name, _value in pairs}) < len(pairs):
+        if stored is None:
+            request.headers["Cookie"] = "; ".join(f"{name}={value}" for name, value in pairs)
+        return
+    request.cookies.update(pairs)
     if stored is not None:
         del request.headers[stored]
 
@@ -257,9 +265,11 @@ def parse_har(text: str) -> list[HarEntry]:
     :param text: the contents of a ``.har`` file
     :return: the recorded requests, in the order they were captured
     :raises HarParseException: when the text is not a HAR export, or records no
-        request with a URL
+        request with a URL and a method (an entry without is skipped; when
+        none is left, the first entry's reason is the error)
     """
     entries: list[HarEntry] = []
+    first_error: HarParseException | None = None
     for raw_entry in _load_entries(text):
         raw_request = raw_entry.get("request")
         if not isinstance(raw_request, dict) or not raw_request.get("url"):
@@ -269,13 +279,21 @@ def parse_har(text: str) -> list[HarEntry]:
             # tab. Not logged either -- a recorded URL may carry a token.
             pybreeze_logger.info("HAR entry with a malformed URL skipped")
             continue
+        try:
+            request = _entry_request(raw_request)
+        except HarParseException as error:
+            pybreeze_logger.info("HAR entry skipped: %s", error)
+            first_error = first_error or error
+            continue
         status, media_type = _response_details(raw_entry.get("response"))
         entries.append(HarEntry(
-            request=_entry_request(raw_request),
+            request=request,
             status=status,
             response_media_type=media_type,
             started=str(raw_entry.get("startedDateTime", "")),
         ))
+    if not entries and first_error is not None:
+        raise first_error
     if not entries:
         pybreeze_logger.error(no_entries_in_har_error)
         raise HarParseException(no_entries_in_har_error)

@@ -38,14 +38,26 @@ def unique_test_names(requests: list[CurlRequest]) -> list[str]:
     function twice, and the second would silently replace the first.
 
     :param requests: the requests to name, in order
-    :return: a name per request, suffixed ``_2``, ``_3`` … on a repeat
+    :return: a name per request, suffixed ``_2``, ``_3`` … on a repeat; a
+        suffix is skipped when another request's own name already has it
+        (``/a``, ``/a``, ``/a/2`` give ``test_get_a``, ``test_get_a_3``, ``test_get_a_2``)
     """
+    bases = [test_function_name(request) for request in requests]
+    used = set(bases)
     names: list[str] = []
-    seen: dict[str, int] = {}
-    for request in requests:
-        base = test_function_name(request)
-        seen[base] = seen.get(base, 0) + 1
-        names.append(base if seen[base] == 1 else f"{base}_{seen[base]}")
+    taken: set[str] = set()
+    next_suffix: dict[str, int] = {}
+    for base in bases:
+        if base not in taken:
+            taken.add(base)
+            names.append(base)
+            continue
+        suffix = next_suffix.get(base, 2)
+        while f"{base}_{suffix}" in used or f"{base}_{suffix}" in taken:
+            suffix += 1
+        next_suffix[base] = suffix + 1
+        taken.add(f"{base}_{suffix}")
+        names.append(f"{base}_{suffix}")
     return names
 
 

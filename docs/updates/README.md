@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-204 | 2026-09-24 | Keep every recorded call, cookie and entry when importing a HAR file | #fix #har | [2026-09-b](2026-09-b.md) |
 | U-20260923-203 | 2026-09-24 | Run a script too long for a Windows command line from a file | #fix #executor | [2026-09-b](2026-09-b.md) |
 | U-20260923-202 | 2026-09-24 | Bring the architecture map, README and CLAUDE.md back in line with the code | #docs | [2026-09-b](2026-09-b.md) |
 | U-20260923-201 | 2026-09-24 | Continue the September update log in 2026-09-b.md | #docs | [2026-09-b](2026-09-b.md) |
@@ -285,4 +286,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | File | Period | Entries |
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
-| [2026-09-b.md](2026-09-b.md) | 2026-09 | 3 |
+| [2026-09-b.md](2026-09-b.md) | 2026-09 | 4 |
