@@ -34,6 +34,6 @@ def set_automation_file_menu(ui_we_want_to_set: PyBreezeMainWindow):
             HelpLink("https://github.com/Integration-Automation/FileAutomation",
                      "file_automation_github_label", "file_automation_github_tab_label"),
         ),
-        create_project=safe_create_project("automation_file"),
+        create_project=safe_create_project(ui_we_want_to_set, "automation_file"),
         create_project_label_key="file_automation_create_project_label",
     ))

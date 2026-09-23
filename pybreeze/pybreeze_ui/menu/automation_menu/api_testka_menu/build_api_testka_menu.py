@@ -35,7 +35,7 @@ def set_apitestka_menu(ui_we_want_to_set: PyBreezeMainWindow):
             HelpLink("https://github.com/Integration-Automation/APITestka",
                      "apitestka_github_label", "apitestka_github_tab_label"),
         ),
-        create_project=safe_create_project("je_api_testka"),
+        create_project=safe_create_project(ui_we_want_to_set, "je_api_testka"),
         create_project_label_key="apitestka_create_project_label",
         gui_widget_class=APITestkaWidget,
         gui_label="APITestka GUI",

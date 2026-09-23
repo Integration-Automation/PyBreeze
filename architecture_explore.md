@@ -168,7 +168,7 @@ call_X_multi_file_and_send()   → run_dir_files_with_package(..., True)
 
 `build_automation_menu(ui, spec)` 依一份 `AutomationMenu` 描述組出標準自動化子選單：`Run` 子選單（`RunAction` 列表）/ `Help`（`HelpLink` 列表，文件＋GitHub，開內嵌瀏覽器分頁）/ `Project`（建立範本目錄）/ GUI 分頁，每一段各由一個小函式建（`_add_run_menu` 等），沒有項目的段落不建。三個描述都是 frozen dataclass。六個自動化模組全部靠它，`build_*_menu.py` 只剩一份 `AutomationMenu(...)`。每個 QAction 都以它所在的選單為 parent，由 Qt 持有；AutoControl 額外的 `Record` 子選單也一樣；它的停止錄製不論前面是哪個分頁都會停，把動作以 AutoControl 執行器讀的 JSON 插在編輯分頁的游標處（沒有編輯分頁就放剪貼簿），沒錄到東西就告知。
 
-`safe_create_project(import_name)` 回傳延遲 import 的 closure，模組沒裝時只記 log 不炸選單。
+`safe_create_project(ui, import_name)` 回傳延遲 import 的 closure：專案建在 IDE 開著的資料夾（`working_dir`，沒開就用行程的工作目錄）；套件的資料夾（`create_project_dir` 的 `parent_name` 預設值）已存在時先問（預設否），因為各套件一律覆寫範本檔；模組沒裝、寫入失敗都跳警告並記 log，成功時說出建在哪裡。
 
 | 選單 | 文件 | GUI 分頁 |
 |---|---|---|
@@ -438,7 +438,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 18. 測試與 CI
 
-- **單元測試** `test/test_utils/` — 103 個 `test_*.py`、1564 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
+- **單元測試** `test/test_utils/` — 104 個 `test_*.py`、1570 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
 - **整合測試** `test/unit_test/start_automation/` — 以 `debug_mode=True` 啟動 IDE，10 秒後自動關閉，驗證啟動流程與 extend tab
 - **CI** `.github/workflows/{dev,stable}.yml` — `unit-tests` job 跑 Windows runner、Python 3.10–3.14 矩陣，3.12 那一腳額外上傳 `coverage-xml` artifact；`sonarcloud` job 跑 ubuntu、`needs: unit-tests`。每日 02:00 排程 + push/PR 觸發。`stable.yml` 另有 `publish` job 負責版號遞增與 PyPI 發布
 - **覆蓋率** `.coveragerc` — `relative_files = True` 是必要的：報告在 Windows 產生、由 Linux 上的 scanner 讀取，路徑不能帶機器資訊。目前整體 60%（`utils/`、`tools_gui`、`dialog` 95–100%；`editor_main` 58%、`menu` 54%；仍低的是 `diagram_editor` 45%、`process_executor` 39%、`connect_gui` 28%）

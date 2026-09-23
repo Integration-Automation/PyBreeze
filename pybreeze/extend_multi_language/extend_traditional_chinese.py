@@ -16,6 +16,10 @@ pybreeze_traditional_chinese_word_dict = {
     "run_label": "運行",
     "help_label": "幫助",
     "project_label": "專案",
+    "create_project_exists": "{path} 已經存在。要用新的範本檔取代，並捨棄你對它們的修改嗎？",
+    "create_project_failed": "無法在 {path} 建立專案：{error}",
+    "create_project_not_installed": "沒有安裝 {package}：{error}",
+    "create_project_created": "已建立專案：{path}",
     # Tab tools menu
     "tab_menu_jupyterlab_tab_name": "JupyterLab",
     # APITestka Menu

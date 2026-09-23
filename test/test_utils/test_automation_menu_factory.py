@@ -120,7 +120,7 @@ def test_every_create_project_names_a_package_that_exists():
 
     menus = Path(__file__).resolve().parents[2] / "pybreeze" / "pybreeze_ui" / "menu" / "automation_menu"
     names = [name for path in menus.rglob("*.py")
-             for name in re.findall(r'safe_create_project\("([^"]+)"\)', path.read_text(encoding="utf-8"))]
+             for name in re.findall(r'safe_create_project\(\w+, "([^"]+)"\)', path.read_text(encoding="utf-8"))]
 
     assert names, "no create-project entries found"
     assert [name for name in names if importlib.util.find_spec(name) is None] == []

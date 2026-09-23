@@ -16,6 +16,10 @@ pybreeze_english_word_dict = {
     "run_label": "Run",
     "help_label": "HELP",
     "project_label": "Project",
+    "create_project_exists": "{path} already exists. Replace its template files and lose your changes to them?",
+    "create_project_failed": "The project could not be created at {path}: {error}",
+    "create_project_not_installed": "{package} is not installed: {error}",
+    "create_project_created": "Project created: {path}",
     # Tab tools menu
     "tab_menu_jupyterlab_tab_name": "JupyterLab",
     # APITestka Menu

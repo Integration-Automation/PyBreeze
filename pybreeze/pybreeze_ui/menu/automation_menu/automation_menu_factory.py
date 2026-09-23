@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import importlib
+import inspect
 from dataclasses import dataclass
+from pathlib import Path
 from typing import TYPE_CHECKING, Callable
 
 from PySide6.QtGui import QAction
-from PySide6.QtWidgets import QMenu, QWidget
+from PySide6.QtWidgets import QMenu, QMessageBox, QWidget
 from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.menu.menu_utils import open_web_browser
@@ -110,12 +112,51 @@ def _add_gui_action(
     menu.addAction(action)
 
 
-def safe_create_project(import_name: str) -> Callable:
-    """Create a safe project creation function that handles ImportError."""
-    def _create():
+def safe_create_project(ui: PyBreezeMainWindow, import_name: str) -> Callable[[], None]:
+    """The Create Project action for *import_name*: its template folder in the IDE's working directory.
+
+    The packages write their template files whether they exist or not, so a
+    second click wiped a template the user had edited, with no word; they also
+    wrote into the process's working directory, not the folder open in the
+    IDE, and said nothing about where. This asks before replacing an existing
+    folder and reports what happened, as TestPioneer's template entry does.
+    """
+    def _create() -> None:
+        word = language_wrapper.language_word_dict
+        title = word.get("project_label")
         try:
             package = importlib.import_module(import_name)  # nosec  # nosemgrep  # plugin registry uses a curated whitelist of automation packages (build_process)
-            package.create_project_dir()
         except ImportError as error:
-            pybreeze_logger.error(f"Failed to import {import_name}: {error}")
+            pybreeze_logger.error("Failed to import %s: %r", import_name, error)
+            QMessageBox.warning(
+                ui, title, word.get("create_project_not_installed").format(package=import_name, error=error))
+            return
+        project = Path(getattr(ui, "working_dir", None) or Path.cwd())
+        target = project / _project_folder_name(package.create_project_dir)
+        if target.exists() and not _may_replace(ui, title, target):
+            return
+        try:
+            package.create_project_dir(project_path=str(project))
+        except Exception as error:  # noqa: BLE001 — each package raises its own exception types for a write it could not make; it is logged and reported
+            pybreeze_logger.error("%s project not created in %s: %r", import_name, project, error)
+            QMessageBox.warning(ui, title, word.get("create_project_failed").format(path=target, error=error))
+            return
+        QMessageBox.information(ui, title, word.get("create_project_created").format(path=target))
     return _create
+
+
+def _project_folder_name(create_project_dir: Callable) -> str:
+    """The folder *create_project_dir* makes by default: its ``parent_name`` parameter's default."""
+    parameter = inspect.signature(create_project_dir).parameters.get("parent_name")
+    if parameter is None or not isinstance(parameter.default, str):
+        return ""
+    return parameter.default
+
+
+def _may_replace(ui: PyBreezeMainWindow, title: str, target: Path) -> bool:
+    """Ask whether the template files under *target* may be written over."""
+    reply = QMessageBox.question(
+        ui, title, language_wrapper.language_word_dict.get("create_project_exists").format(path=target),
+        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        QMessageBox.StandardButton.No)
+    return reply == QMessageBox.StandardButton.Yes

@@ -34,6 +34,6 @@ def set_web_runner_menu(ui_we_want_to_set: PyBreezeMainWindow):
             HelpLink("https://github.com/Integration-Automation/WebRunner",
                      "web_runner_github_label", "web_runner_github_tab_label"),
         ),
-        create_project=safe_create_project("je_web_runner"),
+        create_project=safe_create_project(ui_we_want_to_set, "je_web_runner"),
         create_project_label_key="web_runner_create_project_label",
     ))
