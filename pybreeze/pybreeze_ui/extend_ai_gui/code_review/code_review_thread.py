@@ -68,7 +68,7 @@ class SenderThread(QThread):
             # 傳送到指定 URL（重用 session 連線）
             resp = session.post(
                 self.url, json={"prompt": prompt},
-                timeout=(CONNECT_TIMEOUT, 60), allow_redirects=False, stream=True,
+                timeout=(CONNECT_TIMEOUT, 30), allow_redirects=False, stream=True,
             )
             body = read_capped_text(resp)
         except (requests.RequestException, ResponseTooLargeError) as error:

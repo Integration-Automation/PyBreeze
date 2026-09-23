@@ -8,6 +8,7 @@ oversized body from being pasted whole into an error dialog.
 """
 from __future__ import annotations
 
+import time
 from email.message import Message
 
 import requests
@@ -16,6 +17,10 @@ from pybreeze.utils.network.url_validation import UnsafeURLError
 
 DEFAULT_MAX_RESPONSE_BYTES = 16 * 1024 * 1024  # 16 MB
 DISPLAY_TRUNCATE_CHARS = 2000
+# The longest a whole answer may take to arrive. The read timeout bounds each
+# wait for a chunk only: a server sending a byte every 25 s kept a request, and
+# the panel's greyed-out Send, going for as long as it liked.
+DEFAULT_MAX_READ_SECONDS = 300
 _CHUNK_SIZE = 65536
 
 # Seconds to wait for the TCP/TLS connection to establish. Use it as a literal
@@ -34,6 +39,7 @@ def read_capped_text(
     *,
     max_bytes: int = DEFAULT_MAX_RESPONSE_BYTES,
     default_encoding: str = "utf-8",
+    max_seconds: float = DEFAULT_MAX_READ_SECONDS,
 ) -> str:
     """Read a streamed response body up to *max_bytes* and decode it to text.
 
@@ -43,12 +49,18 @@ def read_capped_text(
     response is always closed before returning. The charset the response names
     in its ``Content-Type`` is used when Python knows it, and *default_encoding*
     otherwise: a server can name anything, and an unknown one would raise
-    ``LookupError`` here.
+    ``LookupError`` here. Raises ``requests.exceptions.ReadTimeout`` once the
+    body has taken more than *max_seconds* (checked as each chunk arrives, so
+    the read timeout is the most it can overrun by).
     """
     total = 0
     chunks: list[bytes] = []
+    deadline = time.monotonic() + max_seconds
     try:
         for chunk in response.iter_content(chunk_size=_CHUNK_SIZE):
+            if time.monotonic() > deadline:
+                raise requests.exceptions.ReadTimeout(
+                    f"The response took more than {max_seconds:g} seconds.")
             if not chunk:
                 continue
             total += len(chunk)

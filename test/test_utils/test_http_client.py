@@ -121,3 +121,29 @@ class TestWhichCharset:
         resp = FakeResponse('{"a": "ü"}'.encode("utf-8"), encoding=None, content_type="application/json")
 
         assert read_capped_text(resp) == '{"a": "ü"}'
+
+
+class TestHowLongAnAnswerMayTake:
+    def test_a_trickle_is_cut_off_at_the_deadline(self, monkeypatch):
+        # Each chunk came inside the read timeout, so nothing ever stopped it
+        import requests
+
+        from pybreeze.utils.network import http_client
+
+        clock = iter(range(0, 10_000, 25))  # every chunk 25 s after the last
+        monkeypatch.setattr(http_client.time, "monotonic", lambda: next(clock))
+        resp = FakeResponse(b"x" * 100, chunk=1)
+
+        with pytest.raises(requests.exceptions.ReadTimeout):
+            read_capped_text(resp, max_seconds=300)
+        assert resp.closed
+
+    def test_a_timely_answer_is_read_whole(self):
+        assert read_capped_text(FakeResponse(b"x" * 100, chunk=1), max_seconds=300) == "x" * 100
+
+    def test_the_deadline_reads_as_a_timeout_to_the_user(self):
+        import requests
+
+        from pybreeze.utils.network.http_client import describe_request_error
+
+        assert "timed out" in describe_request_error(requests.exceptions.ReadTimeout("slow"))
