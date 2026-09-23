@@ -259,3 +259,32 @@ def test_the_file_runner_says_when_the_run_ended(qt_app, tmp_path):
         time.sleep(0.01)
 
     assert ended == [True]
+
+
+class TestTerminalCodes:
+    """A coloured or redrawn line shows as its text, not as escape codes."""
+
+    @pytest.mark.parametrize(("written", "shown"), [
+        ("\x1b[31mred\x1b[0m done\n", "red done\n"),
+        ("\x1b[1;32mok\x1b[m\n", "ok\n"),
+        ("\x1b]0;window title\x07after\n", "after\n"),
+        ("\x1b]8;;https://example.com\x1b\\link\x1b]8;;\x1b\\\n", "link\n"),
+        ("\x1b[2K\x1b[1Gprogress 50%\n", "progress 50%\n"),
+        ("a\bb\x0cc\x00\tt\n", "abc\tt\n"),
+        ("\u4e2d\u6587 stays\n", "\u4e2d\u6587 stays\n"),
+    ])
+    def test_what_the_window_shows(self, qt_app, written, shown):
+        from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
+
+        window = CodeWindow()
+        window.append_output(written)
+
+        assert window.code_result.toPlainText() == shown
+
+    def test_a_progress_bars_carriage_return_still_breaks_the_line(self, qt_app):
+        from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
+
+        window = CodeWindow()
+        window.append_output("10%\r\x1b[32m20%\x1b[0m\r\n")
+
+        assert window.code_result.toPlainText() == "10%\n20%\n"
