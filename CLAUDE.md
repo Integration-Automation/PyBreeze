@@ -9,9 +9,11 @@ Automation-first Python IDE built on PySide6 + JEditor, integrating Web/API/GUI/
 ```
 pybreeze/
 ├── __init__.py                  # Facade: start_editor, PyBreezeMainWindow, EDITOR_EXTEND_TAB
+├── __main__.py                  # python -m pybreeze
 ├── pybreeze_ui/                 # Presentation layer (PySide6)
 │   ├── editor_main/             # Main window (extends JEditor) + file tree context menu
-│   ├── menu/                    # Menu builders: automation / install / tools / plugin / dock
+│   ├── menu/                    # Menu builders: automation / install / tools (tabs and docks) / plugin,
+│   │                            #   menu_utils, extend_jeditor_tab_menu (the JupyterLab tab entry)
 │   ├── tools_gui/               # Tool tabs: cURL, HAR, JWT, diff, regex, headers, …
 │   ├── diagram_editor/          # WYSIWYG diagram editor (QGraphicsScene, Mermaid import)
 │   ├── extend_ai_gui/           # CoT code review, prompt editors, skill send
@@ -111,7 +113,7 @@ ruff check pybreeze/                              # before committing non-trivia
 
 Reference implementations: `utils/network/url_validation.py` (`validate_url`), `utils/network/public_http.py` (`public_session`), `utils/network/http_client.py` (`read_capped_text`), `diagram_editor/diagram_net_utils.py` (`safe_download_image`). Never pass a user URL to `urlopen()` / `requests.*` unvalidated, and never set `verify=False`.
 
-**SSH** — never `paramiko.AutoAddPolicy()` or `WarningPolicy()`. Use `apply_host_key_policy(client, parent_widget)` from `connect_gui/ssh/ssh_host_key_policy.py`: it shows the SHA256 fingerprint for confirmation on first connect and persists to `~/.pybreeze/ssh_known_hosts`. Every `connect()` passes `disabled_algorithms=SHA1_ALGORITHMS` (`connect_gui/ssh/ssh_connect_thread.py`): `requirements.txt` does not pin paramiko, and paramiko 4 still offers SHA-1 signatures and key exchanges (CVE-2026-44405).
+**SSH** — never `paramiko.AutoAddPolicy()` or `WarningPolicy()`. Use `apply_host_key_policy(client, parent)` from `connect_gui/ssh/ssh_host_key_policy.py`: it shows the SHA256 fingerprint for confirmation on first connect and persists to `~/.pybreeze/ssh_known_hosts`. Every `connect()` passes `disabled_algorithms=SHA1_ALGORITHMS` (`connect_gui/ssh/ssh_connect_thread.py`): `requirements.txt` does not pin paramiko, and paramiko 4 still offers SHA-1 signatures and key exchanges (CVE-2026-44405).
 
 **Subprocess** — always argument lists, explicit `shell=False`, `timeout` on every `subprocess.run()`. Never interpolate user input into a command string. Secrets travel as `env`, never argv (see `prthinker_setting.environment_for`). The IDE intentionally runs user-authored scripts — this hardening guards against accidental shell injection, not against malicious local files.
 

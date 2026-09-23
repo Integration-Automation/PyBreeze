@@ -74,7 +74,7 @@ Each module gets the same menu shape: **Run** (single script, batch directory, w
 
 - **Automation-aware syntax highlighting** — the `AT_*` / GUI / Web / Load keyword sets are registered for `.json`, and TestPioneer's schema for `.yml` and `.yaml`, on top of JEditor's language support
 - **Code editor** — built on [JEditor](https://github.com/Integration-Automation/JEDITOR): tabs, project tree, format checker, debugger, terminal, variable inspector and a git client pane
-- **Script execution** — single or batch; large action files are passed by path, never through the command line, so Windows' ~32 KB argv limit is never a factor
+- **Script execution** — single or batch; a batch or file run passes each action file by path, so Windows' ~32 KB argv limit does not apply to it (running the tab in front passes its script on the command line)
 - **Report generation** — HTML / JSON / XML after a run, with optional email delivery
 - **Integrated JupyterLab** — launches as a tab, installing JupyterLab into the project venv if it is missing
 - **Virtual environment awareness** — `venv/` and `.venv/` are detected and used automatically
@@ -154,7 +154,7 @@ Password or private-key authentication, an interactive shell with ANSI handling 
 ### And also
 
 - **File Tree Context Menu** — right-click to create, rename, delete, copy absolute or relative paths, or reveal the item in your platform file manager. Renaming or deleting a file open in an editor tab keeps the tab in sync.
-- **Package Manager** — install automation modules and build tools from the menu, output in the shell pane.
+- **Package Manager** — install automation modules and build tools from the menu, output in a run window.
 - **Integrated Documentation** — each module's docs and GitHub page open as in-IDE browser tabs.
 
 ---
@@ -202,7 +202,7 @@ PyBreeze inherits JEditor's plugin architecture, auto-discovered from a `jeditor
 - **Run configurations** — "Run with…" for interpreted (`go run main.go`) and compiled (`gcc main.c -o main` then run) languages, executed through PyBreeze's `FileRunnerProcess` with the compiled artifact cleaned up afterwards
 - **Plugin Browser** — browse and install plugins from remote repositories inside the IDE
 
-Loaded plugins appear under their own **Plugins** menu with an About entry and one run action per supported suffix. See [PLUGIN_GUIDE.md](PLUGIN_GUIDE.md) for the full API and worked examples (C, C++, Go, Java, Rust, and a French translation).
+Loaded plugins appear under their own **Plugins** menu with an About entry and one run action, labelled with the suffixes it runs. [PLUGIN_GUIDE.md](PLUGIN_GUIDE.md) covers what PyBreeze adds and links JEditor's guide, which has the full API and worked examples (C, C++, Go, Java, Rust, and a French translation).
 
 ---
 
@@ -211,7 +211,7 @@ Loaded plugins appear under their own **Plugins** menu with an About entry and o
 - **English** (default)
 - **Traditional Chinese** (繁體中文)
 
-Both dictionaries carry the same 571 keys, and a test enforces that parity so a new string can never land in one language only. Further languages can be added via translation plugins.
+Both dictionaries carry the same 643 keys, and a test enforces that parity so a new string can never land in one language only. Further languages can be added via translation plugins.
 
 ---
 
@@ -415,7 +415,7 @@ PyBreeze/
 
 ### Development
 
-`build`, `twine`, `sphinx`, `sphinx-rtd-theme`, `auto-py-to-exe`, `pytest`, `hypothesis`
+`build`, `twine`, `sphinx`, `sphinx-rtd-theme`, `auto-py-to-exe`, `pytest`, `pytest-cov`, `hypothesis`, `ruff`
 
 ---
 
