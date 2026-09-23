@@ -515,6 +515,7 @@ pybreeze_traditional_chinese_word_dict = {
     "diff_right_label": "實際：",
     "diff_compare_button": "比較",
     "diff_identical": "兩段文字完全相同。",
+    "diff_comparing": "比對中…",
     "diff_summary": "新增 {added} 行，移除 {removed} 行。",
     # JSON 格式化 — 選單
     "extend_tools_menu_json_format_tab_action": "JSON 格式化分頁",

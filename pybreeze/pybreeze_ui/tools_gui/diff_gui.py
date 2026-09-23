@@ -1,6 +1,7 @@
 """A tool tab that shows a unified diff between two pieces of text."""
 from __future__ import annotations
 
+from PySide6.QtCore import QThread, Signal
 from PySide6.QtWidgets import (
     QHBoxLayout, QLabel, QPushButton, QTextEdit, QVBoxLayout, QWidget
 )
@@ -8,7 +9,8 @@ from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.tools_gui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
-from pybreeze.utils.diff_tools.text_diff import DiffSummary, diff_summary, unified_diff
+from pybreeze.pybreeze_ui.thread_keeper import let_run_out
+from pybreeze.utils.diff_tools.text_diff import Comparison, DiffSummary, compare_texts
 
 
 def build_summary_line(summary: DiffSummary) -> str:
@@ -21,6 +23,20 @@ def build_summary_line(summary: DiffSummary) -> str:
     if summary.is_equal:
         return word.get("diff_identical")
     return word.get("diff_summary").format(added=summary.added, removed=summary.removed)
+
+
+class DiffThread(QThread):
+    """One comparison, worked out off the UI thread."""
+
+    compared = Signal(object)
+
+    def __init__(self, left: str, right: str) -> None:
+        super().__init__()
+        self._left = left
+        self._right = right
+
+    def run(self) -> None:
+        self.compared.emit(compare_texts(self._left, self._right))
 
 
 class DiffGUI(QWidget):
@@ -68,10 +84,31 @@ class DiffGUI(QWidget):
         layout.addWidget(self.output_edit)
         layout.addLayout(self.actions.button_row())
         self.setLayout(layout)
+        self._compare_thread: DiffThread | None = None
 
     def compare(self) -> None:
-        """Compute and show the diff and summary of the two inputs."""
-        left = exact_text(self.left_edit)
-        right = exact_text(self.right_edit)
-        self.summary_label.setText(build_summary_line(diff_summary(left, right)))
-        self.output_edit.setPlainText(unified_diff(left, right))
+        """Compare the two inputs; the diff and the summary arrive when it is done.
+
+        Matching the lines of two large texts takes seconds (a 40,000-line JSON
+        response, over four), and it ran on the UI thread, twice, freezing the IDE.
+        """
+        if self._compare_thread is not None and self._compare_thread.isRunning():
+            return
+        self.compare_button.setEnabled(False)
+        self.summary_label.setText(language_wrapper.language_word_dict.get("diff_comparing"))
+        thread = DiffThread(exact_text(self.left_edit), exact_text(self.right_edit))
+        thread.compared.connect(self._show)
+        thread.finished.connect(lambda: self.compare_button.setEnabled(True))
+        self._compare_thread = thread
+        thread.start()
+
+    def _show(self, comparison: Comparison) -> None:
+        self.summary_label.setText(build_summary_line(comparison.summary))
+        self.output_edit.setPlainText(comparison.diff)
+
+    def closeEvent(self, event) -> None:
+        """Let a comparison still going run out, cut off from this tab."""
+        thread = self._compare_thread
+        if thread is not None and thread.isRunning():
+            let_run_out(thread, thread.compared)
+        super().closeEvent(event)

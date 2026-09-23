@@ -62,6 +62,75 @@ def _shown(diff_line: str) -> str:
     return f"{content}  (line ends with {ending!r})"
 
 
+@dataclass(frozen=True)
+class Comparison:
+    """How two texts differ: the counts and the unified diff, from one line matching.
+
+    :param summary: the counts
+    :param diff: the unified diff text (empty when the texts are identical)
+    """
+
+    summary: DiffSummary
+    diff: str
+
+
+def _unified_range(start: int, stop: int) -> str:
+    """A hunk header's ``start,length``, as ``diff -u`` and ``difflib.unified_diff`` write it."""
+    length = stop - start
+    if length == 1:
+        return str(start + 1)
+    return f"{start if length == 0 else start + 1},{length}"
+
+
+def _unified_lines(
+        matcher: difflib.SequenceMatcher, left_lines: list[str], right_lines: list[str],
+        labels: tuple[str, str]) -> list[str]:
+    """The unified diff lines of *matcher*'s match, as ``difflib.unified_diff`` writes them."""
+    lines: list[str] = []
+    for group in matcher.get_grouped_opcodes(_CONTEXT_LINES):
+        if not lines:
+            lines += [f"--- {labels[0]}", f"+++ {labels[1]}"]
+        first, last = group[0], group[-1]
+        lines.append(f"@@ -{_unified_range(first[1], last[2])} +{_unified_range(first[3], last[4])} @@")
+        for tag, left_start, left_end, right_start, right_end in group:
+            if tag == "equal":
+                lines += [f" {line}" for line in left_lines[left_start:left_end]]
+                continue
+            if tag in ("replace", "delete"):
+                lines += [f"-{line}" for line in left_lines[left_start:left_end]]
+            if tag in ("replace", "insert"):
+                lines += [f"+{line}" for line in right_lines[right_start:right_end]]
+    return lines
+
+
+def compare_texts(
+        left: str, right: str,
+        left_label: str = _LEFT_LABEL, right_label: str = _RIGHT_LABEL) -> Comparison:
+    """Compare *left* and *right* once, for both the counts and the unified diff.
+
+    Matching the lines is the slow part: the counts and the diff each did it
+    on their own, which doubled a wait of several seconds on large inputs.
+
+    :param left: the first (expected) text
+    :param right: the second (actual) text
+    :param left_label: header label for the first text
+    :param right_label: header label for the second text
+    :return: the counts and the diff
+    """
+    left_lines, right_lines = _line_lists(left, right)
+    matcher = difflib.SequenceMatcher(None, left_lines, right_lines)
+    added = 0
+    removed = 0
+    for tag, left_start, left_end, right_start, right_end in matcher.get_opcodes():
+        if tag in ("replace", "delete"):
+            removed += left_end - left_start
+        if tag in ("replace", "insert"):
+            added += right_end - right_start
+    diff = "\n".join(
+        _shown(line) for line in _unified_lines(matcher, left_lines, right_lines, (left_label, right_label)))
+    return Comparison(DiffSummary(added=added, removed=removed, is_equal=left == right), diff)
+
+
 def unified_diff(
         left: str, right: str,
         left_label: str = _LEFT_LABEL, right_label: str = _RIGHT_LABEL) -> str:
@@ -73,37 +142,18 @@ def unified_diff(
     :param right_label: header label for the second text
     :return: the unified diff text (empty when the inputs are identical)
     """
-    left_lines, right_lines = _line_lists(left, right)
-    diff_lines = difflib.unified_diff(
-        left_lines,
-        right_lines,
-        fromfile=left_label,
-        tofile=right_label,
-        lineterm="",
-        n=_CONTEXT_LINES,
-    )
-    return "\n".join(_shown(line) for line in diff_lines)
+    return compare_texts(left, right, left_label, right_label).diff
 
 
 def diff_summary(left: str, right: str) -> DiffSummary:
     """Summarise how *left* and *right* differ, line by line.
 
-    The counts come from the same line matching ``unified_diff`` uses, so they
+    The counts come from the same line matching as the unified diff, so they
     agree with the diff shown beside them. ``difflib.ndiff`` also compared the
-    characters inside every changed line, which the counts never needed: two
-    3000-line texts with every line changed took over a minute, on the UI
-    thread.
+    characters inside every changed line, which the counts never needed.
 
     :param left: the first (expected) text
     :param right: the second (actual) text
     :return: the counts of added and removed lines and whether they are equal
     """
-    matcher = difflib.SequenceMatcher(None, *_line_lists(left, right))
-    added = 0
-    removed = 0
-    for tag, left_start, left_end, right_start, right_end in matcher.get_opcodes():
-        if tag in ("replace", "delete"):
-            removed += left_end - left_start
-        if tag in ("replace", "insert"):
-            added += right_end - right_start
-    return DiffSummary(added=added, removed=removed, is_equal=left == right)
+    return compare_texts(left, right).summary

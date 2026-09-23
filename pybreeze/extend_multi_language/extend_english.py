@@ -541,6 +541,7 @@ pybreeze_english_word_dict = {
     "diff_right_label": "Actual:",
     "diff_compare_button": "Compare",
     "diff_identical": "The two texts are identical.",
+    "diff_comparing": "Comparing…",
     "diff_summary": "{added} line(s) added, {removed} line(s) removed.",
     # JSON Format — Menu
     "extend_tools_menu_json_format_tab_action": "JSON Format Tab",

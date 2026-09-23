@@ -1,6 +1,9 @@
 """Tests for the text diff utility."""
 from __future__ import annotations
 
+from hypothesis import given, settings
+from hypothesis import strategies as st
+
 from pybreeze.utils.diff_tools.text_diff import diff_summary, unified_diff
 
 
@@ -106,3 +109,23 @@ class TestOnlyTheLineEndingsDiffer:
     def test_other_changes_are_counted_as_before(self):
         # A line added after a last line without a newline is one added line.
         assert diff_summary("a", "a\nb").added == 1
+
+
+_LINES = st.lists(st.sampled_from(["a", "b", "c", "", "d e"]), max_size=25)
+
+
+@settings(max_examples=300, deadline=None)
+@given(left=_LINES, right=_LINES)
+def test_the_diff_is_the_one_difflib_writes(left, right):
+    # One line matching now serves the counts and the diff; the diff must stay
+    # exactly difflib.unified_diff's
+    import difflib
+
+    from pybreeze.utils.diff_tools.text_diff import _line_lists, _shown, compare_texts
+
+    left_text, right_text = "\n".join(left), "\n".join(right)
+    left_lines, right_lines = _line_lists(left_text, right_text)
+    expected = "\n".join(_shown(line) for line in difflib.unified_diff(
+        left_lines, right_lines, "expected", "actual", lineterm="", n=3))
+
+    assert compare_texts(left_text, right_text).diff == expected

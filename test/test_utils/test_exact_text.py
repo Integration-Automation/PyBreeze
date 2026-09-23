@@ -54,6 +54,8 @@ def test_the_diff_sees_a_non_breaking_space(app):
     tool.right_edit.setPlainText("price: 100")
 
     tool.compare()
+    tool._compare_thread.wait(10000)
+    QApplication.processEvents()
 
     # It called the two identical.
     assert tool.output_edit.toPlainText()
