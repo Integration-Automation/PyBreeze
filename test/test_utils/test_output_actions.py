@@ -131,6 +131,23 @@ class TestSaveToFile:
         assert actions.save_to_file() is None
         parent.deleteLater()
 
+    def test_a_failed_write_is_reported(self, app, tmp_path):
+        parent, output, actions = _make(app)
+        output.setPlainText("content")
+        target = tmp_path / "no-such-folder" / "out.txt"
+        warned: list = []
+        with patch(
+            "pybreeze.pybreeze_ui.tools_gui.output_actions.QFileDialog.getSaveFileName",
+            return_value=(str(target), ""),
+        ), patch(
+            "pybreeze.pybreeze_ui.tools_gui.output_actions.QMessageBox.warning",
+            side_effect=lambda *args: warned.append(args),
+        ):
+            assert actions.save_to_file() is None
+        # It went to the log only, and the user took the file as saved.
+        assert warned and "out.txt" in warned[0][2]
+        parent.deleteLater()
+
 
 class TestSuggestedFilename:
     def test_static(self, app):

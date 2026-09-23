@@ -397,6 +397,8 @@ pybreeze_traditional_chinese_word_dict = {
     "output_actions_open_editor": "開成編輯器分頁",
     "output_actions_save": "存成檔案...",
     "output_actions_editor_tab_label": "產生內容",
+    "output_actions_save_failed_title": "沒有存檔",
+    "output_actions_save_failed_message": "{file} 無法存檔：{error}",
     "output_actions_save_dialog_title": "儲存輸出",
     "output_actions_filter_python": "Python (*.py)",
     "output_actions_filter_json": "JSON (*.json)",

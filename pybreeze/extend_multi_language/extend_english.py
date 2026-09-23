@@ -423,6 +423,8 @@ pybreeze_english_word_dict = {
     "output_actions_open_editor": "Open in editor tab",
     "output_actions_save": "Save to file...",
     "output_actions_editor_tab_label": "Generated",
+    "output_actions_save_failed_title": "Not saved",
+    "output_actions_save_failed_message": "{file} could not be saved: {error}",
     "output_actions_save_dialog_title": "Save output",
     "output_actions_filter_python": "Python (*.py)",
     "output_actions_filter_json": "JSON (*.json)",

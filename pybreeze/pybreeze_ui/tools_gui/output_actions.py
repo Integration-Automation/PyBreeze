@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Callable
 
 from PySide6.QtWidgets import (
-    QApplication, QFileDialog, QHBoxLayout, QPushButton, QTextEdit, QWidget
+    QApplication, QFileDialog, QHBoxLayout, QMessageBox, QPushButton, QTextEdit, QWidget
 )
 from je_editor import language_wrapper
 
@@ -127,5 +127,11 @@ class OutputActions:
             Path(path).write_text(self._output.toPlainText(), encoding="utf-8")
         except OSError as error:
             pybreeze_logger.error("output_actions.py save failed: %r", error)
+            # It used to go to the log only, and the user took it as saved.
+            word = language_wrapper.language_word_dict
+            QMessageBox.warning(
+                self._parent, word.get("output_actions_save_failed_title"),
+                word.get("output_actions_save_failed_message").format(
+                    file=Path(path).name, error=error.strerror or error))
             return None
         return path
