@@ -596,3 +596,39 @@ class TestGetWithData:
 
         assert request.params == {"q": "hello world"}
         assert request.full_url == "https://x/api?q=hello+world"
+
+
+class TestBashAnsiCQuoting:
+    """Copy as cURL (bash) writes a body holding a newline or a quote as $'...'."""
+
+    def test_a_json_body_with_a_newline_is_json(self):
+        from pybreeze.utils.curl_import.request_body import body_kind
+
+        # The JSON escape \n reaches bash as \\n inside $'...'
+        request = parse_curl(
+            "curl https://x/api -H 'content-type: application/json' "
+            "--data-raw $'{\"msg\":\"a\\\\nb\"}'")
+
+        assert request.body == '{"msg":"a\\nb"}'
+        assert body_kind(request) == ("json", {"msg": "a\nb"})
+
+    def test_an_escaped_quote_is_a_quote(self):
+        assert parse_curl("curl https://x --data-raw $'it\\'s'").body == "it's"
+
+    @pytest.mark.parametrize(("escape", "character"), [
+        ("\\t", "\t"), ("\\\\", "\\"), ("\\x41", "A"), ("\\u00e9", "\u00e9"),
+        ("\\U0001F600", "\U0001F600"), ("\\101", "A"), ("\\e", "\x1b"), ("\\q", "\\q"),
+    ])
+    def test_each_escape_stands_for_its_character(self, escape, character):
+        assert parse_curl(f"curl https://x -d $'[{escape}]'").body == f"[{character}]"
+
+    def test_a_dollar_quote_inside_other_quotes_is_literal(self):
+        assert parse_curl("curl https://x -d \"a $'b'\"").body == "a $'b'"
+        assert parse_curl("curl https://x -d 'a $b'").body == "a $b"
+
+    def test_an_unterminated_one_is_refused(self):
+        from pybreeze.utils.exception.exceptions import CurlParseException
+
+        with pytest.raises(CurlParseException):
+            parse_curl("curl https://x -d $'open")
+

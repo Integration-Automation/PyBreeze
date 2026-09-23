@@ -12,6 +12,8 @@ from __future__ import annotations
 import math
 import re
 import shlex
+import sys
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from urllib.parse import parse_qsl, quote, urlencode
 
@@ -233,10 +235,80 @@ def _normalise_command(command: str) -> str:
     return _LINE_CONTINUATION_RE.sub(" ", command.strip())
 
 
+# One escape inside bash's $'...' quoting
+_ANSI_C_ESCAPE_RE = re.compile(
+    r"\\(x[0-9a-fA-F]{1,2}|u[0-9a-fA-F]{1,4}|U[0-9a-fA-F]{1,8}|[0-7]{1,3}|.)", re.DOTALL)
+# What the single-character escapes stand for
+_ANSI_C_SIMPLE = {
+    "n": "\n", "t": "\t", "r": "\r", "a": "\a", "b": "\b", "e": "\x1b", "E": "\x1b",
+    "f": "\f", "v": "\v", "\\": "\\", "'": "'", '"': '"', "?": "?",
+}
+
+
+def _ansi_c_character(match: re.Match) -> str:
+    """The character one ``$'...'`` escape stands for; an unknown one stays as written."""
+    code = match.group(1)
+    if code[0] in "xuU" and len(code) > 1:
+        return chr(min(int(code[1:], 16), sys.maxunicode))
+    if code[0] in "01234567":
+        return chr(int(code, 8) & 0xFF)
+    return _ANSI_C_SIMPLE.get(code, match.group(0))
+
+
+def _ansi_c_end(command: str, start: int) -> int:
+    """Index of the quote closing the ``$'...'`` whose body starts at *start*."""
+    index = start
+    while index < len(command):
+        if command[index] == "\\":
+            index += 2
+            continue
+        if command[index] == "'":
+            return index
+        index += 1
+    pybreeze_logger.error(malformed_curl_command_error)
+    raise CurlParseException(malformed_curl_command_error)
+
+
+def _expand_ansi_c_quotes(command: str) -> str:
+    """Rewrite bash ``$'...'`` strings as the plain quoted text they stand for.
+
+    Copy as cURL (bash) in the browsers writes a body holding a newline or a
+    quote as ``$'...'``, which ``shlex`` does not know: it left a ``$`` in
+    front of the body, or refused an escaped quote as unbalanced. Only a ``$'``
+    outside other quotes starts one, as in bash.
+    """
+    pieces: list[str] = []
+    index = 0
+    quote = ""
+    while index < len(command):
+        char = command[index]
+        if quote:
+            if char == quote:
+                quote = ""
+            elif char == "\\" and quote == '"':
+                pieces.append(command[index:index + 2])
+                index += 2
+                continue
+        elif char == "\\":
+            pieces.append(command[index:index + 2])
+            index += 2
+            continue
+        elif command.startswith("$'", index):
+            end = _ansi_c_end(command, index + 2)
+            pieces.append(shlex.quote(_ANSI_C_ESCAPE_RE.sub(_ansi_c_character, command[index + 2:end])))
+            index = end + 1
+            continue
+        elif char in "'\"":
+            quote = char
+        pieces.append(char)
+        index += 1
+    return "".join(pieces)
+
+
 def _tokenize(command: str) -> list[str]:
     """Split *command* into shell tokens, raising on unbalanced quotes."""
     try:
-        return shlex.split(command, posix=True)
+        return shlex.split(_expand_ansi_c_quotes(command), posix=True)
     except ValueError as error:
         pybreeze_logger.error(malformed_curl_command_error)
         raise CurlParseException(malformed_curl_command_error) from error
@@ -311,42 +383,52 @@ def _apply_cookie(request: CurlRequest, value: str) -> None:
             request.cookies[name] = cookie_value
 
 
+def _apply_method(request: CurlRequest, value: str) -> None:
+    try:
+        request.method = http_method(value)
+    except ValueError as error:
+        raise CurlParseException(str(error)) from None
+
+
+def _apply_json_flag(request: CurlRequest, value: str) -> None:
+    # curl --json is shorthand for --data + JSON Content-Type and Accept.
+    request.data_parts.append(value)
+    set_default_header(request.headers, "Content-Type", "application/json")
+    set_default_header(request.headers, "Accept", "application/json")
+
+
+def _apply_user(request: CurlRequest, value: str) -> None:
+    request.username, _separator, request.password = value.partition(":")
+
+
+def _set_url(request: CurlRequest, value: str) -> None:
+    request.url = value
+
+
+# What each kind of value-taking flag does to the request
+_VALUE_FLAG_HANDLERS: dict[str, Callable[[CurlRequest, str], None]] = {
+    "method": _apply_method,
+    "header": _apply_header,
+    "data": lambda request, value: request.data_parts.append(value),
+    "data_urlencode": lambda request, value: request.data_parts.append(_urlencode_data_part(value)),
+    "data_file": _apply_data_or_file,
+    "json_flag": _apply_json_flag,
+    "form": lambda request, value: request.form_fields.append(value),
+    "form_string": lambda request, value: request.form_strings.append(value),
+    "cookie": _apply_cookie,
+    "user_agent": lambda request, value: set_default_header(request.headers, "User-Agent", value),
+    "referer": lambda request, value: set_default_header(request.headers, "Referer", value),
+    "url": _set_url,
+    "timeout": _apply_timeout,
+    "user": _apply_user,
+}
+
+
 def _apply_value_flag(request: CurlRequest, kind: str, value: str) -> None:
     """Apply one value-taking flag to *request* according to its *kind*."""
-    if kind == "method":
-        try:
-            request.method = http_method(value)
-        except ValueError as error:
-            raise CurlParseException(str(error)) from None
-    elif kind == "header":
-        _apply_header(request, value)
-    elif kind == "data":
-        request.data_parts.append(value)
-    elif kind == "data_urlencode":
-        request.data_parts.append(_urlencode_data_part(value))
-    elif kind == "data_file":
-        _apply_data_or_file(request, value)
-    elif kind == "json_flag":
-        # curl --json is shorthand for --data + JSON Content-Type and Accept.
-        request.data_parts.append(value)
-        set_default_header(request.headers, "Content-Type", "application/json")
-        set_default_header(request.headers, "Accept", "application/json")
-    elif kind == "form":
-        request.form_fields.append(value)
-    elif kind == "form_string":
-        request.form_strings.append(value)
-    elif kind == "cookie":
-        _apply_cookie(request, value)
-    elif kind == "user_agent":
-        set_default_header(request.headers, "User-Agent", value)
-    elif kind == "referer":
-        set_default_header(request.headers, "Referer", value)
-    elif kind == "url":
-        request.url = value
-    elif kind == "timeout":
-        _apply_timeout(request, value)
-    elif kind == "user":
-        request.username, _sep, request.password = value.partition(":")
+    handler = _VALUE_FLAG_HANDLERS.get(kind)
+    if handler is not None:
+        handler(request, value)
 
 
 def _consume_tokens(tokens: list[str], request: CurlRequest) -> None:

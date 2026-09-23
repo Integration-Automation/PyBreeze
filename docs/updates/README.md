@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-54 | 2026-09-23 | Copy as cURL (bash) commands with $'...' bodies import correctly | #done #tools | [2026-09](2026-09.md) |
 | U-20260923-53 | 2026-09-23 | A query parameter given twice keeps both values | #done #tools | [2026-09](2026-09.md) |
 | U-20260923-52 | 2026-09-23 | A text form field starting with @ is no longer uploaded as a file | #done #tools | [2026-09](2026-09.md) |
 | U-20260923-51 | 2026-09-23 | The timestamp tool keeps milliseconds and rounds times before 1970 down | #done #tools | [2026-09](2026-09.md) |
@@ -134,4 +135,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 71 |
+| [2026-09.md](2026-09.md) | 2026-09 | 72 |
