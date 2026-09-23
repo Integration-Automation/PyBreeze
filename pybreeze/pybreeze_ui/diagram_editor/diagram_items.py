@@ -317,6 +317,10 @@ class ResizeHandle(QGraphicsRectItem):
 class DiagramNode(QGraphicsRectItem):
     """Composite node: invisible bounding rect holds a shape body + centred label + resize handles."""
 
+    # Where a loaded node stood among the diagram's nodes and images, bottom
+    # first (the file's "stack"); None when it was not loaded or not saved
+    saved_stack: float | None = None
+
     # Class-level grid config (set by DiagramScene)
     grid_enabled: bool = False
     grid_size: int = 20
@@ -588,6 +592,7 @@ class DiagramNode(QGraphicsRectItem):
         # Stacking is part of the diagram: without it, nodes the user brought
         # to the front come back in whatever order the scene lists them.
         node.setZValue(_number(data.get("z", 0.0), 0.0))
+        node.saved_stack = _number(data.get("stack"), None)
         return node
 
 
@@ -756,6 +761,9 @@ _IMG_SELECTED_PEN = QPen(QColor(_NODE_SELECTED_COLOR), 2)
 
 
 class DiagramImage(QGraphicsRectItem):
+    # As for DiagramNode: its place in the saved stacking order, when loaded
+    saved_stack: float | None = None
+
     """A movable, resizable image item.
 
     Stores the *source* (local path or URL string) so the diagram can be
@@ -929,6 +937,7 @@ class DiagramImage(QGraphicsRectItem):
             "h": self.img_h,
             "source": self._source,
             "caption": self.text(),
+            "z": self.zValue(),
         }
 
     @classmethod
@@ -944,4 +953,8 @@ class DiagramImage(QGraphicsRectItem):
         caption = data.get("caption", "")
         if caption:
             img.set_text(caption)
+        # Images kept no stacking: after a save, a load or any undo they came
+        # back above every node, whatever had been drawn over them
+        img.setZValue(_number(data.get("z", 0.0), 0.0))
+        img.saved_stack = _number(data.get("stack"), None)
         return img

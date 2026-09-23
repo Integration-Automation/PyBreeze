@@ -414,15 +414,16 @@ class DiagramScene(QGraphicsScene):
             self._temp_line = None
 
     def _change_z(self, direction: int) -> None:
-        """Put the selected nodes above (1) or below (-1) every other node.
+        """Put the selected nodes and images above (1) or below (-1) every other one.
 
         Their order among themselves is kept. Undoable, and kept in the file.
         Stepping z by one left a node under any other whose z was already
         higher.
         """
-        chosen = sorted((item for item in self.selectedItems() if isinstance(item, DiagramNode)),
-                        key=lambda node: node.zValue())
-        others = [node.zValue() for node in self.get_all_nodes() if node not in chosen]
+        # Images too: with nodes alone, a node could never be put above an image
+        chosen = sorted((item for item in self.selectedItems() if isinstance(item, (DiagramNode, DiagramImage))),
+                        key=lambda item: item.zValue())
+        others = [item.zValue() for item in self._stackable() if item not in chosen]
         if not chosen or not others:
             return
         with self.undo_scope("Change Z"):
@@ -674,11 +675,34 @@ class DiagramScene(QGraphicsScene):
     def to_dict(self) -> dict:
         nodes = self.get_all_nodes()
         node_map: dict[DiagramNode, int] = {n: i for i, n in enumerate(nodes)}
+        # Where each node and image stands among all of them, bottom first:
+        # items of equal z stack in the order they were added, and a load adds
+        # nodes before images
+        stack = {item: place for place, item in enumerate(self._stackable())}
         return {
-            "nodes": [n.to_dict(node_map[n]) for n in nodes],
+            "nodes": [{**n.to_dict(node_map[n]), "stack": stack[n]} for n in nodes],
             "connections": [c.to_dict(node_map) for c in self.get_all_connections()],
-            "images": [img.to_dict(i) for i, img in enumerate(self.get_all_images())],
+            "images": [{**img.to_dict(i), "stack": stack[img]} for i, img in enumerate(self.get_all_images())],
         }
+
+    def _stackable(self) -> list[DiagramNode | DiagramImage]:
+        """Nodes and images, lowest in the stacking order first."""
+        return [item for item in self._bottom_first() if isinstance(item, (DiagramNode, DiagramImage))]
+
+    def _restore_stacking(self) -> None:
+        """Add the loaded nodes and images again in their saved order, bottom first.
+
+        Items of equal z stack in the order they were added. An item the file
+        gives no place keeps its place after those that have one.
+        """
+        stacked = self._stackable()
+        if all(item.saved_stack is None for item in stacked):
+            return
+        ordered = sorted(enumerate(stacked), key=lambda pair: (
+            pair[1].saved_stack is None, pair[1].saved_stack or 0.0, pair[0]))
+        for _place, item in ordered:
+            self.removeItem(item)
+            self.addItem(item)
 
     def _clear_items(self) -> None:
         """Remove all diagram items without clearing the scene entirely."""
@@ -699,6 +723,7 @@ class DiagramScene(QGraphicsScene):
         id_to_node = self._load_nodes(data.get("nodes", []))
         self._load_connections(data.get("connections", []), id_to_node)
         self._load_images(data.get("images", []))
+        self._restore_stacking()
 
     def _load_nodes(self, node_dicts: list) -> dict[int, DiagramNode]:
         id_to_node: dict[int, DiagramNode] = {}

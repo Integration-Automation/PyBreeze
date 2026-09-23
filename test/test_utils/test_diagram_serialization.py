@@ -568,3 +568,65 @@ class TestWhatAFileCannotDo:
         nodes = [item for item in scene.items() if isinstance(item, DiagramNode)]
         assert [len(node.connections) for node in nodes] == [0, 0]
         assert scene.to_dict()["connections"] == []
+
+
+class TestImagesAndNodesKeepTheirStacking:
+    """An image under a node stays under it: saved, loaded, undone, or brought forward."""
+
+    def _image_then_node(self):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_items import DiagramImage, DiagramNode
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene
+
+        scene = DiagramScene()
+        image = DiagramImage(x=0, y=0, w=100, h=100)
+        scene.addItem(image)
+        node = DiagramNode(x=10, y=10, text="Over")
+        scene.addItem(node)
+        return scene
+
+    @staticmethod
+    def _kinds_bottom_first(scene) -> list[str]:
+        return [type(item).__name__ for item in scene._stackable()]
+
+    def test_a_reload_keeps_the_node_on_top(self, qt_app):
+        # A load added every node before every image: the image came back on top
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene
+
+        saved = self._image_then_node().to_dict()
+        scene = DiagramScene()
+        scene.load_from_dict(saved)
+
+        assert self._kinds_bottom_first(scene) == ["DiagramImage", "DiagramNode"]
+
+    def test_an_unrelated_undo_keeps_the_node_on_top(self, qt_app):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_items import DiagramNode
+
+        scene = self._image_then_node()
+        with scene.undo_scope("Add"):
+            scene.addItem(DiagramNode(x=500, y=500, text="Elsewhere"))
+        scene.undo_stack.undo()
+
+        assert self._kinds_bottom_first(scene) == ["DiagramImage", "DiagramNode"]
+
+    def test_bring_to_front_can_put_a_node_above_an_image(self, qt_app):
+        # With one node there was no other node to go above, so nothing moved
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_items import DiagramImage, DiagramNode
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene
+
+        scene = DiagramScene()
+        node = DiagramNode(x=10, y=10)
+        scene.addItem(node)
+        scene.addItem(DiagramImage(x=0, y=0, w=100, h=100))
+        node.setSelected(True)
+
+        scene._change_z(1)
+
+        assert self._kinds_bottom_first(scene) == ["DiagramImage", "DiagramNode"]
+
+    def test_a_file_without_stacking_loads_as_before(self, qt_app):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene
+
+        scene = DiagramScene()
+        scene.load_from_dict({"nodes": [{"id": 0, "x": 0, "y": 0}], "images": [{"x": 0, "y": 0}]})
+
+        assert self._kinds_bottom_first(scene) == ["DiagramNode", "DiagramImage"]
