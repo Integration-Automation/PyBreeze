@@ -23,12 +23,16 @@ _INDENT = "    "
 _SURROGATE = re.compile("[\ud800-\udfff]")
 
 
-def _format_dict(name: str, mapping: dict[str, str]) -> str | None:
-    """Render ``name = { ... }`` with one entry per line, or ``None`` if empty."""
+def _format_dict(name: str, mapping: dict[str, str | list[str]]) -> str | None:
+    """Render ``name = { ... }`` with one entry per line, or ``None`` if empty.
+
+    A value may be a list: a query parameter given more than once.
+    """
     if not mapping:
         return None
     lines = [f"{name} = {{"]
-    lines.extend(f"    {python_string(key)}: {python_string(value)}," for key, value in mapping.items())
+    lines.extend(f"    {python_string(key)}: {python_literal(value, inline=True)},"
+                 for key, value in mapping.items())
     lines.append("}")
     return "\n".join(lines)
 

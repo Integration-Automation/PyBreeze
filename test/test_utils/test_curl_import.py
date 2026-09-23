@@ -322,9 +322,29 @@ class TestParseCurlUrlQuery:
         request = parse_curl("curl -G https://x/api -d 'a=1'")
         assert request.full_url == "https://x/api?a=1"
 
-    def test_explicit_params_not_overwritten_by_url_query(self):
+    def test_url_query_and_get_data_are_both_sent_url_first(self):
+        # What curl 8 sends for this command: ?a=fromurl&a=fromdata
         request = parse_curl("curl -G 'https://x?a=fromurl' -d 'a=fromdata'")
-        assert request.params["a"] == "fromdata"
+        assert request.params["a"] == ["fromurl", "fromdata"]
+        assert request.full_url == "https://x?a=fromurl&a=fromdata"
+
+    def test_a_repeated_url_key_keeps_every_value(self):
+        request = parse_curl("curl 'https://x/p?id=1&id=2&q=a'")
+        assert request.params == {"id": ["1", "2"], "q": "a"}
+        assert request.full_url == "https://x/p?id=1&id=2&q=a"
+
+    def test_a_repeated_get_data_key_keeps_every_value(self):
+        request = parse_curl("curl -G https://x/p -d id=1 -d id=2")
+        assert request.full_url == "https://x/p?id=1&id=2"
+
+    def test_generated_code_sends_every_value(self):
+        import ast
+
+        code = to_requests_code(parse_curl("curl 'https://x/p?id=1&id=2'"))
+        assignment = next(
+            node for node in ast.parse(code).body
+            if isinstance(node, ast.Assign) and node.targets[0].id == "params")
+        assert ast.literal_eval(assignment.value) == {"id": ["1", "2"]}
 
     def test_url_query_feeds_requests_params(self):
         code = to_requests_code(parse_curl("curl 'https://x/api?a=1'"))

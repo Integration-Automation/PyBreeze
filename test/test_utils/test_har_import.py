@@ -334,3 +334,20 @@ class TestWhatReachesTheGeneratedCode:
         imports = [node for node in ast.parse(code).body if isinstance(node, ast.Import)]
         assert [alias.name for node in imports for alias in node.names] == ["requests"]
         assert "\x0a" in code
+
+
+class TestRepeatedQueryKeys:
+    def test_every_value_in_the_url_is_kept_once(self):
+        entry = parse_har(_har(_entry(
+            url="https://api.example.com/v1/items?id=1&id=2",
+            query=[{"name": "id", "value": "1"}, {"name": "id", "value": "2"}])))[0]
+
+        assert entry.request.params == {"id": ["1", "2"]}
+
+    def test_a_recorded_name_the_url_lacks_keeps_all_its_values(self):
+        entry = parse_har(_har(_entry(
+            url="https://api.example.com/v1/items?q=a",
+            query=[{"name": "q", "value": "a"},
+                   {"name": "tag", "value": "x"}, {"name": "tag", "value": "y"}])))[0]
+
+        assert entry.request.params == {"q": "a", "tag": ["x", "y"]}

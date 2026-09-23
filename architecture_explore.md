@@ -339,8 +339,8 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 | `exception/` | `ITEException` 為根的 17 個例外類別 + `exception_tags.py` 訊息常數 |
 | `network/url_validation.py` | `validate_url()`：scheme 白名單、私有/迴環/link-local/reserved 阻擋、額外處理 CGNAT 與 NAT64 網段、IPv6 內嵌 IPv4 的偵測 |
 | `network/http_client.py` | `read_capped_text()`（串流讀取有上限，超出丟 `ResponseTooLargeError`）、`succeeded()`（只有 2xx 算回答；`response.ok` 連 3xx 都算，這些請求又不跟隨轉址）、`truncate_for_display()`、`CONNECT_TIMEOUT` |
-| `curl_import/` | `curl_parser.py`(428) 完整 curl 解析（短旗標叢集展開、`--data-urlencode`、`-F`、`--form-string`、`-b`、`-G`）；`-F` 的值照 curl 語法（`@` 開頭是上傳檔案），`--form-string` 與 HAR 的文字欄位進 `form_strings`、照字面；`http_method()` 只收 RFC 9110 的 token（HAR 也用它），方法會寫進產生的程式碼，不是 token 就拒絕；`request_body.py` 判斷 body 型別；`request_codegen.py` 產 requests 程式（字串一律經 `python_string()`：`json.dumps` 預設把 BMP 以外的字元寫成兩個 surrogate，Python 讀成兩個字；JSON body 經 `python_literal()` 寫成 Python，`true`/`null` 在 Python 裡是未定義的名稱）；`script_templates.py`(272) 產 APITestka/LoadDensity/pytest 模板 |
-| `har_import/` | `har_parser.py`(315) HAR → `CurlRequest`（重用 curl 那套 codegen）；`is_api_like()` 濾掉靜態資源；`har_codegen.py` 批次產生單一腳本、函式名去重，每段開頭註解裡的控制字元寫成 `\xNN`（URL 裡的換行不會結束註解） |
+| `curl_import/` | `curl_parser.py`(449) 完整 curl 解析（短旗標叢集展開、`--data-urlencode`、`-F`、`--form-string`、`-b`、`-G`）；`-F` 的值照 curl 語法（`@` 開頭是上傳檔案），`--form-string` 與 HAR 的文字欄位進 `form_strings`、照字面；query 參數 `params` 同一個 key 出現多次時存成值的清單（`add_query_value()`），URL 的在前、`-G` 的在後，和 curl 實際送出的一樣；`http_method()` 只收 RFC 9110 的 token（HAR 也用它），方法會寫進產生的程式碼，不是 token 就拒絕；`request_body.py` 判斷 body 型別；`request_codegen.py` 產 requests 程式（字串一律經 `python_string()`：`json.dumps` 預設把 BMP 以外的字元寫成兩個 surrogate，Python 讀成兩個字；JSON body 經 `python_literal()` 寫成 Python，`true`/`null` 在 Python 裡是未定義的名稱）；`script_templates.py`(272) 產 APITestka/LoadDensity/pytest 模板 |
+| `har_import/` | `har_parser.py`(320) HAR → `CurlRequest`（重用 curl 那套 codegen）；`is_api_like()` 濾掉靜態資源；`har_codegen.py` 批次產生單一腳本、函式名去重，每段開頭註解裡的控制字元寫成 `\xNN`（URL 裡的換行不會結束註解） |
 | `header_tools/` | `header_analyzer.py`(318) 安全稽核；`header_merge.py` 依 HTTP 規則合併重複 header（Cookie 用 `; ` 其餘用 `, `） |
 | `jwt_tools/`、`hash_tools/`、`timestamp_tools/`、`regex_tools/`、`query_tools/`、`url_tools/`、`diff_tools/`、`http_reference/`、`json_format/`、`response_inspector/` | 對應 §6 工具分頁的純邏輯 |
 | `file_process/get_dir_file_list.py` | 遞迴收集指定副檔名的檔案（大小寫不敏感）+ 資料夾選擇對話框包裝 |
@@ -433,7 +433,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 18. 測試與 CI
 
-- **單元測試** `test/test_utils/` — 87 個 `test_*.py`、1331 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
+- **單元測試** `test/test_utils/` — 87 個 `test_*.py`、1336 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
 - **整合測試** `test/unit_test/start_automation/` — 以 `debug_mode=True` 啟動 IDE，10 秒後自動關閉，驗證啟動流程與 extend tab
 - **CI** `.github/workflows/{dev,stable}.yml` — `unit-tests` job 跑 Windows runner、Python 3.10–3.14 矩陣，3.12 那一腳額外上傳 `coverage-xml` artifact；`sonarcloud` job 跑 ubuntu、`needs: unit-tests`。每日 02:00 排程 + push/PR 觸發。`stable.yml` 另有 `publish` job 負責版號遞增與 PyPI 發布
 - **覆蓋率** `.coveragerc` — `relative_files = True` 是必要的：報告在 Windows 產生、由 Linux 上的 scanner 讀取，路徑不能帶機器資訊。目前整體 60%（`utils/`、`tools_gui`、`dialog` 95–100%；`editor_main` 58%、`menu` 54%；仍低的是 `diagram_editor` 45%、`process_executor` 39%、`connect_gui` 28%）

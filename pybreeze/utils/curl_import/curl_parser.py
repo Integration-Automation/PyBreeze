@@ -59,7 +59,8 @@ class CurlRequest:
     :param method: HTTP method (upper-case), e.g. ``GET`` or ``POST``
     :param url: request URL, or an empty string when none was found
     :param headers: request headers as ``name -> value`` (names kept as written)
-    :param params: query parameters collected from ``-G`` / ``--data`` pairs
+    :param params: query parameters from the URL and from ``-G`` / ``--data``
+        pairs; a key given more than once maps to the list of its values
     :param data_parts: raw body fragments in the order they appeared
     :param username: basic-auth user, or ``None``
     :param password: basic-auth password, or ``None``
@@ -77,7 +78,7 @@ class CurlRequest:
     method: str = _DEFAULT_METHOD
     url: str = ""
     headers: dict[str, str] = field(default_factory=dict)
-    params: dict[str, str] = field(default_factory=dict)
+    params: dict[str, str | list[str]] = field(default_factory=dict)
     data_parts: list[str] = field(default_factory=list)
     username: str | None = None
     password: str | None = None
@@ -114,7 +115,7 @@ class CurlRequest:
         if not self.params:
             return self.url
         joiner = "&" if "?" in self.url else "?"
-        return f"{self.url}{joiner}{urlencode(self.params)}"
+        return f"{self.url}{joiner}{urlencode(self.params, doseq=True)}"
 
     def header_value(self, name: str) -> str | None:
         """Return a header's value by case-insensitive *name*, or ``None``."""
@@ -383,8 +384,26 @@ def _finalise_method(request: CurlRequest) -> None:
         # '&': each fragment is query text already, so it is split on '&' and
         # decoded here, or full_url would encode it a second time.
         for part in request.data_parts:
-            request.params.update(parse_qsl(part, keep_blank_values=True))
+            for key, value in parse_qsl(part, keep_blank_values=True):
+                add_query_value(request.params, key, value)
         request.data_parts = []
+
+
+def add_query_value(params: dict[str, str | list[str]], key: str, value: str) -> None:
+    """Add *value* under *key*, keeping the values already there.
+
+    ``?id=1&id=2`` sends both; a plain dict kept only one of them. A key seen
+    once maps to its value, a repeated one to the list of its values, which is
+    what ``requests`` and ``urlencode(doseq=True)`` both expand back.
+    """
+    if key not in params:
+        params[key] = value
+        return
+    existing = params[key]
+    if isinstance(existing, list):
+        existing.append(value)
+    else:
+        params[key] = [existing, value]
 
 
 def _split_url_query(request: CurlRequest) -> None:
@@ -393,14 +412,14 @@ def _split_url_query(request: CurlRequest) -> None:
     Browser "copy as cURL" keeps the query in the URL; splitting it out lets it
     show up alongside ``-G`` / ``-d`` query pairs, while
     :attr:`CurlRequest.full_url` can still rebuild the original address. Values
-    are URL-decoded, and existing params are not overwritten.
+    are URL-decoded, and a key given more than once keeps every value.
     """
     base, separator, query = request.url.partition("?")
     if not separator:
         return
     request.url = base
     for key, value in parse_qsl(query, keep_blank_values=True):
-        request.params.setdefault(key, value)
+        add_query_value(request.params, key, value)
 
 
 def parse_curl(command: str) -> CurlRequest:
@@ -423,6 +442,7 @@ def parse_curl(command: str) -> CurlRequest:
 
     request = CurlRequest()
     _consume_tokens(_expand_short_flags(tokens[1:]), request)
-    _finalise_method(request)
+    # The URL's own query first: curl appends -G data after it.
     _split_url_query(request)
+    _finalise_method(request)
     return request

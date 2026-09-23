@@ -14,7 +14,7 @@ import json
 from dataclasses import dataclass, field
 from urllib.parse import parse_qsl, urlparse
 
-from pybreeze.utils.curl_import.curl_parser import CurlRequest, http_method
+from pybreeze.utils.curl_import.curl_parser import CurlRequest, add_query_value, http_method
 from pybreeze.utils.exception.exception_tags import (
     empty_har_error,
     invalid_har_json_error,
@@ -136,9 +136,14 @@ def _apply_query(request: CurlRequest, raw_request: dict, query: str) -> None:
     them once on the way out.
     """
     for key, value in parse_qsl(query, keep_blank_values=True):
-        request.params.setdefault(key, value)
+        add_query_value(request.params, key, value)
+    # The recorded list repeats the URL's parameters: only a name the URL did
+    # not carry is taken from it, with all of that name's values.
+    recorded: dict[str, str | list[str]] = {}
     for name, value in _header_pairs(raw_request.get("queryString")):
-        request.params.setdefault(name, value)
+        add_query_value(recorded, name, value)
+    for name, values in recorded.items():
+        request.params.setdefault(name, values)
 
 
 def _apply_multipart(request: CurlRequest, params: list[tuple[str, str, str]]) -> None:
