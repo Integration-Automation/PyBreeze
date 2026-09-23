@@ -22,10 +22,10 @@ from pybreeze.utils.file_process.replace_file import replace_text
 from pybreeze.utils.logging.logger import pybreeze_logger
 
 # A value that is either fixed or computed on demand (e.g. depends on a selector)
-StrOrCallable = "str | Callable[[], str]"
+StrOrCallable = str | Callable[[], str]
 
 
-def _resolve(value) -> str:
+def _resolve(value: StrOrCallable) -> str:
     """Return *value*, calling it first if it is a callable."""
     return value() if callable(value) else value
 
@@ -36,8 +36,8 @@ class OutputActions:
     def __init__(
             self, parent: QWidget, output_edit: QTextEdit, *,
             main_window=None,
-            basename="output",
-            extension="txt",
+            basename: StrOrCallable = "output",
+            extension: StrOrCallable = "txt",
             is_valid: Callable[[], bool] | None = None) -> None:
         """
         :param parent: the tool widget the file dialog is parented to

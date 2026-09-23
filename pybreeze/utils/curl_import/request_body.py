@@ -76,14 +76,6 @@ def form_parts(request: CurlRequest) -> FormParts:
     return data_fields, file_fields
 
 
-def file_uploads(file_fields: dict[str, str | list[str]]) -> list[tuple[str, str]]:
-    """Every ``(field, filename)`` upload, a repeated field once per file."""
-    return [
-        (field, name) for field, names in file_fields.items()
-        for name in (names if isinstance(names, list) else [names])
-    ]
-
-
 # One multipart field as sent: its name, whether it uploads a file, and the
 # file name or the text
 FormEntry = tuple[str, bool, str]
