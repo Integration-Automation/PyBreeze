@@ -412,10 +412,14 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
     ├── QThread: SftpListThread / SftpTransferThread ──Signal──► file tree
     ├── QThread: SenderThread (CoT)   ──Signal──► review UI
     ├── QThread: RequestThread(Skills)──Signal──► result UI
+    ├── QThread: ReviewRequestThread  ──Signal──► AI review client panel
+    ├── QThread: ImageDownloadThread  ──Signal──► diagram canvas
+    ├── QThread: RegexMatchThread     ──Signal──► Regex tab（pattern 在另一個行程跑）
+    ├── QThread: DiffThread           ──Signal──► Diff tab
     └── QThread: JupyterLauncherThread──Signal──► QWebEngineView
 ```
 
-鐵律：worker thread 一律不碰 UI。普通執行緒走 Queue + QTimer，`QThread` 走 Signal/Slot。
+鐵律：worker thread 一律不碰 UI。普通執行緒走 Queue + QTimer，`QThread` 走 Signal/Slot。分頁或視窗關閉時還在跑的 `QThread` 交給 `thread_keeper.let_run_out()`，不等它、也不讓它在執行中被銷毀。
 
 執行器的壽命：QTimer 接到執行器的 `pull_text()` / `_pull_text()` 這條連線**不會**讓執行器活著；reader 執行緒一結束，沒人持有的執行器就會被 GC，剩下的輸出和結束那一行都不會出現。所以執行器一律掛在它寫入的 `CodeWindow.runner` 上，跟視窗同壽；視窗又掛在主視窗的 `current_run_code_window`。
 
