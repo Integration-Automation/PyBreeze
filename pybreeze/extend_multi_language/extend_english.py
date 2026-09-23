@@ -352,6 +352,8 @@ pybreeze_english_word_dict = {
     "plugin_menu_about": "About",
     "plugin_menu_run_with": "Run with {name}",
     # Run with Menu
+    "run_folder_title": "Run a folder",
+    "run_folder_no_action_files": "There are no action JSON files in {folder}, so nothing was run.",
     "run_with_menu_label": "Run with...",
     "run_with_save_failed": "{file} could not be saved, so it was not run: {error}",
     "run_with_suffix_mismatch": "Current file ({suffix}) does not match expected suffixes: {expected}",

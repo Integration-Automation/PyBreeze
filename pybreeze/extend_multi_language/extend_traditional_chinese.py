@@ -703,6 +703,8 @@ pybreeze_traditional_chinese_word_dict = {
     "plugin_menu_about": "關於",
     "plugin_menu_run_with": "以 {name} 執行",
     # Run with Menu
+    "run_folder_title": "執行資料夾",
+    "run_folder_no_action_files": "{folder} 裡沒有動作 JSON 檔，所以沒有執行任何東西。",
     "run_with_menu_label": "以...執行",
     "run_with_save_failed": "{file} 無法存檔，所以沒有執行：{error}",
     "run_with_suffix_mismatch": "目前的檔案 ({suffix}) 與預期的副檔名不符: {expected}",

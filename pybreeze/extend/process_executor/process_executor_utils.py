@@ -3,14 +3,15 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-from je_editor import EditorWidget
+from PySide6.QtWidgets import QFileDialog, QMessageBox
+from je_editor import EditorWidget, language_wrapper
 
 from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
 from pybreeze.extend.mail_thunder_extend.mail_thunder_setting import send_after_test
 from pybreeze.extend.process_executor.python_task_process_manager import TaskProcessManager
 from pybreeze.utils.exception.exception_tags import wrong_test_data_format_exception_tag
 from pybreeze.utils.exception.exceptions import ITETestExecutorException
-from pybreeze.utils.file_process.get_dir_file_list import ask_and_get_dir_files_as_list
+from pybreeze.utils.file_process.get_dir_file_list import get_dir_files_as_list
 from pybreeze.utils.logging.logger import pybreeze_logger
 
 if TYPE_CHECKING:
@@ -105,13 +106,31 @@ def run_dir_files_with_package(
     bad directory pick from crashing the menu callback.
     """
     try:
-        execute_list = ask_and_get_dir_files_as_list(main_window)
+        execute_list = _ask_for_action_files(main_window)
         if not execute_list:
             return
         for execute_file in execute_list:
             build_process_from_file(main_window, package, execute_file, send_mail, program_buffer)
     except Exception as error:  # noqa: BLE001 — batch UI action must not abort on one bad entry
         pybreeze_logger.error("%s multi file error: %r", package, error)
+
+
+def _ask_for_action_files(main_window: PyBreezeMainWindow) -> list[str]:
+    """Ask for a folder and return the action JSON files under it, none when cancelled.
+
+    The dialog is parented to the main window (it was not, and could open
+    behind it). A folder with no JSON in it says so; it used to do nothing.
+    """
+    folder = QFileDialog.getExistingDirectory(main_window)
+    if not folder:
+        return []
+    files = get_dir_files_as_list(folder, ".json")
+    if not files:
+        lang = language_wrapper.language_word_dict
+        QMessageBox.information(
+            main_window, lang.get("run_folder_title"),
+            lang.get("run_folder_no_action_files").format(folder=folder))
+    return files
 
 
 def open_run_window(main_window: PyBreezeMainWindow, title: str = "") -> CodeWindow:

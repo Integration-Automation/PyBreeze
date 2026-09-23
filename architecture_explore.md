@@ -111,7 +111,7 @@ Template Method 定義的子行程生命週期：
 | `build_process()` | 取當前分頁的程式碼（或傳入的 `exec_str`）→ `start_process()`。沒給 `exec_str` 又不是編輯器分頁時，開一個執行視窗寫明「腳本要在前面的編輯器分頁裡」（`report_no_script_tab()`），不會把 `None` 交給套件 |
 | `start_process()` | 建 `CodeWindow` + `TaskProcessManager` → `start_test_process()` |
 | `build_process_from_file()` | 以檔案路徑執行單一檔案 |
-| `run_dir_files_with_package()` | 問使用者選資料夾，對每個 `.json` 開一個執行視窗批次跑 |
+| `run_dir_files_with_package()` | 問使用者選資料夾（`_ask_for_action_files()`，對話框掛在主視窗上；資料夾裡沒有 `.json` 就明說），對每個 `.json` 開一個執行視窗批次跑 |
 | `open_run_window()` | 開一個執行視窗、掛進 `main_window.current_run_code_window`，並接上 `finished_and_closed`：使用者關掉一個已經跑完的執行視窗時主視窗就放掉它（以前這份清單只增不減，每次執行都留下一個視窗、一個執行器、兩個 queue 和一個 timer）。插件執行也走這裡 |
 | `build_task_process()` | 共用建構：`open_run_window()` 並帶上主視窗選定的直譯器、決定要不要接 `send_after_test`。建好的 `TaskProcessManager` 掛在執行視窗的 `runner` 上，所以呼叫端可以不留參考。prthinker 審查也走這裡 |
 
@@ -344,10 +344,10 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 | `har_import/` | `har_parser.py`(320) HAR → `CurlRequest`（重用 curl 那套 codegen）；`is_api_like()` 濾掉靜態資源；`har_codegen.py` 批次產生單一腳本、函式名去重，每段開頭註解裡的控制字元寫成 `\xNN`（URL 裡的換行不會結束註解） |
 | `header_tools/` | `header_analyzer.py`(318) 安全稽核；`header_merge.py` 依 HTTP 規則合併重複 header（Cookie 用 `; ` 其餘用 `, `） |
 | `jwt_tools/`、`hash_tools/`、`timestamp_tools/`、`regex_tools/`、`query_tools/`、`url_tools/`、`diff_tools/`、`http_reference/`、`json_format/`、`response_inspector/` | 對應 §6 工具分頁的純邏輯 |
-| `file_process/get_dir_file_list.py` | 遞迴收集指定副檔名的檔案（大小寫不敏感）+ 資料夾選擇對話框包裝 |
+| `file_process/get_dir_file_list.py` | 遞迴收集指定副檔名的檔案（大小寫不敏感） |
 | `manager/package_manager/` | `PackageManager`（單例 `package_manager`）持有 `syntax_check_list` |
 
-**分層原則很一致**：`utils/` 幾乎不 import Qt（例外只有 `get_dir_file_list` 的 QFileDialog），所以 61 個單元測試全部跑得動。
+**分層原則**：`utils/` 不 import Qt 或 JEditor，由 `test_utils_has_no_qt.py` 守著，所以全部是不需要視窗的純邏輯測試。
 
 ---
 
@@ -434,7 +434,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 18. 測試與 CI
 
-- **單元測試** `test/test_utils/` — 93 個 `test_*.py`、1456 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
+- **單元測試** `test/test_utils/` — 95 個 `test_*.py`、1461 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
 - **整合測試** `test/unit_test/start_automation/` — 以 `debug_mode=True` 啟動 IDE，10 秒後自動關閉，驗證啟動流程與 extend tab
 - **CI** `.github/workflows/{dev,stable}.yml` — `unit-tests` job 跑 Windows runner、Python 3.10–3.14 矩陣，3.12 那一腳額外上傳 `coverage-xml` artifact；`sonarcloud` job 跑 ubuntu、`needs: unit-tests`。每日 02:00 排程 + push/PR 觸發。`stable.yml` 另有 `publish` job 負責版號遞增與 PyPI 發布
 - **覆蓋率** `.coveragerc` — `relative_files = True` 是必要的：報告在 Windows 產生、由 Linux 上的 scanner 讀取，路徑不能帶機器資訊。目前整體 60%（`utils/`、`tools_gui`、`dialog` 95–100%；`editor_main` 58%、`menu` 54%；仍低的是 `diagram_editor` 45%、`process_executor` 39%、`connect_gui` 28%）
