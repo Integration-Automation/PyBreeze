@@ -169,6 +169,33 @@ class TestATransfer:
         tree._transfer.wait(5000)
         app.processEvents()  # deliver its "done" while the message box is still stubbed
 
+    def test_connect_does_not_cut_a_transfer_short(self, app, monkeypatch):
+        # A connect starts by closing the session; the combined view's shared
+        # Connect button, clicked to bring the shell back, killed the transfer
+        import threading
+
+        from pybreeze.pybreeze_ui.connect_gui.ssh import ssh_file_viewer_widget as viewer
+
+        answering = threading.Event()
+        said: list = []
+        monkeypatch.setattr(viewer.QMessageBox, "information", staticmethod(lambda *args: said.append(args)))
+        tree = self._tree(app)
+        tree.login_widget.host_edit.setText("host")
+        tree.login_widget.user_edit.setText("user")
+        tree.client.download = lambda _remote, _local: answering.wait(10)
+        connects: list = []
+        tree.client.connect = lambda *args, **kwargs: connects.append(args)
+        tree._start_transfer(downloading=True, remote_path="/tmp/big.bin", local_path="big.bin",
+                             title="Downloaded", message="Saved to")
+
+        tree._connect()
+
+        assert tree._connecting is None and connects == []
+        assert said, "the user was not told why nothing happened"
+        answering.set()
+        tree._transfer.wait(5000)
+        app.processEvents()
+
     def test_a_second_transfer_is_refused_while_one_runs(self, app, monkeypatch):
         from pybreeze.pybreeze_ui.connect_gui.ssh import ssh_file_viewer_widget as viewer
 

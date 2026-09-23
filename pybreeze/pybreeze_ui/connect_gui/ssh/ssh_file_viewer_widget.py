@@ -139,6 +139,11 @@ class SSHFileTreeManager(QWidget):
             return
         if self._connecting is not None and self._connecting.isRunning():
             return
+        # A connect starts by closing the session, which cut a transfer short;
+        # in the combined view the shared Connect button reached it to bring
+        # the shell back
+        if self._refused_while_transferring():
+            return
 
         def connect() -> None:
             self.client.connect(host, port, user, pwd, use_key, key_path, parent_widget=self)
@@ -564,11 +569,7 @@ class SSHFileTreeManager(QWidget):
         :param replace: upload over a file already there; otherwise the user is asked first
         :return: whether it started
         """
-        if self._transfer is not None and self._transfer.isRunning():
-            QMessageBox.information(
-                self,
-                self.word_dict.get("ssh_file_viewer_dialog_title_transfer_running"),
-                self.word_dict.get("ssh_file_viewer_dialog_message_transfer_running"))
+        if self._refused_while_transferring():
             return False
         self._transfer = SftpTransferThread(self.client, downloading, remote_path, local_path, replace)
         self._transfer.done.connect(
@@ -578,6 +579,16 @@ class SSHFileTreeManager(QWidget):
             downloading=False, remote_path=remote_path, local_path=local_path,
             title=title, message=message, after=after, replace=True)))
         self._transfer.start()
+        return True
+
+    def _refused_while_transferring(self) -> bool:
+        """Say a transfer is going and return ``True`` if one is; ``False`` otherwise. UI thread."""
+        if self._transfer is None or not self._transfer.isRunning():
+            return False
+        QMessageBox.information(
+            self,
+            self.word_dict.get("ssh_file_viewer_dialog_title_transfer_running"),
+            self.word_dict.get("ssh_file_viewer_dialog_message_transfer_running"))
         return True
 
     def _ask_to_replace(self, remote_path: str, replace: Callable[[], object]) -> None:
