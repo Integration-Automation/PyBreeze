@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-159 | 2026-09-24 | Refuse to open a HAR export or diagram over 100 MB, and report the diagram editor's read errors without the path | #fix #tools #diagram #done | [2026-09](2026-09.md) |
 | U-20260923-158 | 2026-09-24 | Suggest only the last, Windows-safe part of a server's file name when saving an SFTP download | #fix #security #ssh #done | [2026-09](2026-09.md) |
 | U-20260923-157 | 2026-09-24 | Escape U+2028, U+2029 and U+0085 in generated scripts, so a pasted curl command cannot add code through a comment | #fix #security #tools #done | [2026-09](2026-09.md) |
 | U-20260923-156 | 2026-09-24 | Show server and file text in message boxes and labels as text, never as markup Qt would load | #fix #security #ssh | [2026-09](2026-09.md) |
@@ -239,4 +240,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 176 |
+| [2026-09.md](2026-09.md) | 2026-09 | 177 |

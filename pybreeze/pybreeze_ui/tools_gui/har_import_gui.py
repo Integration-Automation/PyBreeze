@@ -22,6 +22,7 @@ from pybreeze.utils.curl_import.script_templates import TEMPLATE_TARGETS
 from pybreeze.utils.exception.exceptions import CurlParseException, HarParseException
 from pybreeze.utils.har_import.har_codegen import generate_har_script
 from pybreeze.utils.har_import.har_parser import HarEntry, api_entries, parse_har, summarize
+from pybreeze.utils.file_process.read_capped import read_text_capped
 from pybreeze.utils.logging.logger import pybreeze_logger
 
 # The single target that generates JSON rather than Python
@@ -113,7 +114,8 @@ class HarImportGUI(QWidget):
             return None
         try:
             # utf-8-sig: an export saved with a byte-order mark is still JSON
-            text = Path(path).read_text(encoding="utf-8-sig")
+            # Size-checked first: a multi-GB export froze the IDE while read here
+            text = read_text_capped(Path(path), encoding="utf-8-sig")
         except (OSError, UnicodeDecodeError) as error:
             pybreeze_logger.info("har_import_gui.py read failed: %r", error)
             # The reason without the path: str(OSError) carries the file's full
