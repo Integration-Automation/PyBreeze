@@ -102,9 +102,11 @@ def install_prthinker(ui_we_want_to_set: PyBreezeMainWindow) -> None:
     setting = load_setting()
     target = install_target(setting.get("source_path", ""))
     if not target:
-        chosen = QFileDialog(parent=ui_we_want_to_set).getExistingDirectory(
-            caption=language_wrapper.language_word_dict.get(
-                "prthinker_choose_source_path_label"))
+        # Static: called through an instance, the dialog had no parent and
+        # could open behind the main window.
+        chosen = QFileDialog.getExistingDirectory(
+            ui_we_want_to_set,
+            language_wrapper.language_word_dict.get("prthinker_choose_source_path_label"))
         target = install_target(chosen or "")
         if not target:
             messagebox = QMessageBox(ui_we_want_to_set)

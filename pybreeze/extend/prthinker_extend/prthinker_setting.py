@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shlex
 from pathlib import Path
 from typing import Dict, List
@@ -114,6 +115,9 @@ DEFAULT_SETTING: Dict[str, str] = {
 # The extras to install with: ``runner`` is the set that reviews without
 # pulling in a model
 INSTALL_EXTRAS = "runner"
+# The project name line of prthinker's pyproject.toml; parsed by hand, since the
+# stdlib's tomllib arrived in 3.11 and this runs on 3.10
+_PRTHINKER_PROJECT_NAME = re.compile(r'^name\s*=\s*["\']prthinker["\']\s*$', re.MULTILINE)
 
 
 def setting_path() -> Path:
@@ -309,14 +313,30 @@ def install_target(source_path: str) -> str:
     prthinker is installed from source rather than from PyPI, so what is given
     is a folder and not a package name.
 
+    資料夾要是 prthinker 自己的原始碼（``pyproject.toml`` 的專案名稱是 prthinker），
+    選錯資料夾才不會被記下來，之後每次都拿去跑一個一定失敗的 pip。
+    The folder has to be prthinker's own source (its ``pyproject.toml`` names the
+    project prthinker): a wrong one used to be saved and handed to a pip that
+    could only fail, every time, until it was cleared in the settings.
+
     :param source_path: 框架原始碼的資料夾 / the framework's source folder
-    :return: pip 的安裝目標，路徑不存在時為空字串 / the target for pip, or an
-        empty string when the path is not a folder
+    :return: pip 的安裝目標，不是 prthinker 原始碼時為空字串 / the target for
+        pip, or an empty string when the path is not prthinker's source folder
     """
     path = Path(source_path.strip()) if source_path.strip() else None
-    if path is None or not path.is_dir():
+    if path is None or not _is_prthinker_source(path):
         return ""
     return f"{path}[{INSTALL_EXTRAS}]"
+
+
+def _is_prthinker_source(folder: Path) -> bool:
+    """Whether *folder* holds a ``pyproject.toml`` whose project is prthinker."""
+    try:
+        text = (folder / "pyproject.toml").read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as error:
+        pybreeze_logger.debug("Not a prthinker source folder %s: %r", folder, error)
+        return False
+    return _PRTHINKER_PROJECT_NAME.search(text) is not None
 
 
 def loggable(setting: Dict[str, str]) -> Dict[str, str]:

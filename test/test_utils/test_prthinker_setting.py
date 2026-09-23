@@ -200,11 +200,24 @@ class TestTheCommandsAreBuilt:
 class TestInstallingFromSource:
     """prthinker is not on PyPI, so pip is pointed at a folder."""
 
-    def test_a_real_folder_becomes_a_target_with_the_extras(self, tmp_path):
+    @staticmethod
+    def _source(folder, name="prthinker"):
+        (folder / "pyproject.toml").write_text(
+            f'[project]\nname = "{name}"\nversion = "1.0"\n', encoding="utf-8")
+        return folder
+
+    def test_its_source_folder_becomes_a_target_with_the_extras(self, tmp_path):
+        self._source(tmp_path)
         assert install_target(str(tmp_path)) == f"{tmp_path}[{INSTALL_EXTRAS}]"
 
     def test_surrounding_spaces_are_dropped(self, tmp_path):
+        self._source(tmp_path)
         assert install_target(f"  {tmp_path} ") == f"{tmp_path}[{INSTALL_EXTRAS}]"
+
+    def test_any_other_folder_is_no_target(self, tmp_path):
+        # A wrong pick used to be saved and handed to a pip that could only fail.
+        assert install_target(str(tmp_path)) == ""
+        assert install_target(str(self._source(tmp_path, name="prthinker-docs"))) == ""
 
     def test_nothing_chosen_is_no_target(self):
         assert install_target("") == ""

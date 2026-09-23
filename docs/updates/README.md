@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-74 | 2026-09-23 | Install prthinker: a parented dialog, and only prthinker's source is kept | #done #prthinker | [2026-09](2026-09.md) |
 | U-20260923-73 | 2026-09-23 | Closing the IDE survives a tab, dock or run window that raises | #done #lifecycle | [2026-09](2026-09.md) |
 | U-20260923-72 | 2026-09-23 | File tree Delete closes only the tabs whose files are gone | #done #filetree | [2026-09](2026-09.md) |
 | U-20260923-71 | 2026-09-23 | prthinker Review current file saves the file first | #done #prthinker | [2026-09](2026-09.md) |
@@ -154,4 +155,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 91 |
+| [2026-09.md](2026-09.md) | 2026-09 | 92 |
