@@ -16,6 +16,8 @@ from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.subprocess_util import no_window_creationflags
 
 JUPYTER_STARTUP_TIMEOUT = 60
+# How much of a failure's reason the tab shows: pip's stderr can run long
+_SHOWN_REASON_CHARACTERS = 2000
 
 
 def find_free_port() -> int:
@@ -116,13 +118,18 @@ class JupyterLauncherThread(QThread):
             self.server_ready.emit(f"http://localhost:{port}/lab")
 
         # OSError includes the TimeoutError of a server that never came up
-        except (OSError, ValueError, RuntimeError, subprocess.SubprocessError):
-            err = traceback.format_exc()
+        except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
+            if self._stopped.is_set():
+                # The tab closed: stop() ended the server, and the wait saw it
+                # exit. Not a failure, and it used to be logged as one.
+                pybreeze_logger.debug("JupyterLab launch stopped with its tab: %r", error)
+                return
             # Tear down a half-started server so a startup timeout doesn't leave an
             # orphaned JupyterLab process running and holding the port.
             self.stop()
-            self.error_occurred.emit(err)
-            pybreeze_logger.error(f"JupyterLab launch failed: {err}")
+            pybreeze_logger.error("JupyterLab launch failed: %s", traceback.format_exc())
+            # The reason, not the traceback: the tab shows it.
+            self.error_occurred.emit(str(error)[-_SHOWN_REASON_CHARACTERS:])
 
     def _start_server(self, python_exe: str, port: int) -> subprocess.Popen:
         """Start the server on *port*, its output going to ``self._output``.

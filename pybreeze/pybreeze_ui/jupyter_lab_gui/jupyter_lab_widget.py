@@ -2,14 +2,13 @@ from __future__ import annotations
 
 import sys
 
-from PySide6.QtCore import QUrl
+from PySide6.QtCore import Qt, QUrl
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import QApplication, QVBoxLayout, QWidget, QLabel
 from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.jupyter_lab_gui.jupyter_lab_thread import JupyterLauncherThread
 from pybreeze.pybreeze_ui.thread_keeper import let_run_out
-from pybreeze.utils.logging.logger import pybreeze_logger
 
 
 class JupyterLabWidget(QWidget):
@@ -48,9 +47,19 @@ class JupyterLabWidget(QWidget):
         self.browser.show()
 
     def show_error(self, msg):
+        """Say that the lab did not start, and why.
+
+        The reason (no venv found, a failed pip install, the server's last
+        output) used to go to the log only, behind a bare "init failed". The
+        launcher has logged it already.
+        """
         if self.status_label:
-            self.status_label.setText(language_wrapper.language_word_dict.get("jupyterlab_init_failed"))
-        pybreeze_logger.error(msg)
+            # Plain text: pip's or the server's output is not markup
+            self.status_label.setTextFormat(Qt.TextFormat.PlainText)
+            self.status_label.setWordWrap(True)
+            self.status_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+            self.status_label.setText(
+                f"{language_wrapper.language_word_dict.get('jupyterlab_init_failed')}: {msg}")
 
     def closeEvent(self, event):
         """Stop the server with the tab.

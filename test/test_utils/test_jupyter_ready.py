@@ -102,3 +102,56 @@ class TestRunCleansUpOnFailure:
         # The half-started server must be terminated, not left holding the port.
         assert proc.terminated is True
         assert errors
+
+
+class TestWhatAFailureShows:
+    def _run(self, monkeypatch, fail, stop_first=False):
+        from pybreeze.pybreeze_ui.jupyter_lab_gui import jupyter_lab_thread as mod
+
+        monkeypatch.setattr(mod, "get_venv_python", fail)
+        thread = mod.JupyterLauncherThread()
+        if stop_first:
+            thread.stop()
+        errors: list = []
+        logged: list = []
+        thread.error_occurred.connect(errors.append)
+        monkeypatch.setattr(mod.pybreeze_logger, "error", lambda *args: logged.append(args))
+        thread.run()
+        return errors, logged
+
+    def test_the_reason_reaches_the_tab_without_the_traceback(self, qt_app, monkeypatch):
+        def no_venv():
+            raise RuntimeError("Cannot find venv python executable")
+
+        errors, logged = self._run(monkeypatch, no_venv)
+
+        assert errors == ["Cannot find venv python executable"]
+        assert logged  # the traceback still goes to the log
+
+    def test_a_tab_closed_during_startup_is_not_a_failure(self, qt_app, monkeypatch):
+        def exited():
+            raise RuntimeError("JupyterLab exited early (code 1): ")
+
+        # stop() ends the server; the wait then sees it gone. That used to be
+        # logged as "JupyterLab launch failed".
+        errors, logged = self._run(monkeypatch, exited, stop_first=True)
+
+        assert errors == []
+        assert logged == []
+
+    def test_the_tab_says_why_as_plain_text(self, qt_app, monkeypatch):
+        from pybreeze.extend_multi_language.update_language_dict import update_language_dict
+        from pybreeze.pybreeze_ui.jupyter_lab_gui import jupyter_lab_widget
+        from PySide6.QtCore import Qt
+
+        update_language_dict()
+        monkeypatch.setattr(jupyter_lab_widget.JupyterLauncherThread, "start", lambda self: None)
+        tab = jupyter_lab_widget.JupyterLabWidget()
+
+        tab.show_error("ERROR: <b>No matching distribution</b> for jupyterlab")
+
+        # It used to say only "init failed".
+        assert "No matching distribution" in tab.status_label.text()
+        assert tab.status_label.textFormat() == Qt.TextFormat.PlainText
+        tab.close()
+        tab.deleteLater()

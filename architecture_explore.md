@@ -313,8 +313,8 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 10. `pybreeze_ui/jupyter_lab_gui/`
 
-- `jupyter_lab_thread.py` — `JupyterLauncherThread(QThread)`：`find_free_port()`（綁 127.0.0.1 讓核心挑空 port）→ `get_venv_python()` → `is_jupyter_installed()`（缺就自動裝）→ 啟動 server（`_start_server()`，在 `_process_lock` 裡先看 `_stopped`：`stop()` 之後就不再啟動，即使還在安裝）→ `_wait_until_ready()` 輪詢 port（60 秒 timeout）→ emit `server_ready(url)`。server 的輸出寫進暫存檔而不是管線（server 起來後沒人讀管線，緩衝區滿了它會卡在 `write()`）；提早結束時錯誤訊息取這個檔案的尾巴
-- `jupyter_lab_widget.py` — 收到 URL 後用 `QWebEngineView.setUrl()` 載入；`closeEvent` 一律關掉 server（launcher 執行緒在 lab 載入完就結束了，只停「還在跑的執行緒」等於從不停 server）；還在安裝或啟動的 launcher 交給 `let_run_out()`，不在 UI 執行緒等（安裝可能要好幾分鐘），也不用 `blockSignals`（那會連 `finished` 一起擋掉，keeper 永遠放不掉它）。IDE 關閉時 `PyBreezeMainWindow._close_tool_tabs_and_docks()` 會關掉所有非編輯器分頁與 `DestroyDock`，這個 `closeEvent` 才會被呼叫到
+- `jupyter_lab_thread.py` — `JupyterLauncherThread(QThread)`：`find_free_port()`（綁 127.0.0.1 讓核心挑空 port）→ `get_venv_python()` → `is_jupyter_installed()`（缺就自動裝）→ 啟動 server（`_start_server()`，在 `_process_lock` 裡先看 `_stopped`：`stop()` 之後就不再啟動，即使還在安裝）→ `_wait_until_ready()` 輪詢 port（60 秒 timeout）→ emit `server_ready(url)`。server 的輸出寫進暫存檔而不是管線（server 起來後沒人讀管線，緩衝區滿了它會卡在 `write()`）；提早結束時錯誤訊息取這個檔案的尾巴。失敗時 `error_occurred` 送的是原因（例外訊息，最多 2,000 字），traceback 只進 log；已經 `stop()`（分頁關了）的失敗不算失敗，只記 debug
+- `jupyter_lab_widget.py` — 收到 URL 後用 `QWebEngineView.setUrl()` 載入；失敗時在狀態列顯示「初始化失敗：原因」（純文字、可選取、自動換行）；`closeEvent` 一律關掉 server（launcher 執行緒在 lab 載入完就結束了，只停「還在跑的執行緒」等於從不停 server）；還在安裝或啟動的 launcher 交給 `let_run_out()`，不在 UI 執行緒等（安裝可能要好幾分鐘），也不用 `blockSignals`（那會連 `finished` 一起擋掉，keeper 永遠放不掉它）。IDE 關閉時 `PyBreezeMainWindow._close_tool_tabs_and_docks()` 會關掉所有非編輯器分頁與 `DestroyDock`，這個 `closeEvent` 才會被呼叫到
 
 安全前提（CLAUDE.md 已明列）：server 只綁 localhost，因此 token/password 刻意留空、`disable_check_xsrf=True` 才能內嵌。**不設 `allow_origin`**：loopback 擋不住瀏覽器，開放來源的話使用者逛到的任何網頁都能操作這個沒有 token 的 server。
 
@@ -434,7 +434,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 18. 測試與 CI
 
-- **單元測試** `test/test_utils/` — 95 個 `test_*.py`、1468 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
+- **單元測試** `test/test_utils/` — 95 個 `test_*.py`、1471 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
 - **整合測試** `test/unit_test/start_automation/` — 以 `debug_mode=True` 啟動 IDE，10 秒後自動關閉，驗證啟動流程與 extend tab
 - **CI** `.github/workflows/{dev,stable}.yml` — `unit-tests` job 跑 Windows runner、Python 3.10–3.14 矩陣，3.12 那一腳額外上傳 `coverage-xml` artifact；`sonarcloud` job 跑 ubuntu、`needs: unit-tests`。每日 02:00 排程 + push/PR 觸發。`stable.yml` 另有 `publish` job 負責版號遞增與 PyPI 發布
 - **覆蓋率** `.coveragerc` — `relative_files = True` 是必要的：報告在 Windows 產生、由 Linux 上的 scanner 讀取，路徑不能帶機器資訊。目前整體 60%（`utils/`、`tools_gui`、`dialog` 95–100%；`editor_main` 58%、`menu` 54%；仍低的是 `diagram_editor` 45%、`process_executor` 39%、`connect_gui` 28%）
