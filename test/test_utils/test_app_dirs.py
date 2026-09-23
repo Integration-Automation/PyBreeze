@@ -18,3 +18,19 @@ class TestPybreezeDataDir:
         second = pybreeze_data_dir()
         assert first == second
         assert second.is_dir()
+
+    def test_it_is_made_for_its_owner_only(self, tmp_path, monkeypatch):
+        # It holds the SSH known hosts and the prthinker keys and tokens
+        monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
+        modes: list = []
+        made = Path.mkdir
+
+        def record(path, mode=0o777, parents=False, exist_ok=False):
+            modes.append(mode)
+            made(path, mode=mode, parents=parents, exist_ok=exist_ok)
+
+        monkeypatch.setattr(Path, "mkdir", record)
+
+        pybreeze_data_dir()
+
+        assert modes == [0o700]

@@ -8,17 +8,17 @@ import pytest
 
 from pybreeze.extend.prthinker_extend import prthinker_setting
 from pybreeze.extend.prthinker_extend.prthinker_setting import (
-    BACKENDS, DEFAULT_SETTING, INSTALL_EXTRAS, MODEL_ENVIRONMENT, RAG_MODES, SECRET_SETTINGS,
+    BACKENDS, DEFAULT_SETTING, INSTALL_EXTRAS, MODEL_ENVIRONMENT, RAG_MODES, SECRET_SETTINGS, SETTING_FILE_NAME,
     SETTING_ENVIRONMENT,
     environment_for, extra_arguments, install_target, load_setting, loggable,
-    review_file_arguments, review_pr_arguments, save_setting, split_arguments
+    review_file_arguments, review_pr_arguments, save_setting, setting_path, split_arguments
 )
 
 
 @pytest.fixture()
 def data_dir(tmp_path, monkeypatch):
     """Keep every test's settings file inside its own temporary directory."""
-    monkeypatch.setattr(prthinker_setting, "pybreeze_data_dir", lambda: tmp_path)
+    monkeypatch.setattr(prthinker_setting, "pybreeze_data_path", lambda: tmp_path)
     return tmp_path
 
 
@@ -62,8 +62,47 @@ class TestReadingAndWritingTheSettings:
     def test_saving_reports_failure_instead_of_raising(self, data_dir, monkeypatch):
         def refuse(*_args, **_kwargs):
             raise OSError("read-only")
-        monkeypatch.setattr(
-            prthinker_setting.Path, "write_text", refuse, raising=False)
+        monkeypatch.setattr(prthinker_setting, "replace_text", refuse)
+        assert save_setting(DEFAULT_SETTING) is False
+
+    def test_a_save_that_fails_part_way_keeps_the_stored_keys(self, data_dir, monkeypatch):
+        # Written in place, the file was emptied first: a full disk lost every
+        # key and token in it, and the next save stored the defaults
+        from pybreeze.utils.file_process import replace_file
+
+        save_setting({**DEFAULT_SETTING, "openai_api_key": "kept-key"})
+
+        def disk_full(*_args, **_kwargs):
+            raise OSError(28, "No space left on device")
+
+        monkeypatch.setattr(replace_file.os, "replace", disk_full)
+
+        assert save_setting({**DEFAULT_SETTING, "openai_api_key": "new-key"}) is False
+        assert load_setting()["openai_api_key"] == "kept-key"
+        assert [path.name for path in setting_path().parent.iterdir()] == [SETTING_FILE_NAME]
+
+    def test_the_file_is_created_for_its_owner_only(self, data_dir, monkeypatch):
+        from pybreeze.utils.file_process import replace_file
+
+        modes: list = []
+        opened = replace_file.os.open
+
+        def record(path, flags, mode=0o777):
+            modes.append(mode)
+            return opened(path, flags, mode)
+
+        monkeypatch.setattr(replace_file.os, "open", record)
+
+        assert save_setting(DEFAULT_SETTING) is True
+        assert modes == [0o600]
+
+    def test_reading_creates_nothing_and_a_file_for_the_folder_reads_as_defaults(self, tmp_path, monkeypatch):
+        # Making the folder raised FileExistsError out of every prthinker entry
+        blocked = tmp_path / ".pybreeze"
+        blocked.write_text("not a folder", encoding="utf-8")
+        monkeypatch.setattr(prthinker_setting, "pybreeze_data_path", lambda: blocked)
+
+        assert load_setting() == DEFAULT_SETTING
         assert save_setting(DEFAULT_SETTING) is False
 
 

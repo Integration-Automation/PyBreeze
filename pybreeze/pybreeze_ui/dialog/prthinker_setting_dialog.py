@@ -14,7 +14,7 @@ from __future__ import annotations
 from typing import Dict
 
 from PySide6.QtWidgets import (
-    QComboBox, QDialog, QDialogButtonBox, QFormLayout, QLabel, QLineEdit,
+    QComboBox, QDialog, QDialogButtonBox, QFormLayout, QLabel, QLineEdit, QMessageBox,
     QVBoxLayout
 )
 from je_editor import language_wrapper
@@ -117,3 +117,9 @@ class PRThinkerSettingDialog(QDialog):
         self.setting.update(self.values())
         if save_setting(self.setting):
             self.accept()
+            return
+        # 以前只寫進 log，視窗不關也不說原因
+        # It used to go to the log only: the window stayed open with no reason given
+        QMessageBox.warning(
+            self, self.word_dict.get("prthinker_setting_dialog_title"),
+            self.word_dict.get("prthinker_setting_save_failed").format(path=setting_path()))

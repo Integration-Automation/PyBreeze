@@ -144,6 +144,7 @@ pybreeze_english_word_dict = {
     "prthinker_setting_extra_arguments_label": "Extra command-line arguments",
     "prthinker_setting_source_path_label": "prthinker source folder",
     "prthinker_setting_stored_at_label": "Stored at:",
+    "prthinker_setting_save_failed": "The settings could not be saved to {path}. What was there before is kept.",
     # Prompt editors — where the edited prompts override the built-in ones from
     "prompt_editor_stored_at_label": "Prompt files (these override the built-in prompts):",
     "prthinker_choose_source_path_label": "Choose the prthinker source folder",

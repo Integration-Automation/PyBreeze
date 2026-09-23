@@ -111,11 +111,11 @@ Reference implementations: `utils/network/url_validation.py` (`validate_url`), `
 
 **JupyterLab** — the embedded server is localhost-only; the empty `--ServerApp.token`/`password` and `--ServerApp.disable_check_xsrf=True` are safe *only* because of that. Never change `--ServerApp.ip` to an externally reachable address, and never set `--ServerApp.allow_origin`: a loopback bind does not stop a browser, and with the origin open any page the user visits can drive a tokenless server. The view loads from the same origin and needs nothing relaxed. The server outlives its launcher thread, so its tab stops it on close whatever the thread's state.
 
-**File I/O** — dialog-chosen paths are trusted; paths loaded from saved data (`.diagram.json`) are not: check `is_file()` and an extension allowlist, or run URLs through SSRF validation. Use `pathlib`, never string concatenation. Write to `~/.pybreeze/` via `app_dirs.pybreeze_data_dir()` with `encoding="utf-8"`. Resolve symlinks with `Path.resolve(strict=True)` and verify the result stays in bounds.
+**File I/O** — dialog-chosen paths are trusted; paths loaded from saved data (`.diagram.json`) are not: check `is_file()` and an extension allowlist, or run URLs through SSRF validation. Use `pathlib`, never string concatenation. Write to `~/.pybreeze/` via `app_dirs.pybreeze_data_dir()` with `encoding="utf-8"`; read through `pybreeze_data_path()`, which creates nothing. Replace a file the user would lose through `utils/file_process/replace_file.replace_text` (written beside it, then moved into place), never an in-place `write_text`. Resolve symlinks with `Path.resolve(strict=True)` and verify the result stays in bounds.
 
 **Qt** — `QGraphicsTextItem` text interaction must not be on by default (double-click to edit). Plugin loading takes only `.py` files, skipping `_`/`.` prefixes. `QWebEngineView.setUrl()` only for localhost or user-confirmed URLs; never `setHtml()` with unsanitised content.
 
-**Secrets** — SSH passwords and passphrases stay in memory for the session only. Password fields use `QLineEdit.EchoMode.Password`.
+**Secrets** — SSH passwords and passphrases stay in memory for the session only. A secret that must persist (the prthinker keys and token) is written with `replace_text(..., private=True)` under the `0700` data folder. Password fields use `QLineEdit.EchoMode.Password`.
 
 **Dependencies** — pin exact versions in `requirements.txt` / `dev_requirements.txt`. Review any new dependency's maintenance and CVE history; prefer stdlib over a single-function package.
 

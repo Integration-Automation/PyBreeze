@@ -23,7 +23,8 @@ import shlex
 from pathlib import Path
 from typing import Dict, List
 
-from pybreeze.utils.app_dirs import pybreeze_data_dir
+from pybreeze.utils.app_dirs import DATA_DIR_MODE, pybreeze_data_path
+from pybreeze.utils.file_process.replace_file import replace_text
 from pybreeze.utils.logging.logger import pybreeze_logger
 
 # 設定檔名 / The settings file's name
@@ -133,7 +134,7 @@ def setting_path() -> Path:
 
     :return: 設定檔路徑 / the settings file's path
     """
-    return pybreeze_data_dir() / SETTING_FILE_NAME
+    return pybreeze_data_path() / SETTING_FILE_NAME
 
 
 def load_setting() -> Dict[str, str]:
@@ -149,9 +150,11 @@ def load_setting() -> Dict[str, str]:
     """
     setting = dict(DEFAULT_SETTING)
     path = setting_path()
-    if not path.is_file():
-        return setting
     try:
+        # Reading creates nothing: a data folder that could not be made (a
+        # file in its place) raised out of every prthinker menu entry
+        if not path.is_file():
+            return setting
         stored = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as error:
         pybreeze_logger.error("prthinker settings could not be read: %r", error)
@@ -181,8 +184,11 @@ def save_setting(setting: Dict[str, str]) -> bool:
     """
     to_store = {key: setting.get(key, "") for key in DEFAULT_SETTING}
     try:
-        setting_path().write_text(
-            json.dumps(to_store, indent=4, ensure_ascii=False), encoding="utf-8")
+        path = setting_path()
+        path.parent.mkdir(mode=DATA_DIR_MODE, parents=True, exist_ok=True)
+        # Replaced in one step, readable by its owner only: written in place, a
+        # failure part-way emptied the file and every key and token in it
+        replace_text(path, json.dumps(to_store, indent=4, ensure_ascii=False), private=True)
     except OSError as error:
         pybreeze_logger.error("prthinker settings could not be saved: %r", error)
         return False

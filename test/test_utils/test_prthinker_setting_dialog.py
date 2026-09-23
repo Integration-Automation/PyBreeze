@@ -7,7 +7,7 @@ import os
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest
-from PySide6.QtWidgets import QApplication, QComboBox, QDialog, QLineEdit
+from PySide6.QtWidgets import QApplication, QComboBox, QDialog, QLineEdit, QMessageBox
 
 from pybreeze.extend.prthinker_extend import prthinker_setting
 from pybreeze.extend.prthinker_extend.prthinker_setting import (
@@ -30,7 +30,7 @@ def app():
 @pytest.fixture()
 def data_dir(tmp_path, monkeypatch):
     """Point the settings file at a temporary directory, never the real home."""
-    monkeypatch.setattr(prthinker_setting, "pybreeze_data_dir", lambda: tmp_path)
+    monkeypatch.setattr(prthinker_setting, "pybreeze_data_path", lambda: tmp_path)
     return tmp_path
 
 
@@ -120,8 +120,12 @@ class TestSaving:
         # the user needs the form still in front of them to retry or copy from.
         monkeypatch.setattr(
             prthinker_setting_dialog, "save_setting", lambda _setting: False)
+        warned: list = []
+        monkeypatch.setattr(QMessageBox, "warning", staticmethod(lambda _p, _t, text: warned.append(text)))
         dialog.save()
         assert dialog.result() != QDialog.DialogCode.Accepted
+        # It said so: the reason used to go to the log only
+        assert warned and str(prthinker_setting.setting_path()) in warned[0]
 
     def test_a_field_left_untouched_keeps_its_stored_value(self, app, data_dir):
         save_setting({**DEFAULT_SETTING, "model_name": "kept"})
