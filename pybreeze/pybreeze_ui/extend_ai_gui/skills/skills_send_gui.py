@@ -3,7 +3,7 @@ from __future__ import annotations
 import requests
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLineEdit,
-    QTextEdit, QPushButton, QLabel, QComboBox
+    QTextEdit, QPushButton, QLabel, QComboBox, QMessageBox
 )
 from PySide6.QtCore import QThread, Signal
 from je_editor import language_wrapper
@@ -20,6 +20,10 @@ from pybreeze.utils.network.http_client import (
 )
 from pybreeze.utils.network.public_http import public_session
 from pybreeze.utils.network.url_validation import UnsafeURLError, validate_url
+
+
+# Where a skill template wants the code; the user puts it there before sending
+CODE_PLACEHOLDER = "{code_diff}"
 
 
 class RequestThread(QThread):
@@ -112,6 +116,9 @@ class SkillsSendGUI(QWidget):
         self.setLayout(layout)
 
         self.thread = None  # 保存執行緒
+        # 編輯區裡是哪個模板：換模板被拒時選單要回到這裡
+        # The template in the edit area: where the selector goes back to when a switch is refused
+        self._shown_template = self.prompt_select.currentText()
         # 開啟時就把選到的那個模板載進來，選單才不是擺著好看
         # Load the selected template on open, so the selector does something
         self.load_selected_prompt(self.prompt_select.currentText())
@@ -130,7 +137,29 @@ class SkillsSendGUI(QWidget):
         built_in = SKILLS_TEMPLATE_RELATION.get(name)
         if built_in is None:
             return
+        if self.prompt_input.document().isModified() and not self._may_replace_edits(name):
+            # 選單回到編輯區裡的模板，不再觸發一次
+            # Put the selector back on the template being edited, without coming here again
+            self.prompt_select.blockSignals(True)
+            self.prompt_select.setCurrentText(self._shown_template)
+            self.prompt_select.blockSignals(False)
+            return
         self.prompt_input.setPlainText(load_prompt(name, built_in))
+        self.prompt_input.document().setModified(False)
+        self._shown_template = name
+
+    def _may_replace_edits(self, name: str) -> bool:
+        """
+        編輯區有修改時，問使用者能不能換掉；以前一換模板，貼上的程式碼就沒了
+        Ask whether the edited prompt may be replaced: switching templates used
+        to throw away the code the user had pasted into it.
+        """
+        reply = QMessageBox.question(
+            self, language_wrapper.language_word_dict.get("skills_prompt_select_label"),
+            language_wrapper.language_word_dict.get("skills_switch_over_edits").format(name=name),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No)
+        return reply == QMessageBox.StandardButton.Yes
 
     def send_prompt(self):
         # Ignore re-submits while a request is in flight: reassigning self.thread
@@ -144,6 +173,11 @@ class SkillsSendGUI(QWidget):
 
         if not api_url or not prompt_text:
             self.response_output.setPlainText(language_wrapper.language_word_dict.get("skills_missing_input"))
+            return
+        if CODE_PLACEHOLDER in prompt_text:
+            # 模板原封不動送出，端點收到的是一份沒有程式碼的審查請求
+            # Sent as it is, the template asked for a review of no code at all
+            self.response_output.setPlainText(language_wrapper.language_word_dict.get("skills_code_missing"))
             return
 
         # 顯示「產生中」

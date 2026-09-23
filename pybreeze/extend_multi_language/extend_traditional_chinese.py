@@ -346,6 +346,8 @@ pybreeze_traditional_chinese_word_dict = {
     "skills_response_label": "回傳結果:",
     "skills_missing_input": "請輸入 API URL 和 Prompt",
     "skills_generating": "產生中...",
+    "skills_switch_over_edits": "Prompt 已經修改過。要換成 {name}，並捨棄這些修改嗎？",
+    "skills_code_missing": "送出前，請把程式碼放在 prompt 裡 {code_diff} 的位置。",
     # JupyterLab GUI
     "jupyterlab_init": "初始化中...",
     "jupyterlab_downloading": "下載中...",

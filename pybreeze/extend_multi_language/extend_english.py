@@ -347,6 +347,8 @@ pybreeze_english_word_dict = {
     "skills_response_label": "Response:",
     "skills_missing_input": "Please enter API URL and Prompt",
     "skills_generating": "Generating...",
+    "skills_switch_over_edits": "The prompt has been edited. Replace it with {name} and lose the edits?",
+    "skills_code_missing": "Put the code in place of {code_diff} in the prompt before sending.",
     # JupyterLab GUI
     "jupyterlab_init": "Initializing...",
     "jupyterlab_downloading": "Downloading...",
