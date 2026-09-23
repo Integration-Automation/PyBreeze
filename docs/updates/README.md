@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-177 | 2026-09-24 | Check that every header finding and level has a message | #test #tools #i18n | [2026-09](2026-09.md) |
 | U-20260923-176 | 2026-09-24 | Translate the diagram export failure, and check every language key the code uses | #fix #diagram #i18n | [2026-09](2026-09.md) |
 | U-20260923-175 | 2026-09-24 | Report a mail settings file that cannot be read, and always tell the run window how the report mail went | #fix #executor | [2026-09](2026-09.md) |
 | U-20260923-174 | 2026-09-24 | Remove a partial save on any failure, and report a prthinker setting UTF-8 cannot write | #fix #ai | [2026-09](2026-09.md) |
@@ -257,4 +258,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 194 |
+| [2026-09.md](2026-09.md) | 2026-09 | 195 |

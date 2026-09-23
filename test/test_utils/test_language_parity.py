@@ -24,7 +24,7 @@ def _placeholders(text: str) -> set[str]:
 
 
 def _code_used_keys() -> dict[str, str]:
-    """Map every literal ``language_word_dict.get("key")`` key to a source file."""
+    """Map every literal key the code looks up (see ``_GET_KEY_RE``) to a source file."""
     root = pathlib.Path(pybreeze.__file__).parent
     used: dict[str, str] = {}
     for path in root.rglob("*.py"):
@@ -87,6 +87,22 @@ class TestCodeKeysAreDefined:
             if key not in EN
         ]
         assert not missing, f"Prompt editor label keys missing from the dict: {missing}"
+
+    def test_every_header_finding_and_level_has_a_message(self):
+        # The header analyzer's GUI builds these keys with an f-string, which
+        # the regex above cannot see; a missing one shows the bare code
+        from pybreeze.utils.header_tools import header_analyzer
+
+        source = pathlib.Path(header_analyzer.__file__).read_text(encoding="utf-8")
+        codes = set(re.findall(r'HeaderFinding\(\s*"([a-z0-9_]+)"', source))
+        codes |= {code for _name, _canonical, code in header_analyzer._RESPONSE_SECURITY_HEADERS}
+        levels = {header_analyzer.LEVEL_WARNING, header_analyzer.LEVEL_INFO}
+
+        assert len(codes) > 10
+        missing = sorted(f"header_finding_{code}" for code in codes if f"header_finding_{code}" not in EN)
+        missing += sorted(f"header_analyzer_level_{level}" for level in levels
+                          if f"header_analyzer_level_{level}" not in EN)
+        assert not missing, f"Header analyzer keys missing from the dict: {missing}"
 
 
 class TestEveryLanguageServesPyBreezeStrings:
