@@ -217,6 +217,11 @@ pybreeze_english_word_dict = {
         "Create {filename} from its built-in template? What you typed here is replaced.",
     "prompt_editor_unreadable":
         "{filename} could not be read: {error}",
+    "prompt_editor_close_over_edits":
+        "{filename} has edits that are not saved. Close and lose them?",
+    "diagram_editor_close_over_edits":
+        "The diagram has changes that are not saved. Close and lose them?",
+    "unsaved_close_title": "Unsaved changes",
     "prompt_editor_reload_over_edits":
         "{filename} changed on disk. Reload it and lose the edits made here?",
     "ssh_state_shell_and_files": "Connected: shell and files",

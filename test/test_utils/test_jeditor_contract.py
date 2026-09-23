@@ -154,6 +154,13 @@ class TestTheShapesPyBreezeCalls:
         for method in ("reset_highlighter", "load_git_baseline", "start_language_server"):
             assert callable(getattr(code_editor, method, None)), method
 
+    def test_a_tab_closes_through_close_tab(self):
+        # PyBreeze overrides it to ask a tab's may_close() first
+        from je_editor import EditorMain
+
+        assert _parameters(EditorMain.close_tab) == ["index"]
+        assert "widget.close()" in inspect.getsource(EditorMain.close_tab)
+
     def test_a_docked_editor_writes_to_the_file_it_names_when_it_closes(self):
         # A rename re-points current_file; the dock saves nothing else
         docked = _internal("je_editor.pyside_ui.main_ui.editor.editor_widget_dock", "FullEditorWidget")

@@ -113,7 +113,28 @@ class PyBreezeMainWindow(EditorMain):
             except Exception as error:  # noqa: BLE001 — a registered third-party tab may raise anything; the IDE must still start
                 pybreeze_logger.error("Extend tab %r could not be built: %r", widget_name, error)
 
+    def close_tab(self, index: int) -> None:
+        """Close the tab at *index*, unless it has unsaved work the user keeps.
+
+        JEditor asks about its own editor tabs only, and closes any other tab
+        whatever its ``closeEvent`` says: a prompt or a diagram being edited
+        was lost. A tab with a ``may_close()`` is asked first.
+        """
+        if not _may_close(self.tab_widget.widget(index)):
+            return
+        super().close_tab(index)
+
+    def _tool_tabs_may_close(self) -> bool:
+        """Whether every PyBreeze tab and docked widget agrees to close (each may ask)."""
+        widgets = [self.tab_widget.widget(index) for index in range(self.tab_widget.count())]
+        widgets += [dock.widget() for dock in self.findChildren(DestroyDock)]
+        return all(_may_close(widget) for widget in widgets if not isinstance(widget, EditorWidget))
+
     def closeEvent(self, event) -> None:
+        # Asked before anything is stopped: a No keeps the IDE open as it was
+        if not self._tool_tabs_may_close():
+            event.ignore()
+            return
         # A run's child outlives the IDE unless stopped here: it is a separate
         # process, and without a console nobody would see it still running.
         # Over a copy: a window that closes drops itself from the list.
@@ -148,6 +169,22 @@ class PyBreezeMainWindow(EditorMain):
         app = QApplication.instance()
         if app is not None:
             app.quit()
+
+
+def _may_close(widget) -> bool:
+    """Ask *widget* whether it may close, if it has a ``may_close()``; otherwise yes.
+
+    A widget whose question raises (a third-party tab) counts as a yes, logged:
+    it must not keep the IDE from closing.
+    """
+    ask = getattr(widget, "may_close", None)
+    if not callable(ask):
+        return True
+    try:
+        return bool(ask())
+    except Exception as error:  # noqa: BLE001 — a third-party tab may raise anything; closing must go on
+        pybreeze_logger.error("%s could not be asked whether it may close: %r", type(widget).__name__, error)
+        return True
 
 
 def start_editor(debug_mode: bool = False, theme: str = "dark_amber.xml", **kwargs) -> None:

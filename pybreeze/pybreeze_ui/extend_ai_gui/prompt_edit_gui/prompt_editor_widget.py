@@ -220,6 +220,14 @@ class PromptEditorWidget(QWidget):
             word.get(self._labels.file_created).format(filename=self.current_file))
         self.load_file_content(self.file_selector.currentIndex())
 
+    def may_close(self) -> bool:
+        """Whether the editor may close: nothing unsaved, or the user lets it go.
+
+        Asked by the main window before it closes this tab or the IDE: closing
+        lost unsaved edits without a word.
+        """
+        return self._may_discard_edits("prompt_editor_close_over_edits", self._shown_name())
+
     def closeEvent(self, event) -> None:
         """Stop watching the prompt files once the editor closes.
 

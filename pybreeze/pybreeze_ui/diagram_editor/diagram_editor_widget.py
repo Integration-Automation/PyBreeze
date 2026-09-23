@@ -471,6 +471,20 @@ class DiagramEditorWidget(QWidget):
                 str(e),
             )
 
+    def may_close(self) -> bool:
+        """Whether the editor may close: the diagram is as last saved or opened, or the user lets it go.
+
+        Asked by the main window before it closes this tab or the IDE: an
+        unsaved diagram was lost on close without a word.
+        """
+        if self._scene.undo_stack.isClean():
+            return True
+        reply = QMessageBox.question(
+            self, _lang("unsaved_close_title", "Unsaved changes"),
+            _lang("diagram_editor_close_over_edits", "The diagram has changes that are not saved. Close and lose them?"),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
+        return reply == QMessageBox.StandardButton.Yes
+
     def closeEvent(self, event) -> None:
         """Let the image fetches still going run out, cut off from the editor."""
         for fetch in tuple(self._url_fetches):
@@ -491,8 +505,12 @@ class DiagramEditorWidget(QWidget):
             data = self._scene.to_dict()
             replace_text(path, json.dumps(data, indent=2, ensure_ascii=False))
         except (OSError, TypeError, ValueError) as e:
-            pybreeze_logger.error(f"Save diagram failed: {e}")
-            QMessageBox.warning(self, _lang("diagram_editor_error_title", "Error"), str(e))
+            pybreeze_logger.error("Save diagram failed: %r", e)
+            reason = e.strerror if isinstance(e, OSError) and e.strerror else str(e)
+            QMessageBox.warning(self, _lang("diagram_editor_error_title", "Error"), as_text(reason))
+            return
+        # What is on the canvas is now what is on disk
+        self._scene.undo_stack.setClean()
 
     # ------------------------------------------------------------------
     # Export
