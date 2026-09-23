@@ -19,6 +19,7 @@ from urllib.parse import parse_qsl, quote, urlencode, urlsplit
 
 from pybreeze.utils.exception.exception_tags import (
     empty_curl_command_error,
+    get_with_file_body_error,
     invalid_http_method_error,
     malformed_curl_command_error,
     malformed_url_error,
@@ -76,6 +77,9 @@ class CurlRequest:
     :param form_strings: multipart ``name=value`` fields taken literally, from
         ``--form-string`` or a recorded text field; ``@`` means nothing there
     :param data_file_refs: filenames whose content forms the body (``-d @file``)
+    :param binary_data_files: those of them given with ``--data-binary``, sent
+        byte for byte; curl drops carriage returns and newlines from the others
+    :param cookie_files: files ``-b`` names, which curl reads cookies from
     :param timeout: request timeout in seconds from ``--max-time`` / ``-m``, or
         ``None`` when the command sets none
     :param cookies: cookies parsed from ``-b`` / ``--cookie`` name=value pairs
@@ -94,6 +98,8 @@ class CurlRequest:
     form_fields: list[str] = field(default_factory=list)
     form_strings: list[str] = field(default_factory=list)
     data_file_refs: list[str] = field(default_factory=list)
+    binary_data_files: set[str] = field(default_factory=set)
+    cookie_files: list[str] = field(default_factory=list)
     timeout: str | None = None
     cookies: dict[str, str] = field(default_factory=dict)
 
@@ -139,7 +145,7 @@ _VALUE_FLAGS: dict[str, str] = {
     # ``-d`` and friends honour curl's ``@file`` syntax; ``--data-raw`` /
     # ``--data-urlencode`` are always literal (a leading ``@`` is data, not a file).
     "-d": "data_file", "--data": "data_file",
-    "--data-ascii": "data_file", "--data-binary": "data_file",
+    "--data-ascii": "data_file", "--data-binary": "data_binary",
     "--data-raw": "data", "--data-urlencode": "data_urlencode",
     "--json": "json_flag",
     "-F": "form", "--form": "form", "--form-string": "form_string",
@@ -377,14 +383,22 @@ def _apply_data_or_file(request: CurlRequest, value: str) -> None:
         request.data_parts.append(value)
 
 
+def _apply_binary_data(request: CurlRequest, value: str) -> None:
+    """Record a ``--data-binary`` value; its ``@file`` is sent byte for byte."""
+    _apply_data_or_file(request, value)
+    if value.startswith("@"):
+        request.binary_data_files.add(value[1:])
+
+
 def _apply_cookie(request: CurlRequest, value: str) -> None:
     """Parse a ``-b`` cookie string into ``name=value`` pairs.
 
     ``curl -b 'a=1; b=2'`` yields inline cookies; a value with no ``=`` is a
-    cookie *file* curl would read, which we keep as a ``Cookie`` header instead.
+    cookie *file* curl reads. It was sent as the header ``Cookie: cookies.txt``;
+    it is kept in ``cookie_files`` for the generators to say so.
     """
     if "=" not in value:
-        set_default_header(request.headers, "Cookie", value)
+        request.cookie_files.append(value)
         return
     for segment in value.split(";"):
         name, separator, cookie_value = segment.strip().partition("=")
@@ -426,6 +440,7 @@ _VALUE_FLAG_HANDLERS: dict[str, Callable[[CurlRequest, str], None]] = {
     "data": lambda request, value: request.data_parts.append(value),
     "data_urlencode": lambda request, value: request.data_parts.append(_urlencode_data_part(value)),
     "data_file": _apply_data_or_file,
+    "data_binary": _apply_binary_data,
     "json_flag": _apply_json_flag,
     "form": lambda request, value: request.form_fields.append(value),
     "form_string": lambda request, value: request.form_strings.append(value),
@@ -486,6 +501,9 @@ def _finalise_method(request: CurlRequest) -> None:
         set_default_header(request.headers, "Authorization", f"Bearer {request.bearer_token}")
     if request.method == _DEFAULT_METHOD and request.has_body and not request.send_data_as_params:
         request.method = _METHOD_WITH_BODY
+    if request.send_data_as_params and request.data_file_refs:
+        # The file's content is the query, and it is not known until the script runs
+        raise CurlParseException(get_with_file_body_error)
     if request.send_data_as_params:
         # With -G, curl appends the data to the URL exactly as given, joined by
         # '&': each fragment is query text already, so it is split on '&' and

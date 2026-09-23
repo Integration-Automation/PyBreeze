@@ -85,8 +85,9 @@ class TestRequestsCodeJsonFlagAndDataFile:
         assert "json_body = {" in code
 
     def test_data_file_reads_file(self):
+        # As curl does for -d: the bytes, without carriage returns and newlines
         code = to_requests_code(parse_curl("curl -d @body.json https://x"))
-        assert 'data = open("body.json", encoding="utf-8").read()' in code
+        assert 'data = open("body.json", "rb").read().replace(b"\\r", b"").replace(b"\\n", b"")' in code
         assert "data=data" in code
 
     def test_data_file_code_is_valid_python(self):
@@ -94,7 +95,7 @@ class TestRequestsCodeJsonFlagAndDataFile:
 
     def test_apitestka_python_data_file(self):
         code = to_apitestka_python(parse_curl("curl -d @body.json https://x"))
-        assert 'open("body.json", encoding="utf-8").read()' in code
+        assert 'open("body.json", "rb").read()' in code
         compile(code, "<g>", "exec")
 
 

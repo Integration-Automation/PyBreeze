@@ -22,7 +22,7 @@ from pybreeze.utils.exception.exception_tags import action_cannot_read_files_err
 from pybreeze.utils.exception.exceptions import CurlParseException
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.curl_import.request_codegen import (
-    REQUESTS_IMPORT, data_from_file_expr, form_has_repeats, form_value_expr, python_literal,
+    REQUESTS_IMPORT, cookie_file_notes, data_from_file_expr, form_has_repeats, form_value_expr, python_literal,
     python_string, request_statements, to_requests_code,
 )
 
@@ -74,7 +74,7 @@ def apitestka_call_block(request: CurlRequest) -> str:
     :param request: the parsed request
     :return: the call statement, as one block
     """
-    lines = [
+    lines = cookie_file_notes(request) + [
         "response = test_api_method_requests(",
         f"    {_inline_json(request.method)},",
         f"    test_url={_inline_json(request.url)},",
@@ -184,7 +184,7 @@ def _apply_action_payload(request: CurlRequest, params: dict) -> None:
         elif entries:
             params["files"] = {name: [None, value] for name, _is_file, value in entries}
         return
-    if request.data_file_refs:
+    if request.data_file_refs or request.cookie_files:
         pybreeze_logger.error(action_cannot_read_files_error)
         raise CurlParseException(action_cannot_read_files_error)
     kind = body_kind(request)

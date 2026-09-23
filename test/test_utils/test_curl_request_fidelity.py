@@ -140,3 +140,45 @@ class TestAFormIsSentAsMultipart:
 
         assert "WebKitFormBoundaryX" not in prepared.headers["Content-Type"]
         assert prepared.headers["Content-Type"].split("boundary=")[1].encode() in prepared.body
+
+
+class TestABodyReadFromAFile:
+    """curl sends a file's bytes: --data-binary as they are, -d without CR and LF."""
+
+    def _sent_body(self, command: str, folder, monkeypatch) -> bytes:
+        monkeypatch.chdir(folder)
+        return _what_requests_sends(to_requests_code(parse_curl(command))).body
+
+    def test_a_binary_file_is_sent_byte_for_byte(self, tmp_path, monkeypatch):
+        # It was read as UTF-8 text, and the script raised UnicodeDecodeError
+        (tmp_path / "photo.jpg").write_bytes(b"\xff\xfe\x00\r\n1")
+
+        assert self._sent_body("curl --data-binary @photo.jpg https://h/up", tmp_path, monkeypatch) == (
+            b"\xff\xfe\x00\r\n1")
+
+    def test_a_data_file_loses_its_line_breaks_as_curl_sends_it(self, tmp_path, monkeypatch):
+        (tmp_path / "body.txt").write_bytes(b"a=1\r\nb=2\n")
+
+        assert self._sent_body("curl -d x=0 -d @body.txt https://h/up", tmp_path, monkeypatch) == b"x=0&a=1b=2"
+
+    def test_get_with_a_body_file_is_refused(self):
+        # -G makes the file's content the query, which the script cannot know
+        from pybreeze.utils.exception.exceptions import CurlParseException
+
+        with pytest.raises(CurlParseException):
+            parse_curl("curl -G -d @query.txt https://h/find")
+
+
+class TestACookieFile:
+    def test_the_script_says_it_does_not_read_it(self):
+        code = to_requests_code(parse_curl("curl -b cookies.txt https://h/"))
+
+        assert '# curl read cookies from "cookies.txt" (-b)' in code
+        assert "Cookie" not in code.split("# curl read cookies")[1].split("\n", 1)[1]
+
+    def test_the_json_action_refuses_it(self):
+        from pybreeze.utils.curl_import.script_templates import to_apitestka_action_json
+        from pybreeze.utils.exception.exceptions import CurlParseException
+
+        with pytest.raises(CurlParseException):
+            to_apitestka_action_json(parse_curl("curl -b cookies.txt https://h/"))

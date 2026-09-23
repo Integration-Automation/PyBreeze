@@ -43,8 +43,11 @@ empty_curl_command_error: str = "no curl command provided"
 not_a_curl_command_error: str = "the command does not look like a curl command"
 malformed_curl_command_error: str = "can't parse the curl command: check quoting"
 no_url_in_curl_error: str = "no URL found in the curl command"
+get_with_file_body_error: str = (
+    "-G sends the data as the query string, which a generated script cannot read from a file: give it inline"
+)
 action_cannot_read_files_error: str = (
-    "an APITestka JSON action cannot upload a file or read a body from one: choose a Python target"
+    "an APITestka JSON action cannot upload a file or read a body or cookies from one: choose a Python target"
 )
 malformed_url_error: str = "the URL is malformed (for example an unclosed [ or a port that is not a number)"
 invalid_http_method_error: str = (

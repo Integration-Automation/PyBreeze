@@ -377,11 +377,13 @@ class TestParseCurlCookies:
         request = parse_curl("curl --cookie 'a=1' https://x")
         assert request.cookies == {"a": "1"}
 
-    def test_cookie_file_falls_back_to_header(self):
-        # A bare token with no '=' is a cookie file curl would read, not pairs.
+    def test_a_cookie_file_is_kept_as_a_file_not_sent_as_a_cookie(self):
+        # A bare token with no '=' is a cookie file curl reads. It was sent as
+        # the header "Cookie: cookies.txt".
         request = parse_curl("curl -b cookies.txt https://x")
         assert request.cookies == {}
-        assert request.headers["Cookie"] == "cookies.txt"
+        assert "Cookie" not in request.headers
+        assert request.cookie_files == ["cookies.txt"]
 
     def test_no_cookies_by_default(self):
         assert parse_curl("curl https://x").cookies == {}

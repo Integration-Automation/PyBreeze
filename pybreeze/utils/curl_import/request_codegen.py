@@ -67,20 +67,31 @@ def _format_form(entries: list[FormEntry]) -> str:
 def data_from_file_expr(request: CurlRequest) -> str:
     """Build a Python expression reading the body from its ``@file`` reference(s).
 
-    curl joins several data pieces with ``&``; inline data is emitted as a string
-    literal and each file as ``open(...).read()``.
+    curl joins several data pieces with ``&`` and sends bytes, as it reads them:
+    a ``--data-binary`` file exactly, a ``-d`` file without its carriage
+    returns and newlines. The file was read as UTF-8 text, so a binary one
+    raised ``UnicodeDecodeError`` and a ``-d`` file kept its line breaks.
 
     :param request: the parsed curl request (must have ``data_file_refs``)
-    :return: a Python expression, e.g. ``open("body.json", encoding="utf-8").read()``
+    :return: a Python expression, e.g. ``open("body.bin", "rb").read()``
     """
     pieces: list[str] = []
     if request.data_parts:
-        pieces.append(python_string(request.body))
-    pieces.extend(
-        f'open({python_string(name)}, encoding="utf-8").read()'
-        for name in request.data_file_refs
-    )
-    return ' + "&" + '.join(pieces)
+        pieces.append(f"{python_string(request.body)}.encode()")
+    for name in request.data_file_refs:
+        read = f'open({python_string(name)}, "rb").read()'
+        pieces.append(read if name in request.binary_data_files
+                      else f'{read}.replace(b"\\r", b"").replace(b"\\n", b"")')
+    return ' + b"&" + '.join(pieces)
+
+
+def cookie_file_notes(request: CurlRequest) -> list[str]:
+    """Comment lines saying which cookie files ``-b`` named, which the script does not read.
+
+    They were sent as the header ``Cookie: cookies.txt``.
+    """
+    return [f"# curl read cookies from {python_string(name)} (-b); add them to cookies= to send them"
+            for name in request.cookie_files]
 
 
 def python_string(text: str) -> str:
@@ -186,7 +197,7 @@ def request_statements(request: CurlRequest) -> list[str]:
     :return: the statement blocks in order
     """
     payload_sections, payload_kwargs = payload_python_parts(request)
-    statements: list[str] = [f"url = {python_string(request.url)}"]
+    statements: list[str] = cookie_file_notes(request) + [f"url = {python_string(request.url)}"]
 
     headers_block = _format_dict("headers", sent_headers(request))
     if headers_block is not None:
