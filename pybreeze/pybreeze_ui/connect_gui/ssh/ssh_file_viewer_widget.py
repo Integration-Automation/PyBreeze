@@ -11,7 +11,7 @@ import re
 import stat
 from collections.abc import Callable
 
-from PySide6.QtCore import Qt, QEvent, Signal
+from PySide6.QtCore import Qt, QEvent, QThread, Signal
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLineEdit, QPushButton, QTreeWidget, QTreeWidgetItem,
     QMenu, QFileDialog, QMessageBox, QSplitter, QInputDialog, QStyle
@@ -328,7 +328,7 @@ class SSHFileTreeManager(QWidget):
             lambda rows: self._listing_done(parent_item, generation, serial, rows))
         listing.failed.connect(
             lambda message: self._listing_failed(parent_item, generation, serial, message))
-        listing.finished.connect(lambda: self._listings.discard(listing))
+        listing.finished.connect(self._forget_worker)
         self._listings.add(listing)
         listing.start()
 
@@ -452,9 +452,23 @@ class SSHFileTreeManager(QWidget):
         thread = SftpCallThread(call)
         thread.done.connect(lambda: after() if generation == self._tree_generation else None)
         thread.failed.connect(self._operation_failed)
-        thread.finished.connect(lambda: self._calls.discard(thread))
+        thread.finished.connect(self._forget_worker)
         self._calls.add(thread)
         thread.start()
+
+    def _forget_worker(self) -> None:
+        """Let go of the listing or call that just finished. UI thread.
+
+        A bound method: a lambda holding the worker, on the worker, kept it,
+        and through its other slots this tree, alive after the tree closed.
+        """
+        worker = self.sender()
+        if isinstance(worker, QThread):
+            # finished is emitted just before the thread ends; freed while it
+            # still runs, Qt would abort
+            worker.wait()
+            self._listings.discard(worker)
+            self._calls.discard(worker)
 
     def _operation_failed(self, message: str) -> None:
         """Say that a menu request failed, and why. UI thread."""

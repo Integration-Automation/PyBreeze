@@ -146,3 +146,43 @@ def test_the_diagram_editor_after_an_image_from_a_url(app, monkeypatch):
             return False
 
     assert _freed_after_a_run(app, DiagramEditorWidget, add_image, lambda _widget: _Done)
+
+
+def test_the_sftp_tree_after_a_listing(app):
+    # The listing's finished held a lambda holding the listing: the listing
+    # stayed, and its other slots kept the closed tree alive
+    import stat
+    from types import SimpleNamespace
+
+    from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_file_viewer_widget import SSHFileTreeManager
+
+    class Client:
+        connected = True
+
+        @staticmethod
+        def list_dir(_path: str):
+            return [SimpleNamespace(filename="a.txt", st_mode=stat.S_IFREG, st_size=1)]
+
+        @staticmethod
+        def close() -> None:
+            """Nothing to close."""
+
+    def build() -> SSHFileTreeManager:
+        tree = SSHFileTreeManager()
+        tree.client = Client()
+        return tree
+
+    def list_root(tree) -> None:
+        tree.load_root("/")
+        deadline = time.monotonic() + 5
+        while tree._listings and time.monotonic() < deadline:
+            app.processEvents()
+            time.sleep(0.01)
+        assert not tree._listings
+
+    class _Done:
+        @staticmethod
+        def isRunning() -> bool:
+            return False
+
+    assert _freed_after_a_run(app, build, list_root, lambda _tree: _Done)
