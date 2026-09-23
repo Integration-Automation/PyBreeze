@@ -242,3 +242,39 @@ class TestTheAnswer:
 
         assert answered.wait(5)
         assert answers == ["why"]
+
+    def test_anything_raised_while_sending_still_reaches_on_done(self, monkeypatch, logger):
+        # The thread died with a traceback, and the run window never said a word
+        answered = threading.Event()
+        answers: list = []
+
+        def breaks(_path, *, not_before=None):
+            raise RuntimeError("inside je_mail_thunder")
+
+        monkeypatch.setattr(mail, "send_report", breaks)
+
+        mail.send_after_test("report.html", on_done=lambda reason: (answers.append(reason), answered.set()))
+
+        assert answered.wait(5)
+        assert answers == ["sending failed (RuntimeError)"]
+        assert "inside je_mail_thunder" in _logged(logger)
+
+
+class TestAMailSettingsFileThatCannotBeRead:
+    """je_mail_thunder reads mail_thunder_content.json unguarded, in the locale's encoding."""
+
+    @pytest.mark.parametrize("error", [
+        ValueError("Expecting value"),
+        UnicodeDecodeError("cp950", b"\xe5", 0, 1, "illegal multibyte sequence"),
+        OSError("locked"),
+    ])
+    def test_it_is_reported_and_nothing_is_sent(self, mail_thunder, logger, report, error):
+        def unreadable():
+            raise error
+
+        mail_thunder.read_output_content = unreadable
+
+        assert mail.send_report(report) == (
+            "the mail settings file (mail_thunder_content.json) could not be read")
+        assert FakeSmtp.instances == []
+        assert "could not be read" in _logged(logger)

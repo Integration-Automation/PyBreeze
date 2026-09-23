@@ -33,7 +33,13 @@ def send_after_test(
     :param on_done: called on the mail thread with ``send_report``'s answer
     """
     def send() -> None:
-        outcome = send_report(html_report_path, not_before=not_before)
+        try:
+            outcome = send_report(html_report_path, not_before=not_before)
+        # The last stop on this thread: anything je_mail_thunder raises past
+        # send_report must still reach on_done, or the run window never says
+        except Exception as error:  # noqa: BLE001 — logged, and reported to the run window
+            pybreeze_logger.error("Sending the report failed: %r", error)
+            outcome = f"sending failed ({type(error).__name__})"
         if on_done is not None:
             on_done(outcome)
 
@@ -65,7 +71,14 @@ def send_report(html_report_path: str | None = None, *, not_before: float | None
     if problem is not None:
         pybreeze_logger.error("Report not sent (%s): %s", problem, report_path)
         return problem
-    user = _mail_user(read_output_content, get_mail_thunder_os_environ)
+    try:
+        user = _mail_user(read_output_content, get_mail_thunder_os_environ)
+    # je_mail_thunder reads mail_thunder_content.json in the locale's encoding
+    # and parses it unguarded: a broken file, or UTF-8 text on a cp950
+    # system, raised out of the mail thread
+    except (OSError, ValueError, MailThunderException) as error:
+        pybreeze_logger.error("The mail settings file could not be read: %r", error)
+        return "the mail settings file (mail_thunder_content.json) could not be read"
     if user is None:
         pybreeze_logger.error("Cannot determine mail user for sending report")
         return "no mail user is set"

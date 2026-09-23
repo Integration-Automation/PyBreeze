@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-175 | 2026-09-24 | Report a mail settings file that cannot be read, and always tell the run window how the report mail went | #fix #executor | [2026-09](2026-09.md) |
 | U-20260923-174 | 2026-09-24 | Remove a partial save on any failure, and report a prthinker setting UTF-8 cannot write | #fix #ai | [2026-09](2026-09.md) |
 | U-20260923-173 | 2026-09-24 | Name every line ending the diff tool compares, and a changed line that starts with dashes | #fix #tools | [2026-09](2026-09.md) |
 | U-20260923-172 | 2026-09-24 | Keep a query's order in the URL Builder and refuse a port written in other digits | #fix #tools | [2026-09](2026-09.md) |
@@ -255,4 +256,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 192 |
+| [2026-09.md](2026-09.md) | 2026-09 | 193 |
