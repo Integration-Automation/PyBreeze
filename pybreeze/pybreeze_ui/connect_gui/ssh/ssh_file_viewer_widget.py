@@ -87,6 +87,10 @@ def remote_join(directory: str, name: str) -> str:
     return joined if joined.startswith("/") else f"/{joined}"
 
 
+class ConnectAbandoned(RuntimeError):
+    """The session came up after the connect was given up on, and was closed."""
+
+
 class SFTPClientWrapper:
     """
     Lightweight wrapper around Paramiko SFTP client.
@@ -105,32 +109,51 @@ class SFTPClientWrapper:
         """
         Establish SSH + SFTP connection.
         建立 SSH + SFTP 連線。
+
+        Runs on the connect thread while ``close()`` may run on the UI thread
+        (Disconnect, or the tab closing). The session is kept only if it is
+        still this connect's when it is up; otherwise it is closed and
+        ``ConnectAbandoned`` raised. Closing during the TCP connect cannot stop
+        it, and the session it went on to log in used to stay open, unseen,
+        until the IDE exited.
         """
         self.close()
-        self._ssh = paramiko.SSHClient()
-        apply_host_key_policy(self._ssh, parent_widget)
+        ssh = paramiko.SSHClient()
+        self._ssh = ssh
+        apply_host_key_policy(ssh, parent_widget)
         pybreeze_logger.info("SFTP connecting to %s:%s", host, port)
         try:
-            if use_key and key_path:
-                pkey = load_private_key(key_path, password, context="SFTP")
-                if pkey is None:
-                    raise ValueError(
-                        self.word_dict.get("ssh_command_widget_error_message_unsupported_private_key")
-                    )
-                self._ssh.connect(hostname=host, port=port, username=username, pkey=pkey, timeout=10,
-                                  disabled_algorithms=SHA1_ALGORITHMS)
-            else:
-                self._ssh.connect(hostname=host, port=port, username=username, password=password,
-                                  timeout=10, disabled_algorithms=SHA1_ALGORITHMS)
-            transport = self._ssh.get_transport()
+            self._log_in(ssh, host, port, username, password, use_key, key_path)
+            transport = ssh.get_transport()
             if transport is not None:
                 transport.set_keepalive(SSH_KEEPALIVE_SECONDS)
-            self._sftp = self._ssh.open_sftp()
+            sftp = ssh.open_sftp()
+            if self._ssh is not ssh:
+                raise ConnectAbandoned("SFTP connect abandoned")
+            self._sftp = sftp
         except Exception:
             # A failure partway (auth, keepalive, or open_sftp) must not leak the
             # half-open SSH transport: tear it down so connect() is all-or-nothing.
-            self.close()
+            # Only this connect's own: a newer one may be under way by now.
+            ssh.close()
+            if self._ssh is ssh:
+                self._ssh = None
             raise
+
+    def _log_in(self, ssh: paramiko.SSHClient, host: str, port: int, username: str,
+                password: str, use_key: bool, key_path: str) -> None:
+        """Connect *ssh* with the key file, or the password when no key is used."""
+        if not (use_key and key_path):
+            ssh.connect(hostname=host, port=port, username=username, password=password,
+                        timeout=10, disabled_algorithms=SHA1_ALGORITHMS)
+            return
+        pkey = load_private_key(key_path, password, context="SFTP")
+        if pkey is None:
+            raise ValueError(
+                self.word_dict.get("ssh_command_widget_error_message_unsupported_private_key")
+            )
+        ssh.connect(hostname=host, port=port, username=username, pkey=pkey, timeout=10,
+                    disabled_algorithms=SHA1_ALGORITHMS)
 
     def close(self):
         """
@@ -440,7 +463,16 @@ class SSHFileTreeManager(QWidget):
         """
         Disconnect SSH.
         斷線 SSH。
+
+        A connect still under way is given up on: it is cut off from this
+        widget (no "connection failed" for a disconnect the user asked for),
+        and the session it may still bring up is closed by
+        ``SFTPClientWrapper.connect`` itself. Connect can be clicked again.
         """
+        connecting = self._connecting
+        if connecting is not None and connecting.isRunning():
+            let_run_out(connecting, connecting.connected, connecting.failed)
+            self._connecting = None
         self.client.close()
         self._clear_tree()
         self.state_changed.emit()

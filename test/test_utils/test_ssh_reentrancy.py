@@ -219,6 +219,87 @@ class TestFileTreeConnect:
         assert manager.closes > closes_at_close
 
 
+class LateSession(FakeClient):
+    """A paramiko client that logs in after *release* and opens SFTP."""
+
+    def __init__(self, release: threading.Event) -> None:
+        super().__init__(release)
+        self.sftp_opened = False
+
+    def get_transport(self) -> None:
+        return None
+
+    def open_sftp(self) -> object:
+        self.sftp_opened = True
+        return object()
+
+
+class TestTheRealWrapperGivenUpOn:
+    """Closed while it connects, the SFTP wrapper closes the session it still brings up."""
+
+    def _connect_in_background(self, monkeypatch, client: FakeClient):
+        monkeypatch.setattr(tree_mod.paramiko, "SSHClient", lambda: client)
+        monkeypatch.setattr(tree_mod, "apply_host_key_policy", lambda _client, _parent: None)
+        wrapper = tree_mod.SFTPClientWrapper()
+        raised: list = []
+
+        def connect() -> None:
+            try:
+                wrapper.connect("host", 22, "user", "pw")
+            except Exception as error:  # noqa: BLE001 — the test records what the connect raised
+                raised.append(error)
+            else:
+                raised.append(None)
+
+        worker = threading.Thread(target=connect)
+        worker.start()
+        return wrapper, raised, worker
+
+    def test_a_session_up_after_close_is_closed_and_not_kept(self, app, monkeypatch):
+        release = threading.Event()
+        client = LateSession(release)
+        wrapper, raised, worker = self._connect_in_background(monkeypatch, client)
+        _wait_for(lambda: client.connect_thread is not None)
+
+        wrapper.close()  # Disconnect during the TCP connect: nothing to close yet
+        client.closed = False
+        release.set()
+        worker.join(WAIT_SECONDS)
+
+        # It used to log in, fail on the emptied wrapper with an AttributeError
+        # no one caught, and leave the session open until the IDE exited.
+        assert isinstance(raised[0], tree_mod.ConnectAbandoned)
+        assert client.closed
+        assert not wrapper.connected
+
+    def test_a_connect_left_alone_is_kept(self, app, monkeypatch):
+        release = threading.Event()
+        release.set()
+        client = LateSession(release)
+        wrapper, raised, worker = self._connect_in_background(monkeypatch, client)
+        worker.join(WAIT_SECONDS)
+
+        assert raised == [None]
+        assert wrapper.connected and not client.closed
+
+    def test_disconnect_while_connecting_reports_no_failure(self, app, monkeypatch):
+        release = threading.Event()
+        widget = _tree(FakeManager(release, OSError("closed under it")))
+        shown = []
+        monkeypatch.setattr(tree_mod.QMessageBox, "critical", lambda *args: shown.append(args))
+
+        widget._connect()
+        thread = widget._connecting
+        widget._disconnect()
+        release.set()
+        _wait_for(lambda: not is_kept(thread))
+        QApplication.processEvents()
+
+        assert shown == []
+        assert widget._connecting is None  # Connect can be clicked again
+        widget.close()
+
+
 class TestHostKeyAsker:
     """The unknown-host question is shown on the UI thread whoever asks it."""
 
