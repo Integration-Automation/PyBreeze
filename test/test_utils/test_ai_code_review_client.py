@@ -10,6 +10,7 @@ import os
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest
+from PySide6.QtCore import QThread, Signal
 from PySide6.QtWidgets import QApplication
 
 from pybreeze.extend_multi_language.update_language_dict import update_language_dict
@@ -121,7 +122,9 @@ class TestTheRequestItself:
 
         answered, failed = self._run(monkeypatch, Response())
 
-        assert answered and "500" in answered[0]
+        # A failure, not an answer: an answer can be voted on.
+        assert answered == []
+        assert failed and "500" in failed[0]
 
     def test_a_redirect_is_reported_not_shown_as_an_empty_answer(self, app, monkeypatch):
         # requests calls every status below 400 "ok", a 302 included.
@@ -133,7 +136,8 @@ class TestTheRequestItself:
 
         answered, failed = self._run(monkeypatch, Response())
 
-        assert answered and answered[0].startswith("HTTP 302 Found")
+        assert answered == []
+        assert failed and failed[0].startswith("HTTP 302 Found")
 
     def test_a_request_that_fails_does_not_log_the_url(self, app, monkeypatch):
         logged: list = []
@@ -206,6 +210,54 @@ class TestWhileARequestIsInFlight:
 
         assert started == []
         assert client.response_panel.toPlainText()
+
+
+class TestVotingOnAnAnswer:
+    def test_there_is_nothing_to_vote_on_before_an_answer(self, client):
+        # It used to count a vote with an empty panel.
+        assert not client.accept_button.isEnabled()
+        assert not client.reject_button.isEnabled()
+
+    def test_an_answer_can_be_voted_on_once(self, client):
+        client.on_answered("looks fine")
+        assert client.accept_button.isEnabled() and client.reject_button.isEnabled()
+
+        client.accept_button.click()
+
+        assert not client.accept_button.isEnabled()
+        assert not client.reject_button.isEnabled()
+
+    def test_a_failure_cannot_be_voted_on(self, client):
+        client.on_failed("HTTP 500 Internal Server Error\n")
+
+        assert not client.accept_button.isEnabled()
+
+
+class _Silent(QThread):
+    """A request that ends without emitting answered or failed."""
+
+    answered = Signal(str)
+    failed = Signal(str)
+
+    def __init__(self, *_args) -> None:
+        super().__init__()
+
+    def run(self) -> None:
+        """Nothing to report."""
+
+
+class TestSendComesBack:
+    def test_however_the_request_ended(self, client, monkeypatch):
+        monkeypatch.setattr(ai_code_review_gui, "ReviewRequestThread", _Silent)
+        monkeypatch.setattr(client, "record_url", lambda url: True)
+        client.url_input.setText(_A_URL)
+
+        client.send_request()
+        assert not client.send_button.isEnabled()
+        client.request_thread.wait(5000)
+        QApplication.processEvents()
+
+        assert client.send_button.isEnabled()
 
 
 class TestTheRunningTotals:

@@ -72,8 +72,9 @@ class ReviewRequestThread(QThread):
                 self.answered.emit(body)
             else:
                 # Without this a 302 (redirects are not followed) or a 500 with
-                # an empty body would leave the panel looking like a success.
-                self.answered.emit(f"HTTP {response.status_code} {response.reason}\n{body}")
+                # an empty body would leave the panel looking like a success,
+                # open to an accept or reject vote.
+                self.failed.emit(f"HTTP {response.status_code} {response.reason}\n{body}")
         except (requests.RequestException, ResponseTooLargeError, UnsafeURLError) as error:
             # Not %r: a requests error carries the whole URL, which may hold a token.
             pybreeze_logger.error("AI code review request failed: %s", type(error).__name__)
@@ -156,6 +157,8 @@ class AICodeReviewClient(QWidget):
         main_layout.addWidget(self.send_button)
         main_layout.addLayout(self._build_verdict_buttons())
         self.setLayout(main_layout)
+        # 沒有回答就沒有可以評的 / Nothing to vote on until an answer arrives
+        self._set_verdict_enabled(False)
 
     def _build_request_row(self) -> QHBoxLayout:
         """上方：URL 與 Method / The URL and method row."""
@@ -249,21 +252,32 @@ class AICodeReviewClient(QWidget):
                 self.word_dict.get("ai_code_review_gui_message_url_already_recorded"))
 
         self.send_button.setEnabled(False)
+        self._set_verdict_enabled(False)
         self.request_thread = ReviewRequestThread(method, url, code_content)
         self.request_thread.answered.connect(self.on_answered)
         self.request_thread.failed.connect(self.on_failed)
+        # Not from answered/failed: a thread that ends any other way emits
+        # neither, and Send stayed greyed out until the panel was reopened.
+        self.request_thread.finished.connect(self._on_request_finished)
         self.request_thread.start()
 
     def on_answered(self, body: str) -> None:
-        """Show what came back and let the next request be sent."""
+        """Show what came back; it may now be accepted or rejected, once."""
         self.response_panel.append(body)
-        self.send_button.setEnabled(True)
+        self._set_verdict_enabled(True)
 
     def on_failed(self, message: str) -> None:
-        """Show why nothing came back and let the next request be sent."""
+        """Show why no answer came back."""
         self.response_panel.setPlainText(
             f"{self.word_dict.get('ai_code_review_gui_message_error')}: {message}")
+
+    def _on_request_finished(self) -> None:
+        """Let the next request be sent, however this one ended."""
         self.send_button.setEnabled(True)
+
+    def _set_verdict_enabled(self, enabled: bool) -> None:
+        self.accept_button.setEnabled(enabled)
+        self.reject_button.setEnabled(enabled)
 
     def closeEvent(self, event) -> None:
         """Let a request still in flight run out without this panel.
@@ -301,12 +315,14 @@ class AICodeReviewClient(QWidget):
 
     def accept_response(self):
         """Accept response code and save"""
+        self._set_verdict_enabled(False)
         self._count_verdict(accepted=True)
         self.response_panel.append(f"\n{self.word_dict.get('ai_code_review_gui_status_accepted')}")
         self.save_stats()
 
     def reject_response(self):
         """Reject response code and save"""
+        self._set_verdict_enabled(False)
         self._count_verdict(accepted=False)
         self.response_panel.append(f"\n{self.word_dict.get('ai_code_review_gui_status_rejected')}")
         self.save_stats()
