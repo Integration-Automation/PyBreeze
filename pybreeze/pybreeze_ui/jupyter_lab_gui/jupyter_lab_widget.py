@@ -19,6 +19,10 @@ class JupyterLabWidget(QWidget):
             kernels run in it (see ``choose_python``)
         """
         super().__init__()
+        # Deleted when its tab closes: close_tab removes the tab but keeps the
+        # widget, and every closed tab kept its web view, and the Chromium
+        # renderer behind it, on a dead page until the IDE exited
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
 
         layout = QVBoxLayout(self)
 

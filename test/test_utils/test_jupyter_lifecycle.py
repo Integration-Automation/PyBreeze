@@ -215,3 +215,19 @@ class TestStoppingBeforeTheServerStarts:
             assert time.monotonic() < deadline, "the launcher was never let go"
             app.processEvents()
             time.sleep(0.01)
+
+
+def test_a_closed_tab_is_deleted_with_its_web_view(app, monkeypatch):
+    # close_tab removes the tab but keeps the widget: every closed tab kept a
+    # web view and its renderer until the IDE exited
+    from PySide6.QtCore import QCoreApplication, QEvent
+
+    monkeypatch.setattr(jupyter_lab_widget, "JupyterLauncherThread", FinishedLauncher)
+    tab = jupyter_lab_widget.JupyterLabWidget()
+    gone: list = []
+    tab.browser.destroyed.connect(lambda *_: gone.append("browser"))
+
+    tab.close()
+    QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+
+    assert gone == ["browser"]

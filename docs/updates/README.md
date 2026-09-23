@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-149 | 2026-09-24 | Delete a closed JupyterLab tab and its web view | #fix #jupyter #done | [2026-09](2026-09.md) |
 | U-20260923-148 | 2026-09-24 | Keep an edited tab's unsaved mark when the file tree renames its file | #fix #editor #done | [2026-09](2026-09.md) |
 | U-20260923-147 | 2026-09-24 | Delete a folder with read-only files whole, delete a link as a link, and keep new names inside their folder in the file tree | #fix #editor #done | [2026-09](2026-09.md) |
 | U-20260923-146 | 2026-09-24 | Show run output as it arrives, and let a carriage return redraw the line as a terminal does | #fix #executor #done | [2026-09](2026-09.md) |
@@ -229,4 +230,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 166 |
+| [2026-09.md](2026-09.md) | 2026-09 | 167 |
