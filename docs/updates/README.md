@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-169 | 2026-09-24 | Refuse a curl command that has no URL | #fix #tools | [2026-09](2026-09.md) |
 | U-20260923-168 | 2026-09-24 | Remove a leftover fragment of a finished item from progress | #docs | [2026-09](2026-09.md) |
 | U-20260923-167 | 2026-09-24 | Restore blank lines lost in recent edits | #refactor | [2026-09](2026-09.md) |
 | U-20260923-166 | 2026-09-24 | Restore the main window's tool-tab close check name | #refactor | [2026-09](2026-09.md) |
@@ -249,4 +250,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 186 |
+| [2026-09.md](2026-09.md) | 2026-09 | 187 |

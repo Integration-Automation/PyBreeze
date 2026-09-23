@@ -23,6 +23,7 @@ from pybreeze.utils.exception.exception_tags import (
     invalid_http_method_error,
     malformed_curl_command_error,
     malformed_url_error,
+    no_url_in_curl_error,
     not_a_curl_command_error,
 )
 from pybreeze.utils.exception.exceptions import CurlParseException
@@ -577,7 +578,7 @@ def parse_curl(command: str) -> CurlRequest:
     :return: the structured request
     :raises CurlParseException: when the command is empty, is not a curl command,
         cannot be tokenised (for example, unbalanced quotes), or its URL is
-        malformed
+        missing or malformed
     """
     normalised = _normalise_command(command)
     if not normalised:
@@ -593,6 +594,11 @@ def parse_curl(command: str) -> CurlRequest:
     _consume_tokens(_expand_short_flags(tokens[1:]), request)
     # The URL's own query first: curl appends -G data after it.
     _split_url_query(request)
+    # curl refuses a command without one ("no URL specified"); the generated
+    # script would only fail when run, on requests.get("")
+    if not request.url:
+        pybreeze_logger.error(no_url_in_curl_error)
+        raise CurlParseException(no_url_in_curl_error)
     if not url_is_well_formed(request.url):
         pybreeze_logger.error(malformed_url_error)
         raise CurlParseException(malformed_url_error)

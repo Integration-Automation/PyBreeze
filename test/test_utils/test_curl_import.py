@@ -171,6 +171,12 @@ class TestParseCurlRobustness:
         with pytest.raises(CurlParseException):
             parse_curl("wget https://x")
 
+    @pytest.mark.parametrize("command", ["curl", "curl -X POST -d a=1", "curl -H 'Accept: x'", "curl '#top'"])
+    def test_a_command_without_a_url_raises(self, command):
+        # curl says "no URL specified"; a script calling requests.get("") only fails when run
+        with pytest.raises(CurlParseException, match="no URL"):
+            parse_curl(command)
+
     def test_unbalanced_quotes_raise(self):
         with pytest.raises(CurlParseException):
             parse_curl("curl 'https://x")
