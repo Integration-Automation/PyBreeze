@@ -267,3 +267,39 @@ class TestWhatTheStatusLabelSays:
         tab.report_connection_state()
 
         assert expected in tab.login_widget.status_label.text()
+
+
+class TestTheShellEndingOnTheServer:
+    """``exit`` in the shell, or a dropped link: the reader reports the channel closed."""
+
+    def test_the_session_is_closed_with_it(self, app):
+        widget = TestClosingTheShell()._connected_widget(app)
+        channel, client = widget.shell_channel, widget.ssh_client
+
+        widget._on_closed("EOF")
+
+        # It used to stay open, sending keepalives, until the next Connect.
+        assert channel.closed and client.closed
+        assert widget.ssh_client is None
+
+    def test_the_shared_label_still_reports_a_connected_file_tree(self, app):
+        from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_main_widget import SSHMainWidget
+
+        tab = SSHMainWidget()
+        tab.command_widget.reader_thread = FakeReaderThread()
+        tab.command_widget.shell_channel = FakeChannel()
+        tab.command_widget.ssh_client = FakeClient()
+
+        class Client:
+            connected = True
+
+            @staticmethod
+            def close() -> None:
+                """Nothing to close in a stand-in."""
+
+        tab.file_tree.client = Client()
+
+        tab.command_widget._on_closed("EOF")
+
+        # It used to say "Disconnected" with the file tree still up.
+        assert "files only" in tab.login_widget.status_label.text()

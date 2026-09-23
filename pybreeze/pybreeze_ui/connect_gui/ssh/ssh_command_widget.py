@@ -331,11 +331,21 @@ class SSHCommandWidget(QWidget):
         self._insert_output(self._decoder.feed(data))
 
     def _on_closed(self, msg: str):
+        """The shell ended on the server's side (``exit``, a dropped link).
+
+        The session goes with it, as for Disconnect: it used to stay open,
+        sending keepalives, until the next Connect or the tab closing. And the
+        status is reported through ``state_changed``, which the combined view
+        turns into both halves' state; writing "disconnected" into the shared
+        label hid a file tree that was still connected.
+        """
         self.append_text(f"\n{self.word_dict.get('ssh_command_widget_log_message_channel_closed')}"
                          f" {msg}\n")
+        self._cleanup()
         self.login_widget.status_label.setText(self.word_dict.get(
             'ssh_command_widget_status_label_disconnected'
         ))
+        self.state_changed.emit()
 
     def send_command(self):
         cmd = self.command_input_edit.text()
