@@ -46,10 +46,7 @@ def parse_url(url: str) -> dict:
         "host": split.hostname or "",
         "port": _safe_port(split),
         "path": split.path,
-        # A repeated key keeps every value, as a list, like the query tool. A
-        # query that decoding and encoding again would change stays the text
-        # it was: rebuilt, %zz became %25zz and a bare key gained "=".
-        "query": query_to_dict(split.query) if query_round_trips(split.query) else split.query,
+        "query": _query_component(split.query),
         "fragment": split.fragment,
     }
     if split.username is not None:
@@ -57,6 +54,21 @@ def parse_url(url: str) -> dict:
     if split.password is not None:
         components["password"] = split.password
     return components
+
+
+def _query_component(query: str) -> dict | str:
+    """*query* as a dict of its values, or as its text when the dict would not rebuild it.
+
+    A repeated key keeps every value, as a list, like the query tool. A query
+    that decoding and encoding again would change stays the text it was:
+    rebuilt, %zz became %25zz and a bare key gained "=". So does one whose
+    repeated key comes back in another order: the dict groups ``a=1&b=2&a=3``
+    into ``a=1&a=3&b=2``, which a signed URL does not survive.
+    """
+    if not query_round_trips(query):
+        return query
+    as_dict = query_to_dict(query)
+    return as_dict if _build_query(as_dict) == query else query
 
 
 def url_to_json(url: str) -> str:
@@ -114,7 +126,9 @@ def _port_text(port: object) -> str:
     """
     if port is None or port == "":
         return ""
-    if isinstance(port, str) and port.strip().isdigit():
+    # ASCII digits only: "²".isdigit() holds, and int() then raised a
+    # ValueError past the builder's error handling; "٣" became port 3
+    if isinstance(port, str) and port.strip().isascii() and port.strip().isdigit():
         port = int(port)
     if isinstance(port, bool) or not isinstance(port, int) or not 0 <= port <= _MAX_PORT:
         pybreeze_logger.error(url_port_out_of_range_error)

@@ -119,6 +119,21 @@ class TestARepeatedKey:
 
         assert build_url(parse_url("https://x/?tag=a&tag=b&one=1")) == "https://x/?tag=a&tag=b&one=1"
 
+    def test_a_key_that_repeats_after_another_keeps_its_place(self):
+        # Grouped into a dict, a=1&b=2&a=3 came back as a=1&a=3&b=2: a signed URL breaks
+        parts = parse_url("https://x/?a=1&b=2&a=3")
+
+        assert parts["query"] == "a=1&b=2&a=3"
+        assert build_url(parts) == "https://x/?a=1&b=2&a=3"
+
+
+class TestAPortOfOtherDigits:
+    @pytest.mark.parametrize("port", ["²", "٣"])
+    def test_it_is_refused(self, port):
+        # "²".isdigit() holds: int() raised past the builder, and "٣" became port 3
+        with pytest.raises(UrlConvertException):
+            json_to_url(json.dumps({"scheme": "http", "host": "h", "port": port}))
+
 
 class TestAPortOutOfRange:
     def test_it_is_reported_rather_than_dropped(self):
