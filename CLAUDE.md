@@ -103,7 +103,7 @@ ruff check pybreeze/                              # before committing non-trivia
 2. Resolve the hostname and reject private / loopback / link-local / reserved IPs
 3. Enforce timeouts (15 s downloads, 30 s API calls) and response size caps (20 MB binary)
 4. `allow_redirects=False`, or re-validate every redirect target
-5. Connect only to the address checked: send through `public_session()` (requests) or `PublicHTTPHandler` / `PublicHTTPSHandler` (urllib) from `utils/network/public_http.py`, which check again as they connect and connect to that address, so a name that resolves differently after validation (DNS rebinding) gets nowhere private. `test_http_goes_through_public_connections.py` fails on a direct `requests.*` or `urlopen` call
+5. Connect only to the address checked: send through `public_session()` (requests) or `PublicHTTPHandler` / `PublicHTTPSHandler` (urllib) from `utils/network/public_http.py`, which check again as they connect and connect only to the addresses checked (each in turn), so a name that resolves differently after validation (DNS rebinding) gets nowhere private. `test_http_goes_through_public_connections.py` fails on a direct `requests.*` or `urlopen` call
 
 Reference implementations: `utils/network/url_validation.py` (`validate_url`), `utils/network/public_http.py` (`public_session`), `utils/network/http_client.py` (`read_capped_text`), `diagram_editor/diagram_net_utils.py` (`safe_download_image`). Never pass a user URL to `urlopen()` / `requests.*` unvalidated, and never set `verify=False`.
 

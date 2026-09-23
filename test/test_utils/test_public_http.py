@@ -200,3 +200,52 @@ class TestUrllibOpener:
             assert reply.read() == b"ok"
 
         assert listener.received[0].startswith(b"GET http://rebind.test/i.png HTTP/1.1\r\n")
+
+
+@pytest.fixture()
+def two_addresses(monkeypatch):
+    """``two.test`` answers an address nothing listens on first, then loopback."""
+    def getaddrinfo(host, port=None, *args, **kwargs):
+        if host == "two.test":
+            return _answer("127.0.0.2", port) + _answer("127.0.0.1", port)
+        return _real_getaddrinfo(host, port, *args, **kwargs)
+
+    monkeypatch.setattr(socket, "getaddrinfo", getaddrinfo)
+
+
+class TestEveryCheckedAddressIsTried:
+    """A plain connection tries each address; the pinned one dialled only the first."""
+
+    def test_requests_goes_on_to_the_next_address(self, two_addresses, loopback_allowed, listener):
+        with _session() as session:
+            response = session.get(f"http://two.test:{listener.port}/", timeout=(3, 3))
+
+        assert response.text == "ok"
+
+    def test_urllib_goes_on_to_the_next_address(self, two_addresses, loopback_allowed, listener):
+        opener = urllib.request.build_opener(PublicHTTPHandler())
+
+        with opener.open(f"http://two.test:{listener.port}/", timeout=3) as response:
+            assert response.read() == b"ok"
+
+    def test_one_blocked_address_still_refuses_the_name(self, two_addresses, listener):
+        with _session() as session, pytest.raises(requests.ConnectionError):
+            session.get(f"http://two.test:{listener.port}/", timeout=(3, 3))
+        listener.close()
+        assert listener.received == []
+
+
+class TestInternationalNames:
+    def test_a_name_is_checked_as_it_will_be_looked_up(self, monkeypatch):
+        # Python's idna codec made straße.de into strasse.de, another domain:
+        # the URL was refused as ambiguous
+        looked_up: list = []
+
+        def getaddrinfo(host, port=None, *args, **kwargs):
+            looked_up.append(host)
+            return _answer(_PUBLIC_IP, port)
+
+        monkeypatch.setattr(socket, "getaddrinfo", getaddrinfo)
+
+        assert validate_url("http://straße.de/") == "http://straße.de/"
+        assert looked_up == ["xn--strae-oqa.de"]

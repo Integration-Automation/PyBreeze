@@ -23,9 +23,9 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.connection import HTTPConnection, HTTPSConnection
 from urllib3.connectionpool import HTTPConnectionPool, HTTPSConnectionPool
-from urllib3.exceptions import NewConnectionError
+from urllib3.exceptions import ConnectTimeoutError, NewConnectionError
 
-from pybreeze.utils.network.url_validation import UnsafeURLError, public_address
+from pybreeze.utils.network.url_validation import UnsafeURLError, public_addresses
 
 
 class AddressNotPublicError(OSError):
@@ -33,11 +33,12 @@ class AddressNotPublicError(OSError):
 
 
 class _PinnedConnectionMixin:
-    """A urllib3 connection that opens its socket to the address ``public_address`` returns.
+    """A urllib3 connection that opens its socket to an address ``public_addresses`` returns.
 
     urllib3 connects to ``_dns_host`` and takes ``host`` (TLS server name,
-    ``Host`` header) from it. It holds the checked address only while the
-    socket is opened, and the name again once it is.
+    ``Host`` header) from it. It holds a checked address only while the
+    socket is opened, and the name again once it is. The checked addresses
+    are tried in turn; the last failure is raised when none answers.
     """
 
     _dns_host: str
@@ -45,14 +46,20 @@ class _PinnedConnectionMixin:
     def _new_conn(self) -> socket.socket:
         name = self._dns_host
         try:
-            address = public_address(name)
+            addresses = public_addresses(name)
         except UnsafeURLError as error:
             raise NewConnectionError(self, f"Refused: {error}") from None
-        self._dns_host = address
+        failure: Exception | None = None
         try:
-            return super()._new_conn()  # type: ignore[misc]
+            for address in addresses:
+                self._dns_host = address
+                try:
+                    return super()._new_conn()  # type: ignore[misc]
+                except (NewConnectionError, ConnectTimeoutError) as error:
+                    failure = error
         finally:
             self._dns_host = name
+        raise failure  # type: ignore[misc]  # public_addresses never returns none
 
 
 class _PinnedHTTPConnection(_PinnedConnectionMixin, HTTPConnection):
@@ -93,13 +100,19 @@ def public_session() -> requests.Session:
 
 
 def _create_public_connection(address: tuple[str, int], *args: Any, **kwargs: Any) -> socket.socket:
-    """``socket.create_connection`` to the checked address of *address*'s host."""
+    """``socket.create_connection`` to a checked address of *address*'s host, each tried in turn."""
     host, port = address
     try:
-        checked = public_address(host)
+        checked = public_addresses(host)
     except UnsafeURLError as error:
         raise AddressNotPublicError(str(error)) from None
-    return socket.create_connection((checked, port), *args, **kwargs)
+    failure: OSError | None = None
+    for candidate in checked:
+        try:
+            return socket.create_connection((candidate, port), *args, **kwargs)
+        except OSError as error:
+            failure = error
+    raise failure  # type: ignore[misc]  # public_addresses never returns none
 
 
 class _PinnedHTTPClientConnection(http.client.HTTPConnection):

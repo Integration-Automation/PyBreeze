@@ -90,10 +90,22 @@ def _check_one_reading(url: str) -> None:
 
 
 def _as_ascii(host: str) -> str:
-    """*host* as it goes on the wire: urllib3 IDNA-encodes a Unicode name, urlparse does not."""
+    """*host* as it goes on the wire: urllib3 IDNA-encodes a Unicode name, urlparse does not.
+
+    Encoded the way urllib3 encodes it (IDNA 2008 through the ``idna``
+    package). Python's own ``idna`` codec is IDNA 2003, which maps ``ß`` to
+    ``ss``: ``straße.de`` became ``strasse.de``, another domain, so a valid
+    name was refused as ambiguous and the check resolved a name it would not
+    connect to. A name that cannot be encoded is returned as it is, and then
+    fails the comparison or the lookup.
+    """
+    if host.isascii():
+        return host.lower()
     try:
-        return host.encode("idna").decode("ascii")
-    except UnicodeError:
+        import idna
+        return idna.encode(host.lower(), strict=True, std3_rules=True).decode("ascii")
+    except (ImportError, UnicodeError, ValueError):
+        # idna.IDNAError is a UnicodeError
         return host
 
 
@@ -126,12 +138,23 @@ def validate_url(url: str) -> str:
     if not hostname:
         raise UnsafeURLError("URL has no hostname.")
 
-    public_address(hostname)
+    # The name urllib3 will look up, not Python's reading of a Unicode one
+    public_address(_as_ascii(hostname))
     return url
 
 
 def public_address(hostname: str) -> str:
-    """Resolve *hostname* and return the address to connect to, if every address it has is public.
+    """The first address :func:`public_addresses` returns for *hostname*."""
+    return public_addresses(hostname)[0]
+
+
+def public_addresses(hostname: str) -> list[str]:
+    """Resolve *hostname* and return the addresses to connect to, if every address it has is public.
+
+    In the order the resolver gave them, each once. A connection tries them in
+    turn, as a plain one would: dialling only the first, a host with a broken
+    IPv6 route (common behind a VPN) or a first A record that is down failed
+    though another address would have answered.
 
     ``validate_url`` checks with this, and the connections in ``public_http``
     call it again as they connect and connect to the address it returns, so a
@@ -151,10 +174,13 @@ def public_address(hostname: str) -> str:
     if not infos:
         raise UnsafeURLError(f"Cannot resolve hostname '{hostname}'.")
 
+    addresses: list[str] = []
     for *_unused, sockaddr in infos:
         ip = ipaddress.ip_address(sockaddr[0])
         if _is_blocked_ip(ip):
             raise UnsafeURLError(
                 f"Access to non-public address {ip} is blocked."
             )
-    return infos[0][4][0]
+        if sockaddr[0] not in addresses:
+            addresses.append(sockaddr[0])
+    return addresses

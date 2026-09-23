@@ -199,7 +199,7 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
   process that would otherwise outlive it unseen.
 - Every outbound request to a user URL passes SSRF validation (`utils/network/url_validation.py`)
   with timeouts and size caps, and connects through `utils/network/public_http.py`, which connects
-  only to the address it checks as it connects (§ Security › Network).
+  only to the addresses it checks as it connects, trying each in turn (§ Security › Network).
 - SSH uses the interactive host-key policy, never auto-add (§ Security › SSH).
 - Work that waits on a network — an AI review request, a diagram's image downloads, an SSH
   connect, an SFTP listing or transfer — runs on a
