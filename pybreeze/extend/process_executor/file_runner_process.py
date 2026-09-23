@@ -131,6 +131,15 @@ class FileRunnerProcess:
             )
         except FileNotFoundError:
             self.main_window.append_output(f"[Error] Command not found: {command[0]}\n", is_error=True)
+            self._remove_binary(cleanup_binary)
+            return
+        except OSError as error:
+            # Not executable, a folder, or a compiled binary locked or blocked
+            # by antivirus: this raised out of the menu, or out of the timer
+            # slot after a compile, and the window said nothing.
+            self.main_window.append_output(
+                f"[Error] Could not start {command[0]}: {error.strerror or error}\n", is_error=True)
+            self._remove_binary(cleanup_binary)
             return
 
         self._cleanup_binary = cleanup_binary
@@ -206,13 +215,18 @@ class FileRunnerProcess:
                 is_error=exit_code != 0,
             )
 
-        # Clean up compiled binary
-        if self._cleanup_binary:
-            try:
-                os.remove(self._cleanup_binary)
-            except OSError as error:
-                pybreeze_logger.debug("Could not remove compiled binary %s: %s", self._cleanup_binary, error)
+        self._remove_binary(self._cleanup_binary)
         self.main_window.run_ended()
+
+    @staticmethod
+    def _remove_binary(binary: str | None) -> None:
+        """Delete a compiled binary once it has run, or could not be started."""
+        if not binary:
+            return
+        try:
+            os.remove(binary)
+        except OSError as error:
+            pybreeze_logger.debug("Could not remove compiled binary %s: %s", binary, error)
 
     def _drain_queues(self) -> None:
         """Drain all remaining messages from output/error queues to UI."""

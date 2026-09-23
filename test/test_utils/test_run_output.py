@@ -248,3 +248,47 @@ class TestTestPioneerRun:
 
         run_window = main_window.current_run_code_window[0]
         assert "No Python interpreter found" in run_window.code_result.toPlainText()
+
+
+class TestAPythonRunThatCannotStart:
+    def test_a_missing_interpreter_is_reported_in_the_window(self, qt_app, tmp_path):
+        from pybreeze.extend.process_executor.process_executor_utils import build_task_process
+
+        main_window = MainWindow(python_compiler=str(tmp_path / "gone" / "python.exe"))
+
+        # It raised FileNotFoundError out of the menu, and the run window was
+        # never shown.
+        build_task_process(main_window).start_module_process("pip", ["--version"])
+
+        run_window = main_window.current_run_code_window[0]
+        assert "pip could not start" in run_window.code_result.toPlainText()
+        assert run_window.runner.process is None
+
+    def test_a_script_that_reads_input_gets_end_of_file(self, qt_app, tmp_path):
+        from pybreeze.extend.process_executor.process_executor_utils import build_task_process
+
+        (tmp_path / "ask.py").write_text("input('name? ')\n", encoding="utf-8")
+        main_window = MainWindow(python_compiler=sys.executable)
+        runner = build_task_process(main_window)
+
+        # It read the IDE's own console, and waited there.
+        runner.start_module_process("ask", [], environment={"PYTHONPATH": str(tmp_path)})
+        run_window = main_window.current_run_code_window[0]
+        _run_events_until(qt_app, lambda: "Task exit with code" in run_window.code_result.toPlainText())
+
+        assert "EOFError" in run_window.code_result.toPlainText()
+
+
+class TestAFileRunThatCannotStart:
+    def test_a_compiler_that_is_a_folder_is_reported(self, qt_app, tmp_path):
+        from pybreeze.extend.process_executor.file_runner_process import FileRunnerProcess
+        from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
+
+        window = CodeWindow()
+        runner = FileRunnerProcess(window)
+
+        # PermissionError: only FileNotFoundError was caught.
+        runner.run_file({"name": "Odd", "compiler": str(tmp_path)}, str(tmp_path / "main.x"))
+
+        assert "[Error] Could not start" in window.code_result.toPlainText()
+        assert runner.process is None

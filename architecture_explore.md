@@ -92,7 +92,7 @@ Template Method 定義的子行程生命週期：
 | 階段 | 做的事 |
 |---|---|
 | 解譯器解析 | `renew_path()` → 執行視窗帶著 IDE 選定的直譯器（`python_compiler`，由 `build_task_process()` 從主視窗抄過來）就用它；沒選才用 `find_venv_path()` 找 `venv/`、`.venv/`，交給 `check_and_choose_venv()`；找不到時**不拋例外**，直接把錯誤寫進執行視窗並回傳 `False` |
-| 啟動 | `subprocess.Popen(args, shell=False, creationflags=CREATE_NO_WINDOW, env=PYTHONIOENCODING=...)` |
+| 啟動 | `subprocess.Popen(args, shell=False, stdin=DEVNULL, creationflags=CREATE_NO_WINDOW, env=PYTHONIOENCODING=...)`；`stdin` 不接 IDE 的主控台（腳本 `input()` 立刻拿到 EOF）；`Popen` 丟 `OSError`（直譯器不見、命令列超過 Windows 上限）時寫進執行視窗並顯示，不從選單拋出 |
 | 讀取 | 兩條 daemon Thread 各自經 `queue_pump.read_stream_into_queue()` 對 stdout / stderr `readline()`，原樣塞進 `Queue`（保留縮排、行尾與空行）；**空讀 = EOF 立刻 break**（否則會 100% CPU 空轉） |
 | 送 UI | `QTimer` 每 100 ms 呼叫 `pull_text()`，經 `pump_message_queue()` 每 tick 最多抽 256 則，交給 `CodeWindow.append_output()` |
 | 收尾 | `exit_program()`：join 執行緒（timeout 2s）→ drain queue（`max_messages=None` 一次抽乾）→ `terminate()` → 呼叫 `task_done_trigger_function`（例如寄信） |
@@ -147,6 +147,7 @@ call_X_multi_file_and_send()   → run_dir_files_with_package(..., True)
   - `run_current_file_with()` 建好後同樣掛在執行視窗的 `runner` 上
   - 有和 `TaskProcessManager` 相同語意的 `stop()`
   - 子行程的 `stdin` 是 `DEVNULL`：執行視窗沒有輸入欄，讀取要立刻拿到 EOF，不能卡在沒人寫的管線上
+  - 啟動失敗（找不到指令、是資料夾、沒有執行權限、產物被鎖）都寫進執行視窗，編譯產物經 `_remove_binary()` 一併刪掉
 
 ### 4.5 `queue_pump.py` 與 `CodeWindow.append_output()`
 
@@ -435,7 +436,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 18. 測試與 CI
 
-- **單元測試** `test/test_utils/` — 101 個 `test_*.py`、1535 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
+- **單元測試** `test/test_utils/` — 101 個 `test_*.py`、1538 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
 - **整合測試** `test/unit_test/start_automation/` — 以 `debug_mode=True` 啟動 IDE，10 秒後自動關閉，驗證啟動流程與 extend tab
 - **CI** `.github/workflows/{dev,stable}.yml` — `unit-tests` job 跑 Windows runner、Python 3.10–3.14 矩陣，3.12 那一腳額外上傳 `coverage-xml` artifact；`sonarcloud` job 跑 ubuntu、`needs: unit-tests`。每日 02:00 排程 + push/PR 觸發。`stable.yml` 另有 `publish` job 負責版號遞增與 PyPI 發布
 - **覆蓋率** `.coveragerc` — `relative_files = True` 是必要的：報告在 Windows 產生、由 Linux 上的 scanner 讀取，路徑不能帶機器資訊。目前整體 60%（`utils/`、`tools_gui`、`dialog` 95–100%；`editor_main` 58%、`menu` 54%；仍低的是 `diagram_editor` 45%、`process_executor` 39%、`connect_gui` 28%）

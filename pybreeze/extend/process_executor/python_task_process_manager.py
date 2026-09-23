@@ -132,13 +132,28 @@ class TaskProcessManager:
         child_environment = utf8_subprocess_env(self.program_encoding)
         if environment:
             child_environment.update(environment)
-        self.process = subprocess.Popen(  # nosec B603  # nosemgrep  # noqa: S603
-            args,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            creationflags=no_window_creationflags(),
-            env=child_environment,
-        )
+        try:
+            self.process = subprocess.Popen(  # nosec B603  # nosemgrep  # noqa: S603
+                args,
+                # Not the IDE's own stdin: a script calling input() blocked on
+                # the IDE's console and consumed what was typed there. It gets
+                # end of file, as FileRunnerProcess's children do.
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                creationflags=no_window_creationflags(),
+                env=child_environment,
+            )
+        except OSError as error:
+            # An interpreter that is gone, or a command line over Windows'
+            # limit (a large script run as --execute_str): this raised out of
+            # the menu and left a run window no one would ever see.
+            pybreeze_logger.error("%s could not start: %r", package, error)
+            self.main_window.append_output(
+                f"[Error] {package} could not start: {error.strerror or error}\n",
+                is_error=True, own_line=True)
+            self.main_window.show()
+            return
         self.still_run_program = True
         self.read_program_output_from_thread = Thread(
             target=self.read_program_output_from_process,
