@@ -6,7 +6,8 @@ import re
 import stat
 import tempfile
 import threading
-from collections.abc import Iterator
+import uuid
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager, suppress
 
 import paramiko
@@ -47,9 +48,11 @@ def format_size(num_bytes: int) -> str:
 # Keepalive interval (seconds) so an idle SFTP session is not dropped by the
 # TCP stack, a NAT/firewall, or the SSH server (≈ OpenSSH ServerAliveInterval).
 SSH_KEEPALIVE_SECONDS = 30
-# How long a menu action on the UI thread waits for the session before
-# saying it is busy: long enough for a listing, short enough not to freeze
+# How long a menu action waits for the session before saying it is busy:
+# long enough for a listing, and a transfer can hold it for minutes
 UI_WAIT_SECONDS = 1.0
+# How long a replace waits for the upload that asked about it to return
+UPLOAD_ASKED_WAIT_MS = 1000
 
 
 def natural_key(name: str) -> list:
@@ -314,13 +317,58 @@ class SFTPClientWrapper:
                 with suppress(OSError):
                     os.remove(partial)
 
-    def upload(self, local_path: str, remote_path: str):
+    def upload(self, local_path: str, remote_path: str, replace: bool = False) -> bool:
         """
         Upload local to remote. Worker thread.
         上傳本地檔案至遠端。
+
+        Uploads nothing and returns ``False`` when *remote_path* exists and
+        *replace* is false: it used to be replaced without a word. The file
+        arrives beside it under a temporary name and takes its place only when
+        complete, as a download does: ``put`` empties its target before the
+        first byte, so a dropped link used to leave the server's copy cut short.
         """
+        folder, name = posixpath.split(remote_path)
+        partial = remote_join(folder or "/", f".{name}.{uuid.uuid4().hex[:8]}.part")
         with self._session() as sftp:
-            sftp.put(local_path, remote_path)
+            if not replace and _remote_exists(sftp, remote_path):
+                return False
+            complete = False
+            try:
+                sftp.put(local_path, partial)
+                _move_into_place(sftp, partial, remote_path)
+                complete = True
+            finally:
+                if not complete:
+                    with suppress(OSError, EOFError, paramiko.SSHException):
+                        sftp.remove(partial)
+        return True
+
+
+def _remote_exists(sftp: paramiko.SFTPClient, path: str) -> bool:
+    """Whether *path* exists on the server."""
+    try:
+        sftp.stat(path)
+    except FileNotFoundError:
+        return False
+    return True
+
+
+def _move_into_place(sftp: paramiko.SFTPClient, partial: str, target: str) -> None:
+    """Rename *partial* to *target*, replacing it.
+
+    ``posix_rename`` (an OpenSSH extension) replaces in one step. A server
+    without it gets the plain SFTP rename, which refuses an existing target,
+    so the target is removed first.
+    """
+    try:
+        sftp.posix_rename(partial, target)
+        return
+    except OSError as error:
+        pybreeze_logger.debug("SFTP posix_rename unavailable, renaming plainly: %r", error)
+    with suppress(FileNotFoundError):
+        sftp.remove(target)
+    sftp.rename(partial, target)
 
 
 class SftpTransferThread(QThread):
@@ -335,22 +383,26 @@ class SftpTransferThread(QThread):
 
     done = Signal(str)
     failed = Signal(str)
+    # An upload whose target exists, not replaced: nothing was sent
+    exists = Signal(str)
 
     def __init__(self, client: "SFTPClientWrapper", downloading: bool,
-                 remote_path: str, local_path: str) -> None:
+                 remote_path: str, local_path: str, replace: bool = False) -> None:
         super().__init__()
         self._client = client
         self._downloading = downloading
         self._remote_path = remote_path
         self._local_path = local_path
+        self._replace = replace
 
     def run(self) -> None:
         try:
             if self._downloading:
                 self._client.download(self._remote_path, self._local_path)
-            else:
-                self._client.upload(self._local_path, self._remote_path)
-        except (OSError, RuntimeError, paramiko.SSHException) as error:
+            elif not self._client.upload(self._local_path, self._remote_path, self._replace):
+                self.exists.emit(self._remote_path)
+                return
+        except (OSError, RuntimeError, EOFError, paramiko.SSHException) as error:
             self.failed.emit(str(error))
         else:
             self.done.emit(self._local_path if self._downloading else self._remote_path)
@@ -381,6 +433,29 @@ class SftpListThread(QThread):
             self.listed.emit(sort_entries(entries))
 
 
+class SftpCallThread(QThread):
+    """One of the context menu's requests (create folder, rename, delete), off the UI thread.
+
+    An SFTP reply has no timeout: on a stalled link the request waited in the
+    menu's slot and the IDE froze until TCP gave up.
+    """
+
+    done = Signal()
+    failed = Signal(str)
+
+    def __init__(self, call: Callable[[], None]) -> None:
+        super().__init__()
+        self._call = call
+
+    def run(self) -> None:
+        try:
+            self._call()
+        except (OSError, RuntimeError, EOFError, paramiko.SSHException) as error:
+            self.failed.emit(str(error))
+        else:
+            self.done.emit()
+
+
 class SSHFileTreeManager(QWidget):
     """
     QWidget: connection form + tree + context menu.
@@ -406,6 +481,8 @@ class SSHFileTreeManager(QWidget):
         self._transfer: SftpTransferThread | None = None
         # Listings in flight / 正在進行的目錄列出
         self._listings: set[SftpListThread] = set()
+        # The context menu's requests in flight / 右鍵選單正在進行的請求
+        self._calls: set[SftpCallThread] = set()
         self._listing_serial = 0
         # Bumped whenever the tree is cleared: a listing started before then
         # returns to items that no longer exist.
@@ -509,6 +586,10 @@ class SSHFileTreeManager(QWidget):
             if listing.isRunning():
                 let_run_out(listing, listing.listed, listing.failed)
         self._listings.clear()
+        for call in list(self._calls):
+            if call.isRunning():
+                let_run_out(call, call.done, call.failed)
+        self._calls.clear()
         if self._connecting is not None and self._connecting.isRunning():
             let_run_out(self._connecting, self._connecting.connected, self._connecting.failed)
             # A connect that still succeeds after the widget has gone would leave
@@ -693,10 +774,7 @@ class SSHFileTreeManager(QWidget):
                 self.action_upload(item)
         # what an SFTP operation raises, a closed session's RuntimeError included
         except CONNECT_ERRORS as e:
-            QMessageBox.critical(
-                self,
-                self.word_dict.get("ssh_file_viewer_dialog_title_operation_failed"),
-                f"{self.word_dict.get('ssh_file_viewer_dialog_message_operation_failed')}: {e}")
+            self._operation_failed(str(e))
 
     def action_refresh(self, item: QTreeWidgetItem | None):
         """
@@ -734,9 +812,30 @@ class SSHFileTreeManager(QWidget):
         name = self._checked_name(name)
         if name is None:
             return
-        self.client.mkdir(remote_join(base_path, name))
+        new_path = remote_join(base_path, name)
         # The folder it went into: refreshing a file item did nothing
-        self.action_refresh(folder_item(item))
+        self._in_background(
+            lambda: self.client.mkdir(new_path), lambda: self.action_refresh(folder_item(item)))
+
+    def _in_background(self, call: Callable[[], None], after: Callable[[], None]) -> None:
+        """Run *call* on an ``SftpCallThread``; then *after*, unless the tree was cleared meanwhile.
+
+        A failure is shown like the menu's other failures. UI thread.
+        """
+        generation = self._tree_generation
+        thread = SftpCallThread(call)
+        thread.done.connect(lambda: after() if generation == self._tree_generation else None)
+        thread.failed.connect(self._operation_failed)
+        thread.finished.connect(lambda: self._calls.discard(thread))
+        self._calls.add(thread)
+        thread.start()
+
+    def _operation_failed(self, message: str) -> None:
+        """Say that a menu request failed, and why. UI thread."""
+        QMessageBox.critical(
+            self,
+            self.word_dict.get("ssh_file_viewer_dialog_title_operation_failed"),
+            f"{self.word_dict.get('ssh_file_viewer_dialog_message_operation_failed')}: {message}")
 
     def _checked_name(self, text: str) -> str | None:
         """*text* as one entry's name, or ``None`` after saying why it cannot be."""
@@ -766,8 +865,12 @@ class SSHFileTreeManager(QWidget):
             return
         base = posixpath.dirname(old_path) or "/"
         new_path = remote_join(base, new_name)
-        self.client.rename(old_path, new_path)
-        # Update item display
+        self._in_background(
+            lambda: self.client.rename(old_path, new_path),
+            lambda: self._renamed(item, new_name, new_path))
+
+    def _renamed(self, item: QTreeWidgetItem, new_name: str, new_path: str) -> None:
+        """Show *item* under its new name once the server has renamed it. UI thread."""
         item.setText(0, new_name)
         item.setText(3, new_path)
         if item.text(1) == "dir" and item.childCount() and not self.is_placeholder_present(item):
@@ -791,11 +894,11 @@ class SSHFileTreeManager(QWidget):
         )
         if reply != QMessageBox.StandardButton.Yes:
             return
-        # Try dir first; if fails, try file
-        if item.text(1) == "dir":
-            self.client.remove_dir(path)
-        else:
-            self.client.remove_file(path)
+        remove = self.client.remove_dir if item.text(1) == "dir" else self.client.remove_file
+        self._in_background(lambda: remove(path), lambda: self._removed(item))
+
+    def _removed(self, item: QTreeWidgetItem) -> None:
+        """Take *item* out of the tree once the server has removed it. UI thread."""
         parent = item.parent()
         if parent:
             parent.removeChild(item)
@@ -848,7 +951,7 @@ class SSHFileTreeManager(QWidget):
             after=lambda: self.action_refresh(folder_item(item)))
 
     def _start_transfer(self, *, downloading: bool, remote_path: str, local_path: str,
-                        title: str, message: str, after=None) -> bool:
+                        title: str, message: str, after=None, replace: bool = False) -> bool:
         """Start one transfer in the background, unless one is already going.
 
         :param downloading: download when true, upload when false
@@ -857,6 +960,7 @@ class SSHFileTreeManager(QWidget):
         :param title: the title of the message shown when it is done
         :param message: what that message says, before the path it ended at
         :param after: what to do once it is done, on the UI thread
+        :param replace: upload over a file already there; otherwise the user is asked first
         :return: whether it started
         """
         if self._transfer is not None and self._transfer.isRunning():
@@ -865,12 +969,30 @@ class SSHFileTreeManager(QWidget):
                 self.word_dict.get("ssh_file_viewer_dialog_title_transfer_running"),
                 self.word_dict.get("ssh_file_viewer_dialog_message_transfer_running"))
             return False
-        self._transfer = SftpTransferThread(self.client, downloading, remote_path, local_path)
+        self._transfer = SftpTransferThread(self.client, downloading, remote_path, local_path, replace)
         self._transfer.done.connect(
             lambda path: self._transfer_done(title, message, path, after))
         self._transfer.failed.connect(self._transfer_failed)
+        self._transfer.exists.connect(lambda path: self._ask_to_replace(path, lambda: self._start_transfer(
+            downloading=False, remote_path=remote_path, local_path=local_path,
+            title=title, message=message, after=after, replace=True)))
         self._transfer.start()
         return True
+
+    def _ask_to_replace(self, remote_path: str, replace: Callable[[], object]) -> None:
+        """Ask whether an upload may replace *remote_path*, and call *replace* if so. UI thread."""
+        answer = QMessageBox.question(
+            self,
+            self.word_dict.get("ssh_file_viewer_dialog_title_confirm_replace"),
+            self.word_dict.get("ssh_file_viewer_dialog_message_confirm_replace").format(path=remote_path),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No)
+        if answer == QMessageBox.StandardButton.Yes:
+            # The asking transfer has sent nothing and is only returning; the
+            # new one must not find it still running
+            if self._transfer is not None:
+                self._transfer.wait(UPLOAD_ASKED_WAIT_MS)
+            replace()
 
     def _transfer_done(self, title: str, message: str, path: str, after=None) -> None:
         """Say where the file ended up, and do whatever was waiting on it. UI thread."""

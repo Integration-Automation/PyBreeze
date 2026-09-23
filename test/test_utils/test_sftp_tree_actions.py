@@ -10,6 +10,7 @@ import time
 from types import SimpleNamespace
 
 import pytest
+from PySide6.QtCore import QThread
 from PySide6.QtWidgets import QApplication, QMessageBox
 
 from pybreeze.extend_multi_language.update_language_dict import update_language_dict
@@ -40,14 +41,24 @@ class FakeClient:
         self.listings = listings
         self.made: list[str] = []
         self.renamed: list[tuple[str, str]] = []
+        self.removed: list[str] = []
+        self.threads: list = []
 
     def list_dir(self, path: str):
         return list(self.listings.get(path, []))
 
     def mkdir(self, path: str) -> None:
+        self.threads.append(QThread.currentThread())
         self.made.append(path)
 
+    def remove_file(self, path: str) -> None:
+        self.threads.append(QThread.currentThread())
+        self.removed.append(path)
+
+    remove_dir = remove_file
+
     def rename(self, old: str, new: str) -> None:
+        self.threads.append(QThread.currentThread())
         self.renamed.append((old, new))
         self.listings[new] = self.listings.pop(old, [])
 
@@ -67,7 +78,7 @@ def tree(app, monkeypatch):
     widget.tree.addTopLevelItem(root)
     widget.add_placeholder(root)
     widget.on_item_expanded(root)
-    _wait_for(lambda: not widget._listings)
+    _wait_for(lambda: _idle(widget))
     warnings: list = []
     monkeypatch.setattr(QMessageBox, "warning", lambda *args: warnings.append(args[2]))
     yield widget, client, root, warnings
@@ -81,6 +92,10 @@ def _wait_for(condition) -> None:
         assert time.monotonic() < deadline, "timed out"
         QApplication.processEvents()
         time.sleep(0.01)
+
+
+def _idle(widget) -> bool:
+    return not widget._listings and not widget._calls
 
 
 def _child(item, name: str):
@@ -125,12 +140,12 @@ class TestTheTreeFollows:
         widget, client, root, _warnings = tree
         folder = _child(root, "src")
         widget.on_item_expanded(folder)
-        _wait_for(lambda: not widget._listings)
+        _wait_for(lambda: _idle(widget))
         assert _child(folder, "main.py").text(3) == "/src/main.py"
         _answer(widget, monkeypatch, "lib")
 
         widget.action_rename(folder)
-        _wait_for(lambda: not widget._listings)
+        _wait_for(lambda: _idle(widget))
 
         assert folder.text(3) == "/lib"
         assert _child(folder, "main.py").text(3) == "/lib/main.py"
@@ -146,7 +161,7 @@ class TestTheTreeFollows:
 
         client.mkdir = made
         widget.action_create_folder(_child(root, "notes.txt"))
-        _wait_for(lambda: not widget._listings)
+        _wait_for(lambda: _idle(widget))
 
         assert client.made == ["/made"]
         assert _child(root, "made").text(3) == "/made"
@@ -157,3 +172,43 @@ class TestTheTreeFollows:
         assert folder_item(_child(root, "notes.txt")) is root
         assert folder_item(root) is root
         assert folder_item(None) is None
+
+
+class TestTheMenuDoesNotWaitOnTheServer:
+    """Create, rename and delete run off the UI thread: an SFTP reply has no timeout."""
+
+    def test_each_request_runs_on_a_worker(self, app, tree, monkeypatch):
+        widget, client, root, _warnings = tree
+        _answer(widget, monkeypatch, "new")
+        monkeypatch.setattr(QMessageBox, "question", lambda *_args: QMessageBox.StandardButton.Yes)
+
+        widget.action_create_folder(root)
+        _wait_for(lambda: _idle(widget))
+        _answer(widget, monkeypatch, "renamed.txt")
+        widget.action_rename(_child(root, "notes.txt"))
+        _wait_for(lambda: _idle(widget))
+        widget.action_delete(_child(root, "renamed.txt"))
+        _wait_for(lambda: _idle(widget))
+
+        assert client.made == ["/new"]
+        assert client.renamed == [("/notes.txt", "/renamed.txt")]
+        assert client.removed == ["/renamed.txt"]
+        assert len(client.threads) == 3
+        assert all(thread is not app.thread() for thread in client.threads)
+        assert "renamed.txt" not in [root.child(i).text(0) for i in range(root.childCount())]
+
+    def test_a_failed_request_is_shown_and_changes_nothing(self, app, tree, monkeypatch):
+        widget, client, root, _warnings = tree
+        shown: list = []
+        monkeypatch.setattr(QMessageBox, "critical", lambda *args: shown.append(args[2]))
+        monkeypatch.setattr(QMessageBox, "question", lambda *_args: QMessageBox.StandardButton.Yes)
+
+        def refuse(_path: str) -> None:
+            raise OSError("Permission denied")
+
+        client.remove_file = refuse
+        widget.action_delete(_child(root, "notes.txt"))
+        _wait_for(lambda: _idle(widget))
+
+        assert any("Permission denied" in text for text in shown)
+        assert _child(root, "notes.txt").text(3) == "/notes.txt"

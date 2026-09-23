@@ -196,6 +196,8 @@ pybreeze_english_word_dict = {
     "ssh_file_viewer_dialog_title_no_selection": "No selection",
     "ssh_file_viewer_dialog_message_select_folder_to_create": "Select a folder to create inside.",
     "ssh_file_viewer_dialog_message_bad_name": "A name is one entry: it cannot contain '/', or be '.' or '..'.",
+    "ssh_file_viewer_dialog_title_confirm_replace": "Replace file",
+    "ssh_file_viewer_dialog_message_confirm_replace": "'{path}' already exists on the server. Replace it?",
     "ssh_file_viewer_dialog_title_create_folder": "Create folder",
     "ssh_file_viewer_dialog_label_folder_name": "Folder name:",
     "ssh_file_viewer_dialog_title_rename": "Rename",
