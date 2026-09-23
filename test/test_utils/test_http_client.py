@@ -138,6 +138,47 @@ class TestHowLongAnAnswerMayTake:
             read_capped_text(resp, max_seconds=300)
         assert resp.closed
 
+    def test_a_byte_now_and_then_inside_one_chunk_is_cut_off_too(self):
+        # A server announcing a long body and sending a byte every so often held
+        # one chunk's read for as long as it liked: each byte restarted the read
+        # timeout, and the deadline was only looked at between chunks
+        import socket
+        import threading
+        import time
+
+        import requests
+
+        listener = socket.socket()
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(1)
+        stop = threading.Event()
+
+        def trickle() -> None:
+            connection, _ = listener.accept()
+            with connection:
+                connection.recv(65536)
+                connection.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 100000\r\n\r\n")
+                while not stop.is_set():
+                    try:
+                        connection.sendall(b"x")
+                    except OSError:
+                        return
+                    stop.wait(0.2)
+
+        server = threading.Thread(target=trickle, daemon=True)
+        server.start()
+        try:
+            response = requests.get(  # noqa: S113 — a loopback server this test started; timeout given
+                f"http://127.0.0.1:{listener.getsockname()[1]}/", stream=True, timeout=(5, 5))
+            started = time.monotonic()
+            with pytest.raises(requests.exceptions.ReadTimeout):
+                read_capped_text(response, max_seconds=1)
+            assert time.monotonic() - started < 4
+        finally:
+            stop.set()
+            listener.close()
+            server.join(5)
+
     def test_a_timely_answer_is_read_whole(self):
         assert read_capped_text(FakeResponse(b"x" * 100, chunk=1), max_seconds=300) == "x" * 100
 

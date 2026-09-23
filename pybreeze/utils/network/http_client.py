@@ -8,11 +8,13 @@ oversized body from being pasted whole into an error dialog.
 """
 from __future__ import annotations
 
+import threading
 import time
 from email.message import Message
 
 import requests
 
+from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.network.url_validation import UnsafeURLError
 
 DEFAULT_MAX_RESPONSE_BYTES = 16 * 1024 * 1024  # 16 MB
@@ -50,17 +52,19 @@ def read_capped_text(
     in its ``Content-Type`` is used when Python knows it, and *default_encoding*
     otherwise: a server can name anything, and an unknown one would raise
     ``LookupError`` here. Raises ``requests.exceptions.ReadTimeout`` once the
-    body has taken more than *max_seconds* (checked as each chunk arrives, so
-    the read timeout is the most it can overrun by).
+    body has taken more than *max_seconds*: a watchdog shuts the connection
+    down then, which ends a read that is still waiting. Checked only as each
+    chunk arrived, a server sending a byte every 25 s held a single chunk's
+    read for weeks, each byte restarting the read timeout.
     """
     total = 0
     chunks: list[bytes] = []
     deadline = time.monotonic() + max_seconds
+    watchdog = _Watchdog(response, max_seconds)
     try:
         for chunk in response.iter_content(chunk_size=_CHUNK_SIZE):
-            if time.monotonic() > deadline:
-                raise requests.exceptions.ReadTimeout(
-                    f"The response took more than {max_seconds:g} seconds.")
+            if watchdog.fired or time.monotonic() > deadline:
+                break
             if not chunk:
                 continue
             total += len(chunk)
@@ -69,13 +73,52 @@ def read_capped_text(
                     f"Response body exceeds the {max_bytes}-byte limit."
                 )
             chunks.append(chunk)
+    # What a read cut off by the watchdog raises depends on where it was
+    except (requests.exceptions.RequestException, OSError, ValueError, AttributeError):
+        if not watchdog.fired:
+            raise
     finally:
+        watchdog.cancel()
         response.close()
+    if watchdog.fired or time.monotonic() > deadline:
+        raise requests.exceptions.ReadTimeout(f"The response took more than {max_seconds:g} seconds.")
     body = b"".join(chunks)
     try:
         return body.decode(named_charset(response) or default_encoding, "replace")
     except LookupError:
         return body.decode(default_encoding, "replace")
+
+
+class _Watchdog:
+    """Shuts *response*'s connection down after *seconds*, unless cancelled first."""
+
+    def __init__(self, response: requests.Response, seconds: float) -> None:
+        self._response = response
+        self._lock = threading.Lock()
+        self._cancelled = False
+        self.fired = False
+        self._timer = threading.Timer(seconds, self._fire)
+        self._timer.daemon = True
+        self._timer.start()
+
+    def _fire(self) -> None:
+        with self._lock:
+            if self._cancelled:
+                return
+            self.fired = True
+        # urllib3 2.3+: ends a read blocked on another thread. Closing is the
+        # fallback: it ends the next read, if not the one waiting now
+        shutdown = getattr(self._response.raw, "shutdown", None)
+        try:
+            (shutdown or self._response.close)()
+        except (OSError, AttributeError) as error:
+            pybreeze_logger.debug("Response watchdog could not shut the connection down: %r", error)
+
+    def cancel(self) -> None:
+        """Stop the watchdog; after this it does nothing."""
+        with self._lock:
+            self._cancelled = True
+        self._timer.cancel()
 
 
 def named_charset(response: requests.Response) -> str | None:
