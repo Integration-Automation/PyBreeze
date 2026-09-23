@@ -16,6 +16,7 @@ from qt_material import apply_stylesheet
 
 from pybreeze.extend_multi_language.update_language_dict import update_language_dict
 from pybreeze.pybreeze_ui.editor_main.file_tree_context_menu import setup_file_tree_context_menu
+from pybreeze.pybreeze_ui.gui_thread_gc import collect_garbage_on_gui_thread
 from pybreeze.pybreeze_ui.menu.build_menubar import add_menu_to_menubar
 from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
 from pybreeze.pybreeze_ui.syntax.syntax_extend import \
@@ -159,7 +160,10 @@ def start_editor(debug_mode: bool = False, theme: str = "dark_amber.xml", **kwar
     new_ide = QCoreApplication.instance()
     if new_ide is None:
         new_ide = QApplication(sys.argv)
-    window = PyBreezeMainWindow(debug_mode=debug_mode, **kwargs)
+    # Workers allocate enough to trigger a collection, which then destroyed
+    # Qt objects on the worker and crashed the IDE later
+    collect_garbage_on_gui_thread(new_ide)
+    window =PyBreezeMainWindow(debug_mode=debug_mode, **kwargs)
     apply_stylesheet(new_ide, theme=theme)
     window.showMaximized()
     try:

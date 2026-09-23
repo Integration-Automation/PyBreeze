@@ -33,6 +33,7 @@ their output reaches the UI through Queue + QTimer.
 | `pybreeze/pybreeze_ui/connect_gui/` | `ssh/` terminal + SFTP tree; `url/` HTTP code-review client |
 | `pybreeze/pybreeze_ui/jupyter_lab_gui/`, `show_code_window/`, `syntax/` | JupyterLab tab; `CodeWindow` subprocess output window; automation keyword highlighting |
 | `pybreeze/pybreeze_ui/thread_keeper.py` | `let_run_out()`: a worker `QThread` whose widget closed is kept until it ends instead of being waited for |
+| `pybreeze/pybreeze_ui/gui_thread_gc.py` | `GuiThreadGarbageCollector`: automatic garbage collection off, collected on a GUI-thread timer instead (installed by `start_editor()`) |
 | `pybreeze/extend/process_executor/` | Subprocess isolation layer: `TaskProcessManager`, `process_executor_utils.py`, `FileRunnerProcess`, `queue_pump.py`, one sub-package per automation package, plus `test_pioneer/` and `prthinker/` |
 | `pybreeze/extend/mail_thunder_extend/`, `prthinker_extend/` | Post-test email hook; prthinker settings and argument assembly (pure logic) |
 | `pybreeze/extend_multi_language/` | PyBreeze's English and Traditional Chinese strings, merged into JEditor's dictionaries |
@@ -205,6 +206,9 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
   `QThread` and reaches the UI only through signals. A request panel that closes mid-request hands
   its thread to `thread_keeper.let_run_out()` (cut off from the panel, kept until it ends) rather
   than waiting for it on the UI thread; a running `QThread` must never be destroyed.
+- Cyclic garbage is collected on the GUI thread only (`gui_thread_gc.py`, installed by
+  `start_editor()`): an automatic collection runs in whichever thread allocates, and one on a worker
+  destroyed Qt objects there and crashed the IDE. Never call `gc.enable()` in the IDE.
 - Subprocesses use argument lists, `shell=False` and a `timeout`, and pass secrets through `env`
   (§ Security › Subprocess).
 - The JupyterLab server stays localhost-only (§ Security › JupyterLab).
