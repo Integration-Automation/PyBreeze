@@ -262,9 +262,23 @@ class TestThePluginMenu:
         shown: list[str] = []
         monkeypatch.setattr(
             plugin_menu.QMessageBox, "exec", lambda self: shown.append(self.text()))
-        plugin_menu._make_about_callback("Go", "2.1", "someone")()
+        plugin_menu._make_about_callback(None, "Go", "2.1", "someone")()
         assert "2.1" in shown[0]
         assert "someone" in shown[0]
+
+    def test_the_about_dialog_shows_markup_as_text(self, app, monkeypatch):
+        # A plugin's name or author went to the box as markup, <img> and all
+        from PySide6.QtGui import QTextDocument
+
+        shown: list[str] = []
+        monkeypatch.setattr(
+            plugin_menu.QMessageBox, "exec", lambda self: shown.append(self.text()))
+        plugin_menu._make_about_callback(None, "<b>Go</b>", "1", "<img src=x>")()
+
+        document = QTextDocument()
+        document.setHtml(shown[0])
+        assert "<b>Go</b>" in document.toPlainText()
+        assert "<img src=x>" in document.toPlainText()
 
     def test_a_run_callback_ignores_a_non_editor_tab(self, window, monkeypatch):
         window.tab_widget.addTab(QWidget(), "not an editor")

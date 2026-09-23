@@ -11,6 +11,7 @@ from je_editor.pyside_ui.main_ui.plugin_browser.plugin_browser_widget import Plu
 from pybreeze.pybreeze_ui.menu.plugin_menu.build_run_with_menu import (
     plugin_text, run_config_suffixes, run_current_file_with,
 )
+from pybreeze.pybreeze_ui.plain_text import as_text
 from pybreeze.utils.logging.logger import pybreeze_logger
 
 if TYPE_CHECKING:
@@ -68,7 +69,7 @@ def _add_plugin_entry(ui_we_want_to_set: PyBreezeMainWindow, meta: dict) -> None
         # Plugins without run config (e.g. translation), show about only
         about_action = QAction(plugin_name, ui_we_want_to_set.plugin_menu)
         about_action.triggered.connect(
-            _make_about_callback(plugin_name, plugin_version, plugin_author)
+            _make_about_callback(ui_we_want_to_set, plugin_name, plugin_version, plugin_author)
         )
         ui_we_want_to_set.plugin_menu.addAction(about_action)
         return
@@ -82,7 +83,7 @@ def _add_plugin_entry(ui_we_want_to_set: PyBreezeMainWindow, meta: dict) -> None
         sub_menu,
     )
     about_action.triggered.connect(
-        _make_about_callback(plugin_name, plugin_version, plugin_author)
+        _make_about_callback(ui_we_want_to_set, plugin_name, plugin_version, plugin_author)
     )
     sub_menu.addAction(about_action)
     sub_menu.addSeparator()
@@ -118,19 +119,23 @@ def _open_plugin_browser(ui_we_want_to_set: PyBreezeMainWindow) -> None:
     )
 
 
-def _make_about_callback(name: str, version: str, author: str):
+def _make_about_callback(parent: PyBreezeMainWindow, name: str, version: str, author: str):
     """
     建立顯示插件資訊的回呼函式。
     Create a callback to show plugin info dialog.
+
+    The plugin's own name, version and author are shown as text: Qt read
+    markup in them. The box belongs to the main window; with no parent it
+    could open behind it.
     """
     def callback():
-        message_box = QMessageBox()
+        message_box = QMessageBox(parent)
         message_box.setWindowTitle(name)
-        message_box.setText(
+        message_box.setText(as_text(
             f"{name}\n"
             f"Version: {version}\n"
             f"Author: {author}"
-        )
+        ))
         message_box.exec()
     return callback
 
