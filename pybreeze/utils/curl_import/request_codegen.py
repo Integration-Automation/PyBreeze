@@ -7,6 +7,8 @@ Python instead of hand-translating headers, bodies and multipart forms.
 from __future__ import annotations
 
 import json
+import math
+import re
 
 from pybreeze.utils.curl_import.curl_parser import CurlRequest
 from pybreeze.utils.curl_import.request_body import body_kind, form_parts
@@ -15,6 +17,10 @@ from pybreeze.utils.curl_import.request_body import body_kind, form_parts
 _DATA_KWARG = "data=data"
 # Import line every generated ``requests`` script starts with
 REQUESTS_IMPORT = "import requests"
+# One level of indentation in generated code
+_INDENT = "    "
+# A UTF-16 surrogate: only ever half of a character
+_SURROGATE = re.compile("[\ud800-\udfff]")
 
 
 def _format_dict(name: str, mapping: dict[str, str]) -> str | None:
@@ -22,7 +28,7 @@ def _format_dict(name: str, mapping: dict[str, str]) -> str | None:
     if not mapping:
         return None
     lines = [f"{name} = {{"]
-    lines.extend(f"    {json.dumps(key)}: {json.dumps(value)}," for key, value in mapping.items())
+    lines.extend(f"    {python_string(key)}: {python_string(value)}," for key, value in mapping.items())
     lines.append("}")
     return "\n".join(lines)
 
@@ -31,7 +37,7 @@ def _format_files(file_fields: dict[str, str]) -> str:
     """Render a ``files = { ... }`` block that opens each upload."""
     lines = ["files = {"]
     lines.extend(
-        f'    {json.dumps(field)}: open({json.dumps(filename)}, "rb"),'
+        f'    {python_string(field)}: open({python_string(filename)}, "rb"),'
         for field, filename in file_fields.items()
     )
     lines.append("}")
@@ -49,12 +55,62 @@ def data_from_file_expr(request: CurlRequest) -> str:
     """
     pieces: list[str] = []
     if request.data_parts:
-        pieces.append(json.dumps(request.body))
+        pieces.append(python_string(request.body))
     pieces.extend(
-        f'open({json.dumps(name)}, encoding="utf-8").read()'
+        f'open({python_string(name)}, encoding="utf-8").read()'
         for name in request.data_file_refs
     )
     return ' + "&" + '.join(pieces)
+
+
+def python_string(text: str) -> str:
+    """Write *text* as a Python string literal, in double quotes.
+
+    ``json.dumps`` by default writes a character outside the Basic Multilingual
+    Plane -- an emoji, a rare CJK character -- as a pair of ``\\uXXXX``
+    surrogates: one character to JSON, two to Python, which then cannot send
+    them. Written as itself it is one character to both. A lone surrogate,
+    which cannot be written to a UTF-8 file, falls back to ``repr``.
+    """
+    if _SURROGATE.search(text):
+        return repr(text)
+    return json.dumps(text, ensure_ascii=False)
+
+
+def python_literal(value: object, *, inline: bool = False, level: int = 0) -> str:
+    """Write a decoded JSON value as Python source that evaluates back to it.
+
+    ``json.dumps`` is not Python: ``true``, ``false`` and ``null`` are names that
+    do not exist there, so a JSON body written with it made the generated script
+    fail with ``NameError``. Strings go through :func:`python_string`.
+
+    :param value: what ``json.loads`` returned
+    :param inline: all on one line, for a keyword argument inside a call
+    :param level: how deep *value* is, for the indentation of a nested block
+    """
+    if isinstance(value, dict):
+        items = [f"{python_string(key)}: {python_literal(item, inline=inline, level=level + 1)}"
+                 for key, item in value.items()]
+        return _python_container("{", items, "}", inline, level)
+    if isinstance(value, list):
+        items = [python_literal(item, inline=inline, level=level + 1) for item in value]
+        return _python_container("[", items, "]", inline, level)
+    if isinstance(value, str):
+        return python_string(value)
+    if isinstance(value, float) and not math.isfinite(value):
+        return f'float("{value}")'
+    return repr(value)  # bool, None, int, finite float: repr is their literal
+
+
+def _python_container(opening: str, items: list[str], closing: str, inline: bool, level: int) -> str:
+    """Lay out *items* between *opening* and *closing*, as ``json.dumps(indent=4)`` would."""
+    if not items:
+        return opening + closing
+    if inline:
+        return opening + ", ".join(items) + closing
+    inner = _INDENT * (level + 1)
+    body = ",\n".join(inner + item for item in items)
+    return f"{opening}\n{body}\n{_INDENT * level}{closing}"
 
 
 def payload_python_parts(request: CurlRequest) -> tuple[list[str], list[str]]:
@@ -87,8 +143,8 @@ def payload_python_parts(request: CurlRequest) -> tuple[list[str], list[str]]:
     if kind is None:
         return [], []
     if kind[0] == "json":
-        return [f"json_body = {json.dumps(kind[1], indent=4)}"], ["json=json_body"]
-    return [f"data = {json.dumps(kind[1])}"], [_DATA_KWARG]
+        return [f"json_body = {python_literal(kind[1])}"], ["json=json_body"]
+    return [f"data = {python_string(kind[1])}"], [_DATA_KWARG]
 
 
 def _call_keyword_arguments(request: CurlRequest, payload_kwargs: list[str]) -> list[str]:
@@ -119,7 +175,7 @@ def request_statements(request: CurlRequest) -> list[str]:
     :return: the statement blocks in order
     """
     payload_sections, payload_kwargs = payload_python_parts(request)
-    statements: list[str] = [f"url = {json.dumps(request.url)}"]
+    statements: list[str] = [f"url = {python_string(request.url)}"]
 
     headers_block = _format_dict("headers", request.headers)
     if headers_block is not None:
@@ -133,11 +189,11 @@ def request_statements(request: CurlRequest) -> list[str]:
     statements.extend(payload_sections)
     if request.username is not None:
         statements.append(
-            f"auth = ({json.dumps(request.username)}, {json.dumps(request.password or '')})")
+            f"auth = ({python_string(request.username)}, {python_string(request.password or '')})")
 
     arguments = ", ".join(_call_keyword_arguments(request, payload_kwargs))
     statements.append(
-        f'response = requests.request({json.dumps(request.method)}, {arguments})')
+        f'response = requests.request({python_string(request.method)}, {arguments})')
     return statements
 
 

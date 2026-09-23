@@ -19,7 +19,7 @@ from urllib.parse import urlparse
 from pybreeze.utils.curl_import.curl_parser import CurlRequest
 from pybreeze.utils.curl_import.request_body import body_kind, form_parts
 from pybreeze.utils.curl_import.request_codegen import (
-    REQUESTS_IMPORT, data_from_file_expr, request_statements, to_requests_code
+    REQUESTS_IMPORT, data_from_file_expr, python_literal, request_statements, to_requests_code
 )
 
 # APITestka action command that performs an HTTP request
@@ -54,7 +54,10 @@ def _apitestka_payload_lines(request: CurlRequest) -> list[str]:
     if request.data_file_refs:
         return [f"    data={data_from_file_expr(request)},"]
     kind = body_kind(request)
-    return [f"    {kind[0]}={_inline_json(kind[1])},"] if kind is not None else []
+    if kind is None:
+        return []
+    value = python_literal(kind[1], inline=True) if kind[0] == "json" else _inline_json(kind[1])
+    return [f"    {kind[0]}={value},"]
 
 
 def apitestka_call_block(request: CurlRequest) -> str:

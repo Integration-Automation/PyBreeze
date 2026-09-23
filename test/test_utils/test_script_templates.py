@@ -308,3 +308,78 @@ class TestMethodsInGeneratedCode:
 
         assert "def test_m_search_a():" in code
         ast.parse(code)
+
+
+class TestJsonBodiesInGeneratedPython:
+    """A JSON body is written as Python: true/false/null would be undefined names."""
+
+    _COMMAND = (
+        "curl https://x/api -H 'Content-Type: application/json' "
+        "-d '{\"a\": true, \"b\": null, \"c\": [1.5, {\"d\": false}], \"e\": \"x\"}'"
+    )
+
+    def test_every_python_target_is_free_of_json_names(self):
+        import ast
+
+        from pybreeze.utils.curl_import.script_templates import generate_template
+
+        request = parse_curl(self._COMMAND)
+        for target in ("requests", "pytest", "apitestka_python"):
+            tree = ast.parse(generate_template(target, request))
+            names = {node.id for node in ast.walk(tree) if isinstance(node, ast.Name)}
+            assert not names & {"true", "false", "null"}, target
+
+    def test_the_body_evaluates_to_what_was_sent(self):
+        import ast
+
+        code = to_requests_code(parse_curl(self._COMMAND))
+        assignment = next(
+            node for node in ast.parse(code).body
+            if isinstance(node, ast.Assign) and node.targets[0].id == "json_body")
+
+        assert ast.literal_eval(assignment.value) == {
+            "a": True, "b": None, "c": [1.5, {"d": False}], "e": "x"}
+
+
+def test_python_literal_round_trips_any_json_value():
+    import ast
+
+    from hypothesis import given, settings
+    from hypothesis import strategies as st
+
+    from pybreeze.utils.curl_import.request_codegen import python_literal
+
+    scalars = st.none() | st.booleans() | st.integers() | st.floats(allow_nan=False, allow_infinity=False) | st.text()
+    values = st.recursive(
+        scalars,
+        lambda children: st.lists(children, max_size=4)
+        | st.dictionaries(st.text(), children, max_size=4),
+        max_leaves=20)
+
+    @settings(max_examples=200, deadline=None)
+    @given(values, st.booleans())
+    def round_trip(value, inline):
+        assert ast.literal_eval(python_literal(value, inline=inline)) == value
+
+    round_trip()
+
+
+def test_a_float_json_allows_but_python_cannot_write_is_spelled_out():
+    from pybreeze.utils.curl_import.request_codegen import python_literal
+
+    assert python_literal(float("inf")) == 'float("inf")'
+    assert python_literal([float("-inf")], inline=True) == '[float("-inf")]'
+    assert python_literal(float("nan")) == 'float("nan")'
+
+
+def test_a_character_outside_the_bmp_stays_one_character():
+    import ast
+
+    from pybreeze.utils.curl_import.request_codegen import python_string
+
+    text = "h\u00e9llo \U0001F600 \U00020000"
+    assert ast.literal_eval(python_string(text)) == text
+    assert "\\ud83d" not in python_string("\U0001F600")
+    lone = "lone \ud800"
+    assert ast.literal_eval(python_string(lone)) == lone
+
