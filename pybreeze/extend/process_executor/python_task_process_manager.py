@@ -202,6 +202,7 @@ class TaskProcessManager:
                 self.task_done_trigger_function()
             except Exception as error:  # noqa: BLE001 — a failing hook (e.g. the report mail) must not break the run window
                 pybreeze_logger.error("Task done trigger failed: %r", error)
+        self.main_window.run_ended()
 
     def drain_and_display_queue(self):
         pump_message_queue(

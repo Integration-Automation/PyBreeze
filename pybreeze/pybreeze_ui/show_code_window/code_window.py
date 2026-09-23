@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from je_editor.pyside_ui.main_ui.save_settings.user_color_setting_file import actually_color_dict
-from PySide6.QtCore import Signal
+from PySide6.QtCore import QTimer, Signal
 from PySide6.QtGui import QGuiApplication, QTextCharFormat, QTextCursor
 from PySide6.QtWidgets import QWidget, QGridLayout, QTextEdit, QScrollArea
 
@@ -42,6 +42,7 @@ class CodeWindow(QWidget):
         # an executor nobody else holds is collected once its reader threads
         # end, and the rest of the output and the exit line never arrive.
         self.runner: TaskProcessManager | FileRunnerProcess | None = None
+        self._closed_while_running = False
         self.grid_layout = QGridLayout()
         self.code_result = QTextEdit()
         self.code_result.setLineWrapMode(self.code_result.LineWrapMode.NoWrap)
@@ -70,10 +71,25 @@ class CodeWindow(QWidget):
 
         A run that is still going keeps its window in the list: it is where
         the rest of the output goes, and closing the IDE stops it from there.
+        It is let go of when the run ends (``run_ended``); it used to stay for
+        the rest of the session.
         """
-        if not self.is_running():
+        if self.is_running():
+            self._closed_while_running = True
+        else:
             self.finished_and_closed.emit()
         super().closeEvent(event)
+
+    def run_ended(self) -> None:
+        """Called by the executor once its run is over and its output is in.
+
+        A window the user closed while the run went on can go now. Emitted
+        after the executor's timer slot returns, not from inside it: the list
+        may hold the last reference to this window, and the timer is its child.
+        """
+        if self._closed_while_running:
+            self._closed_while_running = False
+            QTimer.singleShot(0, self, self.finished_and_closed.emit)
 
     def is_running(self) -> bool:
         """Whether the executor writing here still has a child running."""

@@ -146,3 +146,81 @@ class TestFollowOutput:
 
         assert scroll_bar.value() == 10
         assert scroll_bar.maximum() > 10
+
+
+class TestClosedWhileRunning:
+    """A run window closed mid-run is let go of when its run ends, not at IDE exit."""
+
+    class Running:
+        def __init__(self) -> None:
+            self.returncode = None
+
+        def poll(self):
+            return self.returncode
+
+    def _window(self):
+        from types import SimpleNamespace
+
+        from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
+
+        window = CodeWindow()
+        process = self.Running()
+        window.runner = SimpleNamespace(process=process)
+        forgotten: list = []
+        window.finished_and_closed.connect(lambda: forgotten.append(window))
+        return window, process, forgotten
+
+    def test_it_is_kept_while_the_run_goes_on(self, qt_app):
+        window, _process, forgotten = self._window()
+
+        window.close()
+        qt_app.processEvents()
+
+        assert forgotten == []
+
+    def test_it_is_let_go_of_when_the_run_ends(self, qt_app):
+        window, process, forgotten = self._window()
+        window.close()
+
+        process.returncode = 0
+        window.run_ended()
+        assert forgotten == []  # not from inside the executor's timer slot
+        qt_app.processEvents()
+
+        # It used to stay in the main window's list until the IDE exited.
+        assert forgotten == [window]
+
+    def test_a_window_still_open_is_not_let_go_of(self, qt_app):
+        window, process, forgotten = self._window()
+
+        process.returncode = 0
+        window.run_ended()
+        qt_app.processEvents()
+
+        assert forgotten == []
+
+
+def test_the_file_runner_says_when_the_run_ended(qt_app, tmp_path):
+    import sys
+    import time
+
+    from PySide6.QtWidgets import QApplication
+
+    from pybreeze.extend.process_executor.file_runner_process import FileRunnerProcess
+    from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
+
+    script = tmp_path / "quick.py"
+    script.write_text("print('done')\n", encoding="utf-8")
+    window = CodeWindow()
+    ended: list = []
+    window.run_ended = lambda: ended.append(True)
+    runner = FileRunnerProcess(window)
+
+    runner.run_file({"name": "Python", "compiler": sys.executable}, str(script))
+    deadline = time.monotonic() + 30
+    while not ended:
+        assert time.monotonic() < deadline, "the run never ended"
+        QApplication.processEvents()
+        time.sleep(0.01)
+
+    assert ended == [True]

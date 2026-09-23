@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-78 | 2026-09-23 | A run window closed mid-run is let go of when its run ends | #fix #executor | [2026-09](2026-09.md) |
 | U-20260923-77 | 2026-09-23 | SFTP: a session that comes up after Disconnect or tab close is closed | #fix #ssh | [2026-09](2026-09.md) |
 | U-20260923-76 | 2026-09-23 | Run a folder: a parented dialog, a message when nothing matches, and a Qt-free utils | #fix #executor #refactor | [2026-09](2026-09.md) |
 | U-20260923-75 | 2026-09-23 | AI review panel: Send always comes back, and only an answer can be voted on | #fix #ai | [2026-09](2026-09.md) |
@@ -158,4 +159,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 95 |
+| [2026-09.md](2026-09.md) | 2026-09 | 96 |

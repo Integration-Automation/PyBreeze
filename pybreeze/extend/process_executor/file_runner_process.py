@@ -198,6 +198,8 @@ class FileRunnerProcess:
             self.process = None
             if after_exit is not None:
                 after_exit(exit_code)
+                if self.process is None:  # the compile failed: nothing runs next
+                    self.main_window.run_ended()
                 return
             self.main_window.append_output(
                 f"\n[Process exited with code {exit_code}]\n",
@@ -210,6 +212,7 @@ class FileRunnerProcess:
                 os.remove(self._cleanup_binary)
             except OSError as error:
                 pybreeze_logger.debug("Could not remove compiled binary %s: %s", self._cleanup_binary, error)
+        self.main_window.run_ended()
 
     def _drain_queues(self) -> None:
         """Drain all remaining messages from output/error queues to UI."""
