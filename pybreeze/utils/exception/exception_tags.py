@@ -1,9 +1,5 @@
 from __future__ import annotations
 
-# add command exception
-add_command_type_exception_tag: str = "command execute_return_value type must be a method or function"
-add_command_not_allow_package_exception_tag: str = "chosen command package is not allowed"
-
 # send html report exception
 send_html_exception_tag: str = """
 make sure you have installed je_mail_thunder
@@ -12,31 +8,10 @@ and that the current working folder contains default_name.html (the default HTML
 or use the file_path function to read
 """
 
-# test executor exception
-auto_control_process_executor_exception_tag: str = "can't run AutoControl"
-api_testka_process_executor_exception_tag: str = "can't run APITestka"
-web_runner_process_executor_exception_tag: str = "can't run WebRunner"
-load_density_process_executor_exception_tag: str = "can't run LoadDensity"
-
-# Install
-not_install_exception: str = "please install the package first; can't find the package"
-
-# ui exception
-wrong_test_data_format_exception_tag: str = "incorrect test data format"
-
-exec_error: str = "AutomationEditor execution error"
-file_not_fond_error: str = "File not found"
-compiler_not_found_error: str = "Compiler not found"
-not_install_package_error: str = "required package not installed"
-
 # json exception
 cant_reformat_json_error: str = "can't reformat JSON: is the type correct?"
 wrong_json_data_error: str = "can't parse JSON"
 json_duplicate_key_error: str = "the JSON gives the key {key!r} twice in one object"
-
-# XML
-cant_read_xml_error: str = "can't read XML"
-xml_type_error: str = "XML type error"
 
 # cURL import
 empty_curl_command_error: str = "no curl command provided"
