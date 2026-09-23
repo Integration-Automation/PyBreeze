@@ -140,7 +140,11 @@ class TestUndoAndSizes:
 
         assert scene._pending_undo_desc == "Move"
 
-    @pytest.mark.parametrize(("saved", "loaded"), [(1000, 48), (1, 6), (12.7, 12)])
+    @pytest.mark.parametrize(("saved", "loaded"), [
+        (1000, 48), (1, 6), (12.7, 12),
+        # 1e999 in the file loads as infinity: Open failed with no message
+        (float("inf"), 10), (float("nan"), 10), ("big", 10), (None, 10),
+    ])
     def test_a_font_size_from_a_file_is_kept_in_range(self, app, saved, loaded):
         node = DiagramNode.from_dict({"x": 0, "y": 0, "text": "a", "font_size": saved})
 

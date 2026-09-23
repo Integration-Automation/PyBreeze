@@ -118,8 +118,17 @@ MAX_FONT_SIZE = 48
 
 
 def _clamped_font_size(size: int) -> int:
-    """*size* as a whole point size within what the panel offers."""
-    return max(MIN_FONT_SIZE, min(int(size), MAX_FONT_SIZE))
+    """*size* as a whole point size within what the panel offers.
+
+    A file may say anything: ``1e999`` loads as infinity, which ``int()``
+    refuses with ``OverflowError`` -- not the ``ValueError`` Open reports, so
+    the open failed with no message. Anything that is not a finite number
+    gets the default size.
+    """
+    try:
+        return max(MIN_FONT_SIZE, min(int(size), MAX_FONT_SIZE))
+    except (OverflowError, TypeError, ValueError):
+        return _LABEL_FONT_SIZE
 _NODE_PEN_COLOR = "#455a64"
 _NODE_BRUSH_COLOR = "#e3f2fd"
 _NODE_SELECTED_COLOR = "#1565c0"
