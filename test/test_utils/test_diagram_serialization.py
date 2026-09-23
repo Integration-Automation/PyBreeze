@@ -519,3 +519,52 @@ class TestStackingOrder:
         node = DiagramNode.from_dict({"x": 0, "y": 0, "text": "A", "z": "front"})
 
         assert node.zValue() == 0.0
+
+
+class TestWhatAFileCannotDo:
+    """A .diagram.json is anyone's to edit: what it says is checked before it is drawn."""
+
+    @pytest.mark.parametrize("x", [float("nan"), float("inf"), "left"])
+    def test_an_item_placed_nowhere_is_skipped(self, qt_app, x):
+        # NaN loaded as it was: an invisible item, a NaN bounding rect, and no
+        # export would work again
+        import math
+
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene
+
+        scene = DiagramScene()
+        scene.load_from_dict({
+            "nodes": [{"id": 0, "x": x, "y": 0}, {"id": 1, "x": 10, "y": 10}],
+            "images": [{"x": x, "y": 0, "source": ""}],
+        })
+
+        assert len(scene.to_dict()["nodes"]) == 1
+        assert scene.to_dict()["images"] == []
+        rect = scene.itemsBoundingRect()
+        assert all(math.isfinite(v) for v in (rect.x(), rect.y(), rect.width(), rect.height()))
+
+    def test_an_item_placed_absurdly_far_is_brought_within_reach(self, qt_app):
+        # 1e308 made the export's image size infinite
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_items import MAX_COORDINATE
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene
+
+        scene = DiagramScene()
+        scene.load_from_dict({"nodes": [{"id": 0, "x": 1e308, "y": -1e308}]})
+
+        node = scene.to_dict()["nodes"][0]
+        assert (node["x"], node["y"]) == (MAX_COORDINATE, -MAX_COORDINATE)
+
+    def test_a_connection_that_cannot_be_built_leaves_its_nodes_alone(self, qt_app):
+        # It stayed registered on both nodes while never being in the scene
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_items import DiagramNode
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene
+
+        scene = DiagramScene()
+        scene.load_from_dict({
+            "nodes": [{"id": 0, "x": 0, "y": 0}, {"id": 1, "x": 300, "y": 0}],
+            "connections": [{"source": 0, "target": 1, "label": 5}],
+        })
+
+        nodes = [item for item in scene.items() if isinstance(item, DiagramNode)]
+        assert [len(node.connections) for node in nodes] == [0, 0]
+        assert scene.to_dict()["connections"] == []

@@ -154,11 +154,30 @@ _MAX_LINE_WIDTH = 10.0
 
 
 def _number(value: object, fallback: float) -> float:
-    """Return *value* as a float, or *fallback* when it is not a number."""
+    """Return *value* as a float, or *fallback* when it is not a finite number."""
     try:
-        return float(value)
+        number = float(value)
     except (TypeError, ValueError):
         return fallback
+    return number if math.isfinite(number) else fallback
+
+
+# How far from the origin a saved item may be placed. A file is anyone's to
+# edit: NaN (which json.loads accepts) made an item invisible and the scene's
+# bounding rect NaN, so every export failed; 1e308 overflowed the export size.
+MAX_COORDINATE = 1_000_000.0
+
+
+def _coordinate(value: object) -> float:
+    """*value* as a position within ``MAX_COORDINATE`` of the origin.
+
+    :raises ValueError: when it is not a finite number, so the entry is skipped
+    :raises TypeError: when it is not a number at all
+    """
+    number = float(value)
+    if not math.isfinite(number):
+        raise ValueError(f"not a finite coordinate: {value!r}")
+    return min(max(-MAX_COORDINATE, number), MAX_COORDINATE)
 
 
 def _clamped_line_width(width: float) -> float:
@@ -554,10 +573,10 @@ class DiagramNode(QGraphicsRectItem):
     @classmethod
     def from_dict(cls, data: dict) -> DiagramNode:
         node = cls(
-            x=data["x"],
-            y=data["y"],
-            w=data.get("w", _DEFAULT_NODE_W),
-            h=data.get("h", _DEFAULT_NODE_H),
+            x=_coordinate(data["x"]),
+            y=_coordinate(data["y"]),
+            w=_number(data.get("w", _DEFAULT_NODE_W), _DEFAULT_NODE_W),
+            h=_number(data.get("h", _DEFAULT_NODE_H), _DEFAULT_NODE_H),
             text=data.get("text", "Node"),
             shape=NodeShape.__members__.get(data.get("shape", "RECTANGLE"), NodeShape.RECTANGLE),
             style=NodeStyle(
@@ -602,12 +621,15 @@ class DiagramConnection(QGraphicsPathItem):
         self.setCacheMode(QGraphicsItem.CacheMode.DeviceCoordinateCache)
         self.setZValue(-1)
 
-        source.connections.append(self)
-        target.connections.append(self)
-
         self._label_item: QGraphicsTextItem | None = None
         if label:
             self._create_label(label)
+
+        # Only once nothing else can fail: a label that raised (not text, from
+        # a file) left the connection registered on both nodes but never in
+        # the scene, and every move of either node updated it
+        source.connections.append(self)
+        target.connections.append(self)
 
         self.update_path()
 
@@ -913,8 +935,8 @@ class DiagramImage(QGraphicsRectItem):
     def from_dict(cls, data: dict) -> DiagramImage:
         source = data.get("source", "")
         img = cls(
-            x=data["x"], y=data["y"],
-            w=data.get("w", 200), h=data.get("h", 200),
+            x=_coordinate(data["x"]), y=_coordinate(data["y"]),
+            w=_number(data.get("w", 200), 200), h=_number(data.get("h", 200), 200),
             # A file is anyone's to edit: a source that is not text is dropped,
             # not carried on into a path lookup that raises mid-load.
             source=source if isinstance(source, str) else "",

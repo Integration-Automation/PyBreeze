@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-129 | 2026-09-24 | Skip diagram items a file places nowhere, keep far ones within reach, and leave nodes alone when a connection cannot be built | #fix #diagram #done | [2026-09](2026-09.md) |
 | U-20260923-128 | 2026-09-24 | Let an image on the diagram canvas be resized by its corner handles | #fix #diagram | [2026-09](2026-09.md) |
 | U-20260923-127 | 2026-09-24 | Refactor: drop the executor's exception handlers that nothing could reach | #refactor #executor | [2026-09](2026-09.md) |
 | U-20260923-126 | 2026-09-24 | Keep a Connect click from cutting an SFTP transfer short | #fix #ssh | [2026-09](2026-09.md) |
@@ -209,4 +210,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 146 |
+| [2026-09.md](2026-09.md) | 2026-09 | 147 |
