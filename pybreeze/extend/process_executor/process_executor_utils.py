@@ -5,7 +5,7 @@ import time
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import QCoreApplication, QObject, Signal
+from PySide6.QtCore import QCoreApplication, QObject, QTimer, Signal
 from PySide6.QtWidgets import QFileDialog, QMessageBox
 from je_editor import EditorWidget, language_wrapper
 
@@ -77,15 +77,17 @@ def build_process_from_file(
         file_path: str,
         send_mail: bool = False,
         program_buffer: int = 1024000,
-):
-    """Run ``package`` against an action JSON file path.
+        then: Callable[[], None] | None = None,
+) -> TaskProcessManager:
+    """Run ``package`` against an action JSON file path; return the run's manager.
 
     Bypasses the ``--execute_str`` cmdline path so large scripts cannot trip
     the Windows ~32K argv limit. Useful for batch / multi-file flows where
-    the file is already on disk.
+    the file is already on disk. *then* is called when the run has ended.
     """
-    process = build_task_process(main_window, send_mail, program_buffer)
+    process = build_task_process(main_window, send_mail, program_buffer, then=then)
     process.start_test_process_file(package, file_path)
+    return process
 
 
 def run_dir_files_with_package(
@@ -94,22 +96,49 @@ def run_dir_files_with_package(
         send_mail: bool = False,
         program_buffer: int = 1024000,
 ) -> None:
-    """Prompt for a directory and run every matching file through *package*.
+    """Prompt for a directory and run every matching file through *package*, one after another.
 
     Each file is executed via its on-disk path (``--execute_file``) so large
     action JSON never trips the Windows ~32K command-line limit, and one run
     window is opened per file, which reports that file's run, a run that cannot
     start included. The broad guard here only keeps a single bad directory pick
     from crashing the menu callback.
+
+    They used to start all at once: every run writes its report to the same
+    ``default_name.html``, so the reports overwrote one another and a run's
+    mail could carry another run's report, and N browsers opened together.
     """
     try:
         execute_list = _ask_for_action_files(main_window)
         if not execute_list:
             return
-        for execute_file in execute_list:
-            build_process_from_file(main_window, package, execute_file, send_mail, program_buffer)
+        run_one_after_another(main_window, package, list(execute_list), send_mail, program_buffer)
     except Exception as error:  # noqa: BLE001 — batch UI action must not abort on one bad entry
         pybreeze_logger.error("%s multi file error: %r", package, error)
+
+
+def run_one_after_another(
+        main_window: PyBreezeMainWindow, package: str, files: list[str],
+        send_mail: bool = False, program_buffer: int = 1024000) -> None:
+    """Run *files* through *package*, each in its own window once the one before has ended.
+
+    A run that was stopped (its Stop, or the IDE closing) ends the batch; a
+    file whose run could not start is passed over.
+    """
+    if not files:
+        return
+    first, rest = files[0], files[1:]
+    process: TaskProcessManager | None = None
+
+    def next_file() -> None:
+        if process is not None and process.was_stopped:
+            return
+        run_one_after_another(main_window, package, rest, send_mail, program_buffer)
+
+    process = build_process_from_file(main_window, package, first, send_mail, program_buffer, then=next_file)
+    if process.process is None:
+        # It never started, so it never ends: go on from the event loop
+        QTimer.singleShot(0, next_file)
 
 
 def _ask_for_action_files(main_window: PyBreezeMainWindow) -> list[str]:
@@ -197,8 +226,11 @@ def build_task_process(
         main_window: PyBreezeMainWindow,
         send_mail: bool = False,
         program_buffer: int = 1024000,
+        then: Callable[[], None] | None = None,
 ) -> TaskProcessManager:
     """Open a fresh run window and the task process manager that writes to it.
+
+    *then* is called when the run has ended, after the report mail is started.
 
     The run window carries the interpreter chosen in the IDE (the Python
     environment menu, or the saved setting), so the child runs with that
@@ -209,10 +241,19 @@ def build_task_process(
     code_window = open_run_window(main_window)
     code_window.python_compiler = main_window.python_compiler
     main_window.clear_code_result()
+    hooks = [hook for hook in (report_mail_hook(code_window) if send_mail else None, then) if hook]
     code_window.runner = TaskProcessManager(
         code_window,
-        task_done_trigger_function=report_mail_hook(code_window) if send_mail else None,
+        task_done_trigger_function=_one_after_another(hooks) if hooks else None,
         program_buffer_size=program_buffer,
         program_encoding=main_window.encoding,
     )
     return code_window.runner
+
+
+def _one_after_another(hooks: list[Callable[[], None]]) -> Callable[[], None]:
+    """One done-hook that calls each of *hooks* in turn."""
+    def call_each() -> None:
+        for hook in hooks:
+            hook()
+    return call_each

@@ -521,3 +521,66 @@ class TestCompileThenRun:
         text = window.code_result.toPlainText()
         assert "[Stopped]" in text and "[Run]" not in text
 
+
+def _logging_package(folder: Path, log: Path, seconds: float) -> None:
+    """A stand-in automation package: logs when it starts and ends on the file it is given."""
+    package = folder / "fakepkg"
+    package.mkdir()
+    (package / "__init__.py").write_text("", encoding="utf-8")
+    (package / "__main__.py").write_text(
+        "import sys, time\n"
+        f"log = {str(log)!r}\n"
+        "name = sys.argv[sys.argv.index('--execute_file') + 1]\n"
+        "open(log, 'a', encoding='utf-8').write(f'start {name}\\n')\n"
+        f"time.sleep({seconds})\n"
+        "open(log, 'a', encoding='utf-8').write(f'end {name}\\n')\n",
+        encoding="utf-8")
+
+
+class TestRunningAFolder:
+    """The files of a folder run one after another: their reports went to one file."""
+
+    def _files(self, folder: Path, count: int) -> list[str]:
+        files = []
+        for index in range(count):
+            path = folder / f"case{index}.json"
+            path.write_text("[]", encoding="utf-8")
+            files.append(str(path))
+        return files
+
+    def test_each_file_starts_after_the_one_before_has_ended(self, qt_app, tmp_path, monkeypatch):
+        from pybreeze.extend.process_executor.process_executor_utils import run_one_after_another
+
+        log = tmp_path / "log.txt"
+        _logging_package(tmp_path, log, seconds=0.5)
+        monkeypatch.setenv("PYTHONPATH", str(tmp_path))
+        main_window = MainWindow(python_compiler=sys.executable)
+        files = self._files(tmp_path, 3)
+
+        run_one_after_another(main_window, "fakepkg", files)
+        _run_events_until(qt_app, lambda: log.exists() and log.read_text(encoding="utf-8").count("end") == 3)
+
+        events = log.read_text(encoding="utf-8").split()
+        assert events == [word for name in files for word in ("start", name, "end", name)]
+        assert len(main_window.current_run_code_window) == 3
+
+    def test_a_stopped_run_ends_the_batch(self, qt_app, tmp_path, monkeypatch):
+        from pybreeze.extend.process_executor.process_executor_utils import run_one_after_another
+
+        log = tmp_path / "log.txt"
+        _logging_package(tmp_path, log, seconds=20)
+        monkeypatch.setenv("PYTHONPATH", str(tmp_path))
+        main_window = MainWindow(python_compiler=sys.executable)
+
+        run_one_after_another(main_window, "fakepkg", self._files(tmp_path, 3))
+        first = main_window.current_run_code_window[0]
+        _run_events_until(qt_app, lambda: log.exists())
+        first.stop_runner()
+        _run_events_until(qt_app, lambda: "Task exit with code" in first.code_result.toPlainText())
+        deadline = time.monotonic() + 2
+        while time.monotonic() < deadline:
+            qt_app.processEvents()
+            time.sleep(0.05)
+
+        assert len(main_window.current_run_code_window) == 1
+

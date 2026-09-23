@@ -67,6 +67,8 @@ class TaskProcessManager:
         self.run_error_queue: Queue = output_queue()
         self.process: subprocess.Popen | None = None
         self._reader_grace = ReaderGrace()
+        # Stop was asked for: a batch run that follows this one does not go on
+        self.was_stopped = False
 
         self.task_done_trigger_function: Callable = task_done_trigger_function
         self.error_trigger_function: Callable = error_trigger_function
@@ -187,6 +189,7 @@ class TaskProcessManager:
         Only the child itself: processes it started are left to it. The run
         window reports the exit on the next pump, as for any other exit.
         """
+        self.was_stopped = True
         if self.process is not None and self.process.poll() is None:
             self.process.terminate()
 

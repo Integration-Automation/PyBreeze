@@ -110,8 +110,8 @@ Template Method 定義的子行程生命週期：
 |---|---|
 | `build_process()` | 取當前分頁的程式碼（或傳入的 `exec_str`）→ `start_process()`。沒給 `exec_str` 又不是編輯器分頁時，開一個執行視窗寫明「腳本要在前面的編輯器分頁裡」（`report_no_script_tab()`），不會把 `None` 交給套件 |
 | `start_process()` | 建 `CodeWindow` + `TaskProcessManager` → `start_test_process()` |
-| `build_process_from_file()` | 以檔案路徑執行單一檔案 |
-| `run_dir_files_with_package()` | 問使用者選資料夾（`_ask_for_action_files()`，對話框掛在主視窗上；資料夾裡沒有 `.json` 就明說），對每個 `.json` 開一個執行視窗批次跑 |
+| `build_process_from_file()` | 以檔案路徑執行單一檔案，回傳它的 manager；`then` 在執行結束時呼叫 |
+| `run_dir_files_with_package()` | 問使用者選資料夾（`_ask_for_action_files()`，對話框掛在主視窗上；資料夾裡沒有 `.json` 就明說），每個 `.json` 一個執行視窗，一個跑完才跑下一個（`run_one_after_another()`：報告都寫到同一個 `default_name.html`，同時跑會互相蓋掉、寄錯報告）；被停止的執行（停止鈕、關閉 IDE）結束整批，啟動不了的檔案跳過 |
 | `open_run_window()` | 開一個執行視窗、掛進 `main_window.current_run_code_window`，並接上 `finished_and_closed`：使用者關掉一個已經跑完的執行視窗時主視窗就放掉它（以前這份清單只增不減，每次執行都留下一個視窗、一個執行器、兩個 queue 和一個 timer）；執行中被關掉的視窗記下 `_closed_while_running`，等執行器在結束路徑尾端呼叫 `CodeWindow.run_ended()` 時才放掉（排到 timer 的 slot 回來之後才發，視窗是 timer 的 parent）。插件執行也走這裡 |
 | `build_task_process()` | 共用建構：`open_run_window()` 並帶上主視窗選定的直譯器、決定要不要接寄報告的 hook（`report_mail_hook(code_window)`：建立時記下子行程工作目錄裡 `default_name.html` 的絕對路徑與開始時間，比這次執行還舊的報告不寄；寄送結果經無 parent 的 `_MailNotice` 以 queued signal 回到執行視窗，寫出寄到了或沒寄的原因）。建好的 `TaskProcessManager` 掛在執行視窗的 `runner` 上，所以呼叫端可以不留參考。prthinker 審查也走這裡 |
 
@@ -446,7 +446,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 18. 測試與 CI
 
-- **單元測試** `test/test_utils/` — 111 個 `test_*.py`、1882 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
+- **單元測試** `test/test_utils/` — 111 個 `test_*.py`、1884 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
 - **整合測試** `test/unit_test/start_automation/` — 以 `debug_mode=True` 啟動 IDE，10 秒後自動關閉，驗證啟動流程與 extend tab
 - **CI** `.github/workflows/{dev,stable}.yml` — `unit-tests` job 跑 Windows runner、Python 3.10–3.14 矩陣，3.12 那一腳額外上傳 `coverage-xml` artifact；`sonarcloud` job 跑 ubuntu、`needs: unit-tests`。每日 02:00 排程 + push/PR 觸發。`stable.yml` 另有 `publish` job 負責版號遞增與 PyPI 發布
 - **覆蓋率** `.coveragerc` — `relative_files = True` 是必要的：報告在 Windows 產生、由 Linux 上的 scanner 讀取，路徑不能帶機器資訊。目前整體 60%（`utils/`、`tools_gui`、`dialog` 95–100%；`editor_main` 58%、`menu` 54%；仍低的是 `diagram_editor` 45%、`process_executor` 39%、`connect_gui` 28%）
