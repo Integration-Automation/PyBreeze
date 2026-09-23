@@ -123,3 +123,34 @@ def test_a_payload_nested_past_the_recursion_limit_is_a_decode_error():
     token = ".".join([segment('{"alg": "none"}'), segment("[" * 100000 + "]" * 100000), ""])
     with pytest.raises(JwtDecodeException):
         decode_jwt(token)
+
+
+class TestATokenPastedWithSomethingAroundIt:
+    """Bearer prefixes, quotes and line breaks come along when a token is copied."""
+
+    @pytest.mark.parametrize("header", [{"alg": "none"}, {"alg": "ES256", "kid": "a"}, {"alg": "HS256"}])
+    @pytest.mark.parametrize("wrap", ["Bearer {}", '"{}"', "Authorization: Bearer {}\n", "{}"])
+    def test_the_token_inside_is_decoded(self, header, wrap):
+        # "Bearer eyJ..." always failed; a quoted token failed or kept the quote in
+        # its signature depending on the header's length
+        token = _make_jwt(header, {"sub": "1"})
+
+        decoded = decode_jwt(wrap.format(token))
+
+        assert decoded.header == header
+        assert decoded.signature == "sig"
+
+    def test_a_token_wrapped_over_lines_is_joined(self):
+        token = _make_jwt({"alg": "HS256"}, {"sub": "1", "name": "a long enough name"})
+
+        decoded = decode_jwt(token[:20] + "\n" + token[20:40] + "\r\n  " + token[40:])
+
+        assert decoded.payload == {"sub": "1", "name": "a long enough name"}
+
+    def test_a_segment_with_characters_outside_base64url_is_refused(self):
+        # Non-strict decoding dropped them and decoded what was left
+        token = _make_jwt({"alg": "HS256"}, {"sub": "1"})
+        header, payload, signature = token.split(".")
+
+        with pytest.raises(JwtDecodeException):
+            decode_jwt(f"{header[:4]}!{header[4:]}.{payload}.{signature}")

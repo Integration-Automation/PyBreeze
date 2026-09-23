@@ -58,7 +58,10 @@ def _decode_segment(segment: str) -> dict:
     # base64url omits padding; restore it so the stdlib decoder accepts the input.
     padding = "=" * (-len(segment) % 4)
     try:
-        raw = base64.urlsafe_b64decode(segment + padding)
+        # Strict: urlsafe_b64decode drops characters outside the alphabet after
+        # the padding was worked out from a length that counted them, so a
+        # stray quote decoded or failed depending on the segment's length
+        raw = base64.b64decode(segment + padding, altchars=b"-_", validate=True)
         decoded = json.loads(raw.decode("utf-8"))
     # binascii.Error and UnicodeDecodeError both derive from ValueError; a
     # payload nested past the recursion limit raises RecursionError.
@@ -73,7 +76,8 @@ def _decode_segment(segment: str) -> dict:
 def decode_jwt(token: str) -> DecodedJwt:
     """Decode a JWT's header and payload without verifying its signature.
 
-    :param token: the compact JWT string ``header.payload.signature``
+    :param token: the compact JWT string ``header.payload.signature``, or
+        text holding one (``Bearer <token>``, a quoted or wrapped token)
     :return: the decoded parts
     :raises JwtDecodeException: when the token is empty or not three segments,
         or a segment cannot be decoded
@@ -83,7 +87,7 @@ def decode_jwt(token: str) -> DecodedJwt:
         pybreeze_logger.error(empty_jwt_error)
         raise JwtDecodeException(empty_jwt_error)
 
-    segments = stripped.split(".")
+    segments = _the_token(stripped).split(".")
     if len(segments) != _JWT_SEGMENT_COUNT:
         pybreeze_logger.error(malformed_jwt_error)
         raise JwtDecodeException(malformed_jwt_error)
@@ -91,6 +95,20 @@ def decode_jwt(token: str) -> DecodedJwt:
     header = _decode_segment(segments[0])
     payload = _decode_segment(segments[1])
     return DecodedJwt(header=header, payload=payload, signature=segments[2])
+
+
+def _the_token(text: str) -> str:
+    """The compact token in *text*, as pasted.
+
+    A token is often copied with something around it: ``Bearer`` from an
+    ``Authorization`` header, the quotes of a JSON string, line breaks where it
+    wrapped. Those used to reach the decoder, and ``Bearer eyJ...`` always failed.
+    """
+    compact = "".join(text.split())
+    if JWT_TOKEN_RE.fullmatch(compact):
+        return compact
+    found = find_tokens(compact)
+    return found[0] if found else compact
 
 
 def find_tokens(text: str) -> list[str]:
