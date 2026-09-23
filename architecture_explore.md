@@ -95,7 +95,7 @@ Template Method 定義的子行程生命週期：
 | 啟動 | `subprocess.Popen(args, shell=False, stdin=DEVNULL, creationflags=CREATE_NO_WINDOW, env=PYTHONIOENCODING=...)`；`stdin` 不接 IDE 的主控台（腳本 `input()` 立刻拿到 EOF）；`Popen` 丟 `OSError`（直譯器不見、命令列超過 Windows 上限）時寫進執行視窗並顯示，不從選單拋出 |
 | 讀取 | 兩條 daemon Thread 各自經 `queue_pump.read_stream_into_queue()` 對 stdout / stderr `readline()`，原樣塞進 `Queue`（保留縮排、行尾與空行）；**空讀 = EOF 立刻 break**（否則會 100% CPU 空轉） |
 | 送 UI | `QTimer` 每 100 ms 呼叫 `pull_text()`，經 `pump_message_queue()` 每 tick 最多抽 256 則，交給 `CodeWindow.append_output()` |
-| 收尾 | 子行程結束後，pump 照樣每 tick 抽 queue，直到兩條 reader 都讀到 EOF 或寬限（`ReaderGrace`，2 秒）用完，UI 執行緒不 join 任何執行緒。`exit_program()`：drain queue（`max_messages=None` 一次抽乾）→ reader 還活著（子行程開的行程還握著管線）就在視窗註明之後的輸出不會顯示 → `terminate()` → 呼叫 `task_done_trigger_function`（例如寄信） |
+| 收尾 | 子行程結束後，pump 照樣每 tick 抽 queue，直到兩條 reader 都讀到 EOF 或寬限（`ReaderGrace`，2 秒，那個 tick 還有輸出就重新起算，最長到結束後 30 秒）用完，UI 執行緒不 join 任何執行緒。`exit_program()`：drain queue（`max_messages=None` 一次抽乾）→ reader 還活著（子行程開的行程還握著管線）就在視窗註明之後的輸出不會顯示 → `terminate()` → 呼叫 `task_done_trigger_function`（例如寄信） |
 | 停止 | `stop()`：子行程還在跑就 `terminate()`（只有它本身，它再開的行程不管），之後照一般結束的路徑回報。經 `CodeWindow.stop_runner()` 呼叫；關閉 IDE 時 `PyBreezeMainWindow.closeEvent()` 對每個執行視窗都呼叫一次（經 `_close_guarded()`：一個視窗、分頁或 dock 關閉時丟例外只記錄，其餘照關，JEditor 自己的 `closeEvent` 一定會跑到） |
 
 三種啟動介面：
@@ -155,6 +155,7 @@ call_X_multi_file_and_send()   → run_dir_files_with_package(..., True)
 
 - `read_stream_into_queue(stream, queue, buffer_size, encoding, keep_reading)` — reader 執行緒用。行**原樣**進 queue（縮排、行尾、空行都留著）；空讀 = EOF 即停，管線被關掉的 `OSError` / `ValueError` 記 debug 後停。超過 `buffer_size` 的長行分段讀進來：用 incremental decoder 解碼（被切斷的多位元組字元接到下一段），段尾的 `\r` 留到下一段（`\r\n` 被切開時不會變成兩個換行）；不認得的 encoding 退回 UTF-8 並記 warning
 - `pump_message_queue(q, append_fn, is_error, max_messages)` — UI 執行緒用。`MAX_MESSAGES_PER_PUMP = 256`：每 tick 只抽一則的話輸出上限只有 ~10 行/秒，聒噪的腳本會爬行；有上界則避免洪水輸出卡住 UI 執行緒。`max_messages=None` 是收尾時一次抽乾。只跳過空字串
+- `output_queue()` — 每條管線的 queue 最多 `MAX_QUEUED_MESSAGES`（10,000）則；滿了 reader 就等（每 0.2 秒看一次 `keep_reading`），子行程寫管線也跟著等，跑得跟視窗顯示一樣快，像終端機；以前不設上限，印個不停的腳本會一直吃記憶體，按 Stop 後再一口氣全倒進視窗
 - `ReaderGrace` / `any_alive()` / `OUTPUT_STILL_HELD_NOTE` — 子行程結束後 reader 還能讀多久（`READER_GRACE_SECONDS = 2.0`，從結束後第一個 tick 起算）。管線要等最後一個握著它的行程結束才會 EOF，子行程開的行程沒轉向輸出時會一直握著；以前兩個執行器在 UI 執行緒上各 join 2 秒，IDE 卡 4 秒還是丟掉之後的輸出。現在由 pump 逐 tick 詢問，時間到就結束執行並在視窗註明
 - `CodeWindow.append_output(text, is_error, own_line=False)`（`show_code_window/code_window.py`，輸出是上限 10,000 行的 `QPlainTextEdit`：`QTextEdit` 到上限後每寫一行要花約 15 ms 丟掉最舊的一行）— 一律寫在文件**尾端**（不用 widget 自己的游標：那個游標跟著使用者的點擊與選取走，寫在那裡會把輸出插進中間、或蓋掉使用者選取的文字）。`\r\n` 與單獨的 `\r` 轉成換行；換行只出現在文字本身有換行的地方，所以超過 buffer 被切段的長行會接回同一行。`own_line=True` 給視窗自己的狀態訊息（`Task exit with code …`），程式留下沒換行的半行時先補一個換行。捲軸在最底時畫面跟著輸出走（像終端機）；使用者往上捲去讀時就停在原處
 
@@ -443,7 +444,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 18. 測試與 CI
 
-- **單元測試** `test/test_utils/` — 107 個 `test_*.py`、1682 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
+- **單元測試** `test/test_utils/` — 107 個 `test_*.py`、1689 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
 - **整合測試** `test/unit_test/start_automation/` — 以 `debug_mode=True` 啟動 IDE，10 秒後自動關閉，驗證啟動流程與 extend tab
 - **CI** `.github/workflows/{dev,stable}.yml` — `unit-tests` job 跑 Windows runner、Python 3.10–3.14 矩陣，3.12 那一腳額外上傳 `coverage-xml` artifact；`sonarcloud` job 跑 ubuntu、`needs: unit-tests`。每日 02:00 排程 + push/PR 觸發。`stable.yml` 另有 `publish` job 負責版號遞增與 PyPI 發布
 - **覆蓋率** `.coveragerc` — `relative_files = True` 是必要的：報告在 Windows 產生、由 Linux 上的 scanner 讀取，路徑不能帶機器資訊。目前整體 60%（`utils/`、`tools_gui`、`dialog` 95–100%；`editor_main` 58%、`menu` 54%；仍低的是 `diagram_editor` 45%、`process_executor` 39%、`connect_gui` 28%）

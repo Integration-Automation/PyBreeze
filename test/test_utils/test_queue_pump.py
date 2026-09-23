@@ -135,3 +135,101 @@ class TestReadStreamIntoQueue:
 
     def test_an_unknown_encoding_falls_back_to_utf8(self):
         assert self._pieces("ok 中\n".encode("utf-8"), 1024, encoding="no-such-codec") == ["ok 中\n"]
+
+
+class TestABoundedQueue:
+    """A reader waits on a full queue instead of holding every line of a runaway run in memory."""
+
+    def test_the_reader_waits_while_the_queue_is_full(self):
+        import threading
+
+        from pybreeze.extend.process_executor import queue_pump
+
+        target: Queue = Queue(maxsize=3)
+        data = b"".join(f"{i}\n".encode() for i in range(10))
+        reader = threading.Thread(target=queue_pump.read_stream_into_queue, args=(io.BytesIO(data), target),
+                                  kwargs={"buffer_size": 1024, "encoding": "utf-8", "keep_reading": lambda: True})
+        reader.start()
+        reader.join(0.5)
+
+        assert reader.is_alive() and target.qsize() == 3
+        got = [target.get(timeout=2) for _ in range(10)]
+        reader.join(2)
+        assert got == [f"{i}\n" for i in range(10)]
+        assert not reader.is_alive()
+
+    def test_a_waiting_reader_gives_up_once_told_to_stop(self):
+        import threading
+
+        from pybreeze.extend.process_executor import queue_pump
+
+        target: Queue = Queue(maxsize=1)
+        running = {"on": True}
+        reader = threading.Thread(target=queue_pump.read_stream_into_queue, args=(io.BytesIO(b"a\nb\nc\n"), target),
+                                  kwargs={"buffer_size": 1024, "encoding": "utf-8",
+                                          "keep_reading": lambda: running["on"]})
+        reader.start()
+        reader.join(0.3)
+        running["on"] = False
+        reader.join(2)
+
+        assert not reader.is_alive()
+
+    def test_the_executors_queues_are_bounded(self):
+        from pybreeze.extend.process_executor.queue_pump import MAX_QUEUED_MESSAGES, output_queue
+
+        assert output_queue().maxsize == MAX_QUEUED_MESSAGES > 0
+
+
+class TestTheGraceWhileOutputStillComes:
+    def test_output_still_arriving_keeps_the_run_open(self, monkeypatch):
+        import threading
+
+        from pybreeze.extend.process_executor import queue_pump
+
+        now = {"t": 100.0}
+        monkeypatch.setattr(queue_pump.time, "monotonic", lambda: now["t"])
+        alive = threading.Event()
+        reader = threading.Thread(target=alive.wait, args=(5,))
+        reader.start()
+        grace = queue_pump.ReaderGrace()
+        try:
+            assert grace.still_reading(reader)
+            now["t"] += 1.5
+            assert grace.still_reading(reader, progressed=True)
+            now["t"] += 1.5  # three seconds after the exit, but output came 1.5 s ago
+            assert grace.still_reading(reader)
+            now["t"] += 1.0
+            assert not grace.still_reading(reader)
+        finally:
+            alive.set()
+            reader.join()
+
+    def test_never_past_the_drain_limit(self, monkeypatch):
+        import threading
+
+        from pybreeze.extend.process_executor import queue_pump
+
+        now = {"t": 0.0}
+        monkeypatch.setattr(queue_pump.time, "monotonic", lambda: now["t"])
+        alive = threading.Event()
+        reader = threading.Thread(target=alive.wait, args=(5,))
+        reader.start()
+        grace = queue_pump.ReaderGrace()
+        try:
+            grace.still_reading(reader)
+            now["t"] = queue_pump.MAX_DRAIN_SECONDS + 0.1
+            assert not grace.still_reading(reader, progressed=True)
+        finally:
+            alive.set()
+            reader.join()
+
+
+def test_the_pump_says_how_many_it_took():
+    from pybreeze.extend.process_executor.queue_pump import pump_message_queue
+
+    target: Queue = Queue()
+    for message in ("a", "", "b"):
+        target.put(message)
+
+    assert pump_message_queue(target, lambda _text, _is_error: None, is_error=False) == 3

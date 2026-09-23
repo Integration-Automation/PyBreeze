@@ -388,3 +388,26 @@ class TestAProcessTheRunStartedHoldsItsOutput:
         text = run_window.code_result.toPlainText()
         assert text.index("late line") < text.index("Task exit with code")
         assert "still holds its output" not in text
+
+
+def test_a_runaway_run_holds_a_bounded_backlog_and_stops_promptly(qt_app, tmp_path):
+    # The queues were unbounded: a print loop filled memory while it ran, and
+    # Stop then poured the whole backlog into the window on the UI thread
+    from pybreeze.extend.process_executor.file_runner_process import FileRunnerProcess
+    from pybreeze.extend.process_executor.queue_pump import MAX_QUEUED_MESSAGES
+    from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
+
+    script = tmp_path / "flood.py"
+    script.write_text("i = 0\nwhile True:\n    print(i)\n    i += 1\n", encoding="utf-8")
+    window = CodeWindow()
+    runner = FileRunnerProcess(window)
+    runner.run_file({"name": "Python", "compiler": sys.executable}, str(script))
+    deadline = time.monotonic() + 2
+    while time.monotonic() < deadline:
+        qt_app.processEvents()
+        time.sleep(0.01)
+
+    assert runner.output_queue.qsize() <= MAX_QUEUED_MESSAGES
+    runner.stop()
+    _run_events_until(qt_app, lambda: not runner.still_running)
+    assert "[Process exited with code" in window.code_result.toPlainText()

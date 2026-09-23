@@ -22,6 +22,7 @@ from pybreeze.extend.process_executor.queue_pump import (
     OUTPUT_STILL_HELD_NOTE,
     ReaderGrace,
     any_alive,
+    output_queue,
     pump_message_queue,
     read_stream_into_queue,
 )
@@ -46,8 +47,8 @@ class FileRunnerProcess:
         self.program_buffer_size = program_buffer_size
         self.still_running: bool = False
         self.process: subprocess.Popen | None = None
-        self.output_queue: Queue = Queue()
-        self.error_queue: Queue = Queue()
+        self.output_queue: Queue = output_queue()
+        self.error_queue: Queue = output_queue()
         self.timer: QTimer | None = None
         self._stdout_thread: Thread | None = None
         self._stderr_thread: Thread | None = None
@@ -179,15 +180,16 @@ class FileRunnerProcess:
 
     def _pull_text(self) -> None:
         """Timer callback: pump queues to UI."""
-        pump_message_queue(self.output_queue, self.main_window.append_output, is_error=False)
-        pump_message_queue(self.error_queue, self.main_window.append_output, is_error=True)
+        pumped = pump_message_queue(self.output_queue, self.main_window.append_output, is_error=False)
+        pumped += pump_message_queue(self.error_queue, self.main_window.append_output, is_error=True)
 
         if self.process is not None:
             self.process.poll()
             if self.process.returncode is not None:
                 # Output still on its way is pumped on the next ticks, not
                 # waited for here: this is the UI thread
-                if not self._reader_grace.still_reading(self._stdout_thread, self._stderr_thread):
+                if not self._reader_grace.still_reading(
+                        self._stdout_thread, self._stderr_thread, progressed=pumped > 0):
                     self._finish()
             elif self._deadline is not None and time.monotonic() > self._deadline:
                 self._deadline = None

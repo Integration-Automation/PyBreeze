@@ -24,12 +24,40 @@ from pybreeze.utils.logging.logger import pybreeze_logger
 # thread from stalling when a process floods stdout.
 MAX_MESSAGES_PER_PUMP = 256
 
-# After the child exits, its readers get this long to reach end of file
+# After the child exits, its readers get this long to reach end of file, counted
+# from the last tick that still brought output
 READER_GRACE_SECONDS = 2.0
+# ... and never longer than this after the exit, however much keeps coming
+MAX_DRAIN_SECONDS = 30.0
+
+# How many pieces of output wait between a reader and the window. A full queue
+# makes the reader wait, and with it the child's writes to its pipe: the run
+# goes at the pace the window shows it, as in a terminal. Unbounded, a script
+# printing in a loop filled memory for as long as it ran, and Stop then poured
+# the whole backlog into the window at once.
+MAX_QUEUED_MESSAGES = 10000
+# How often a reader waiting on a full queue checks whether to give up
+_PUT_WAIT_SECONDS = 0.2
 
 # Written when a process the run started still holds its output at the end
 OUTPUT_STILL_HELD_NOTE = (
     "[A process started by this run still holds its output; what it writes from now on is not shown]\n")
+
+
+def output_queue() -> Queue:
+    """A queue for one pipe's output, holding at most ``MAX_QUEUED_MESSAGES`` pieces."""
+    return Queue(maxsize=MAX_QUEUED_MESSAGES)
+
+
+def _put(target_queue: Queue, message: str, keep_reading: Callable[[], bool]) -> bool:
+    """Put *message* on *target_queue*, waiting while it is full; False once *keep_reading* turns false."""
+    while True:
+        try:
+            target_queue.put(message, timeout=_PUT_WAIT_SECONDS)
+            return True
+        except queue.Full:
+            if not keep_reading():
+                return False
 
 
 def read_stream_into_queue(
@@ -71,11 +99,11 @@ def read_stream_into_queue(
         line, held = held + line, ""
         if line.endswith("\r"):
             line, held = line[:-1], "\r"
-        if line:
-            target_queue.put(line)
+        if line and not _put(target_queue, line, keep_reading):
+            return
     rest = held + decoder.decode(b"", final=True)
     if rest:
-        target_queue.put(rest)
+        _put(target_queue, rest, keep_reading)
 
 
 def _decoder_for(encoding: str) -> codecs.IncrementalDecoder:
@@ -104,19 +132,30 @@ class ReaderGrace:
     """
 
     def __init__(self) -> None:
+        self._exited_at: float | None = None
         self._since: float | None = None
 
-    def still_reading(self, *readers: threading.Thread | None) -> bool:
-        """True while a reader is alive and the grace, counted from the first ask, is not over."""
+    def still_reading(self, *readers: threading.Thread | None, progressed: bool = False) -> bool:
+        """True while a reader is alive and the grace is not over.
+
+        :param progressed: whether this tick showed any output. Output still
+            coming counts the grace again, so a backlog held back by the full
+            queue is shown, not taken for a process holding the pipes; but
+            never past ``MAX_DRAIN_SECONDS`` after the first ask.
+        """
         if not any_alive(*readers):
             return False
-        if self._since is None:
-            self._since = time.monotonic()
-        return time.monotonic() - self._since < READER_GRACE_SECONDS
+        now = time.monotonic()
+        if self._exited_at is None:
+            self._exited_at = self._since = now
+        if progressed:
+            self._since = now
+        return (now - self._since < READER_GRACE_SECONDS
+                and now - self._exited_at < MAX_DRAIN_SECONDS)
 
     def restart(self) -> None:
         """Count the next child's grace from its own exit."""
-        self._since = None
+        self._exited_at = self._since = None
 
 
 def pump_message_queue(
@@ -125,19 +164,24 @@ def pump_message_queue(
     *,
     is_error: bool,
     max_messages: int | None = MAX_MESSAGES_PER_PUMP,
-) -> None:
+) -> int:
     """Drain up to *max_messages* pending messages from *q* into *append_fn*.
 
     ``None`` drains until the queue is empty, which is what an executor wants
     once its process has exited. Messages are passed on unchanged; only empty
     strings are skipped. ``queue.Empty`` from the racy non-blocking get is
     treated as a clean stop, not an error.
+
+    :return: how many messages were taken off the queue
     """
     budget = itertools.count() if max_messages is None else range(max_messages)
+    taken = 0
     for _ in budget:
         try:
             message = str(q.get_nowait())
         except queue.Empty:
-            return
+            return taken
+        taken += 1
         if message:
             append_fn(message, is_error)
+    return taken

@@ -17,6 +17,7 @@ from pybreeze.extend.process_executor.queue_pump import (
     OUTPUT_STILL_HELD_NOTE,
     ReaderGrace,
     any_alive,
+    output_queue,
     pump_message_queue,
     read_stream_into_queue,
 )
@@ -62,8 +63,8 @@ class TaskProcessManager:
         self.timer: QTimer = QTimer(self.main_window)
         self.still_run_program: bool = True
         self.program_encoding: str = program_encoding
-        self.run_output_queue: Queue = Queue()
-        self.run_error_queue: Queue = Queue()
+        self.run_output_queue: Queue = output_queue()
+        self.run_error_queue: Queue = output_queue()
         self.process: subprocess.Popen | None = None
         self._reader_grace = ReaderGrace()
 
@@ -191,8 +192,8 @@ class TaskProcessManager:
 
     # Pyside UI update method
     def pull_text(self):
-        pump_message_queue(self.run_output_queue, self.main_window.append_output, is_error=False)
-        pump_message_queue(self.run_error_queue, self.main_window.append_output, is_error=True)
+        pumped = pump_message_queue(self.run_output_queue, self.main_window.append_output, is_error=False)
+        pumped += pump_message_queue(self.run_error_queue, self.main_window.append_output, is_error=True)
         if self.process is None:
             if self.timer.isActive():
                 self.timer.stop()
@@ -201,7 +202,8 @@ class TaskProcessManager:
             # Output still on its way is pumped on the next ticks, not waited
             # for here: this is the UI thread
             if self._reader_grace.still_reading(
-                    self.read_program_output_from_thread, self.read_program_error_output_from_thread):
+                    self.read_program_output_from_thread, self.read_program_error_output_from_thread,
+                    progressed=pumped > 0):
                 return
             if self.timer.isActive():
                 self.timer.stop()
