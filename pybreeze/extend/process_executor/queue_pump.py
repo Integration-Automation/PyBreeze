@@ -10,6 +10,8 @@ from __future__ import annotations
 import codecs
 import itertools
 import queue
+import threading
+import time
 from collections.abc import Callable
 from queue import Queue
 from typing import IO
@@ -21,6 +23,13 @@ from pybreeze.utils.logging.logger import pybreeze_logger
 # many lines per tick keeps up with bursty output while the bound keeps the UI
 # thread from stalling when a process floods stdout.
 MAX_MESSAGES_PER_PUMP = 256
+
+# After the child exits, its readers get this long to reach end of file
+READER_GRACE_SECONDS = 2.0
+
+# Written when a process the run started still holds its output at the end
+OUTPUT_STILL_HELD_NOTE = (
+    "[A process started by this run still holds its output; what it writes from now on is not shown]\n")
 
 
 def read_stream_into_queue(
@@ -76,6 +85,38 @@ def _decoder_for(encoding: str) -> codecs.IncrementalDecoder:
     except LookupError:
         pybreeze_logger.warning("Unknown output encoding %r; decoding as UTF-8", encoding)
         return codecs.getincrementaldecoder("utf-8")(errors="replace")
+
+
+def any_alive(*readers: threading.Thread | None) -> bool:
+    """True when one of *readers* is a thread still running."""
+    return any(reader is not None and reader.is_alive() for reader in readers)
+
+
+class ReaderGrace:
+    """How long an exited child's reader threads still get before the run ends.
+
+    A child's pipes reach end of file when the last process holding them
+    exits, and that is not always the child: a process it started without
+    redirecting its output keeps them open. The executors used to join each
+    reader on the UI thread for up to two seconds, so such a run froze the IDE
+    for four and still lost what came later. The pump now asks this, tick by
+    tick, and ends the run once the readers are done or the grace is over.
+    """
+
+    def __init__(self) -> None:
+        self._since: float | None = None
+
+    def still_reading(self, *readers: threading.Thread | None) -> bool:
+        """True while a reader is alive and the grace, counted from the first ask, is not over."""
+        if not any_alive(*readers):
+            return False
+        if self._since is None:
+            self._since = time.monotonic()
+        return time.monotonic() - self._since < READER_GRACE_SECONDS
+
+    def restart(self) -> None:
+        """Count the next child's grace from its own exit."""
+        self._since = None
 
 
 def pump_message_queue(

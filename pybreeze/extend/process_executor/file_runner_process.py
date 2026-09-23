@@ -18,7 +18,13 @@ from threading import Thread
 
 from PySide6.QtCore import QTimer
 
-from pybreeze.extend.process_executor.queue_pump import pump_message_queue, read_stream_into_queue
+from pybreeze.extend.process_executor.queue_pump import (
+    OUTPUT_STILL_HELD_NOTE,
+    ReaderGrace,
+    any_alive,
+    pump_message_queue,
+    read_stream_into_queue,
+)
 from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.subprocess_util import no_window_creationflags, utf8_subprocess_env
@@ -50,6 +56,7 @@ class FileRunnerProcess:
         # step starts the run from here), and when to give up on the child
         self._after_exit: Callable[[int], None] | None = None
         self._deadline: float | None = None
+        self._reader_grace = ReaderGrace()
 
     def run_file(self, run_config: dict, file_path: str) -> None:
         """
@@ -146,6 +153,7 @@ class FileRunnerProcess:
         self._after_exit = after_exit
         self._deadline = None if time_limit is None else time.monotonic() + time_limit
         self.still_running = True
+        self._reader_grace.restart()
 
         self._stdout_thread = Thread(target=self._read_stdout, daemon=True)
         self._stdout_thread.start()
@@ -177,7 +185,10 @@ class FileRunnerProcess:
         if self.process is not None:
             self.process.poll()
             if self.process.returncode is not None:
-                self._finish()
+                # Output still on its way is pumped on the next ticks, not
+                # waited for here: this is the UI thread
+                if not self._reader_grace.still_reading(self._stdout_thread, self._stderr_thread):
+                    self._finish()
             elif self._deadline is not None and time.monotonic() > self._deadline:
                 self._deadline = None
                 self.main_window.append_output(
@@ -190,16 +201,15 @@ class FileRunnerProcess:
         if self.timer and self.timer.isActive():
             self.timer.stop()
 
-        # Wait for reader threads to finish
-        if self._stdout_thread is not None:
-            self._stdout_thread.join(timeout=2)
-            self._stdout_thread = None
-        if self._stderr_thread is not None:
-            self._stderr_thread.join(timeout=2)
-            self._stderr_thread = None
+        # Not waited for: the pump gave the readers their grace. One still
+        # alive means a process the child started holds the output.
+        readers = (self._stdout_thread, self._stderr_thread)
+        self._stdout_thread = self._stderr_thread = None
 
         # Drain remaining output directly (not via _pull_text to avoid recursion)
         self._drain_queues()
+        if any_alive(*readers):
+            self.main_window.append_output(OUTPUT_STILL_HELD_NOTE, is_error=False, own_line=True)
 
         after_exit, self._after_exit = self._after_exit, None
         if self.process is not None:

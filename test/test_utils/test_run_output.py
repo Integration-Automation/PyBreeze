@@ -292,3 +292,99 @@ class TestAFileRunThatCannotStart:
 
         assert "[Error] Could not start" in window.code_result.toPlainText()
         assert runner.process is None
+
+
+def _script_leaving_a_process_on_the_pipes(folder, grandchild_code: str):
+    """A script that starts a process holding its output, prints that process's id, and exits."""
+    script = folder / "leave.py"
+    script.write_text(
+        "import subprocess, sys\n"
+        f"child = subprocess.Popen([sys.executable, '-c', {grandchild_code!r}],\n"
+        "                         stdout=sys.stdout, stderr=sys.stderr)\n"
+        "print('grandchild', child.pid, flush=True)\n",
+        encoding="utf-8",
+    )
+    return script
+
+
+def _longest_event_pass(qt_app, finished) -> float:
+    """Process events until *finished*, returning the longest single pass in seconds."""
+    deadline = time.monotonic() + _RUN_TIMEOUT_SECONDS
+    longest = 0.0
+    while not finished():
+        if time.monotonic() > deadline:
+            pytest.fail("the run did not end in time")
+        started = time.monotonic()
+        qt_app.processEvents()
+        longest = max(longest, time.monotonic() - started)
+        time.sleep(0.01)
+    return longest
+
+
+def _stop_grandchild(text: str) -> None:
+    for line in text.splitlines():
+        if line.startswith("grandchild "):
+            try:
+                os.kill(int(line.split()[1]), 9)
+            except OSError:
+                pass
+
+
+# Long enough to outlast the run's grace many times over
+_HOLDING = "import time; time.sleep(20)"
+
+
+class TestAProcessTheRunStartedHoldsItsOutput:
+    """The run ends without waiting on the UI thread for pipes a grandchild keeps open."""
+
+    def test_a_python_run_ends_without_freezing_the_window(self, qt_app, tmp_path):
+        from pybreeze.extend.process_executor.process_executor_utils import build_task_process
+
+        _script_leaving_a_process_on_the_pipes(tmp_path, _HOLDING)
+        main_window = MainWindow(python_compiler=sys.executable)
+        build_task_process(main_window).start_module_process(
+            "leave", [], environment={"PYTHONPATH": str(tmp_path)})
+        run_window = main_window.current_run_code_window[0]
+        try:
+            # Each reader was joined for two seconds inside one timer tick
+            longest = _longest_event_pass(
+                qt_app, lambda: "Task exit with code" in run_window.code_result.toPlainText())
+            text = run_window.code_result.toPlainText()
+        finally:
+            _stop_grandchild(run_window.code_result.toPlainText())
+
+        assert longest < 1.0
+        assert "still holds its output" in text
+
+    def test_a_plugin_run_ends_without_freezing_the_window(self, qt_app, tmp_path):
+        from pybreeze.extend.process_executor.file_runner_process import FileRunnerProcess
+        from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
+
+        script = _script_leaving_a_process_on_the_pipes(tmp_path, _HOLDING)
+        window = CodeWindow()
+        runner = FileRunnerProcess(window)
+        runner.run_file({"name": "Python", "compiler": sys.executable}, str(script))
+        try:
+            longest = _longest_event_pass(qt_app, lambda: not runner.still_running)
+            text = window.code_result.toPlainText()
+        finally:
+            _stop_grandchild(window.code_result.toPlainText())
+
+        assert longest < 1.0
+        assert "still holds its output" in text
+        assert "[Process exited with code 0]" in text
+
+    def test_output_that_comes_within_the_grace_is_shown(self, qt_app, tmp_path):
+        from pybreeze.extend.process_executor.process_executor_utils import build_task_process
+
+        _script_leaving_a_process_on_the_pipes(
+            tmp_path, "import time; time.sleep(0.3); print('late line', flush=True)")
+        main_window = MainWindow(python_compiler=sys.executable)
+        build_task_process(main_window).start_module_process(
+            "leave", [], environment={"PYTHONPATH": str(tmp_path)})
+        run_window = main_window.current_run_code_window[0]
+        _run_events_until(qt_app, lambda: "Task exit with code" in run_window.code_result.toPlainText())
+
+        text = run_window.code_result.toPlainText()
+        assert text.index("late line") < text.index("Task exit with code")
+        assert "still holds its output" not in text

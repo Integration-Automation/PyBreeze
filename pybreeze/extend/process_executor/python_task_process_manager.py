@@ -13,7 +13,13 @@ from PySide6.QtCore import QTimer
 from je_editor import JEditorExecException
 from je_editor.utils.venv_check.check_venv import check_and_choose_venv
 
-from pybreeze.extend.process_executor.queue_pump import pump_message_queue, read_stream_into_queue
+from pybreeze.extend.process_executor.queue_pump import (
+    OUTPUT_STILL_HELD_NOTE,
+    ReaderGrace,
+    any_alive,
+    pump_message_queue,
+    read_stream_into_queue,
+)
 from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.subprocess_util import no_window_creationflags, utf8_subprocess_env
@@ -59,6 +65,7 @@ class TaskProcessManager:
         self.run_output_queue: Queue = Queue()
         self.run_error_queue: Queue = Queue()
         self.process: subprocess.Popen | None = None
+        self._reader_grace = ReaderGrace()
 
         self.task_done_trigger_function: Callable = task_done_trigger_function
         self.error_trigger_function: Callable = error_trigger_function
@@ -155,6 +162,7 @@ class TaskProcessManager:
             self.main_window.show()
             return
         self.still_run_program = True
+        self._reader_grace.restart()
         self.read_program_output_from_thread = Thread(
             target=self.read_program_output_from_process,
             daemon=True
@@ -190,23 +198,31 @@ class TaskProcessManager:
                 self.timer.stop()
             return
         if self.process.returncode is not None:
+            # Output still on its way is pumped on the next ticks, not waited
+            # for here: this is the UI thread
+            if self._reader_grace.still_reading(
+                    self.read_program_output_from_thread, self.read_program_error_output_from_thread):
+                return
             if self.timer.isActive():
                 self.timer.stop()
             self.exit_program()
         elif self.still_run_program:
             self.process.poll()
 
-    # exit program change run flag to false and clean read thread and queue and process
     def exit_program(self):
+        """End the run: show what is left of its output, report the exit, run the done hook.
+
+        Does not wait for the reader threads; the pump gave them their grace.
+        One still alive means a process the run started holds the output, and
+        the window says so.
+        """
         self.still_run_program = False
-        # Wait for threads to finish before cleanup
-        if self.read_program_output_from_thread is not None:
-            self.read_program_output_from_thread.join(timeout=2)
-            self.read_program_output_from_thread = None
-        if self.read_program_error_output_from_thread is not None:
-            self.read_program_error_output_from_thread.join(timeout=2)
-            self.read_program_error_output_from_thread = None
+        readers = (self.read_program_output_from_thread, self.read_program_error_output_from_thread)
+        self.read_program_output_from_thread = None
+        self.read_program_error_output_from_thread = None
         self.drain_and_display_queue()
+        if any_alive(*readers):
+            self.main_window.append_output(OUTPUT_STILL_HELD_NOTE, own_line=True)
         if self.process is not None:
             self.process.terminate()
             self.main_window.append_output(
