@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import codecs
 import os
+import weakref
 
 import paramiko
 from PySide6.QtCore import QThread, Signal
@@ -21,7 +22,7 @@ from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_host_key_policy import (
 )
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_key_loader import load_private_key
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_login_widget import LoginWidget
-from pybreeze.pybreeze_ui.thread_keeper import let_run_out
+from pybreeze.pybreeze_ui.thread_keeper import if_alive, let_run_out
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.terminal_text import split_incomplete_escape, strip_terminal_controls
 
@@ -286,8 +287,13 @@ class SSHCommandWidget(QWidget):
         # timeouts together, and a server gone quiet after auth held it while
         # the channel waited to open.
         thread = SshConnectThread(connect)
-        thread.connected.connect(lambda: self._on_connected(client, opened["channel"], host, port, user))
-        thread.failed.connect(lambda message: self._on_connect_failed(client, message))
+        # Weakly: this widget keeps the thread, so slots holding the widget
+        # kept the closed and deleted widget alive with it
+        me = weakref.ref(self)
+        thread.connected.connect(lambda: if_alive(
+            me, lambda widget: widget._on_connected(client, opened["channel"], host, port, user)))
+        thread.failed.connect(lambda message: if_alive(
+            me, lambda widget: widget._on_connect_failed(client, message)))
         self._connecting = thread
         thread.start()
 

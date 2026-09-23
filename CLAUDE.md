@@ -18,7 +18,7 @@ pybreeze/
 │   ├── connect_gui/             # ssh/ (terminal + SFTP tree), url/ (AI review client)
 │   ├── jupyter_lab_gui/         # JupyterLab tab (QWebEngineView)
 │   ├── show_code_window/        # CodeWindow — subprocess output display
-│   ├── thread_keeper.py         # let_run_out: a worker QThread outlives its closed widget
+│   ├── thread_keeper.py         # let_run_out: a worker QThread outlives its closed widget; if_alive: weak slots
 │   ├── gui_thread_gc.py         # Garbage collected on a GUI-thread timer, never on a worker
 │   ├── plain_text.py            # as_text: server/file text shown in message boxes as text, not markup
 │   ├── closing.py               # may_close / AskingDock: tabs and docks with unsaved work are asked first
@@ -87,6 +87,7 @@ ruff check pybreeze/                              # before committing non-trivia
 
 - Python 3.10+: `X | Y` unions, `from __future__ import annotations`, `TYPE_CHECKING` guard for hint-only imports
 - **Never update UI from a worker thread** — Queue + QTimer (see `TaskProcessManager`) or Qt Signal/Slot
+- A slot on a thread (or any object) the widget keeps must not hold the widget: connect a bound method, or `thread_keeper.if_alive(weakref.ref(self), ...)`. A lambda capturing `self` there is a cycle through Qt that Python's collector cannot see, and the closed widget is never freed
 - Automatic garbage collection is off in the IDE: `start_editor()` collects on a GUI-thread timer (`gui_thread_gc.py`), because a collection on a worker destroys Qt objects there. Never call `gc.enable()`
 - Custom exceptions inherit from `ITEException`; log via `pybreeze_logger` (lazy `%s` formatting, never `print()`)
 - Plugin API: `register_programming_language()` / `register_natural_language()` from `je_editor.plugins`

@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-190 | 2026-09-24 | Free the CoT review, Skill send, Diff and SSH panels once they are closed | #fix #ai #ssh #tools | [2026-09](2026-09.md) |
 | U-20260923-189 | 2026-09-24 | Let the TestPioneer menu's stand-in message box take the delete-on-close attribute | #test | [2026-09](2026-09.md) |
 | U-20260923-188 | 2026-09-24 | Delete message boxes and the prthinker settings dialog once they are answered | #fix #ui | [2026-09](2026-09.md) |
 | U-20260923-187 | 2026-09-24 | Show a plugin's About text as text, in a box that belongs to the main window | #fix #plugin | [2026-09](2026-09.md) |
@@ -270,4 +271,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 207 |
+| [2026-09.md](2026-09.md) | 2026-09 | 208 |

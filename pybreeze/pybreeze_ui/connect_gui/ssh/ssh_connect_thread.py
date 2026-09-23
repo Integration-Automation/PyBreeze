@@ -52,7 +52,9 @@ class SshConnectThread(QThread):
         try:
             self._connect()
         except CONNECT_ERRORS as error:
-            pybreeze_logger.info("SSH connect failed: %r", error)
+            # Its text, not the exception: a handler that keeps records kept the
+            # traceback, and through its frames the panel that connected
+            pybreeze_logger.info("SSH connect failed: %s", repr(error))
             self.failed.emit(str(error))
         else:
             self.connected.emit()

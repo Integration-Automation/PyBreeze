@@ -12,6 +12,7 @@ import base64
 import hashlib
 import threading
 import time
+import weakref
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -100,8 +101,17 @@ class InteractiveHostKeyPolicy(paramiko.MissingHostKeyPolicy):
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__()
-        self._parent = parent
+        # Weakly: the client holding this policy is held by the connect's slots
+        # through Qt, so a strong parent kept the closed SSH panel alive
+        self._parent = weakref.ref(parent) if parent is not None else None
         self._word_dict = language_wrapper.language_word_dict
+
+    def _asked(self, title: str, message: str) -> bool:
+        """Whether the user trusts the key; No when the panel that asked has gone."""
+        if self._parent is None:
+            return host_key_asker().ask(None, title, message)
+        parent = self._parent()
+        return parent is not None and host_key_asker().ask(parent, title, message)
 
     def missing_host_key(
         self,
@@ -133,8 +143,7 @@ class InteractiveHostKeyPolicy(paramiko.MissingHostKeyPolicy):
             if _is_trusted_on_disk(hostname, key):
                 client.get_host_keys().add(hostname, key_type, key)
                 return
-            if _declined_just_now(hostname, fingerprint) or not host_key_asker().ask(
-                    self._parent, title, message):
+            if _declined_just_now(hostname, fingerprint) or not self._asked(title, message):
                 _RECENT_DECLINES[(hostname, fingerprint)] = time.monotonic()
                 pybreeze_logger.warning(
                     "SSH host key for %s rejected by user (%s)", hostname, fingerprint

@@ -89,8 +89,17 @@ class CoTCodeReviewGUI(QWidget):
         self.send_button.setEnabled(False)
         self.thread = SenderThread(files=self.files, code=self.code_paste_area.toPlainText(), url=url)
         self.thread.update_response.connect(self.handle_response)
-        self.thread.finished.connect(lambda: self.send_button.setEnabled(True))
+        self.thread.finished.connect(self._enable_send)
         self.thread.start()
+
+    def _enable_send(self) -> None:
+        """Let the next request be sent, however this one ended.
+
+        A bound method, not a lambda: the thread's connection holding a lambda
+        that held the panel kept both alive after the panel was closed and
+        deleted, a cycle through Qt that Python's collector cannot see.
+        """
+        self.send_button.setEnabled(True)
 
     def handle_response(self, filename, response):
         self.responses[filename] = response

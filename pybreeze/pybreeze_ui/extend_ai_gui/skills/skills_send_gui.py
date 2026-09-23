@@ -209,8 +209,17 @@ class SkillsSendGUI(QWidget):
         self.thread.error.connect(self.on_error)
         # However run() ends -- including an exception outside its handler --
         # the button comes back.
-        self.thread.finished.connect(lambda: self.send_button.setEnabled(True))
+        self.thread.finished.connect(self._enable_send)
         self.thread.start()
+
+    def _enable_send(self) -> None:
+        """Let the next request be sent, however this one ended.
+
+        A bound method, not a lambda: the thread's connection holding a lambda
+        that held the panel kept both alive after the panel was closed and
+        deleted, a cycle through Qt that Python's collector cannot see.
+        """
+        self.send_button.setEnabled(True)
 
     def on_finished(self, result):
         self.response_output.setPlainText(result)

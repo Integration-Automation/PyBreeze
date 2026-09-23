@@ -98,9 +98,14 @@ class DiffGUI(QWidget):
         self.summary_label.setText(language_wrapper.language_word_dict.get("diff_comparing"))
         thread = DiffThread(exact_text(self.left_edit), exact_text(self.right_edit))
         thread.compared.connect(self._show)
-        thread.finished.connect(lambda: self.compare_button.setEnabled(True))
+        thread.finished.connect(self._enable_compare)
         self._compare_thread = thread
         thread.start()
+
+    def _enable_compare(self) -> None:
+        """Let the next comparison start. A bound method: a lambda holding the
+        tab, on the thread the tab keeps, kept the closed tab alive."""
+        self.compare_button.setEnabled(True)
 
     def _show(self, comparison: Comparison) -> None:
         self.summary_label.setText(build_summary_line(comparison.summary))
