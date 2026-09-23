@@ -312,15 +312,21 @@ class TestQueryValuesFromTheUrl:
     """A value in the recorded URL is percent-encoded; params hold it decoded, once."""
 
     def test_an_encoded_value_is_decoded(self):
-        entry = parse_har(_har(_entry(url="https://x/api?q=hello%20world&tag=a%2Bb")))[0]
+        entry = parse_har(_har(_entry(url="https://x/api?q=hello+world&tag=a%2Bb")))[0]
 
         assert entry.request.params == {"q": "hello world", "tag": "a+b"}
 
     def test_the_rebuilt_url_is_encoded_once(self):
-        entry = parse_har(_har(_entry(url="https://x/api?q=hello%20world")))[0]
+        entry = parse_har(_har(_entry(url="https://x/api?q=hello+world")))[0]
 
-        assert "%2520" not in entry.request.full_url
         assert entry.request.full_url == "https://x/api?q=hello+world"
+
+    def test_a_query_that_would_not_come_back_as_written_stays_as_recorded(self):
+        # Decoded and encoded again, %20 became + and a bare key gained =
+        entry = parse_har(_har(_entry(url="https://x/api?q=hello%20world&flag")))[0]
+
+        assert entry.request.params == {}
+        assert entry.request.full_url == "https://x/api?q=hello%20world&flag"
 
 
 class TestWhatReachesTheGeneratedCode:

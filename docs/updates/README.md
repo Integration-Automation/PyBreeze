@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-111 | 2026-09-23 | cURL and HAR import send a query that would not survive re-encoding as it was written | #fix #tools | [2026-09](2026-09.md) |
 | U-20260923-110 | 2026-09-23 | The Diff tab matches the lines once and off the UI thread | #fix #tools #performance | [2026-09](2026-09.md) |
 | U-20260923-109 | 2026-09-23 | cURL import reads @file bodies as curl sends them and stops sending a -b cookie file's name as a cookie | #fix #tools | [2026-09](2026-09.md) |
 | U-20260923-108 | 2026-09-23 | cURL and HAR import send a form as multipart without the copied Content-Type, and the JSON action refuses what it cannot carry | #fix #tools | [2026-09](2026-09.md) |
@@ -191,4 +192,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 128 |
+| [2026-09.md](2026-09.md) | 2026-09 | 129 |

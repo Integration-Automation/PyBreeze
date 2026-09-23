@@ -539,17 +539,31 @@ def _split_url_query(request: CurlRequest) -> None:
     Browser "copy as cURL" keeps the query in the URL; splitting it out lets it
     show up alongside ``-G`` / ``-d`` query pairs, while
     :attr:`CurlRequest.full_url` can still rebuild the original address. Values
-    are URL-decoded, and a key given more than once keeps every value.
+    are URL-decoded, and a key given more than once keeps every value. A query
+    that would not come back as written stays in the URL
+    (:func:`query_round_trips`).
     """
     # The fragment is the browser's: curl never sends it, and left in, it
     # became part of the last query value (?b=1#frag sent b="1#frag").
     request.url = request.url.partition("#")[0]
     base, separator, query = request.url.partition("?")
-    if not separator:
+    if not separator or not query_round_trips(query):
         return
     request.url = base
     for key, value in parse_qsl(query, keep_blank_values=True):
         add_repeated_value(request.params, key, value)
+
+
+def query_round_trips(query: str) -> bool:
+    """Whether decoding *query* into pairs and encoding them again gives it back.
+
+    Only such a query is split into ``params``; any other stays in the URL as
+    written, which ``requests`` sends as it is. Split and encoded again,
+    ``?flag&q=%B0&r=/x`` went out as ``?flag=&q=%EF%BF%BD&r=%2Fx``: a
+    valueless key gained ``=``, a byte that is not UTF-8 became U+FFFD, and
+    ``/`` was escaped, which breaks a signed URL.
+    """
+    return urlencode(parse_qsl(query, keep_blank_values=True)) == query
 
 
 def url_is_well_formed(url: str) -> bool:

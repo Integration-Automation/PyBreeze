@@ -182,3 +182,21 @@ class TestACookieFile:
 
         with pytest.raises(CurlParseException):
             to_apitestka_action_json(parse_curl("curl -b cookies.txt https://h/"))
+
+
+@pytest.mark.parametrize("url", [
+    "https://h/a?flag&q=%B0&r=/x&s=a,b",
+    "https://h/a?q=hello%20world",
+    "https://h/a?X-Amz-Credential=AK%2F20260923%2Fus-east-1&X-Amz-Signature=abc",
+])
+def test_the_query_goes_out_as_it_was_pasted(url):
+    # Decoded and encoded again, it changed: flag=, %EF%BF%BD, %2Fx, a%2Cb, +
+    prepared = _what_requests_sends(to_requests_code(parse_curl(f"curl '{url}'")))
+
+    assert prepared.url == url
+
+
+def test_get_data_is_added_after_a_query_kept_as_written():
+    prepared = _what_requests_sends(to_requests_code(parse_curl("curl -G 'https://h/a?q=a%20b' -d k=v")))
+
+    assert prepared.url == "https://h/a?q=a%20b&k=v"

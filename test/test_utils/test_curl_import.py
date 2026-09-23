@@ -308,8 +308,19 @@ class TestParseCurlUrlQuery:
         assert request.params == {"a": "1", "b": "2"}
 
     def test_query_values_are_url_decoded(self):
-        request = parse_curl("curl 'https://x?q=hello%20world'")
-        assert request.params["q"] == "hello world"
+        request = parse_curl("curl 'https://x?q=hello+world&tag=a%2Bb'")
+        assert request.params == {"q": "hello world", "tag": "a+b"}
+
+    @pytest.mark.parametrize("url", [
+        "https://x/a?q=hello%20world", "https://x/a?flag&q=1", "https://x/a?q=%B0",
+        "https://x/a?r=/x&s=a,b", "https://x/a?X-Amz-Signature=ab%2Fcd&X-Amz-Date=20260923T000000Z%20",
+    ])
+    def test_a_query_that_would_not_come_back_as_written_stays_in_the_url(self, url):
+        # Split and encoded again it went out changed: %20 as +, flag as flag=,
+        # %B0 as %EF%BF%BD, / as %2F -- which breaks a signed URL
+        request = parse_curl(f"curl '{url}'")
+        assert request.params == {}
+        assert request.full_url == url
 
     def test_blank_query_value_kept(self):
         request = parse_curl("curl 'https://x?flag='")

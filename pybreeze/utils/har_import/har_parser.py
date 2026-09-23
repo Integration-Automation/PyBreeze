@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from urllib.parse import parse_qsl, urlparse
 
 from pybreeze.utils.curl_import.curl_parser import (
-    CurlRequest, add_repeated_value, http_method, url_is_well_formed,
+    CurlRequest, add_repeated_value, http_method, query_round_trips, url_is_well_formed,
 )
 from pybreeze.utils.exception.exception_tags import (
     empty_har_error,
@@ -137,15 +137,21 @@ def _apply_query(request: CurlRequest, raw_request: dict, query: str) -> None:
     values, and :attr:`CurlRequest.full_url` and the generated scripts encode
     them once on the way out.
     """
-    for key, value in parse_qsl(query, keep_blank_values=True):
-        add_repeated_value(request.params, key, value)
+    carried = parse_qsl(query, keep_blank_values=True)
+    if query_round_trips(query):
+        for key, value in carried:
+            add_repeated_value(request.params, key, value)
+    elif query:
+        # Split and encoded again it would not be what was sent
+        request.url = f"{request.url}?{query}"
     # The recorded list repeats the URL's parameters: only a name the URL did
     # not carry is taken from it, with all of that name's values.
     recorded: dict[str, str | list[str]] = {}
     for name, value in _header_pairs(raw_request.get("queryString")):
         add_repeated_value(recorded, name, value)
     for name, values in recorded.items():
-        request.params.setdefault(name, values)
+        if name not in {key for key, _value in carried}:
+            request.params.setdefault(name, values)
 
 
 def _apply_multipart(request: CurlRequest, params: list[tuple[str, str, str]]) -> None:
