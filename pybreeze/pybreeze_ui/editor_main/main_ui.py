@@ -27,6 +27,22 @@ EDITOR_EXTEND_TAB: dict[str, type[QWidget]] = {
 }
 
 
+def _close_guarded(widget: QWidget, *steps) -> None:
+    """Run *widget*'s closing *steps*, logging a failure instead of raising it.
+
+    The IDE's close runs every tab's and dock's close before JEditor's own, and
+    some of them are third-party (``EDITOR_EXTEND_TAB``) or plugin widgets. One
+    that raised stopped the rest: JEditor's close never ran, so the open files
+    were not recorded, the settings not written and the editors' auto-save
+    threads not stopped.
+    """
+    for step in steps:
+        try:
+            step()
+        except Exception as error:  # noqa: BLE001 — any widget may raise on close; the IDE must still close the rest
+            pybreeze_logger.error("%s did not close cleanly: %r", type(widget).__name__, error)
+
+
 class PyBreezeMainWindow(EditorMain):
 
     def __init__(self, debug_mode: bool = False, show_system_tray_ray: bool = False, extend: bool = False) -> None:
@@ -101,8 +117,7 @@ class PyBreezeMainWindow(EditorMain):
         # process, and without a console nobody would see it still running.
         # Over a copy: a window that closes drops itself from the list.
         for run_window in tuple(self.current_run_code_window):
-            run_window.stop_runner()
-            run_window.close()
+            _close_guarded(run_window, run_window.stop_runner, run_window.close)
         self._close_tool_tabs_and_docks()
         super().closeEvent(event)
 
@@ -117,9 +132,9 @@ class PyBreezeMainWindow(EditorMain):
         for index in range(self.tab_widget.count() - 1, -1, -1):
             widget = self.tab_widget.widget(index)
             if widget is not None and not isinstance(widget, EditorWidget):
-                widget.close()
+                _close_guarded(widget, widget.close)
         for dock in self.findChildren(DestroyDock):
-            dock.close()
+            _close_guarded(dock, dock.close)
 
     def debug_close(self) -> None:
         """Close the window and leave the event loop. Used by the startup tests.

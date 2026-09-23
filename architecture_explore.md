@@ -96,7 +96,7 @@ Template Method 定義的子行程生命週期：
 | 讀取 | 兩條 daemon Thread 各自經 `queue_pump.read_stream_into_queue()` 對 stdout / stderr `readline()`，原樣塞進 `Queue`（保留縮排、行尾與空行）；**空讀 = EOF 立刻 break**（否則會 100% CPU 空轉） |
 | 送 UI | `QTimer` 每 100 ms 呼叫 `pull_text()`，經 `pump_message_queue()` 每 tick 最多抽 256 則，交給 `CodeWindow.append_output()` |
 | 收尾 | `exit_program()`：join 執行緒（timeout 2s）→ drain queue（`max_messages=None` 一次抽乾）→ `terminate()` → 呼叫 `task_done_trigger_function`（例如寄信） |
-| 停止 | `stop()`：子行程還在跑就 `terminate()`（只有它本身，它再開的行程不管），之後照一般結束的路徑回報。經 `CodeWindow.stop_runner()` 呼叫；關閉 IDE 時 `PyBreezeMainWindow.closeEvent()` 對每個執行視窗都呼叫一次 |
+| 停止 | `stop()`：子行程還在跑就 `terminate()`（只有它本身，它再開的行程不管），之後照一般結束的路徑回報。經 `CodeWindow.stop_runner()` 呼叫；關閉 IDE 時 `PyBreezeMainWindow.closeEvent()` 對每個執行視窗都呼叫一次（經 `_close_guarded()`：一個視窗、分頁或 dock 關閉時丟例外只記錄，其餘照關，JEditor 自己的 `closeEvent` 一定會跑到） |
 
 三種啟動介面：
 
@@ -433,7 +433,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 18. 測試與 CI
 
-- **單元測試** `test/test_utils/` — 92 個 `test_*.py`、1448 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
+- **單元測試** `test/test_utils/` — 93 個 `test_*.py`、1450 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
 - **整合測試** `test/unit_test/start_automation/` — 以 `debug_mode=True` 啟動 IDE，10 秒後自動關閉，驗證啟動流程與 extend tab
 - **CI** `.github/workflows/{dev,stable}.yml` — `unit-tests` job 跑 Windows runner、Python 3.10–3.14 矩陣，3.12 那一腳額外上傳 `coverage-xml` artifact；`sonarcloud` job 跑 ubuntu、`needs: unit-tests`。每日 02:00 排程 + push/PR 觸發。`stable.yml` 另有 `publish` job 負責版號遞增與 PyPI 發布
 - **覆蓋率** `.coveragerc` — `relative_files = True` 是必要的：報告在 Windows 產生、由 Linux 上的 scanner 讀取，路徑不能帶機器資訊。目前整體 60%（`utils/`、`tools_gui`、`dialog` 95–100%；`editor_main` 58%、`menu` 54%；仍低的是 `diagram_editor` 45%、`process_executor` 39%、`connect_gui` 28%）
