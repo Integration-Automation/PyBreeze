@@ -15,9 +15,11 @@ from pybreeze.utils.exception.exception_tags import (
     unreadable_url_error,
     url_port_out_of_range_error,
 )
-from pybreeze.utils.exception.exceptions import UrlConvertException
+from pybreeze.utils.exception.exceptions import QueryConvertException, UrlConvertException
 from pybreeze.utils.logging.logger import pybreeze_logger
-from pybreeze.utils.query_tools.query_convert import query_to_dict
+from pybreeze.utils.query_tools.query_convert import coerce_scalar, query_to_dict
+
+_MAX_PORT = 65535
 
 
 def _safe_port(split: SplitResult) -> int | None:
@@ -75,9 +77,13 @@ def url_to_json(url: str) -> str:
 
 
 def _has_port_text(url: str) -> bool:
-    """Whether *url*'s authority names a port at all, readable or not."""
+    """Whether *url*'s authority names a port at all, readable or not.
+
+    ``http://example.com:/`` names none: RFC 3986 allows the colon with an
+    empty port, and it was refused as a port out of range.
+    """
     host_and_port = urlsplit(url.strip()).netloc.rpartition("@")[2]
-    return bool(host_and_port.rpartition("]")[2].partition(":")[1])
+    return bool(host_and_port.rpartition("]")[2].partition(":")[2])
 
 
 def _build_netloc(components: dict, host: str) -> str:
@@ -85,15 +91,30 @@ def _build_netloc(components: dict, host: str) -> str:
     if ":" in host and not host.startswith("["):
         host = f"[{host}]"  # bracket an IPv6 literal so the port stays separable
     netloc = host
-    port = components.get("port")
-    if port is not None and port != "":
+    port = _port_text(components.get("port"))
+    if port:
         netloc = f"{netloc}:{port}"
     username = components.get("username")
     if username is not None:
         password = components.get("password")
-        credentials = username if password is None else f"{username}:{password}"
+        credentials = str(username) if password is None else f"{username}:{password}"
         netloc = f"{credentials}@{netloc}"
     return netloc
+
+
+def _port_text(port: object) -> str:
+    """*port* as the URL writes it: empty for none, else a whole number from 0 to 65535.
+
+    :raises UrlConvertException: for anything else; ``"abc"`` went into the URL as ``h:abc``
+    """
+    if port is None or port == "":
+        return ""
+    if isinstance(port, str) and port.strip().isdigit():
+        port = int(port)
+    if isinstance(port, bool) or not isinstance(port, int) or not 0 <= port <= _MAX_PORT:
+        pybreeze_logger.error(url_port_out_of_range_error)
+        raise UrlConvertException(url_port_out_of_range_error)
+    return str(port)
 
 
 def _build_query(query: object) -> str:
@@ -101,8 +122,17 @@ def _build_query(query: object) -> str:
     if not query:
         return ""
     if isinstance(query, dict):
-        # doseq: a list value is a key that repeats, one pair per value.
-        return urlencode(query, doseq=True)
+        # A list value is a key that repeats, one pair per value. Each value as
+        # the query tool writes it: null is empty, not "None", and an object
+        # has no query form.
+        pairs: list[tuple[str, str]] = []
+        try:
+            for key, value in query.items():
+                values = value if isinstance(value, list) else [value]
+                pairs.extend((str(key), coerce_scalar(item)) for item in values)
+        except QueryConvertException as error:
+            raise UrlConvertException(str(error)) from error
+        return urlencode(pairs)
     return str(query)
 
 
@@ -113,14 +143,22 @@ def build_url(components: dict) -> str:
 
     :param components: URL parts as produced by :func:`parse_url`
     :return: the assembled URL
+    :raises UrlConvertException: for a port that is not a whole number from 0
+        to 65535, or a query value that is an object or a list inside a list
     """
-    scheme = str(components.get("scheme", ""))
-    host = str(components.get("host", ""))
+    scheme = _part(components, "scheme")
+    host = _part(components, "host")
     netloc = _build_netloc(components, host)
-    path = str(components.get("path", ""))
+    path = _part(components, "path")
     query = _build_query(components.get("query"))
-    fragment = str(components.get("fragment", ""))
+    fragment = _part(components, "fragment")
     return urlunsplit((scheme, netloc, path, query, fragment))
+
+
+def _part(components: dict, name: str) -> str:
+    """The URL part *name* as text: a missing or null part is empty, not ``None``."""
+    value = components.get(name)
+    return "" if value is None else str(value)
 
 
 def json_to_url(json_text: str) -> str:
@@ -128,11 +166,14 @@ def json_to_url(json_text: str) -> str:
 
     :param json_text: a JSON object as produced by :func:`url_to_json`
     :return: the assembled URL
-    :raises UrlConvertException: when the input is not valid JSON or not an object
+    :raises UrlConvertException: when the input is not valid JSON or not an
+        object, or holds a part :func:`build_url` refuses
     """
     try:
         components = json.loads(json_text)
-    except ValueError as error:
+    # RecursionError: JSON nested deeper than the parser goes, which escaped
+    # the tab's slot
+    except (ValueError, RecursionError) as error:
         pybreeze_logger.error(invalid_json_for_url_error)
         raise UrlConvertException(invalid_json_for_url_error) from error
     if not isinstance(components, dict):

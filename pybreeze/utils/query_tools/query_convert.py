@@ -55,7 +55,7 @@ def query_to_json(query: str) -> str:
     return json.dumps(query_to_dict(query), indent=4, ensure_ascii=False, sort_keys=True)
 
 
-def _coerce_scalar(value: object) -> str:
+def coerce_scalar(value: object) -> str:
     """Render a scalar JSON value as the string a query string would carry.
 
     ``null`` is an empty value (``a=``), not Python's ``None``; an object or a
@@ -85,8 +85,9 @@ def json_to_query(json_text: str) -> str:
     """
     try:
         parsed = json.loads(json_text)
-    # json.JSONDecodeError derives from ValueError.
-    except ValueError as error:
+    # json.JSONDecodeError derives from ValueError; RecursionError is JSON
+    # nested deeper than the parser goes, which escaped the tab's slot
+    except (ValueError, RecursionError) as error:
         pybreeze_logger.error(invalid_json_for_query_error)
         raise QueryConvertException(invalid_json_for_query_error) from error
     if not isinstance(parsed, dict):
@@ -96,7 +97,7 @@ def json_to_query(json_text: str) -> str:
     pairs: list[tuple[str, str]] = []
     for key, value in parsed.items():
         if isinstance(value, list):
-            pairs.extend((key, _coerce_scalar(item)) for item in value)
+            pairs.extend((key, coerce_scalar(item)) for item in value)
         else:
-            pairs.append((key, _coerce_scalar(value)))
+            pairs.append((key, coerce_scalar(value)))
     return urlencode(pairs)

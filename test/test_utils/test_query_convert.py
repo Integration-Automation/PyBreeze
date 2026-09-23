@@ -90,3 +90,12 @@ class TestValuesWithoutAQueryForm:
 
         with pytest.raises(QueryConvertException):
             json_to_query(text)
+
+
+def test_json_nested_too_deep_is_reported_not_raised_out_of_the_tab():
+    from pybreeze.utils.exception.exceptions import QueryConvertException
+    from pybreeze.utils.query_tools.query_convert import json_to_query
+
+    # json.loads raises RecursionError, which the tab did not catch
+    with pytest.raises(QueryConvertException):
+        json_to_query("[" * 100000)

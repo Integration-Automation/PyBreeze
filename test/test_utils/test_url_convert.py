@@ -134,3 +134,42 @@ class TestAPortOutOfRange:
         from pybreeze.utils.url_tools.url_convert import url_to_json
 
         assert json.loads(url_to_json(url))["scheme"] == "http"
+
+
+class TestAnEmptyPort:
+    def test_the_colon_alone_names_no_port(self):
+        # RFC 3986 allows it; it was refused as a port out of range
+        assert json.loads(url_to_json("http://example.com:/p"))["port"] is None
+
+
+class TestPartsThatAreNotText:
+    def test_null_parts_are_empty_not_none(self):
+        url = json_to_url('{"scheme": "http", "host": "h", "path": null, "fragment": null}')
+
+        assert url == "http://h"
+
+    def test_a_null_query_value_is_empty_as_in_the_query_tool(self):
+        assert json_to_url('{"scheme": "http", "host": "h", "query": {"a": null, "b": true}}') == "http://h?a=&b=true"
+
+    def test_an_object_as_a_query_value_is_refused_not_flattened(self):
+        # {"x": 1} went into the URL as its keys: b=x
+        with pytest.raises(UrlConvertException):
+            json_to_url('{"scheme": "http", "host": "h", "query": {"b": {"x": 1}}}')
+
+    @pytest.mark.parametrize("port", ['"abc"', "70000", "-1", "true", "8.5"])
+    def test_a_port_that_is_no_port_is_refused(self, port):
+        # "abc" went into the URL as h:abc
+        with pytest.raises(UrlConvertException):
+            json_to_url(f'{{"scheme": "http", "host": "h", "port": {port}}}')
+
+    @pytest.mark.parametrize(("port", "expected"), [("8080", "http://h:8080"), ('"8080"', "http://h:8080"),
+                                                    ("null", "http://h"), ('""', "http://h")])
+    def test_a_port_given_as_text_or_left_out_still_builds(self, port, expected):
+        assert json_to_url(f'{{"scheme": "http", "host": "h", "port": {port}}}') == expected
+
+
+class TestJsonNestedTooDeep:
+    def test_it_is_reported_not_raised_out_of_the_tab(self):
+        # json.loads raises RecursionError, which the tab did not catch
+        with pytest.raises(UrlConvertException):
+            json_to_url("[" * 100000)
