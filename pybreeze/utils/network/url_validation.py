@@ -53,6 +53,10 @@ def _is_blocked_ip(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
         return True
     if isinstance(ip, ipaddress.IPv4Address):
         return ip in _CGNAT_NETWORK
+    # fec0::/10 site-local: deprecated, yet still routed inside some networks,
+    # and neither is_private nor is_global says so
+    if ip.is_site_local:
+        return True
     return any(_is_blocked_ip(embedded) for embedded in _embedded_ipv4(ip))
 
 
@@ -63,9 +67,10 @@ def validate_url(url: str) -> str:
       1. Scheme must be ``http`` or ``https``
       2. Hostname must be present
       3. Every resolved IP must be a public address. Private, loopback,
-         link-local, reserved, multicast, unspecified and Carrier-Grade NAT
-         ranges are blocked, as are IPv6 transition forms (IPv4-mapped, 6to4,
-         Teredo, NAT64) that tunnel to a blocked IPv4 endpoint.
+         link-local, reserved, multicast, unspecified, IPv6 site-local and
+         Carrier-Grade NAT ranges are blocked, as are IPv6 transition forms
+         (IPv4-mapped, 6to4, Teredo, NAT64) that tunnel to a blocked IPv4
+         endpoint.
 
     Returns the original *url* on success; raises ``UnsafeURLError`` on failure.
     """

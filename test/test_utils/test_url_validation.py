@@ -33,6 +33,7 @@ class TestPrivateAddressBlocking:
         "http://224.0.0.1/",          # multicast
         "http://[::1]/",              # IPv6 loopback
         "http://[fe80::1]/",          # IPv6 link-local
+        "http://[fec0::1]/",          # IPv6 site-local (deprecated, still routed in places)
     ])
     def test_blocked(self, url):
         with pytest.raises(UnsafeURLError):
