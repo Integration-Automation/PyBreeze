@@ -27,6 +27,14 @@ def app():
     return instance
 
 
+class _NothingRunning:
+    """For a panel whose worker has already been waited for (and let go of)."""
+
+    @staticmethod
+    def isRunning() -> bool:
+        return False
+
+
 def _wait_for(app, thread, seconds: float = 10) -> None:
     deadline = time.monotonic() + seconds
     while thread.isRunning() and time.monotonic() < deadline:
@@ -51,8 +59,25 @@ def _freed_after_a_run(app, build, drive, thread_of) -> bool:
     widget.deleteLater()
     QCoreApplication.sendPostedEvents(widget, QEvent.Type.DeferredDelete)
     del widget
+    _forget_captured_log_records()
     gc.collect()
     return watch() is None
+
+
+def _forget_captured_log_records() -> None:
+    """Drop the records pytest has captured so far.
+
+    A record logged with an exception as its argument keeps the exception's
+    traceback, and through its frames the panel that logged it. The IDE's own
+    handler writes a line to a file and keeps nothing; pytest's keeps them all.
+    """
+    import logging
+
+    for handler in logging.getLogger().handlers:
+        # clear(), not reset(): pytest keeps the list reset() replaces
+        forget = getattr(handler, "clear", None)
+        if callable(forget):
+            forget()
 
 
 def _cot(widget) -> None:
@@ -129,7 +154,8 @@ def test_the_diagram_editor_after_an_image_from_a_url(app, monkeypatch):
     buffer.open(QIODevice.OpenModeFlag.WriteOnly)
     image.save(buffer, "PNG")
     monkeypatch.setattr(diagram_scene, "safe_download_image", lambda _url: bytes(png.data()))
-    monkeypatch.setattr(QInputDialog, "getText", staticmethod(lambda *_args, **_kwargs: ("http://x.test/a.png", True)))
+    monkeypatch.setattr(
+        QInputDialog, "getText", staticmethod(lambda *_args, **_kwargs: ("http://x.test/a.png", True)))
 
     def add_image(widget) -> None:
         widget._add_image_from_url()
@@ -140,12 +166,7 @@ def test_the_diagram_editor_after_an_image_from_a_url(app, monkeypatch):
             app.processEvents()
         assert len(widget._scene.get_all_images()) == 1
 
-    class _Done:
-        @staticmethod
-        def isRunning() -> bool:
-            return False
-
-    assert _freed_after_a_run(app, DiagramEditorWidget, add_image, lambda _widget: _Done)
+    assert _freed_after_a_run(app, DiagramEditorWidget, add_image, lambda _widget: _NothingRunning)
 
 
 def test_the_sftp_tree_after_a_listing(app):
@@ -180,12 +201,7 @@ def test_the_sftp_tree_after_a_listing(app):
             time.sleep(0.01)
         assert not tree._listings
 
-    class _Done:
-        @staticmethod
-        def isRunning() -> bool:
-            return False
-
-    assert _freed_after_a_run(app, build, list_root, lambda _tree: _Done)
+    assert _freed_after_a_run(app, build, list_root, lambda _tree: _NothingRunning)
 
 
 def test_the_regex_tab(app):
@@ -224,9 +240,24 @@ def test_the_sftp_tree_after_an_upload(app, monkeypatch, tmp_path):
             time.sleep(0.01)
         assert tree._transfer is None
 
-    class _Done:
-        @staticmethod
-        def isRunning() -> bool:
-            return False
+    assert _freed_after_a_run(app, build, upload, lambda _tree: _NothingRunning)
 
-    assert _freed_after_a_run(app, build, upload, lambda _tree: _Done)
+
+def _tool_keys() -> list[str]:
+    from pybreeze.pybreeze_ui.menu.tools import tools_menu
+
+    return list(tools_menu._WIDGET_FACTORIES)
+
+
+@pytest.mark.parametrize("key", _tool_keys())
+def test_every_tool_tab_opened_and_closed_is_freed(app, key):
+    from PySide6.QtWidgets import QTabWidget
+
+    from pybreeze.pybreeze_ui.menu.tools import tools_menu
+
+    class Main:
+        tab_widget = QTabWidget()
+        current_run_code_window: list = []
+
+    assert _freed_after_a_run(
+        app, lambda: tools_menu._WIDGET_FACTORIES[key](Main()), lambda _widget: None, lambda _widget: _NothingRunning)
