@@ -40,9 +40,11 @@ pybreeze_traditional_chinese_word_dict = {
     "autocontrol_github_label": "開啟 Autocontrol GitHub",
     "autocontrol_github_tab_label": "Autocontrol GitHub",
     "autocontrol_create_project_label": "建立 Autocontrol 專案",
-    "autocontrol_record_menu_label": "紀錄",
-    "autocontrol_record_start_label": "紀錄 Start",
-    "autocontrol_record_stop_label": "紀錄 Stop",
+    "autocontrol_record_menu_label": "錄製",
+    "autocontrol_record_start_label": "開始錄製",
+    "autocontrol_record_stop_label": "停止錄製",
+    "autocontrol_record_nothing": "沒有錄到任何動作。請先開始錄製，再停止。",
+    "autocontrol_record_copied": "錄製結果已複製到剪貼簿：目前最前面的不是編輯分頁，沒有地方可以插入。",
     # File Automation Menu
     "file_automation_menu_label": "FileAutomation",
     "file_automation_run_script_label": "運行 FileAutomation 腳本",
@@ -103,6 +105,9 @@ pybreeze_traditional_chinese_word_dict = {
     # Test Pioneer Menu
     "test_pioneer_label": "TestPioneer",
     "test_pioneer_create_template_label": "建立 TestPioneer Yaml 模板",
+    "test_pioneer_template_exists": "{path} 已經存在。要用新的範本取代，並捨棄它目前的內容嗎？",
+    "test_pioneer_template_failed": "無法在 {path} 建立範本：{error}",
+    "test_pioneer_template_created": "已建立範本：{path}",
     "test_pioneer_run_yaml": "執行 Test Pioneer Yaml",
     "test_pioneer_not_choose_yaml": "請選擇 Yaml 檔案",
     # prthinker code review

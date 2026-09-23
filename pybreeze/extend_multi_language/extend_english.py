@@ -43,6 +43,8 @@ pybreeze_english_word_dict = {
     "autocontrol_record_menu_label": "Record",
     "autocontrol_record_start_label": "Record Start",
     "autocontrol_record_stop_label": "Record Stop",
+    "autocontrol_record_nothing": "Nothing was recorded. Start recording first, then stop it.",
+    "autocontrol_record_copied": "The recording was copied to the clipboard: no editor tab is in front to insert it into.",
     # File Automation Menu
     "file_automation_menu_label": "FileAutomation",
     "file_automation_run_script_label": "Run FileAutomation Script",
@@ -103,6 +105,9 @@ pybreeze_english_word_dict = {
     # Test Pioneer Menu
     "test_pioneer_label": "TestPioneer",
     "test_pioneer_create_template_label": "Create TestPioneer Yaml template",
+    "test_pioneer_template_exists": "{path} already exists. Replace it with a fresh template and lose its content?",
+    "test_pioneer_template_failed": "The template could not be created at {path}: {error}",
+    "test_pioneer_template_created": "Template created: {path}",
     "test_pioneer_run_yaml": "Execute Test Pioneer Yaml",
     "test_pioneer_not_choose_yaml": "Please choose a Yaml file",
     # prthinker code review

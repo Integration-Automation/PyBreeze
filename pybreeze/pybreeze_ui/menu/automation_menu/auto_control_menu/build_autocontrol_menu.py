@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING
 
 import je_auto_control
-from PySide6.QtGui import QAction, QTextCharFormat
+from PySide6.QtGui import QAction, QGuiApplication, QTextCharFormat
+from PySide6.QtWidgets import QMessageBox
 from je_auto_control.gui.main_widget import AutoControlGUIWidget
 from je_editor import EditorWidget, language_wrapper
 from je_editor.pyside_ui.main_ui.save_settings.user_color_setting_file import actually_color_dict
@@ -58,11 +60,30 @@ def set_autocontrol_menu(ui_we_want_to_set: PyBreezeMainWindow):
     record_menu.addAction(stop_record_action)
 
 
-def stop_record(editor_instance: PyBreezeMainWindow):
+def stop_record(editor_instance: PyBreezeMainWindow) -> None:
+    """Stop recording and put the recorded actions where they can be run.
+
+    Recording stops whatever tab is in front: it used to stop only from an
+    editor tab, and from any other the keyboard and mouse hooks kept recording.
+    The actions go in as the JSON the AutoControl runner reads (they went in as
+    a Python repr, which it cannot), at the cursor of the editor tab in front,
+    or on the clipboard when there is none. When nothing was recorded -- or
+    recording was never started -- the user is told, instead of getting "None".
+    """
+    actions = je_auto_control.stop_record()
+    lang = language_wrapper.language_word_dict
+    title = lang.get("autocontrol_record_menu_label")
+    if not actions:
+        QMessageBox.information(editor_instance, title, lang.get("autocontrol_record_nothing"))
+        return
+    script = json.dumps(actions)
     widget = editor_instance.tab_widget.currentWidget()
-    if isinstance(widget, EditorWidget):
-        text_cursor = widget.code_edit.textCursor()
-        text_format = QTextCharFormat()
-        text_format.setForeground(actually_color_dict.get("normal_output_color"))
-        text_cursor.insertText(str(je_auto_control.stop_record()), text_format)
-        text_cursor.insertBlock()
+    if not isinstance(widget, EditorWidget):
+        QGuiApplication.clipboard().setText(script)
+        QMessageBox.information(editor_instance, title, lang.get("autocontrol_record_copied"))
+        return
+    text_cursor = widget.code_edit.textCursor()
+    text_format = QTextCharFormat()
+    text_format.setForeground(actually_color_dict.get("normal_output_color"))
+    text_cursor.insertText(script, text_format)
+    text_cursor.insertBlock()

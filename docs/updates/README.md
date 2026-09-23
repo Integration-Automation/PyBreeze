@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-69 | 2026-09-23 | AutoControl Record Stop: stops from any tab, inserts runnable JSON | #done #autocontrol | [2026-09](2026-09.md) |
 | U-20260923-68 | 2026-09-23 | Run with: a save that fails is reported and runs nothing | #fix #plugins | [2026-09](2026-09.md) |
 | U-20260923-67 | 2026-09-23 | CoT code review panel: in the menus, no DNS on the UI thread, fresh runs | #done #ai | [2026-09](2026-09.md) |
 | U-20260923-66 | 2026-09-23 | AI panels: no URLs in logs, damaged urls.txt, shared vote totals, prompt fields | #fix #ai #security | [2026-09](2026-09.md) |
@@ -149,4 +150,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 86 |
+| [2026-09.md](2026-09.md) | 2026-09 | 87 |
