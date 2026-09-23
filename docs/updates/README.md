@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-154 | 2026-09-24 | Stop a run's whole process tree, not only its direct child | #fix #executor #done | [2026-09](2026-09.md) |
 | U-20260923-153 | 2026-09-24 | Run a folder's files one after another, so each run has its own report and mail | #fix #executor #done | [2026-09](2026-09.md) |
 | U-20260923-152 | 2026-09-24 | Let a plugin run config name the encoding its program writes | #fix #plugins #executor #done | [2026-09](2026-09.md) |
 | U-20260923-151 | 2026-09-24 | Build compile-then-run binaries in a folder of their own, and make Stop during or just after a compile run nothing | #fix #executor #done | [2026-09](2026-09.md) |
@@ -234,4 +235,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 171 |
+| [2026-09.md](2026-09.md) | 2026-09 | 172 |

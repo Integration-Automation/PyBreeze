@@ -96,7 +96,7 @@ Template Method 定義的子行程生命週期：
 | 讀取 | 兩條 daemon Thread 各自經 `queue_pump.read_stream_into_queue()` 對 stdout / stderr `read1()`（有多少讀多少，不等換行：沒換行的狀態列與用 `\r` 重畫的進度條才會即時出現；沒有 `read1` 的文字串流才逐行讀），原樣塞進 `Queue`（保留縮排、行尾與空行）；**空讀 = EOF 立刻 break**（否則會 100% CPU 空轉） |
 | 送 UI | `QTimer` 每 100 ms 呼叫 `pull_text()`，經 `pump_message_queue()` 每 tick 最多抽 256 則，交給 `CodeWindow.append_output()` |
 | 收尾 | 子行程結束後，pump 照樣每 tick 抽 queue，直到兩條 reader 都讀到 EOF 或寬限（`ReaderGrace`，2 秒，那個 tick 還有輸出就重新起算，最長到結束後 30 秒）用完，UI 執行緒不 join 任何執行緒。`exit_program()`：drain queue（`max_messages=None` 一次抽乾）→ reader 還活著（子行程開的行程還握著管線）就在視窗註明之後的輸出不會顯示 → `terminate()` → 呼叫 `task_done_trigger_function`（例如寄信） |
-| 停止 | `stop()`：子行程還在跑就 `terminate()`（只有它本身，它再開的行程不管），之後照一般結束的路徑回報。經 `CodeWindow.stop_runner()` 呼叫；關閉 IDE 時 `PyBreezeMainWindow.closeEvent()` 對每個執行視窗都呼叫一次（經 `_close_guarded()`：一個視窗、分頁或 dock 關閉時丟例外只記錄，其餘照關，JEditor 自己的 `closeEvent` 一定會跑到） |
+| 停止 | `stop()`：子行程還在跑就 `stop_tree()`（連它開的行程一起：Windows 用 `taskkill /T /F`，POSIX 對子行程自己的 process group 送 SIGTERM；`go run`、`cargo run` 的程式與網頁執行開的瀏覽器是孫行程，只停子行程會留下它們），失敗就退回只 `terminate()` 子行程，之後照一般結束的路徑回報。經 `CodeWindow.stop_runner()` 呼叫；關閉 IDE 時 `PyBreezeMainWindow.closeEvent()` 對每個執行視窗都呼叫一次（經 `_close_guarded()`：一個視窗、分頁或 dock 關閉時丟例外只記錄，其餘照關，JEditor 自己的 `closeEvent` 一定會跑到） |
 
 三種啟動介面：
 
@@ -142,7 +142,7 @@ call_X_multi_file_and_send()   → run_dir_files_with_package(..., True)
 - **`file_runner_process.py`** — `FileRunnerProcess`。**唯一不跑 Python 的執行器**，服務插件註冊的 run config：
   - 直譯式：`compiler [args...] file`（如 `go run main.go`）
   - 編譯式：`compiler file -o out` → 執行 `out` → 執行完整個建置資料夾刪掉。`out` 建在 `tempfile.mkdtemp()` 開的資料夾裡，不在原始檔旁邊（旁邊同名的檔案會被蓋掉再刪掉，同一個檔案跑兩次也會互搶）。編譯器跟執行一樣走 `_start_process()`（輸出即時串流、不佔 UI 執行緒），結束碼交給 `after_exit`：0 才接著跑產物，否則印 `[Compile failed]`
-  - 編譯最多 `COMPILE_TIME_LIMIT_SECONDS`（60 秒），由 pump 檢查、超過就 `terminate()`；編譯中也能 `stop()`。QTimer 間隔 50 ms（比 Python 執行器更快），編譯與執行共用同一個
+  - 編譯最多 `COMPILE_TIME_LIMIT_SECONDS`（60 秒），由 pump 檢查、超過就 `stop_tree()`；編譯中也能 `stop()`。QTimer 間隔 50 ms（比 Python 執行器更快），編譯與執行共用同一個
   - 讀取、pump、drain 與寫進視窗都用 §4.5 的共用函式
   - `run_current_file_with()` 建好後同樣掛在執行視窗的 `runner` 上；輸出用執行設定的 `"encoding"` 解碼（`output_encoding()`，`"locale"` 表示本機字碼頁，Java 與中文化的編譯器就是輸出本機字碼頁），沒寫就用 IDE 的編碼
   - 有和 `TaskProcessManager` 相同語意的 `stop()`
@@ -446,7 +446,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 18. 測試與 CI
 
-- **單元測試** `test/test_utils/` — 111 個 `test_*.py`、1884 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
+- **單元測試** `test/test_utils/` — 111 個 `test_*.py`、1885 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
 - **整合測試** `test/unit_test/start_automation/` — 以 `debug_mode=True` 啟動 IDE，10 秒後自動關閉，驗證啟動流程與 extend tab
 - **CI** `.github/workflows/{dev,stable}.yml` — `unit-tests` job 跑 Windows runner、Python 3.10–3.14 矩陣，3.12 那一腳額外上傳 `coverage-xml` artifact；`sonarcloud` job 跑 ubuntu、`needs: unit-tests`。每日 02:00 排程 + push/PR 觸發。`stable.yml` 另有 `publish` job 負責版號遞增與 PyPI 發布
 - **覆蓋率** `.coveragerc` — `relative_files = True` 是必要的：報告在 Windows 產生、由 Linux 上的 scanner 讀取，路徑不能帶機器資訊。目前整體 60%（`utils/`、`tools_gui`、`dialog` 95–100%；`editor_main` 58%、`menu` 54%；仍低的是 `diagram_editor` 45%、`process_executor` 39%、`connect_gui` 28%）

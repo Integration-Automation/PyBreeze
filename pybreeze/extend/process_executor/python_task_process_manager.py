@@ -23,7 +23,9 @@ from pybreeze.extend.process_executor.queue_pump import (
 )
 from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
 from pybreeze.utils.logging.logger import pybreeze_logger
-from pybreeze.utils.subprocess_util import no_window_creationflags, utf8_subprocess_env
+from pybreeze.utils.subprocess_util import (
+    no_window_creationflags, own_session_options, stop_tree, utf8_subprocess_env,
+)
 
 
 def find_venv_path() -> Path:
@@ -153,6 +155,7 @@ class TaskProcessManager:
                 stderr=subprocess.PIPE,
                 creationflags=no_window_creationflags(),
                 env=child_environment,
+                **own_session_options(),
             )
         except OSError as error:
             # An interpreter that is gone, or a command line over Windows'
@@ -186,12 +189,14 @@ class TaskProcessManager:
     def stop(self) -> None:
         """Stop the child if it is still running.
 
-        Only the child itself: processes it started are left to it. The run
-        window reports the exit on the next pump, as for any other exit.
+        The child and every process it started (``stop_tree``): a browser a
+        web run opened, or a program a launcher started, used to be left
+        running. The run window reports the exit on the next pump, as for any
+        other exit.
         """
         self.was_stopped = True
-        if self.process is not None and self.process.poll() is None:
-            self.process.terminate()
+        if self.process is not None:
+            stop_tree(self.process)
 
     # Pyside UI update method
     def pull_text(self):

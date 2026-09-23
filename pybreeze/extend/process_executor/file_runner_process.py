@@ -29,7 +29,9 @@ from pybreeze.extend.process_executor.queue_pump import (
 )
 from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
 from pybreeze.utils.logging.logger import pybreeze_logger
-from pybreeze.utils.subprocess_util import no_window_creationflags, utf8_subprocess_env
+from pybreeze.utils.subprocess_util import (
+    no_window_creationflags, own_session_options, stop_tree, utf8_subprocess_env,
+)
 
 COMPILE_TIME_LIMIT_SECONDS = 60
 
@@ -158,6 +160,7 @@ class FileRunnerProcess:
                 shell=False,
                 creationflags=no_window_creationflags(),
                 env=utf8_subprocess_env(self.program_encoding),
+                **own_session_options(),
             )
         except FileNotFoundError:
             self.main_window.append_output(f"[Error] Command not found: {command[0]}\n", is_error=True)
@@ -196,13 +199,15 @@ class FileRunnerProcess:
     def stop(self) -> None:
         """Stop the child if it is still running.
 
-        Only the child itself: processes it started are left to it. The run
-        window reports the exit on the next pump, as for any other exit. A
-        compile that is stopped, or that has just finished, starts no run.
+        The child and every process it started (``stop_tree``): ``go run``,
+        ``cargo run`` and ``dotnet run`` start the program as a grandchild,
+        which Stop used to leave running. The run window reports the exit on
+        the next pump, as for any other exit. A compile that is stopped, or that
+        has just finished, starts no run.
         """
         self._cancelled = True
-        if self.process is not None and self.process.poll() is None:
-            self.process.terminate()
+        if self.process is not None:
+            stop_tree(self.process)
 
     def _pull_text(self) -> None:
         """Timer callback: pump queues to UI."""
@@ -221,7 +226,7 @@ class FileRunnerProcess:
                 self._deadline = None
                 self.main_window.append_output(
                     f"[Error] Timed out after {COMPILE_TIME_LIMIT_SECONDS}s\n", is_error=True)
-                self.process.terminate()
+                stop_tree(self.process)
 
     def _finish(self) -> None:
         """Clean up after process exits."""

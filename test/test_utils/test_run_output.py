@@ -584,3 +584,41 @@ class TestRunningAFolder:
 
         assert len(main_window.current_run_code_window) == 1
 
+
+def _is_running(pid: int) -> bool:
+    """Whether a process with *pid* is still there (not os.kill: on Windows that ends it)."""
+    import subprocess
+
+    listed = subprocess.run(["tasklist", "/FI", f"PID eq {pid}", "/NH"], capture_output=True,
+                            text=True, timeout=30, check=False)
+    return str(pid) in listed.stdout
+
+
+@pytest.mark.skipif(os.name != "nt", reason="checked with tasklist")
+def test_stop_ends_what_the_run_started_too(qt_app, tmp_path):
+    # A launcher's program (go run, cargo run) or a web run's browser was left
+    # running: only the direct child was stopped
+    from pybreeze.extend.process_executor.process_executor_utils import build_task_process
+
+    script = tmp_path / "launcher.py"
+    script.write_text(
+        "import subprocess, sys, time\n"
+        "child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'])\n"
+        "print('grandchild', child.pid, flush=True)\n"
+        "time.sleep(60)\n",
+        encoding="utf-8")
+    main_window = MainWindow(python_compiler=sys.executable)
+    build_task_process(main_window).start_module_process(
+        "launcher", [], environment={"PYTHONPATH": str(tmp_path)})
+    run_window = main_window.current_run_code_window[0]
+    _run_events_until(qt_app, lambda: "grandchild" in run_window.code_result.toPlainText())
+    line = next(text for text in run_window.code_result.toPlainText().splitlines() if text.startswith("grandchild"))
+    grandchild = int(line.split()[1])
+    try:
+        run_window.stop_runner()
+        _run_events_until(qt_app, lambda: "Task exit with code" in run_window.code_result.toPlainText())
+
+        assert not _is_running(grandchild)
+    finally:
+        _stop_grandchild(run_window.code_result.toPlainText())
+
