@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-151 | 2026-09-24 | Build compile-then-run binaries in a folder of their own, and make Stop during or just after a compile run nothing | #fix #executor #done | [2026-09](2026-09.md) |
 | U-20260923-150 | 2026-09-24 | Keep one malformed plugin from stopping the IDE's start: check run configs and names, and build each plugin's entry on its own | #fix #plugins #crash #done | [2026-09](2026-09.md) |
 | U-20260923-149 | 2026-09-24 | Delete a closed JupyterLab tab and its web view | #fix #jupyter #done | [2026-09](2026-09.md) |
 | U-20260923-148 | 2026-09-24 | Keep an edited tab's unsaved mark when the file tree renames its file | #fix #editor #done | [2026-09](2026-09.md) |
@@ -231,4 +232,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 168 |
+| [2026-09.md](2026-09.md) | 2026-09 | 169 |

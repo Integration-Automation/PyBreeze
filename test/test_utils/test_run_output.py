@@ -6,6 +6,7 @@ import json
 import os
 import sys
 import time
+from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -433,3 +434,90 @@ def test_a_line_without_its_newline_shows_while_the_run_goes_on(qt_app, tmp_path
     assert "done" not in run_window.code_result.toPlainText()
     _run_events_until(qt_app, lambda: "Task exit with code" in run_window.code_result.toPlainText())
     assert "working... 50% done" in run_window.code_result.toPlainText()
+
+
+def _fake_compiler(folder: Path, seconds: float = 0.0) -> Path:
+    """A "compiler" that sleeps *seconds*, then copies a stand-alone Windows program to the -o path."""
+    script = folder / "fakecc.py"
+    script.write_text(
+        "import shutil, sys, time\n"
+        f"time.sleep({seconds})\n"
+        "shutil.copy(r'C:\\Windows\\System32\\hostname.exe', sys.argv[sys.argv.index('-o') + 1])\n"
+        "print('compiled', flush=True)\n",
+        encoding="utf-8")
+    return script
+
+
+def _compile_config(script: Path) -> dict:
+    return {"name": "Fake", "compiler": sys.executable, "args": (str(script),), "compile_then_run": True}
+
+
+@pytest.mark.skipif(os.name != "nt", reason="the stand-in program is Windows'")
+class TestCompileThenRun:
+    def test_the_binary_is_built_away_from_the_source_and_removed(self, qt_app, tmp_path):
+        # It was built beside the source, replacing and then deleting a file of
+        # that name there
+        from pybreeze.extend.process_executor.file_runner_process import FileRunnerProcess
+        from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
+
+        source = tmp_path / "hello.c"
+        source.write_text("int main(){}", encoding="utf-8")
+        mine = tmp_path / "hello.exe"
+        mine.write_bytes(b"the user's own build")
+        window = CodeWindow()
+        runner = FileRunnerProcess(window)
+        window.runner = runner
+
+        runner.run_file(_compile_config(_fake_compiler(tmp_path)), str(source))
+        _run_events_until(qt_app, lambda: "[Process exited with code" in window.code_result.toPlainText())
+
+        text = window.code_result.toPlainText()
+        assert "[Process exited with code 0]" in text
+        assert mine.read_bytes() == b"the user's own build"
+        built = next(line for line in text.splitlines() if line.startswith("[Run] "))[len("[Run] "):]
+        assert Path(built).parent != tmp_path
+        assert not Path(built).parent.exists()
+
+    def test_stop_during_the_compile_is_reported_and_runs_nothing(self, qt_app, tmp_path):
+        from pybreeze.extend.process_executor.file_runner_process import FileRunnerProcess
+        from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
+
+        source = tmp_path / "slow.c"
+        source.write_text("int main(){}", encoding="utf-8")
+        window = CodeWindow()
+        runner = FileRunnerProcess(window)
+        window.runner = runner
+        ended: list = []
+        window.run_ended = lambda: ended.append(True)
+
+        runner.run_file(_compile_config(_fake_compiler(tmp_path, seconds=20)), str(source))
+        _run_events_until(qt_app, lambda: runner.process is not None)
+        runner.stop()
+        _run_events_until(qt_app, lambda: ended)
+
+        text = window.code_result.toPlainText()
+        # It said "[Compile failed] exit code 1"
+        assert "[Stopped]" in text
+        assert "[Compile failed]" not in text and "[Run]" not in text
+
+    def test_stop_just_after_the_compile_runs_nothing(self, qt_app, tmp_path):
+        # Once the compiler had exited, Stop found nothing to stop and the binary ran
+        from pybreeze.extend.process_executor.file_runner_process import FileRunnerProcess
+        from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
+
+        source = tmp_path / "quick.c"
+        source.write_text("int main(){}", encoding="utf-8")
+        window = CodeWindow()
+        runner = FileRunnerProcess(window)
+        window.runner = runner
+        ended: list = []
+        window.run_ended = lambda: ended.append(True)
+
+        runner.run_file(_compile_config(_fake_compiler(tmp_path)), str(source))
+        runner.process.wait(30)
+        runner.stop()
+        _run_events_until(qt_app, lambda: ended)
+
+        text = window.code_result.toPlainText()
+        assert "[Stopped]" in text and "[Run]" not in text
+
