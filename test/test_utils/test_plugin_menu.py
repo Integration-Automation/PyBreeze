@@ -320,3 +320,28 @@ class TestSavingBeforeARun:
         editor_tab(text="print(1)\n")
         monkeypatch.setattr(run_with, "choose_file_get_save_file_path", lambda _w: False)
         assert save_current_file_for_run(window) is None
+
+
+class TestRunConfigsJEditorDoesNotCheck:
+    def test_a_config_without_a_name_still_runs(self, window, tmp_path, monkeypatch):
+        script = tmp_path / "main.go"
+        script.touch()
+        monkeypatch.setattr(run_with, "save_current_file_for_run", lambda _w: str(script))
+        started: list[object] = []
+        monkeypatch.setattr(
+            run_with, "FileRunnerProcess",
+            lambda **kwargs: type("R", (), {"run_file": lambda *a: started.append(a)})())
+
+        run_current_file_with(window, {"compiler": "go", "suffixes": (".go",)})
+
+        assert started
+        assert window.current_run_code_window[-1].windowTitle() == "Run - main.go"
+
+    def test_a_config_without_a_compiler_is_reported_in_the_run_window(self, app):
+        from pybreeze.extend.process_executor.file_runner_process import FileRunnerProcess
+        from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
+
+        run_window = CodeWindow()
+        FileRunnerProcess(run_window).run_file({"name": "Broken"}, "main.go")
+
+        assert "names no compiler" in run_window.code_result.toPlainText()

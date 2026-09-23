@@ -71,8 +71,10 @@ def run_current_file_with(main_window: PyBreezeMainWindow, run_config: dict) -> 
         msg.exec()
         return
 
+    # JEditor does not check what a plugin registers: a config without a
+    # name raised KeyError here, after the file had been saved.
     code_window = open_run_window(
-        main_window, f"{run_config['name']} - {Path(file_path).name}")
+        main_window, f"{run_config.get('name', 'Run')} - {Path(file_path).name}")
 
     code_window.runner = FileRunnerProcess(
         main_window=code_window,

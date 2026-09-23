@@ -109,3 +109,18 @@ def test_project_and_gui_actions_survive_and_answer(window):
     assert gui_action.text() == "GUI"
     gui_action.trigger()
     assert window.tab_widget.count() == 1
+
+
+def test_every_create_project_names_a_package_that_exists():
+    # Found by finding the package, not importing it: some of these write a log
+    # into the working directory as they import.
+    import importlib.util
+    import re
+    from pathlib import Path
+
+    menus = Path(__file__).resolve().parents[2] / "pybreeze" / "pybreeze_ui" / "menu" / "automation_menu"
+    names = [name for path in menus.rglob("*.py")
+             for name in re.findall(r'safe_create_project\("([^"]+)"\)', path.read_text(encoding="utf-8"))]
+
+    assert names, "no create-project entries found"
+    assert [name for name in names if importlib.util.find_spec(name) is None] == []

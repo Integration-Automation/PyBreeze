@@ -3,7 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QFileDialog, QMessageBox
+from je_editor import language_wrapper
+from test_pioneer import create_template_dir
 
 from pybreeze.extend.process_executor.test_pioneer.test_pioneer_process_manager import \
     init_and_start_test_pioneer_process
@@ -11,9 +14,10 @@ from pybreeze.extend.process_executor.test_pioneer.test_pioneer_process_manager 
 if TYPE_CHECKING:
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
 
-from PySide6.QtGui import QAction
-from je_editor import language_wrapper
-from test_pioneer import create_template_dir
+
+# A TestPioneer script is YAML, under either of YAML's extensions
+_YAML_SUFFIXES = (".yml", ".yaml")
+_YAML_FILTER = "YAML (*.yml *.yaml)"
 
 
 def set_test_pioneer_menu(ui_we_want_to_set: PyBreezeMainWindow):
@@ -45,14 +49,16 @@ def set_test_pioneer_menu(ui_we_want_to_set: PyBreezeMainWindow):
 
 
 def check_file(ui_we_want_to_set: PyBreezeMainWindow):
-    dialog = QFileDialog(ui_we_want_to_set)
-    dialog.setNameFilter("Yaml (*.yml)")
-    # getOpenFileName returns (filename, selected_filter); the tuple itself is
-    # always truthy, so check the filename — an empty one means the user cancelled.
-    file_path = dialog.getOpenFileName()[0]
+    """Ask for a TestPioneer YAML file and run it, or say why it cannot be run."""
+    # getOpenFileName is static: the filter has to be passed to it, not set on
+    # a dialog instance that is never shown. It returns (filename,
+    # selected_filter); the tuple is always truthy, so check the filename -- an
+    # empty one means the user cancelled.
+    file_path = QFileDialog.getOpenFileName(
+        ui_we_want_to_set, filter=_YAML_FILTER)[0]
     show_messagebox = False
     if file_path:
-        if Path(file_path).is_file() and Path(file_path).suffix == ".yml":
+        if Path(file_path).is_file() and Path(file_path).suffix.lower() in _YAML_SUFFIXES:
             init_and_start_test_pioneer_process(ui_we_want_to_set, file_path)
         else:
             show_messagebox = True

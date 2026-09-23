@@ -63,8 +63,12 @@ class FileRunnerProcess:
             output_flag: str (optional)       - flag for output file (e.g. "-o")
         """
         compile_then_run = run_config.get("compile_then_run", False)
-        compiler = run_config["compiler"]
-        args = list(run_config.get("args", ()))
+        compiler = run_config.get("compiler")
+        if not isinstance(compiler, str) or not compiler:
+            # A plugin's config is not checked by JEditor when it registers.
+            self.main_window.append_output("[Error] The run config names no compiler\n", is_error=True)
+            return
+        args = [str(arg) for arg in run_config.get("args", ())]
 
         if compile_then_run:
             self._compile_and_run(compiler, args, run_config.get("output_flag", "-o"), file_path)
