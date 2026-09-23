@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import time
+import weakref
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
@@ -173,9 +174,19 @@ def open_run_window(main_window: PyBreezeMainWindow, title: str = "") -> CodeWin
     if title:
         code_window.setWindowTitle(title)
     main_window.current_run_code_window.append(code_window)
-    code_window.finished_and_closed.connect(
-        lambda: forget_run_window(main_window, code_window))
+    # Weakly: the connection belongs to the window, so a slot holding the
+    # window itself kept every closed run window, with its output and its
+    # executor, alive for as long as the IDE ran
+    window_ref = weakref.ref(code_window)
+    code_window.finished_and_closed.connect(lambda: _forget_if_alive(main_window, window_ref))
     return code_window
+
+
+def _forget_if_alive(main_window: PyBreezeMainWindow, window_ref: weakref.ref) -> None:
+    """``forget_run_window`` for the window *window_ref* points at, if it still exists."""
+    code_window = window_ref()
+    if code_window is not None:
+        forget_run_window(main_window, code_window)
 
 
 def forget_run_window(main_window: PyBreezeMainWindow, code_window: CodeWindow) -> None:

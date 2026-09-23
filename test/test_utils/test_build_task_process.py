@@ -221,6 +221,26 @@ class TestLettingGoOfARunWindow:
         assert main_window.current_run_code_window == []
         assert all(not window.isVisible() for window in windows)
 
+    def test_a_window_let_go_of_is_freed(self, qt_app):
+        # The slot that let go of it held the window, and the connection
+        # belongs to the window: every closed run window, its output and its
+        # executor stayed alive for as long as the IDE ran
+        import gc
+        import weakref
+
+        from pybreeze.extend.process_executor.process_executor_utils import open_run_window
+
+        main_window = MainWindow()
+        run_window = open_run_window(main_window)
+        watch = weakref.ref(run_window)
+
+        run_window.close()
+        del run_window
+        gc.collect()
+
+        assert main_window.current_run_code_window == []
+        assert watch() is None
+
 
 def test_the_mail_notice_is_freed_on_the_gui_thread(qt_app, monkeypatch):
     # Its last reference was the mail thread's: with the run window gone, the
