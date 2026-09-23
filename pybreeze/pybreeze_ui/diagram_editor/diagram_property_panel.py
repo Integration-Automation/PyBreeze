@@ -144,6 +144,9 @@ class DiagramPropertyPanel(QWidget):
 
         # Connect to scene
         self._scene.selectionChanged.connect(self._on_selection_changed)
+        # A change made on the canvas (a resize by its handles) leaves the
+        # selection as it was: the panel showed the old size until it changed
+        self._scene.recorded.connect(self._on_selection_changed)
 
     # ------------------------------------------------------------------
     # UI construction
@@ -176,12 +179,14 @@ class DiagramPropertyPanel(QWidget):
 
         self._node_w = QSpinBox()
         self._node_w.setRange(int(_MIN_NODE_SIDE), int(MAX_ITEM_SIZE))
-        self._node_w.valueChanged.connect(self._on_node_size)
+        self._node_w.setKeyboardTracking(False)
+        self._node_w.valueChanged.connect(lambda width: self._resize_node(width=width))
         nf.addRow(_lang("diagram_editor_prop_width", "Width"), self._node_w)
 
         self._node_h = QSpinBox()
         self._node_h.setRange(int(_MIN_NODE_HEIGHT), int(MAX_ITEM_SIZE))
-        self._node_h.valueChanged.connect(self._on_node_size)
+        self._node_h.setKeyboardTracking(False)
+        self._node_h.valueChanged.connect(lambda height: self._resize_node(height=height))
         nf.addRow(_lang("diagram_editor_prop_height", "Height"), self._node_h)
 
         self._node_shape = QComboBox()
@@ -200,6 +205,7 @@ class DiagramPropertyPanel(QWidget):
 
         self._node_font = QSpinBox()
         self._node_font.setRange(MIN_FONT_SIZE, MAX_FONT_SIZE)
+        self._node_font.setKeyboardTracking(False)
         self._node_font.valueChanged.connect(self._on_node_font)
         nf.addRow(_lang("diagram_editor_prop_font_size", "Font"), self._node_font)
 
@@ -227,6 +233,7 @@ class DiagramPropertyPanel(QWidget):
         self._conn_width = QDoubleSpinBox()
         self._conn_width.setRange(0.5, 10.0)
         self._conn_width.setSingleStep(0.5)
+        self._conn_width.setKeyboardTracking(False)
         self._conn_width.valueChanged.connect(self._on_conn_width)
         cf.addRow(_lang("diagram_editor_prop_line_width", "Width"), self._conn_width)
 
@@ -248,12 +255,14 @@ class DiagramPropertyPanel(QWidget):
 
         self._img_w = QSpinBox()
         self._img_w.setRange(int(_MIN_NODE_SIDE), int(MAX_ITEM_SIZE))
-        self._img_w.valueChanged.connect(self._on_img_size)
+        self._img_w.setKeyboardTracking(False)
+        self._img_w.valueChanged.connect(lambda width: self._resize_image(width=width))
         imf.addRow(_lang("diagram_editor_prop_width", "Width"), self._img_w)
 
         self._img_h = QSpinBox()
         self._img_h.setRange(int(_MIN_NODE_SIDE), int(MAX_ITEM_SIZE))
-        self._img_h.valueChanged.connect(self._on_img_size)
+        self._img_h.setKeyboardTracking(False)
+        self._img_h.valueChanged.connect(lambda height: self._resize_image(height=height))
         imf.addRow(_lang("diagram_editor_prop_height", "Height"), self._img_h)
 
         self._img_group.setLayout(imf)
@@ -344,11 +353,18 @@ class DiagramPropertyPanel(QWidget):
         with self._scene.undo_scope("Edit Text"):
             self._current_node.set_text(self._node_text.text())
 
-    def _on_node_size(self) -> None:
-        if self._updating or self._current_node is None:
+    def _resize_node(self, width: int | None = None, height: int | None = None) -> None:
+        """Set the node's width or height; the other side stays as the node has it.
+
+        Both were set from the spin boxes, and one could be stale: a width from
+        before a drag on the canvas undid the drag.
+        """
+        node = self._current_node
+        if self._updating or node is None:
             return
-        with self._scene.undo_scope("Resize"):
-            self._current_node.set_size(self._node_w.value(), self._node_h.value())
+        with self._scene.undo_scope("Resize", merge_key=f"node-size:{id(node)}"):
+            node.set_size(node.node_w if width is None else width,
+                          node.node_h if height is None else height)
 
     def _on_node_shape(self, index: int) -> None:
         if self._updating or self._current_node is None:
@@ -372,7 +388,7 @@ class DiagramPropertyPanel(QWidget):
     def _on_node_font(self, size: int) -> None:
         if self._updating or self._current_node is None:
             return
-        with self._scene.undo_scope("Change Font"):
+        with self._scene.undo_scope("Change Font", merge_key=f"node-font:{id(self._current_node)}"):
             self._current_node.set_font_size(size)
 
     # ------------------------------------------------------------------
@@ -401,7 +417,7 @@ class DiagramPropertyPanel(QWidget):
     def _on_conn_width(self, width: float) -> None:
         if self._updating or self._current_conn is None:
             return
-        with self._scene.undo_scope("Change Width"):
+        with self._scene.undo_scope("Change Width", merge_key=f"line-width:{id(self._current_conn)}"):
             self._current_conn.set_line_width(width)
 
     # ------------------------------------------------------------------
@@ -427,8 +443,11 @@ class DiagramPropertyPanel(QWidget):
         with self._scene.undo_scope("Edit Caption"):
             self._current_img.set_text(self._img_caption.text())
 
-    def _on_img_size(self) -> None:
-        if self._updating or self._current_img is None:
+    def _resize_image(self, width: int | None = None, height: int | None = None) -> None:
+        """Set the image's width or height; the other side stays as the image has it."""
+        img = self._current_img
+        if self._updating or img is None:
             return
-        with self._scene.undo_scope("Resize Image"):
-            self._current_img.set_size(self._img_w.value(), self._img_h.value())
+        with self._scene.undo_scope("Resize Image", merge_key=f"image-size:{id(img)}"):
+            img.set_size(img.img_w if width is None else width,
+                         img.img_h if height is None else height)

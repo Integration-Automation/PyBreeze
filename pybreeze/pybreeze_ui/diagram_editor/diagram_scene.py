@@ -98,6 +98,9 @@ class DiagramScene(QGraphicsScene):
 
     mode_changed = Signal(ToolMode)
     item_count_changed = Signal()
+    # An undo step was recorded: something changed, perhaps on the canvas with
+    # the selection unchanged (a resize by its handles)
+    recorded = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -114,6 +117,7 @@ class DiagramScene(QGraphicsScene):
         self.undo_stack = QUndoStack(self)
         self._pending_undo_snapshot: dict | None = None
         self._pending_undo_desc: str | None = None
+        self._pending_merge_key: str | None = None
 
         # Images already loaded, and the fetches still going, by source
         self._pixmap_cache: dict[str, QPixmap] = {}
@@ -176,36 +180,43 @@ class DiagramScene(QGraphicsScene):
     def _snapshot(self) -> dict:
         return self.to_dict()
 
-    def begin_undo(self, description: str) -> None:
+    def begin_undo(self, description: str, merge_key: str | None = None) -> None:
         self._pending_undo_desc = description
+        self._pending_merge_key = merge_key
         self._pending_undo_snapshot = self._snapshot()
 
     def end_undo(self) -> None:
         if self._pending_undo_snapshot is None:
             return
-        self.record_change(self._pending_undo_desc or "Edit", self._pending_undo_snapshot)
+        self.record_change(self._pending_undo_desc or "Edit", self._pending_undo_snapshot,
+                           merge_key=self._pending_merge_key)
         self._pending_undo_snapshot = None
         self._pending_undo_desc = None
+        self._pending_merge_key = None
 
-    def record_change(self, description: str, before: dict) -> None:
+    def record_change(self, description: str, before: dict, merge_key: str | None = None) -> None:
         """Put one undo step on the stack, from *before* to the scene as it is now.
 
         Nothing is recorded when nothing changed. The command skips its first
-        redo, so the scene is not rebuilt under the caller.
+        redo, so the scene is not rebuilt under the caller. A step with the
+        same *merge_key* as the one before it joins that step.
         """
         after = self._snapshot()
         if after != before:
-            self.undo_stack.push(DiagramSnapshotCommand(self, description, before, after))
+            self.undo_stack.push(DiagramSnapshotCommand(self, description, before, after, merge_key))
+            self.recorded.emit()
 
     @contextmanager
-    def undo_scope(self, description: str):
+    def undo_scope(self, description: str, merge_key: str | None = None):
         """Take a snapshot, run the body, and record what it changed.
+
+        *merge_key*: see :meth:`record_change`.
 
         The closing snapshot is taken even when the body raises: a scope left
         open would be closed by the next mouse release instead, turning an
         unrelated click into an undo entry that reverts everything since.
         """
-        self.begin_undo(description)
+        self.begin_undo(description, merge_key)
         try:
             yield
         finally:

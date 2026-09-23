@@ -195,3 +195,58 @@ class TestTheWheel:
         self._wheel(view, 0, 120)
         assert view.transform().m11() > 1.0
         view.deleteLater()
+
+
+class TestThePropertyPanelAndTheCanvas:
+    def _selected_node(self):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_property_panel import DiagramPropertyPanel
+
+        scene = DiagramScene()
+        node = DiagramNode(x=0, y=0, w=140, h=60, text="A")
+        scene.addItem(node)
+        panel = DiagramPropertyPanel(scene)
+        node.setSelected(True)
+        return scene, node, panel
+
+    def test_a_height_edit_keeps_a_width_dragged_on_the_canvas(self, app):
+        # The panel still held the width from before the drag, and set it back
+        from PySide6.QtCore import QPointF, QRectF
+
+        scene, node, panel = self._selected_node()
+        with scene.undo_scope("Resize"):
+            node._apply_resize("r", QPointF(200, 0), QRectF(0, 0, 140, 60), QPointF(0, 0))
+
+        assert panel._node_w.value() == 340  # the panel follows the canvas
+        panel._node_h.setValue(80)
+
+        assert (node.node_w, node.node_h) == (340, 80)
+
+    def test_steps_on_one_property_are_one_undo_step(self, app):
+        # Every arrow click was its own step, each with two whole-scene snapshots
+        scene, node, panel = self._selected_node()
+        before = scene.undo_stack.count()
+
+        for size in (11, 12, 13, 14, 15):
+            panel._node_font.setValue(size)
+
+        assert scene.undo_stack.count() == before + 1
+        scene.undo_stack.undo()
+        restored = [item for item in scene.items() if isinstance(item, DiagramNode)][0]
+        assert restored._font_size != 15
+
+    def test_another_property_is_its_own_step(self, app):
+        scene, node, panel = self._selected_node()
+        before = scene.undo_stack.count()
+
+        panel._node_font.setValue(12)
+        panel._node_w.setValue(200)
+        panel._node_font.setValue(13)
+
+        assert scene.undo_stack.count() == before + 3
+
+    def test_typing_a_size_applies_it_once(self, app):
+        _scene, _node, panel = self._selected_node()
+
+        assert not panel._node_w.keyboardTracking()
+        assert not panel._node_font.keyboardTracking()
+
