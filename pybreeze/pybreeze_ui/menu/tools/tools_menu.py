@@ -5,9 +5,10 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtGui import QAction, Qt
 from je_editor import language_wrapper
-from je_editor.pyside_ui.main_ui.dock.destroy_dock import DestroyDock
+
 from je_editor import jeditor_logger
 
+from pybreeze.pybreeze_ui.closing import AskingDock
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_main_widget import SSHMainWidget
 from pybreeze.pybreeze_ui.connect_gui.url.ai_code_review_gui import AICodeReviewClient
 from pybreeze.pybreeze_ui.diagram_editor.diagram_editor_widget import DiagramEditorWidget
@@ -270,7 +271,9 @@ def add_dock(ui_we_want_to_set: PyBreezeMainWindow, widget_type: str | None = No
 
     # 建立一個可銷毀的 Dock 容器
     # Create a destroyable dock container
-    dock_widget = DestroyDock()
+    # One that asks its widget first: a docked prompt or diagram editor with
+    # unsaved changes closed from the dock's button without a word
+    dock_widget = AskingDock()
 
     title_key = _DOCK_TITLES.get(widget_type)
     if title_key is not None:

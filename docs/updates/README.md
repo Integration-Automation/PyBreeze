@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-165 | 2026-09-24 | Ask before a docked prompt or diagram editor closes from its dock's own button | #fix #ai #diagram #done | [2026-09](2026-09.md) |
 | U-20260923-164 | 2026-09-24 | Ask before closing a prompt or diagram with unsaved changes, from its tab or from closing the IDE | #fix #ai #diagram #done | [2026-09](2026-09.md) |
 | U-20260923-163 | 2026-09-24 | Ask before the prompt editor's Create replaces typed text, and empty the editor when a template cannot be read | #fix #ai #done | [2026-09](2026-09.md) |
 | U-20260923-162 | 2026-09-24 | Hand the Response Inspector's analysed headers to the header analyzer, not whatever the input box holds now | #fix #tools #done | [2026-09](2026-09.md) |
@@ -245,4 +246,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 182 |
+| [2026-09.md](2026-09.md) | 2026-09 | 183 |

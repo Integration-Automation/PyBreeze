@@ -136,7 +136,7 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
   | Name | JEditor module | Used in |
   | --- | --- | --- |
   | `PluginBrowserWidget` | `pyside_ui.main_ui.plugin_browser.plugin_browser_widget` | `menu/plugin_menu/build_plugin_menu.py` |
-  | `DestroyDock` | `pyside_ui.main_ui.dock.destroy_dock` | `menu/tools/tools_menu.py`, `editor_main/main_ui.py` |
+  | `DestroyDock` | `pyside_ui.main_ui.dock.destroy_dock` | `closing.py` (`AskingDock`, which the Dock menu builds), `editor_main/main_ui.py` |
   | `init_new_auto_save_thread`, `auto_save_manager_dict`, `file_is_open_manager_dict` | `pyside_ui.code.auto_save.auto_save_manager` | `editor_main/file_tree_context_menu.py` (a rename restarts the tab's auto-save on the new path) |
   | `FullEditorWidget` | `pyside_ui.main_ui.editor.editor_widget_dock` | `editor_main/file_tree_context_menu.py` (a rename re-points a docked editor's `current_file`) |
   | `check_and_choose_venv` | `utils.venv_check.check_venv` | `extend/process_executor/python_task_process_manager.py` |

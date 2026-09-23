@@ -83,28 +83,70 @@ class TestThePromptEditor:
 
 
 class TestTheMainWindowsQuestion:
-    def test_a_widget_without_may_close_may_close(self):
-        from pybreeze.pybreeze_ui.editor_main.main_ui import _may_close
+    def test_a_widget_without_the_question_may_close(self):
+        from pybreeze.pybreeze_ui.closing import may_close
 
-        assert _may_close(object()) is True
-        assert _may_close(None) is True
+        assert may_close(object()) is True
+        assert may_close(None) is True
 
     def test_a_widget_whose_question_raises_does_not_keep_the_ide_open(self):
-        from pybreeze.pybreeze_ui.editor_main.main_ui import _may_close
+        from pybreeze.pybreeze_ui.closing import may_close
 
         class Broken:
             @staticmethod
             def may_close() -> bool:
                 raise RuntimeError("third-party tab")
 
-        assert _may_close(Broken()) is True
+        assert may_close(Broken()) is True
 
     def test_a_no_is_a_no(self):
-        from pybreeze.pybreeze_ui.editor_main.main_ui import _may_close
+        from pybreeze.pybreeze_ui.closing import may_close
 
         class Keeps:
             @staticmethod
             def may_close() -> bool:
                 return False
 
-        assert _may_close(Keeps()) is False
+        assert may_close(Keeps()) is False
+
+
+class TestADock:
+    """A docked editor closed from its dock's own button, without a word."""
+
+    class _Keeps:
+        """Stands in for an editor with unsaved work the user keeps."""
+
+        def __init__(self, answer: bool) -> None:
+            from PySide6.QtWidgets import QWidget
+
+            self.widget = QWidget()
+            self.widget.may_close = lambda: answer
+
+    def test_a_dock_whose_widget_says_no_stays_open(self, app):
+        from pybreeze.pybreeze_ui.closing import AskingDock
+
+        dock = AskingDock()
+        dock.setWidget(self._Keeps(False).widget)
+        dock.show()
+
+        assert dock.close() is False
+        assert dock.isVisible()
+        dock.already_asked = True
+        assert dock.close() is True
+
+    def test_a_dock_whose_widget_agrees_closes(self, app):
+        from pybreeze.pybreeze_ui.closing import AskingDock
+
+        dock = AskingDock()
+        dock.setWidget(self._Keeps(True).widget)
+        dock.show()
+
+        assert dock.close() is True
+
+    def test_the_dock_menu_builds_docks_that_ask(self, app):
+        import inspect
+
+        from pybreeze.pybreeze_ui.menu.tools import tools_menu
+
+        assert "AskingDock()" in inspect.getsource(tools_menu.add_dock)
+

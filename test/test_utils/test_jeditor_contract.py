@@ -23,7 +23,7 @@ INTERNAL = [
     ("je_editor.pyside_ui.main_ui.plugin_browser.plugin_browser_widget", "PluginBrowserWidget",
      "menu/plugin_menu/build_plugin_menu.py"),
     ("je_editor.pyside_ui.main_ui.dock.destroy_dock", "DestroyDock",
-     "menu/tools/tools_menu.py, editor_main/main_ui.py"),
+     "closing.py, editor_main/main_ui.py"),
     ("je_editor.pyside_ui.code.auto_save.auto_save_manager", "init_new_auto_save_thread",
      "editor_main/file_tree_context_menu.py"),
     ("je_editor.pyside_ui.code.auto_save.auto_save_manager", "auto_save_manager_dict",
