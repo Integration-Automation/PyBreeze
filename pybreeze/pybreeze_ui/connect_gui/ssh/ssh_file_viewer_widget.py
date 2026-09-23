@@ -609,11 +609,25 @@ class SSHFileTreeManager(QWidget):
         self._transfer.done.connect(
             lambda path: self._transfer_done(title, message, path, after))
         self._transfer.failed.connect(self._transfer_failed)
+        self._transfer.finished.connect(self._forget_transfer)
         self._transfer.exists.connect(lambda path: self._ask_to_replace(path, lambda: self._start_transfer(
             downloading=False, remote_path=remote_path, local_path=local_path,
             title=title, message=message, after=after, replace=True)))
         self._transfer.start()
         return True
+
+    def _forget_transfer(self) -> None:
+        """Let go of the transfer that just finished. UI thread.
+
+        Its slots hold this tree (and the follow-up it was given): kept after
+        it ended, it kept the closed tree alive.
+        """
+        transfer = self.sender()
+        if isinstance(transfer, QThread) and transfer is self._transfer:
+            # finished is emitted just before the thread ends; freed while it
+            # still runs, Qt would abort
+            transfer.wait()
+            self._transfer = None
 
     def _refused_while_transferring(self) -> bool:
         """Say a transfer is going and return ``True`` if one is; ``False`` otherwise. UI thread."""

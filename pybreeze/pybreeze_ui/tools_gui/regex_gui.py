@@ -136,9 +136,14 @@ class RegexGUI(QWidget):
             self.pattern_edit.text(), exact_text(self.text_edit), self.selected_flags())
         thread.matched.connect(self._show_matches)
         thread.failed.connect(self._show_error)
-        thread.finished.connect(lambda: self.test_button.setEnabled(True))
+        thread.finished.connect(self._enable_test)
         self._match_thread = thread
         thread.start()
+
+    def _enable_test(self) -> None:
+        """Let the next match start. A bound method: a lambda holding the tab,
+        on the thread the tab keeps, kept the closed tab alive."""
+        self.test_button.setEnabled(True)
 
     def _show_matches(self, matches: list) -> None:
         self._valid_output = True

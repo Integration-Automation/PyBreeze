@@ -142,13 +142,19 @@ class TestTheTree:
         widget._start_transfer(downloading=False, remote_path="/config.yaml", local_path=local_file,
                                title="Uploaded", message="Uploaded to")
         deadline = time.monotonic() + WAIT_SECONDS
-        while widget._transfer.isRunning() or (asked and answer == QMessageBox.StandardButton.Yes
-                                               and sftp.files.get("/config.yaml") != b"new config"):
+
+        def transferring() -> bool:
+            # A finished transfer is let go of (it is then None)
+            return widget._transfer is not None and widget._transfer.isRunning()
+
+        while transferring() or (asked and answer == QMessageBox.StandardButton.Yes
+                                 and sftp.files.get("/config.yaml") != b"new config"):
             assert time.monotonic() < deadline, "timed out"
             app.processEvents()
             time.sleep(0.01)
         app.processEvents()
-        widget._transfer.wait(1000)
+        if widget._transfer is not None:
+            widget._transfer.wait(1000)
         widget.close()
         return asked
 

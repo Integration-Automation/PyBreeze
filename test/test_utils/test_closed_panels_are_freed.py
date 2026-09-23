@@ -186,3 +186,47 @@ def test_the_sftp_tree_after_a_listing(app):
             return False
 
     assert _freed_after_a_run(app, build, list_root, lambda _tree: _Done)
+
+
+def test_the_regex_tab(app):
+    from pybreeze.pybreeze_ui.tools_gui.regex_gui import RegexGUI
+
+    def match(widget) -> None:
+        widget.pattern_edit.setText("a")
+        widget.text_edit.setPlainText("banana")
+        widget.test()
+
+    assert _freed_after_a_run(app, RegexGUI, match, lambda widget: widget._match_thread)
+
+
+def test_the_sftp_tree_after_an_upload(app, monkeypatch, tmp_path):
+    # The finished transfer stayed on the tree with its slots, which hold the tree
+    from PySide6.QtWidgets import QMessageBox
+
+    from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_file_viewer_widget import SSHFileTreeManager
+    from test_utils.test_sftp_upload import FakeSftp, _wrapper
+
+    local_file = tmp_path / "a.txt"
+    local_file.write_bytes(b"x")
+    monkeypatch.setattr(QMessageBox, "information", lambda *_args: None)
+
+    def build() -> SSHFileTreeManager:
+        tree = SSHFileTreeManager()
+        tree.client = _wrapper(FakeSftp())
+        return tree
+
+    def upload(tree) -> None:
+        assert tree._start_transfer(downloading=False, remote_path="/a.txt", local_path=str(local_file),
+                                    title="Uploaded", message="Uploaded to")
+        deadline = time.monotonic() + 5
+        while tree._transfer is not None and time.monotonic() < deadline:
+            app.processEvents()
+            time.sleep(0.01)
+        assert tree._transfer is None
+
+    class _Done:
+        @staticmethod
+        def isRunning() -> bool:
+            return False
+
+    assert _freed_after_a_run(app, build, upload, lambda _tree: _Done)
