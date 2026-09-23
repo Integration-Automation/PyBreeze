@@ -27,9 +27,14 @@ class TestConnectTimeout:
 class FakeResponse:
     """Minimal stand-in for a streamed requests.Response."""
 
-    def __init__(self, body: bytes, encoding: str | None = "utf-8", chunk: int = 8):
+    def __init__(self, body: bytes, encoding: str | None = "utf-8", chunk: int = 8,
+                 content_type: str | None = None):
         self._body = body
         self.encoding = encoding
+        # The charset is read from the header, as a server sends it
+        if content_type is None and encoding is not None:
+            content_type = f"text/plain; charset={encoding}"
+        self.headers = {"Content-Type": content_type} if content_type else {}
         self._chunk = chunk
         self.closed = False
 
@@ -97,3 +102,22 @@ class TestSucceeded:
     def test_anything_else_is_not(self, status):
         # 3xx included, although requests calls it "ok"
         assert not succeeded(SimpleNamespace(status_code=status))
+
+
+class TestWhichCharset:
+    def test_text_without_a_charset_is_utf8_not_latin1(self):
+        # requests sets ISO-8859-1 on any text/* without a charset
+        resp = FakeResponse("程式碼審查 ✓".encode("utf-8"), encoding="ISO-8859-1", content_type="text/plain")
+
+        assert read_capped_text(resp) == "程式碼審查 ✓"
+
+    def test_a_named_charset_is_used(self):
+        resp = FakeResponse("héllo".encode("latin-1"), encoding="ISO-8859-1",
+                            content_type='text/plain; charset="ISO-8859-1"')
+
+        assert read_capped_text(resp) == "héllo"
+
+    def test_json_without_a_charset_is_utf8(self):
+        resp = FakeResponse('{"a": "ü"}'.encode("utf-8"), encoding=None, content_type="application/json")
+
+        assert read_capped_text(resp) == '{"a": "ü"}'

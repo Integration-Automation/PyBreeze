@@ -8,6 +8,8 @@ oversized body from being pasted whole into an error dialog.
 """
 from __future__ import annotations
 
+from email.message import Message
+
 import requests
 
 from pybreeze.utils.network.url_validation import UnsafeURLError
@@ -39,8 +41,9 @@ def read_capped_text(
     under the cap instead of being buffered in full by ``requests``. Raises
     ``ResponseTooLargeError`` once the accumulated body exceeds *max_bytes*. The
     response is always closed before returning. The charset the response names
-    is used when Python knows it, and *default_encoding* otherwise: a server can
-    name anything, and an unknown one would raise ``LookupError`` here.
+    in its ``Content-Type`` is used when Python knows it, and *default_encoding*
+    otherwise: a server can name anything, and an unknown one would raise
+    ``LookupError`` here.
     """
     total = 0
     chunks: list[bytes] = []
@@ -58,9 +61,25 @@ def read_capped_text(
         response.close()
     body = b"".join(chunks)
     try:
-        return body.decode(response.encoding or default_encoding, "replace")
+        return body.decode(named_charset(response) or default_encoding, "replace")
     except LookupError:
         return body.decode(default_encoding, "replace")
+
+
+def named_charset(response: requests.Response) -> str | None:
+    """The charset *response*'s ``Content-Type`` names, or ``None`` when it names none.
+
+    Not ``response.encoding``: requests gives every ``text/*`` answer without
+    a charset ISO-8859-1 (RFC 2616's old default), so a UTF-8 review sent as
+    ``text/plain`` or ``text/markdown`` came out garbled.
+    """
+    content_type = (getattr(response, "headers", None) or {}).get("Content-Type", "")
+    if not content_type:
+        return None
+    message = Message()
+    message["Content-Type"] = content_type
+    charset = message.get_param("charset")
+    return charset.strip() if isinstance(charset, str) and charset.strip() else None
 
 
 # What a failed request is called for the user, most specific first: a connect
