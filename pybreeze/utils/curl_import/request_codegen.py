@@ -102,10 +102,24 @@ def python_string(text: str) -> str:
     surrogates: one character to JSON, two to Python, which then cannot send
     them. Written as itself it is one character to both. A lone surrogate,
     which cannot be written to a UTF-8 file, falls back to ``repr``.
+
+    The line breaks JSON leaves as they are (U+0085, U+2028, U+2029) are
+    escaped: JEditor saves and runs a tab through ``toPlainText()``, which makes
+    them real line breaks, so in a comment the text after one became code.
     """
     if _SURROGATE.search(text):
         return repr(text)
-    return json.dumps(text, ensure_ascii=False)
+    return escape_line_breaks(json.dumps(text, ensure_ascii=False))
+
+
+# Line breaks outside ASCII: JSON does not escape them, and a Qt editor turns
+# them into real ones
+_UNICODE_LINE_BREAKS = re.compile("[\x85\u2028\u2029]")
+
+
+def escape_line_breaks(text: str) -> str:
+    """*text* with every U+0085, U+2028 and U+2029 written as its ``\\uXXXX`` escape."""
+    return _UNICODE_LINE_BREAKS.sub(lambda match: f"\\u{ord(match.group()):04x}", text)
 
 
 def python_literal(value: object, *, inline: bool = False, level: int = 0) -> str:

@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-157 | 2026-09-24 | Escape U+2028, U+2029 and U+0085 in generated scripts, so a pasted curl command cannot add code through a comment | #fix #security #tools #done | [2026-09](2026-09.md) |
 | U-20260923-156 | 2026-09-24 | Show server and file text in message boxes and labels as text, never as markup Qt would load | #fix #security #ssh | [2026-09](2026-09.md) |
 | U-20260923-155 | 2026-09-24 | Bring two tests in line with the compile folder and the JupyterLab tab's delete-on-close | #test | [2026-09](2026-09.md) |
 | U-20260923-154 | 2026-09-24 | Stop a run's whole process tree, not only its direct child | #fix #executor #done | [2026-09](2026-09.md) |
@@ -237,4 +238,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 174 |
+| [2026-09.md](2026-09.md) | 2026-09 | 175 |

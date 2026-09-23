@@ -50,7 +50,8 @@ def unique_test_names(requests: list[CurlRequest]) -> list[str]:
 
 
 # Characters that must not reach a comment as they are: they would end it
-_CONTROL_CHARACTERS = re.compile(r"[\x00-\x1f\x7f]")
+# ASCII controls, and the line breaks outside ASCII that a Qt editor makes real
+_CONTROL_CHARACTERS = re.compile("[\x00-\x1f\x7f\x85\u2028\u2029]")
 
 
 def _numbered_comment(index: int, request: CurlRequest) -> str:
@@ -60,7 +61,7 @@ def _numbered_comment(index: int, request: CurlRequest) -> str:
     in a comment ends it: control characters are written as escapes.
     """
     text = f"{request.method} {request.full_url}"
-    return f"# {index}. " + _CONTROL_CHARACTERS.sub(lambda match: f"\\x{ord(match.group()):02x}", text)
+    return f"# {index}. " + _CONTROL_CHARACTERS.sub(lambda match: f"\\u{ord(match.group()):04x}", text)
 
 
 def _requests_script(requests: list[CurlRequest]) -> str:

@@ -20,6 +20,7 @@ pybreeze/
 │   ├── show_code_window/        # CodeWindow — subprocess output display
 │   ├── thread_keeper.py         # let_run_out: a worker QThread outlives its closed widget
 │   ├── gui_thread_gc.py         # Garbage collected on a GUI-thread timer, never on a worker
+│   ├── plain_text.py            # as_text: server/file text shown in message boxes as text, not markup
 │   ├── dialog/                  # prthinker settings dialog
 │   └── syntax/                  # Automation keyword highlighting definitions
 ├── extend/
