@@ -5,6 +5,7 @@ import os
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+import paramiko
 import pytest
 from PySide6.QtWidgets import QApplication
 
@@ -37,6 +38,14 @@ class TestTerminalDecoder:
         decoder = TerminalDecoder()
 
         assert decoder.feed(data[:cut]) + decoder.feed(data[cut:]) == "red"
+
+    @pytest.mark.parametrize("data", [b"\x1b(Bok", b"\x1b]0;title\x1b\\ok", b"\x1bP1$r0m\x1b\\ok"])
+    def test_a_character_set_or_string_escape_cut_anywhere_is_removed(self, data):
+        # A read ending between the ESC and the backslash of ST showed "\ok"
+        for cut in range(1, len(data) - 2):
+            decoder = TerminalDecoder()
+
+            assert decoder.feed(data[:cut]) + decoder.feed(data[cut:]) == "ok", cut
 
     def test_text_before_an_unfinished_escape_is_shown_now(self):
         decoder = TerminalDecoder()
@@ -124,3 +133,42 @@ class TestTheReader:
         reader.run()  # on this thread: direct connections
 
         assert b"".join(received) == b"last words"
+
+
+class PartialSendChannel:
+    """Takes at most one packet per send, as paramiko's Channel.send does."""
+
+    closed = False
+    sendall = paramiko.Channel.sendall
+
+    def __init__(self) -> None:
+        self.sent: list[bytes] = []
+        self.timeouts: list = []
+
+    def send(self, data) -> int:
+        chunk = bytes(data[:32704])
+        self.sent.append(chunk)
+        return len(chunk)
+
+    def settimeout(self, timeout) -> None:
+        self.timeouts.append(timeout)
+
+
+class TestSendingACommand:
+    def test_a_long_command_arrives_whole_as_utf8(self, app):
+        # Past one packet the rest and the newline were dropped, and a str was
+        # counted in characters, not the bytes that go out
+        widget = SSHCommandWidget()
+        channel = PartialSendChannel()
+        widget.shell_channel = channel
+        # 20,005 characters (within QLineEdit's 32,767), 60,006 bytes: two packets
+        command = "echo " + "中文" * 10000
+        widget.command_input_edit.setText(command)
+
+        widget.send_command()
+
+        assert b"".join(channel.sent) == (command + "\n").encode("utf-8")
+        assert channel.timeouts == [5, 0.0]
+        assert widget.command_input_edit.text() == ""
+        widget.shell_channel = None
+        widget.close()

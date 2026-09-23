@@ -36,3 +36,31 @@ class TestAnsiEscapeStripping:
     def test_osc_sequences_are_stripped(self, raw, expected):
         # Regression: OSC bodies (e.g. "0;title") used to leak through as garbage.
         assert _strip(raw) == expected
+
+    @pytest.mark.parametrize("raw,expected", [
+        # tput sgr0 in many coloured prompts: a character-set escape, then SGR
+        ("\x1b(B\x1b[mhello", "hello"),
+        ("\x1b#8x", "x"),                                    # nF with another intermediate
+        ("a\x1b7b\x1b8c", "abc"),                            # save / restore cursor
+        ("\x1b=\x1b>keypad", "keypad"),                      # keypad modes
+        ("\x1bcreset", "reset"),                             # full reset (Fs)
+        ("\x1bP1$r0m\x1b\\after", "after"),                 # DCS answer, ST terminated
+        ("\x1b_app\x1b\\x", "x"),                            # APC
+    ])
+    def test_other_escapes_leave_no_text(self, raw, expected):
+        # They showed as "(B", "7", "=", or the DCS body
+        assert _strip(raw) == expected
+
+
+class TestControlCharacters:
+    @pytest.mark.parametrize("raw,expected", [
+        ("bell\x07", "bell"),
+        ("abc\x08\x08d", "ad"),                              # backspace takes the character back
+        ("line\n\x08next", "line\nnext"),                    # never across a line break
+        ("tab\there\r\n", "tab\there\r\n"),                  # tab and line ends stay
+        ("x\x00y\x7fz", "xyz"),
+    ])
+    def test_controls_are_applied_or_dropped(self, raw, expected):
+        from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_command_widget import strip_terminal_controls
+
+        assert strip_terminal_controls(raw) == expected

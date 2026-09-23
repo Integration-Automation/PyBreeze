@@ -30,15 +30,38 @@ CLOSE_ERRORS = (OSError, EOFError, paramiko.SSHException)
 
 ANSI_ESCAPE_PATTERN = re.compile(
     r'\x1B(?:'
-    r'\][^\x07\x1B]*(?:\x07|\x1B\\)?'  # OSC; BEL/ST-terminated or implicitly ended by the next ESC / EOF
-    r'|[@-Z\\-_]'                      # other two-character C1 Fe sequences
+    # A control string -- OSC (titles, links), DCS, SOS, PM, APC -- ended by
+    # BEL or ST, or implicitly by the next ESC / the end
+    r'[\]PX^_][^\x07\x1B]*(?:\x07|\x1B\\)?'
     r'|\[[0-?]*[ -/]*[@-~]'           # CSI (colours, cursor movement)
+    r'|[ -/]+[0-~]'                   # nF: character sets (ESC ( B, from tput sgr0), ESC # 8
+    r'|[0-~]'                         # Fp, Fe, Fs: ESC 7 / ESC 8, ESC = / ESC >, ESC M, ESC c
     r')'
 )
 
+# Control characters the view cannot show, once the sequences are gone: BEL
+# and the rest of C0 but tab, newline and carriage return, and DEL.
+# Backspace is applied first (_BACKSPACED)
+_CONTROL_CHARACTER = re.compile('[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]')
+# A character and the backspace that takes it back (not across a line break)
+_BACKSPACED = re.compile('[^\n\x08]\x08')
+
 # The end of a read that stops inside an escape sequence: a lone ESC, a CSI
-# still waiting for its final byte, or an OSC still waiting for its terminator
-_INCOMPLETE_ESCAPE = re.compile(r'\x1B(?:\[[0-?]*[ -/]*|\][^\x07\x1B]*)?\Z')
+# still waiting for its final byte, a control string still waiting for its
+# terminator (or the second byte of ST), or a character-set escape still
+# waiting for its final byte
+_INCOMPLETE_ESCAPE = re.compile(r'\x1B(?:\[[0-?]*[ -/]*|[\]PX^_][^\x07\x1B]*\x1B?|[ -/]+)?\Z')
+
+
+def strip_terminal_controls(text: str) -> str:
+    """*text* without escape sequences, with backspaces applied and other controls dropped."""
+    text = ANSI_ESCAPE_PATTERN.sub('', text)
+    while True:
+        applied = _BACKSPACED.sub('', text)
+        if applied == text:
+            break
+        text = applied
+    return _CONTROL_CHARACTER.sub('', text)
 # Longest such tail held back for the next read; anything longer is shown as is
 _MAX_PENDING_ESCAPE = 256
 
@@ -69,7 +92,7 @@ class TerminalDecoder:
         if tail is not None and len(text) - tail.start() <= _MAX_PENDING_ESCAPE:
             self._pending = text[tail.start():]
             text = text[:tail.start()]
-        return ANSI_ESCAPE_PATTERN.sub('', text)
+        return strip_terminal_controls(text)
 
 
 # Bound the terminal scrollback so an endless stream (``tail -f``, ``yes``)
@@ -80,6 +103,26 @@ TERMINAL_MAX_BLOCKS = 10000
 # dropped by the TCP stack, a NAT/firewall, or the SSH server (≈ OpenSSH's
 # ServerAliveInterval).
 SSH_KEEPALIVE_SECONDS = 30
+
+
+# Longest a command waits for the server to take it (a full SSH window), on the UI thread
+SEND_TIMEOUT_SECONDS = 5
+
+
+def send_all(channel: paramiko.Channel, data: bytes) -> None:
+    """Send every byte of *data*, waiting at most ``SEND_TIMEOUT_SECONDS`` for room.
+
+    ``Channel.send`` sends what fits in one packet and the window and returns
+    how much that was: a pasted command past about 32 KB lost its tail and its
+    newline. A ``str`` was also counted in characters, not in the UTF-8 bytes
+    that go out. The shell channel is otherwise non-blocking (its reader polls
+    it), so it is blocking only for this send; a timeout raises ``OSError``.
+    """
+    channel.settimeout(SEND_TIMEOUT_SECONDS)
+    try:
+        channel.sendall(data)
+    finally:
+        channel.settimeout(0.0)
 
 
 class SSHReaderThread(QThread):
@@ -353,7 +396,7 @@ class SSHCommandWidget(QWidget):
             return
         if self.shell_channel and not self.shell_channel.closed:
             try:
-                self.shell_channel.send(cmd + "\n")
+                send_all(self.shell_channel, (cmd + "\n").encode("utf-8"))
                 self.command_input_edit.clear()
             except (OSError, paramiko.SSHException) as e:
                 self.append_text(f"{self.word_dict.get('ssh_command_widget_error_message_send_failed')} {e}\n")
