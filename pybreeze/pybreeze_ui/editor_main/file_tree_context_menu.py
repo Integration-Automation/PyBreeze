@@ -20,6 +20,7 @@ from je_editor.pyside_ui.code.auto_save.auto_save_manager import (
 )
 from je_editor.pyside_ui.main_ui.editor.editor_widget_dock import FullEditorWidget
 
+from pybreeze.pybreeze_ui.plain_text import as_text
 from pybreeze.utils.logging.logger import pybreeze_logger
 
 
@@ -34,7 +35,7 @@ def _perform_file_op(tree_view: QTreeView, operation: Callable[[], None]) -> boo
         return True
     except OSError as error:
         pybreeze_logger.error("File tree operation failed: %r", error)
-        QMessageBox.warning(tree_view, word.get("file_tree_ctx_error"), str(error))
+        QMessageBox.warning(tree_view, word.get("file_tree_ctx_error"), as_text(str(error)))
         return False
 
 
@@ -166,7 +167,7 @@ def _action_new_file(tree_view: QTreeView, path: Path | None) -> None:
         QMessageBox.warning(
             tree_view,
             word.get("file_tree_ctx_error"),
-            word.get("file_tree_ctx_already_exists").format(name=str(new_path)),
+            as_text(word.get("file_tree_ctx_already_exists").format(name=str(new_path))),
         )
         return
     def _create() -> None:
@@ -193,7 +194,7 @@ def _action_new_folder(tree_view: QTreeView, path: Path | None) -> None:
         QMessageBox.warning(
             tree_view,
             word.get("file_tree_ctx_error"),
-            word.get("file_tree_ctx_already_exists").format(name=str(new_path)),
+            as_text(word.get("file_tree_ctx_already_exists").format(name=str(new_path))),
         )
         return
     _perform_file_op(tree_view, lambda: new_path.mkdir(parents=True))
@@ -311,7 +312,7 @@ def _action_rename(tree_view: QTreeView, main_window, path: Path | None) -> None
     new_name, ok = QInputDialog.getText(
         tree_view,
         word.get("file_tree_ctx_rename"),
-        word.get("file_tree_ctx_input_new_name").format(name=path.name),
+        as_text(word.get("file_tree_ctx_input_new_name").format(name=path.name)),
         text=path.name,
     )
     if not ok or not new_name.strip() or new_name.strip() == path.name:
@@ -325,7 +326,7 @@ def _action_rename(tree_view: QTreeView, main_window, path: Path | None) -> None
         QMessageBox.warning(
             tree_view,
             word.get("file_tree_ctx_error"),
-            word.get("file_tree_ctx_already_exists").format(name=str(target)),
+            as_text(word.get("file_tree_ctx_already_exists").format(name=str(target))),
         )
         return
 
@@ -351,7 +352,7 @@ def _action_delete(tree_view: QTreeView, main_window, path: Path | None) -> None
     reply = QMessageBox.question(
         tree_view,
         word.get("file_tree_ctx_confirm_delete"),
-        word.get("file_tree_ctx_confirm_delete_message").format(name=str(path)),
+        as_text(word.get("file_tree_ctx_confirm_delete_message").format(name=str(path))),
         QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
     )
     if reply != QMessageBox.StandardButton.Yes:
@@ -436,7 +437,7 @@ def _inside(tree_view: QTreeView, parent: Path, name: str, *, single: bool = Fal
         return target
     word = language_wrapper.language_word_dict
     QMessageBox.warning(tree_view, word.get("file_tree_ctx_error"),
-                        word.get("file_tree_ctx_bad_name").format(name=name))
+                        as_text(word.get("file_tree_ctx_bad_name").format(name=name)))
     return None
 
 

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QAbstractItemView, QCheckBox, QComboBox, QFileDialog, QHBoxLayout, QLabel,
     QListWidget, QPushButton, QTextEdit, QVBoxLayout, QWidget
@@ -56,6 +57,9 @@ class HarImportGUI(QWidget):
         top_row.addWidget(self.api_only_check)
 
         self.summary_label = QLabel(word.get("har_import_empty_hint"))
+        # It lists the file's host names: plain text, or a host written as
+        # <img src=...> was loaded as an image
+        self.summary_label.setTextFormat(Qt.TextFormat.PlainText)
         self.entry_list = QListWidget()
         self.entry_list.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
 

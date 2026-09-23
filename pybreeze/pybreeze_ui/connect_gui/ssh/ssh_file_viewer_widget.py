@@ -24,6 +24,7 @@ from pybreeze.pybreeze_ui.connect_gui.ssh.sftp_session import (
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_connect_thread import CONNECT_ERRORS, SshConnectThread
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_host_key_policy import host_key_asker
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_login_widget import LoginWidget
+from pybreeze.pybreeze_ui.plain_text import as_text
 from pybreeze.pybreeze_ui.thread_keeper import let_run_out
 
 
@@ -170,7 +171,8 @@ class SSHFileTreeManager(QWidget):
         QMessageBox.critical(
             self,
             self.word_dict.get("ssh_file_viewer_dialog_title_connection_failed"),
-            f"{self.word_dict.get('ssh_file_viewer_dialog_message_connection_failed')}: {message}")
+            # The server's text (paramiko quotes its first line): shown as text
+            as_text(f"{self.word_dict.get('ssh_file_viewer_dialog_message_connection_failed')}: {message}"))
         self.state_changed.emit()
 
     def closeEvent(self, event) -> None:
@@ -334,8 +336,8 @@ class SSHFileTreeManager(QWidget):
         QMessageBox.critical(
             self,
             self.word_dict.get("ssh_file_viewer_dialog_title_list_error"),
-            f"{self.word_dict.get('ssh_file_viewer_dialog_message_list_failed')} "
-            f"'{parent_item.text(3)}': {message}")
+            as_text(f"{self.word_dict.get('ssh_file_viewer_dialog_message_list_failed')} "
+                    f"'{parent_item.text(3)}': {message}"))
 
     def _add_entry_row(self, parent_item: QTreeWidgetItem, path: str, name: str, entry) -> None:
         full_path = remote_join(path, name)
@@ -441,7 +443,7 @@ class SSHFileTreeManager(QWidget):
         QMessageBox.critical(
             self,
             self.word_dict.get("ssh_file_viewer_dialog_title_operation_failed"),
-            f"{self.word_dict.get('ssh_file_viewer_dialog_message_operation_failed')}: {message}")
+            as_text(f"{self.word_dict.get('ssh_file_viewer_dialog_message_operation_failed')}: {message}"))
 
     def _checked_name(self, text: str) -> str | None:
         """*text* as one entry's name, or ``None`` after saying why it cannot be."""
@@ -495,7 +497,7 @@ class SSHFileTreeManager(QWidget):
         reply = QMessageBox.question(
             self,
             self.word_dict.get("ssh_file_viewer_dialog_title_confirm_delete"),
-            f"{self.word_dict.get('ssh_file_viewer_dialog_message_confirm_delete')} '{path}'?",
+            as_text(f"{self.word_dict.get('ssh_file_viewer_dialog_message_confirm_delete')} '{path}'?"),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
         if reply != QMessageBox.StandardButton.Yes:
@@ -596,7 +598,7 @@ class SSHFileTreeManager(QWidget):
         answer = QMessageBox.question(
             self,
             self.word_dict.get("ssh_file_viewer_dialog_title_confirm_replace"),
-            self.word_dict.get("ssh_file_viewer_dialog_message_confirm_replace").format(path=remote_path),
+            as_text(self.word_dict.get("ssh_file_viewer_dialog_message_confirm_replace").format(path=remote_path)),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No)
         if answer == QMessageBox.StandardButton.Yes:
@@ -608,7 +610,7 @@ class SSHFileTreeManager(QWidget):
 
     def _transfer_done(self, title: str, message: str, path: str, after=None) -> None:
         """Say where the file ended up, and do whatever was waiting on it. UI thread."""
-        QMessageBox.information(self, title, f"{message}: {path}")
+        QMessageBox.information(self, title, as_text(f"{message}: {path}"))
         if after is not None:
             after()
 
@@ -617,8 +619,8 @@ class SSHFileTreeManager(QWidget):
         QMessageBox.critical(
             self,
             self.word_dict.get("ssh_file_viewer_dialog_title_operation_failed"),
-            f"{self.word_dict.get('ssh_file_viewer_dialog_message_operation_failed')}: "
-            f"{error_message}")
+            as_text(f"{self.word_dict.get('ssh_file_viewer_dialog_message_operation_failed')}: "
+                    f"{error_message}"))
 
     def get_text(self, title: str, label: str):
         """
