@@ -284,3 +284,58 @@ class TestCrossingReduction:
     def test_tree_has_no_crossings(self):
         r = parse_mermaid("graph TD\nR-->A\nR-->B\nA-->X\nA-->Y\nB-->Z")
         assert _count_crossings(r) == 0
+
+
+def _node_texts(result) -> list:
+    return [node["text"] for node in result["nodes"]]
+
+
+def _edges(result):
+    texts = [node["text"] for node in result["nodes"]]
+    return [(texts[c["source"]], texts[c["target"]], c["label"]) for c in result["connections"]]
+
+
+class TestTextThatLooksLikeSyntax:
+    @pytest.mark.parametrize("label", ["a --> b", "a;b", "x -- y --> z", "p ~~~ q"])
+    def test_an_arrow_or_semicolon_inside_a_quoted_label_is_label(self, label):
+        result = parse_mermaid(f'graph TD\nA["{label}"]-->B')
+
+        assert _node_texts(result) == [label, "B"]
+        assert _edges(result) == [(label, "B", "")]
+
+    def test_a_bracket_inside_quotes_does_not_end_the_label(self):
+        result = parse_mermaid('graph TD\nA["list[0]; done"] --> B')
+
+        assert _node_texts(result) == ["list[0]; done", "B"]
+
+
+class TestHeadersAndDirectives:
+    @pytest.mark.parametrize("header", ["graph", "flowchart", "Flowchart"])
+    def test_a_header_without_a_direction_is_not_a_node(self, header):
+        result = parse_mermaid(f"{header}\nA-->B")
+
+        assert _node_texts(result) == ["A", "B"]
+
+    def test_direction_inside_a_subgraph_is_not_a_node(self):
+        result = parse_mermaid("graph LR\nsubgraph S\ndirection TB\nA-->B\nend")
+
+        assert _node_texts(result) == ["A", "B"]
+
+    def test_a_node_whose_name_starts_like_a_keyword_is_still_a_node(self):
+        assert "graphics" in _node_texts(parse_mermaid("graph TD\ngraphics-->directions"))
+
+
+class TestMoreLinks:
+    @pytest.mark.parametrize("link", ["-- text ---", "-- text --o", "-- text --x", "-- text -->"])
+    def test_text_on_any_normal_link_is_its_label(self, link):
+        result = parse_mermaid(f"graph TD\nA {link} B")
+
+        assert _node_texts(result) == ["A", "B"]
+        assert _edges(result) == [("A", "B", "text")]
+
+    def test_an_invisible_link_keeps_both_nodes_and_draws_nothing(self):
+        result = parse_mermaid("graph TD\nA ~~~ B")
+
+        assert _node_texts(result) == ["A", "B"]
+        assert result["connections"] == []
+

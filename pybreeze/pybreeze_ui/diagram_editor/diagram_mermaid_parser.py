@@ -37,12 +37,14 @@ class _EdgeInfo:
 # Regex patterns
 # ---------------------------------------------------------------------------
 
+# The header's direction is optional: "graph" alone means top-down
 _DIRECTION_RE = re.compile(
-    r"^\s*(?:graph|flowchart)\s+(TD|TB|LR|RL|BT)", re.IGNORECASE
+    r"^\s*(?:graph|flowchart)\b(?:\s+(TD|TB|LR|RL|BT)\b)?", re.IGNORECASE
 )
 _COMMENT_RE = re.compile(r"%%.*$")
 _SKIP_RE = re.compile(
-    r"^\s*(?:subgraph|end\b|style\b|classDef\b|class\s|click\b|linkStyle\b)",
+    r"^\s*(?:subgraph|end\b|style\b|classDef\b|class\s|click\b|linkStyle\b"
+    r"|direction\s+(?:TD|TB|LR|RL|BT)\b)",
     re.IGNORECASE,
 )
 
@@ -55,7 +57,7 @@ _ARROW_SPLIT_RE = re.compile(
     r"\s*"
     r"("
     r"<?"                       # optional left head (bidirectional)
-    r"(?:={2,}|-\.+-|-{2,})"    # body: thick (==), dotted (-.-) or normal (--)
+    r"(?:={2,}|-\.+-|-{2,}|~{3,})"  # body: thick (==), dotted (-.-), normal (--), invisible (~~~)
     r"[>ox]?"                   # optional right head: arrow / circle / cross
     r"(?:\|[^|]*\|)?"           # optional |label|
     r")"
@@ -72,8 +74,12 @@ _LABEL_MAX = 200  # bound non-greedy match to prevent polynomial backtracking on
 
 
 def _normalize_inline_labels(line: str) -> str:
-    """Convert ``-- label -->`` style to ``-->|label|`` pipe style."""
-    line = re.sub(rf"--\s+(\S[^|]{{0,{_LABEL_MAX}}}?)\s+-->", r"-->|\1|", line)
+    """Convert ``-- label -->`` style to ``-->|label|`` pipe style.
+
+    The text may sit on any normal link: ``-- label -->``, ``-- label ---``
+    (no head), ``-- label --o`` or ``-- label --x``.
+    """
+    line = re.sub(rf"--\s+(\S[^|]{{0,{_LABEL_MAX}}}?)\s+(-{{2,}}[>ox]?)", r"\2|\1|", line)
     line = re.sub(rf"-\.\s+(\S[^|]{{0,{_LABEL_MAX}}}?)\s+\.->", r"-.->|\1|", line)
     line = re.sub(rf"==\s+(\S[^|]{{0,{_LABEL_MAX}}}?)\s+==>", r"==>|\1|", line)
     return line
@@ -98,6 +104,65 @@ _SHAPE_DELIMS: tuple[tuple[str, str, NodeShape], ...] = (
     ("{",  "}",  NodeShape.DIAMOND),        # rhombus / decision
     ("[",  "]",  NodeShape.RECTANGLE),      # rectangle
 )
+
+
+# Marks a protected label in text being split: NUL cannot occur in mermaid text
+_STASH_MARK = "\x00"
+_OPENERS = {"(": ")", "[": "]", "{": "}"}
+
+
+def _segment_end(text: str, start: int) -> int:
+    """Index just past the quoted or bracketed segment that starts at *start*.
+
+    Brackets nest and a quote inside brackets hides its brackets; an unclosed
+    segment runs to the end of *text*.
+    """
+    if text[start] == '"':
+        end = text.find('"', start + 1)
+        return len(text) if end < 0 else end + 1
+    depth = 0
+    index = start
+    while index < len(text):
+        char = text[index]
+        if char == '"':
+            index = _segment_end(text, index)
+            continue
+        if char in _OPENERS:
+            depth += 1
+        elif char in ")]}":
+            depth -= 1
+            if depth == 0:
+                return index + 1
+        index += 1
+    return len(text)
+
+
+def _protect(text: str) -> tuple[str, list[str]]:
+    """Replace every quoted or bracketed segment of *text* with a placeholder.
+
+    Arrows and ``;`` are found by pattern in what is left: a label such as
+    ``A["a --> b"]`` or ``A["a;b"]`` used to be split at its own arrow or
+    semicolon. :func:`_restore` puts the segments back.
+    """
+    stash: list[str] = []
+    pieces: list[str] = []
+    index = 0
+    while index < len(text):
+        char = text[index]
+        if char == '"' or char in _OPENERS:
+            end = _segment_end(text, index)
+            pieces.append(f"{_STASH_MARK}{len(stash)}{_STASH_MARK}")
+            stash.append(text[index:end])
+            index = end
+            continue
+        pieces.append(char)
+        index += 1
+    return "".join(pieces), stash
+
+
+def _restore(text: str, stash: list[str]) -> str:
+    """Put back the segments :func:`_protect` took out of *text*."""
+    return re.sub(f"{_STASH_MARK}(\\d+){_STASH_MARK}", lambda match: stash[int(match.group(1))], text)
 
 
 def _unquote(text: str) -> str:
@@ -416,10 +481,11 @@ def _parse_statement(
     edges: list[_EdgeInfo],
 ) -> None:
     """Parse one ``;``-delimited mermaid statement, updating *nodes* and *edges*."""
-    stmt = _normalize_inline_labels(stmt.strip())
-    if not stmt:
+    masked, stash = _protect(stmt.strip())
+    masked = _normalize_inline_labels(masked)
+    if not masked:
         return
-    parts = [p for p in _ARROW_SPLIT_RE.split(stmt) if p.strip()]
+    parts = [_restore(p, stash) for p in _ARROW_SPLIT_RE.split(masked) if p.strip()]
     if len(parts) < 3:
         if parts:
             _parse_node_group(parts[0], nodes)
@@ -429,6 +495,10 @@ def _parse_statement(
         src_ids = _parse_node_group(parts[idx], nodes)
         label, style, width = _parse_arrow(parts[idx + 1])
         tgt_ids = _parse_node_group(parts[idx + 2], nodes)
+        if "~~~" in parts[idx + 1]:
+            # An invisible link only places its nodes; there is no line to draw.
+            idx += 2
+            continue
         # mermaid joins every source to every target ("A & B --> C & D").
         for src_id in src_ids:
             for tgt_id in tgt_ids:
@@ -450,7 +520,7 @@ def _parse_direction(line: str) -> tuple[str, str] | None:
     match = _DIRECTION_RE.match(line)
     if match is None:
         return None
-    direction = match.group(1).upper()
+    direction = (match.group(1) or "TD").upper()
     direction = "TD" if direction == "TB" else direction
     remainder = line[match.end():].lstrip(" ;").strip()
     return direction, remainder
@@ -492,8 +562,9 @@ def _parse_lines(text: str, nodes: dict[str, _NodeInfo], edges: list[_EdgeInfo])
                 continue
         if _SKIP_RE.match(line):
             continue
-        for stmt in line.split(";"):
-            _parse_statement(stmt, nodes, edges)
+        masked, stash = _protect(line)
+        for stmt in masked.split(";"):
+            _parse_statement(_restore(stmt, stash), nodes, edges)
     return direction
 
 
