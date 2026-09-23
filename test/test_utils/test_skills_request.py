@@ -105,7 +105,7 @@ class TestWhatARequestReports:
         answered, errors = _run(monkeypatch, requests.ConnectionError("refused"))
 
         assert answered == []
-        assert "refused" in errors[0]
+        assert "could not connect to the server" in errors[0]
 
 
 def test_a_failed_request_does_not_log_the_url(monkeypatch):

@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import requests
 
+from pybreeze.utils.network.url_validation import UnsafeURLError
+
 DEFAULT_MAX_RESPONSE_BYTES = 16 * 1024 * 1024  # 16 MB
 DISPLAY_TRUNCATE_CHARS = 2000
 _CHUNK_SIZE = 65536
@@ -59,6 +61,35 @@ def read_capped_text(
         return body.decode(response.encoding or default_encoding, "replace")
     except LookupError:
         return body.decode(default_encoding, "replace")
+
+
+# What a failed request is called for the user, most specific first: a connect
+# timeout is both a Timeout and a ConnectionError
+_REQUEST_FAILURES: tuple[tuple[type[Exception], str], ...] = (
+    (requests.Timeout, "the request timed out"),
+    (requests.exceptions.SSLError, "the secure connection could not be made"),
+    (requests.ConnectionError, "could not connect to the server"),
+    (requests.TooManyRedirects, "too many redirects"),
+    (requests.exceptions.InvalidURL, "the URL is not valid"),
+    (requests.exceptions.MissingSchema, "the URL is not valid"),
+    (requests.exceptions.InvalidSchema, "the URL is not valid"),
+)
+
+
+def describe_request_error(error: Exception) -> str:
+    """Say what went wrong with a request, for the user, without its URL.
+
+    A ``requests`` error's text quotes the URL, path and query included, and
+    an API URL may carry a token: shown as it was, the panels displayed it.
+    The size cap's and the SSRF check's own messages name no path or query
+    and are kept.
+    """
+    if isinstance(error, (ResponseTooLargeError, UnsafeURLError)):
+        return str(error)
+    for kind, reason in _REQUEST_FAILURES:
+        if isinstance(error, kind):
+            return f"{reason} ({type(error).__name__})"
+    return type(error).__name__
 
 
 def succeeded(response) -> bool:

@@ -15,7 +15,8 @@ from pybreeze.pybreeze_ui.extend_ai_gui.prompt_store import load_prompt
 from pybreeze.pybreeze_ui.thread_keeper import let_run_out
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.network.http_client import (
-    ResponseTooLargeError, read_capped_text, CONNECT_TIMEOUT, succeeded, truncate_for_display,
+    ResponseTooLargeError, read_capped_text, CONNECT_TIMEOUT, describe_request_error, succeeded,
+    truncate_for_display,
 )
 from pybreeze.utils.network.public_http import public_session
 from pybreeze.utils.network.url_validation import UnsafeURLError, validate_url
@@ -51,7 +52,7 @@ class RequestThread(QThread):
         except (requests.RequestException, ResponseTooLargeError, UnsafeURLError) as e:
             # Not %r: a requests error carries the whole URL, which may hold a token.
             pybreeze_logger.error("Skills send request failed: %s", type(e).__name__)
-            self.error.emit(language_wrapper.language_word_dict.get("skills_exception").format(error=str(e)))
+            self.error.emit(language_wrapper.language_word_dict.get("skills_exception").format(error=describe_request_error(e)))
 
 
 def describe_failed_status(response, body: str) -> tuple[bool, str]:

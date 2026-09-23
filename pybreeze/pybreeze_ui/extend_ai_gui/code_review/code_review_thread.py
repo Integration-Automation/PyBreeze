@@ -10,7 +10,8 @@ from pybreeze.pybreeze_ui.extend_ai_gui.code_review.cot_chain import (
 )
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.network.http_client import (
-    ResponseTooLargeError, read_capped_text, CONNECT_TIMEOUT, succeeded, truncate_for_display,
+    ResponseTooLargeError, read_capped_text, CONNECT_TIMEOUT, describe_request_error, succeeded,
+    truncate_for_display,
 )
 from pybreeze.utils.network.public_http import public_session
 from pybreeze.utils.network.url_validation import UnsafeURLError, validate_url
@@ -75,7 +76,7 @@ class SenderThread(QThread):
             pybreeze_logger.error(
                 "CoT code review send failed for %s: %s", file, type(error).__name__)
             word = language_wrapper.language_word_dict
-            return f"{word.get('cot_gui_error_sending')} {file} {error}", False
+            return f"{word.get('cot_gui_error_sending')} {file} {describe_request_error(error)}", False
         if not succeeded(resp):
             # An error page or an unfollowed redirect is not an answer: counted
             # as one, it was quoted into every later step of the chain.

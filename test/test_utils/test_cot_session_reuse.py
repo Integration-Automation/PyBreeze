@@ -101,7 +101,7 @@ def test_a_failed_step_is_shown_but_never_quoted_back():
     thread._run_templates(session, "print('x')")
 
     # The failure still reaches the user ...
-    assert "endpoint down" in received["linter.md"]
+    assert "RequestException" in received["linter.md"]  # what failed, never the URL
     # ... every later step still runs ...
     assert len(session.post_calls) == len(COT_TEMPLATE_FILES)
     # ... and none of them carries the failure text into the model.

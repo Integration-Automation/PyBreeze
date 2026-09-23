@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-96 | 2026-09-23 | A failed AI request is described in its panel without the URL and any token in it | #fix #security #ai | [2026-09](2026-09.md) |
 | U-20260923-95 | 2026-09-23 | Create Project writes into the folder open in the IDE and asks before it replaces a template | #fix #menu | [2026-09](2026-09.md) |
 | U-20260923-94 | 2026-09-23 | Requests to user URLs connect only to the address checked as they connect (DNS rebinding) | #done #security #network | [2026-09](2026-09.md) |
 | U-20260923-93 | 2026-09-23 | Run and send: an earlier run's report is not mailed, and the run window says whether the mail went | #fix #executor #mail | [2026-09](2026-09.md) |
@@ -176,4 +177,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 113 |
+| [2026-09.md](2026-09.md) | 2026-09 | 114 |
