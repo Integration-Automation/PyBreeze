@@ -41,6 +41,7 @@ def looks_like_a_fingerprint(line: str) -> bool:
     """Whether *line* is already a fingerprint rather than a URL."""
     return len(line) == _FINGERPRINT_LENGTH and all(c in "0123456789abcdef" for c in line)
 
+
 # The methods the panel offers / 面板提供的方法
 SUPPORTED_METHODS = ("GET", "POST", "PUT", "DELETE")
 # The methods that carry the code in a body / 會把程式碼放進 body 的方法

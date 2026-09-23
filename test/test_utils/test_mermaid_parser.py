@@ -340,7 +340,6 @@ class TestMoreLinks:
         assert result["connections"] == []
 
 
-
 class TestWhatTheReviewFound:
     def test_capitalised_keywords_are_nodes(self):
         # "End", "Click", "Style" were taken for keywords and their lines skipped

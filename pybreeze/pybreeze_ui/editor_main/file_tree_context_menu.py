@@ -170,6 +170,7 @@ def _action_new_file(tree_view: QTreeView, path: Path | None) -> None:
             as_text(word.get("file_tree_ctx_already_exists").format(name=str(new_path))),
         )
         return
+
     def _create() -> None:
         new_path.parent.mkdir(parents=True, exist_ok=True)
         new_path.touch()

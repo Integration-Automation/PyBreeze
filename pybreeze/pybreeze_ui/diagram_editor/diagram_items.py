@@ -129,6 +129,8 @@ def _clamped_font_size(size: int) -> int:
         return max(MIN_FONT_SIZE, min(int(size), MAX_FONT_SIZE))
     except (OverflowError, TypeError, ValueError):
         return _LABEL_FONT_SIZE
+
+
 _NODE_PEN_COLOR = "#455a64"
 _NODE_BRUSH_COLOR = "#e3f2fd"
 _NODE_SELECTED_COLOR = "#1565c0"
