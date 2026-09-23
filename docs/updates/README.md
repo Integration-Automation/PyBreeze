@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-59 | 2026-09-23 | A hand-edited null no longer becomes the prthinker API key "None" | #done #prthinker #security | [2026-09](2026-09.md) |
 | U-20260923-58 | 2026-09-23 | A diagram load either happens or leaves the canvas as it was | #done #diagram | [2026-09](2026-09.md) |
 | U-20260923-57 | 2026-09-23 | The AI review panel's accept/reject totals carry across sessions | #done #ai | [2026-09](2026-09.md) |
 | U-20260923-56 | 2026-09-23 | The SSRF check also refuses IPv6 site-local addresses | #done #security | [2026-09](2026-09.md) |
@@ -139,4 +140,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 76 |
+| [2026-09.md](2026-09.md) | 2026-09 | 77 |

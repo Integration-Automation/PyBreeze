@@ -152,9 +152,18 @@ def load_setting() -> Dict[str, str]:
     except (OSError, ValueError) as error:
         pybreeze_logger.error("prthinker settings could not be read: %r", error)
         return setting
-    if isinstance(stored, dict):
-        setting.update(
-            {key: str(value) for key, value in stored.items() if key in DEFAULT_SETTING})
+    if not isinstance(stored, dict):
+        return setting
+    for key, value in stored.items():
+        if key not in DEFAULT_SETTING:
+            continue
+        # Every setting is text. str() made a hand-edited null the text "None",
+        # which then went out as the API key, the repository and the model,
+        # and a list became broken arguments; anything else keeps its default.
+        if isinstance(value, str):
+            setting[key] = value
+        else:
+            pybreeze_logger.debug("prthinker setting %s is not text; using the default", key)
     return setting
 
 

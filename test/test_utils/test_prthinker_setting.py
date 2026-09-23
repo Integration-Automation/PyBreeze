@@ -42,6 +42,19 @@ class TestReadingAndWritingTheSettings:
             json.dumps({"nonsense": "value"}), encoding="utf-8")
         assert "nonsense" not in load_setting()
 
+    @pytest.mark.parametrize("value", [None, 5, True, ["--a", "--b"], {"k": "v"}])
+    def test_a_value_that_is_not_text_keeps_its_default(self, data_dir, value):
+        # str() made null the text "None", sent on as the API key and model.
+        (data_dir / "prthinker_setting.json").write_text(json.dumps({
+            "openai_api_key": value, "extra_arguments": value, "repository": "owner/name",
+        }), encoding="utf-8")
+
+        setting = load_setting()
+
+        assert setting["openai_api_key"] == DEFAULT_SETTING["openai_api_key"]
+        assert setting["extra_arguments"] == DEFAULT_SETTING["extra_arguments"]
+        assert setting["repository"] == "owner/name"
+
     def test_a_broken_file_does_not_stop_the_feature(self, data_dir):
         (data_dir / "prthinker_setting.json").write_text("{ not json", encoding="utf-8")
         assert load_setting() == DEFAULT_SETTING
