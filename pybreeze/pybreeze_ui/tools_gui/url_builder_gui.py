@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.tools_gui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.utils.exception.exceptions import UrlConvertException
 from pybreeze.utils.logging.logger import pybreeze_logger
@@ -62,7 +63,7 @@ class UrlBuilderGUI(QWidget):
     def convert_to_json(self) -> None:
         """Parse the input URL into its JSON parts."""
         word = language_wrapper.language_word_dict
-        text = self.input_edit.toPlainText().strip()
+        text = exact_text(self.input_edit).strip()
         if not text:
             self._valid_output = False
             self.output_edit.setPlainText(word.get("url_builder_empty_hint"))
@@ -80,7 +81,7 @@ class UrlBuilderGUI(QWidget):
     def convert_to_url(self) -> None:
         """Build a URL from the input JSON parts."""
         word = language_wrapper.language_word_dict
-        text = self.input_edit.toPlainText().strip()
+        text = exact_text(self.input_edit).strip()
         if not text:
             self._valid_output = False
             self.output_edit.setPlainText(word.get("url_builder_empty_hint"))

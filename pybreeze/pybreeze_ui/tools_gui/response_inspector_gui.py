@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.tools_gui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.header_analyzer_gui import HeaderAnalyzerGUI
 from pybreeze.pybreeze_ui.tools_gui.http_status_gui import HttpStatusGUI
 from pybreeze.pybreeze_ui.tools_gui.json_format_gui import JsonFormatGUI
@@ -137,7 +138,7 @@ class ResponseInspectorGUI(QWidget):
     def analyze(self) -> None:
         """Analyse the pasted response, show the report, and enable cross-tool actions."""
         word = language_wrapper.language_word_dict
-        text = self.input_edit.toPlainText().strip()
+        text = exact_text(self.input_edit).strip()
         if not text:
             self._analysis = None
             self._set_cross_tool_enabled(jwt=False, status=False, headers=False, body=False)
@@ -192,7 +193,7 @@ class ResponseInspectorGUI(QWidget):
             self._main_window,
             HeaderAnalyzerGUI(
                 main_window=self._main_window,
-                initial_headers=self.input_edit.toPlainText()),
+                initial_headers=exact_text(self.input_edit)),
             "extend_tools_menu_header_analyzer_tab_label")
 
     def open_body_in_json_format(self) -> QWidget | None:

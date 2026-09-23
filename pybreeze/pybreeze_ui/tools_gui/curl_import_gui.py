@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.tools_gui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.header_analyzer_gui import HeaderAnalyzerGUI
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.pybreeze_ui.tools_gui.tool_tabs import open_tool_tab
@@ -99,7 +100,7 @@ class CurlImportGUI(QWidget):
 
     def _on_target_changed(self, _index: int) -> None:
         """Regenerate when the target changes, if there is already input."""
-        if self.input_edit.toPlainText().strip():
+        if exact_text(self.input_edit).strip():
             self.convert()
 
     def _clear_result(self) -> None:
@@ -112,7 +113,7 @@ class CurlImportGUI(QWidget):
     def convert(self) -> None:
         """Parse the input command and show the template for the chosen target."""
         word = language_wrapper.language_word_dict
-        command = self.input_edit.toPlainText().strip()
+        command = exact_text(self.input_edit).strip()
         if not command:
             self._clear_result()
             self.output_edit.setPlainText(word.get("curl_import_empty_hint"))

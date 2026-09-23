@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
 from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.thread_keeper import let_run_out
+from pybreeze.pybreeze_ui.tools_gui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.utils.exception.exceptions import RegexTesterException
 from pybreeze.utils.logging.logger import pybreeze_logger
@@ -126,7 +127,7 @@ class RegexGUI(QWidget):
         self.test_button.setEnabled(False)
         self.output_edit.setPlainText(word.get("regex_running"))
         thread = RegexMatchThread(
-            self.pattern_edit.text(), self.text_edit.toPlainText(), self.selected_flags())
+            self.pattern_edit.text(), exact_text(self.text_edit), self.selected_flags())
         thread.matched.connect(self._show_matches)
         thread.failed.connect(self._show_error)
         thread.finished.connect(lambda: self.test_button.setEnabled(True))

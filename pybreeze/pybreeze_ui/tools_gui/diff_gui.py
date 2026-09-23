@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.tools_gui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.utils.diff_tools.text_diff import DiffSummary, diff_summary, unified_diff
 
@@ -70,7 +71,7 @@ class DiffGUI(QWidget):
 
     def compare(self) -> None:
         """Compute and show the diff and summary of the two inputs."""
-        left = self.left_edit.toPlainText()
-        right = self.right_edit.toPlainText()
+        left = exact_text(self.left_edit)
+        right = exact_text(self.right_edit)
         self.summary_label.setText(build_summary_line(diff_summary(left, right)))
         self.output_edit.setPlainText(unified_diff(left, right))

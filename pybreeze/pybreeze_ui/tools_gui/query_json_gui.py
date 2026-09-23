@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.tools_gui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.utils.exception.exceptions import QueryConvertException
 from pybreeze.utils.logging.logger import pybreeze_logger
@@ -56,7 +57,7 @@ class QueryJsonGUI(QWidget):
 
     def convert_to_json(self) -> None:
         """Convert the input query string to JSON."""
-        text = self.input_edit.toPlainText().strip()
+        text = exact_text(self.input_edit).strip()
         if not text:
             self._valid_output = False
             self.output_edit.setPlainText(
@@ -68,7 +69,7 @@ class QueryJsonGUI(QWidget):
     def convert_to_query(self) -> None:
         """Convert the input JSON to a query string."""
         word = language_wrapper.language_word_dict
-        text = self.input_edit.toPlainText().strip()
+        text = exact_text(self.input_edit).strip()
         if not text:
             self._valid_output = False
             self.output_edit.setPlainText(word.get("query_json_empty_hint"))

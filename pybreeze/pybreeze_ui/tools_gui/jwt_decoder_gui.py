@@ -10,6 +10,7 @@ import json
 from PySide6.QtWidgets import QLabel, QPushButton, QTextEdit, QVBoxLayout, QWidget
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.tools_gui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.utils.exception.exceptions import JwtDecodeException
 from pybreeze.utils.jwt_tools.jwt_decoder import (
@@ -84,7 +85,7 @@ class JwtDecoderGUI(QWidget):
     def decode(self) -> None:
         """Decode the pasted token and show its header and payload."""
         word = language_wrapper.language_word_dict
-        token = self.input_edit.toPlainText().strip()
+        token = exact_text(self.input_edit).strip()
         if not token:
             self._valid_output = False
             self.output_edit.setPlainText(word.get("jwt_decoder_empty_hint"))
