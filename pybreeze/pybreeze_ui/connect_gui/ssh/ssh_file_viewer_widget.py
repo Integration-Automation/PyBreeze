@@ -94,6 +94,26 @@ def remote_join(directory: str, name: str) -> str:
     return joined if joined.startswith("/") else f"/{joined}"
 
 
+def plain_remote_name(text: str) -> str | None:
+    """*text* stripped, when it names one entry in a folder; ``None`` otherwise.
+
+    A ``/`` in a new name moved the entry into another folder (or, leading,
+    dropped the folder it was in), and ``.`` or ``..`` named the folder itself
+    or its parent.
+    """
+    name = text.strip()
+    if not name or "/" in name or "\x00" in name or name in (".", ".."):
+        return None
+    return name
+
+
+def folder_item(item: QTreeWidgetItem | None) -> QTreeWidgetItem | None:
+    """The tree item of the folder *item* is in, or *item* itself when it is a folder."""
+    if item is None or item.text(1) == "dir":
+        return item
+    return item.parent()
+
+
 class SftpBusy(RuntimeError):
     """Another request holds the SFTP session (a transfer, a listing); try again after it."""
 
@@ -711,9 +731,22 @@ class SSHFileTreeManager(QWidget):
             self.word_dict.get("ssh_file_viewer_dialog_label_folder_name"))
         if not ok or not name.strip():
             return
-        new_path = remote_join(base_path, name.strip())
-        self.client.mkdir(new_path)
-        self.action_refresh(item)
+        name = self._checked_name(name)
+        if name is None:
+            return
+        self.client.mkdir(remote_join(base_path, name))
+        # The folder it went into: refreshing a file item did nothing
+        self.action_refresh(folder_item(item))
+
+    def _checked_name(self, text: str) -> str | None:
+        """*text* as one entry's name, or ``None`` after saying why it cannot be."""
+        name = plain_remote_name(text)
+        if name is None:
+            QMessageBox.warning(
+                self,
+                self.word_dict.get("ssh_file_viewer_dialog_title_operation_failed"),
+                self.word_dict.get("ssh_file_viewer_dialog_message_bad_name"))
+        return name
 
     def action_rename(self, item: QTreeWidgetItem | None):
         """
@@ -728,12 +761,19 @@ class SSHFileTreeManager(QWidget):
             f"{self.word_dict.get('ssh_file_viewer_dialog_label_new_name_for_item')}: {item.text(0)}")
         if not ok or not new_name.strip():
             return
+        new_name = self._checked_name(new_name)
+        if new_name is None:
+            return
         base = posixpath.dirname(old_path) or "/"
-        new_path = remote_join(base, new_name.strip())
+        new_path = remote_join(base, new_name)
         self.client.rename(old_path, new_path)
         # Update item display
-        item.setText(0, new_name.strip())
+        item.setText(0, new_name)
         item.setText(3, new_path)
+        if item.text(1) == "dir" and item.childCount() and not self.is_placeholder_present(item):
+            # Its loaded children still carried the old path, and a download,
+            # delete or rename of one went there: list them again
+            self.action_refresh(item)
 
     def action_delete(self, item: QTreeWidgetItem | None):
         """
@@ -805,7 +845,7 @@ class SSHFileTreeManager(QWidget):
             title=self.word_dict.get("ssh_file_viewer_dialog_title_uploaded"),
             message=self.word_dict.get("ssh_file_viewer_dialog_message_uploaded_to"),
             # The folder only holds the new file once the upload is done.
-            after=lambda: self.action_refresh(item))
+            after=lambda: self.action_refresh(folder_item(item)))
 
     def _start_transfer(self, *, downloading: bool, remote_path: str, local_path: str,
                         title: str, message: str, after=None) -> bool:

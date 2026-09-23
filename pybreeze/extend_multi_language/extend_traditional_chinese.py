@@ -195,6 +195,7 @@ pybreeze_traditional_chinese_word_dict = {
     "ssh_file_viewer_log_message_refreshing": "正在重新整理目前項目的子項（或根）",
     "ssh_file_viewer_dialog_title_no_selection": "未選取",
     "ssh_file_viewer_dialog_message_select_folder_to_create": "請選擇一個資料夾以建立子資料夾。",
+    "ssh_file_viewer_dialog_message_bad_name": "名稱只能是單一項目：不能含有「/」，也不能是「.」或「..」。",
     "ssh_file_viewer_dialog_title_create_folder": "建立資料夾",
     "ssh_file_viewer_dialog_label_folder_name": "資料夾名稱：",
     "ssh_file_viewer_dialog_title_rename": "重新命名",
