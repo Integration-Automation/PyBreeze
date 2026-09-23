@@ -14,7 +14,7 @@ from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.utils.exception.exceptions import RegexTesterException
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.regex_tools.regex_tester import (
-    MatchResult, available_flags, find_matches_bounded
+    MAX_MATCHES, MatchResult, available_flags, find_matches_bounded, stop_running_workers
 )
 
 
@@ -47,7 +47,11 @@ def build_matches_text(matches: list[MatchResult], no_match_message: str) -> str
     if not matches:
         return no_match_message
     word = language_wrapper.language_word_dict
-    lines = [word.get("regex_match_count").format(count=len(matches)), ""]
+    count = word.get("regex_match_count").format(count=len(matches))
+    if len(matches) >= MAX_MATCHES:
+        # The list stops at the cap; it did not say there might be more
+        count = word.get("regex_match_count_capped").format(count=len(matches))
+    lines = [count, ""]
     for index, match in enumerate(matches, start=1):
         lines.append(f"[{index}] ({match.start}-{match.end}) {match.matched_text!r}")
         for group_index, value in enumerate(match.groups, start=1):
@@ -125,6 +129,8 @@ class RegexGUI(QWidget):
             return
         word = language_wrapper.language_word_dict
         self.test_button.setEnabled(False)
+        # Not something to save or open: Save during a run wrote this text
+        self._valid_output = False
         self.output_edit.setPlainText(word.get("regex_running"))
         thread = RegexMatchThread(
             self.pattern_edit.text(), exact_text(self.text_edit), self.selected_flags())
@@ -146,8 +152,13 @@ class RegexGUI(QWidget):
             language_wrapper.language_word_dict.get("regex_error").format(error=message))
 
     def closeEvent(self, event) -> None:
-        """Let a pattern still running run out; its process is stopped on its own deadline."""
+        """Stop a pattern still running, and let its thread run out.
+
+        The worker process is stopped rather than left to its deadline: the IDE
+        closes its tabs as it exits, and an exiting IDE does not end it.
+        """
         thread = self._match_thread
         if thread is not None and thread.isRunning():
             let_run_out(thread, thread.matched, thread.failed)
+            stop_running_workers()
         super().closeEvent(event)

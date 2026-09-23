@@ -50,8 +50,9 @@ The layers are presentation (`pybreeze_ui/`), then execution (`extend/`), then f
 
 - **CLI**: `python -m pybreeze` (`pybreeze/__main__.py`). No console script is declared. It and
   `exe/start_pybreeze.py` start the IDE only under `if __name__ == "__main__":` with
-  `multiprocessing.freeze_support()`: the regex tester runs patterns in a spawned process, which
-  re-runs the main script (and, in the packaged executable, the executable itself).
+  `multiprocessing.freeze_support()`: in the packaged executable the regex tester runs patterns in
+  a spawned process, which re-runs the executable. From source it runs them in a plain worker script
+  (`python -I -S -c`), so a launch script without the guard is safe.
 - **Programmatic**: `pybreeze.start_editor(debug_mode=False, theme="dark_amber.xml", **kwargs)`.
   `debug_mode=True` adds an auto-close timer, which CI uses.
 - **Main window**: `PyBreezeMainWindow` exposes `tab_widget`, `current_run_code_window` and

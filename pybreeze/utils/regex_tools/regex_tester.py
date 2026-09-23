@@ -9,8 +9,12 @@ touches the UI or the network.
 """
 from __future__ import annotations
 
+import json
 import multiprocessing
 import re
+import subprocess  # nosec B404 — runs this interpreter on a fixed script, never a shell
+import sys
+import threading
 from dataclasses import dataclass, field
 
 from pybreeze.utils.exception.exception_tags import (
@@ -21,10 +25,11 @@ from pybreeze.utils.exception.exception_tags import (
 )
 from pybreeze.utils.exception.exceptions import RegexTesterException
 from pybreeze.utils.logging.logger import pybreeze_logger
+from pybreeze.utils.subprocess_util import no_window_creationflags
 
 # Cap on reported matches, so a pattern that matches everywhere cannot flood
 # the output. It bounds how many matches are reported, not how long one takes.
-_MAX_MATCHES = 1000
+MAX_MATCHES = 1000
 
 # How long a pattern may run, in its own process, before it is stopped.
 MATCH_TIMEOUT_SECONDS = 5.0
@@ -118,9 +123,51 @@ def find_matches(
                 named_groups=dict(match.groupdict()),
             )
         )
-        if len(results) >= _MAX_MATCHES:
+        if len(results) >= MAX_MATCHES:
             break
     return results
+
+
+# What the worker runs: the standard library only, so it needs nothing from the
+# IDE's path. It reads the job as JSON on stdin and writes the matches as JSON.
+_WORKER_SCRIPT = """
+import json, re, sys
+job = json.loads(sys.stdin.buffer.read().decode("utf-8"))
+found = []
+for match in re.compile(job["pattern"], job["flags"]).finditer(job["text"]):
+    found.append([match.group(0), match.start(), match.end(), list(match.groups()), match.groupdict()])
+    if len(found) >= job["limit"]:
+        break
+sys.stdout.buffer.write(json.dumps(found).encode("utf-8"))
+"""
+
+# The workers still running (Popen, or multiprocessing.Process in a packaged
+# build), so closing the IDE can stop them: it exits with os._exit, and a child
+# process outlives its parent on Windows
+_RUNNING: set = set()
+_RUNNING_LOCK = threading.Lock()
+# How long to wait for a spawned worker to go once it is done or stopped
+_JOIN_SECONDS = 2.0
+
+
+def stop_running_workers() -> None:
+    """Stop every pattern still running in a worker process."""
+    with _RUNNING_LOCK:
+        running = list(_RUNNING)
+    for worker in running:
+        still_running = worker.is_alive() if hasattr(worker, "is_alive") else worker.poll() is None
+        if still_running:
+            worker.kill()
+
+
+def _register(worker) -> None:
+    with _RUNNING_LOCK:
+        _RUNNING.add(worker)
+
+
+def _unregister(worker) -> None:
+    with _RUNNING_LOCK:
+        _RUNNING.discard(worker)
 
 
 def find_matches_bounded(
@@ -134,6 +181,15 @@ def find_matches_bounded(
     Only a process can be stopped mid-match. The pattern is compiled here first,
     so a malformed one is reported without starting anything.
 
+    The worker is this interpreter running a fixed script (``-I -S``), not a
+    multiprocessing ``spawn`` child: that re-imports the script the IDE was
+    started from, and one without a ``__main__`` guard (the README's own
+    ``start_editor()`` example) opened a second IDE for every pattern, which
+    then "timed out". A packaged build has no interpreter to run a script
+    with (``sys.executable`` is the app), so there the worker is still a
+    ``spawn`` child, which its guarded entry script and ``freeze_support()``
+    handle.
+
     :param pattern: the regular expression
     :param text: the sample text to search
     :param flag_names: optional flag names to apply
@@ -142,12 +198,60 @@ def find_matches_bounded(
     :raises RegexTesterException: when the pattern is empty or invalid, or ran too long
     """
     compile_pattern(pattern, flag_names)
+    if getattr(sys, "frozen", False):
+        return _find_in_spawned_process(pattern, text, list(flag_names or []), timeout_seconds)
+    job = json.dumps({"pattern": pattern, "text": text, "flags": build_flags(flag_names or []),
+                      "limit": MAX_MATCHES}).encode("utf-8")
+    output = _run_worker(job, timeout_seconds)
+    try:
+        found = json.loads(output.decode("utf-8"))
+    except ValueError as error:  # it died part-way (killed, or out of memory)
+        raise _worker_failed(repr(error)) from error
+    return [MatchResult(matched_text=text_, start=start, end=end, groups=groups, named_groups=named)
+            for text_, start, end, groups, named in found]
+
+
+def _run_worker(job: bytes, timeout_seconds: float) -> bytes:
+    """Run the worker on *job*; its output, or ``RegexTesterException`` when it ran too long or failed."""
+    try:
+        process = subprocess.Popen(  # nosec B603 — fixed argument list, no shell
+            [sys.executable, "-I", "-S", "-c", _WORKER_SCRIPT],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            shell=False, creationflags=no_window_creationflags())
+    except OSError as error:
+        raise _worker_failed(repr(error)) from error
+    _register(process)
+    try:
+        output, _ = process.communicate(job, timeout=timeout_seconds)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.communicate()
+        message = regex_timeout_error.format(seconds=timeout_seconds)
+        pybreeze_logger.error(message)
+        raise RegexTesterException(message) from None
+    finally:
+        _unregister(process)
+    if process.returncode != 0:
+        raise _worker_failed(f"exit code {process.returncode}")
+    return output
+
+
+def _worker_failed(detail: str) -> RegexTesterException:
+    """The error for a worker that stopped without an answer."""
+    message = regex_worker_error.format(detail=detail)
+    pybreeze_logger.error(message)
+    return RegexTesterException(message)
+
+
+def _find_in_spawned_process(pattern: str, text: str, flag_names: list[str],
+                             timeout_seconds: float) -> list[MatchResult]:
+    """:func:`find_matches` in a ``spawn`` child stopped after *timeout_seconds* (packaged builds)."""
     context = multiprocessing.get_context("spawn")
     receiving, sending = context.Pipe(duplex=False)
     process = context.Process(
-        target=_matches_into_pipe, args=(sending, pattern, text, list(flag_names or [])),
-        daemon=True)
+        target=_matches_into_pipe, args=(sending, pattern, text, flag_names), daemon=True)
     process.start()
+    _register(process)
     sending.close()
     try:
         if not receiving.poll(timeout_seconds):
@@ -156,29 +260,23 @@ def find_matches_bounded(
             raise RegexTesterException(message)
         kind, value = receiving.recv()
     except (EOFError, OSError) as error:
-        message = regex_worker_error.format(detail=repr(error))
-        pybreeze_logger.error(message)
-        raise RegexTesterException(message) from error
+        raise _worker_failed(repr(error)) from error
     finally:
         if process.is_alive():
             process.terminate()
         process.join(timeout=_JOIN_SECONDS)
         receiving.close()
+        _unregister(process)
     if kind == "error":
         raise RegexTesterException(value)
     return value
 
 
-# How long to wait for the worker process to go once it is done or stopped
-_JOIN_SECONDS = 2.0
-
-
 def _matches_into_pipe(sending, pattern: str, text: str, flag_names: list[str]) -> None:
-    """Run :func:`find_matches` in the worker process and send back what happened."""
+    """Run :func:`find_matches` in the spawned worker and send back what happened."""
     try:
         sending.send(("matches", find_matches(pattern, text, flag_names)))
     except RegexTesterException as error:
         sending.send(("error", str(error)))
     finally:
         sending.close()
-

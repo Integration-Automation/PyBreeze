@@ -522,6 +522,7 @@ pybreeze_english_word_dict = {
     "regex_test_button": "Find matches",
     "regex_output_label": "Matches:",
     "regex_match_count": "{count} match(es):",
+    "regex_match_count_capped": "The first {count} match(es); there may be more:",
     "regex_running": "Running the pattern…",
     "regex_no_match": "No matches.",
     "regex_error": "Regex error: {error}",

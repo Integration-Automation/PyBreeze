@@ -120,3 +120,29 @@ class TestAPatternThatNeverFinishes:
         run(widget)
 
         assert "still running" in widget.output_edit.toPlainText()
+
+
+class TestWhatTheTabOffersToSave:
+    def test_nothing_is_saved_while_a_pattern_runs(self, widget):
+        # Save during a run wrote "Running the pattern..."
+        widget.pattern_edit.setText(r"\d")
+        widget.text_edit.setPlainText("a1")
+        run(widget)
+        assert widget._valid_output
+
+        widget.pattern_edit.setText("(a+)+$")
+        widget.text_edit.setPlainText("a" * 60 + "b")
+        widget.test()
+
+        assert widget._valid_output is False
+        widget.close()  # stops the worker
+        widget._match_thread.wait(30_000)
+
+    def test_a_list_cut_at_the_cap_says_so(self, app):
+        from pybreeze.pybreeze_ui.tools_gui.regex_gui import build_matches_text
+        from pybreeze.utils.regex_tools.regex_tester import MAX_MATCHES, MatchResult
+
+        matches = [MatchResult("a", i, i + 1) for i in range(MAX_MATCHES)]
+
+        assert "may be more" in build_matches_text(matches, "none")
+        assert "may be more" not in build_matches_text(matches[:3], "none")
