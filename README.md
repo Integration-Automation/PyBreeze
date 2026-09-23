@@ -165,7 +165,7 @@ Password or private-key authentication, an interactive shell with ANSI handling 
 
 ![AI code review client](images/ai_code_review.png)
 
-*Shown in the pre-send state.* Send a selection to an LLM endpoint, then accept or reject the suggestion — the tally is kept in `~/.pybreeze/response_stats.txt`. The URL is SSRF-validated, redirects are not followed, and the response body is size-capped before it reaches the panel.
+*Shown in the pre-send state.* Send a selection to an LLM endpoint, then accept or reject the suggestion — the tally is kept in `~/.pybreeze/response_stats.txt`. The URL is SSRF-validated, the connection goes only to the address that was checked, redirects are not followed, and the response body is size-capped before it reaches the panel.
 
 ### Chain-of-Thought Code Review (prthinker)
 
@@ -426,7 +426,7 @@ python -m pip install -r dev_requirements.txt
 python -m pytest test/test_utils/ -v --tb=short
 ```
 
-- **Unit tests** — `test/test_utils/`, 67 modules covering the pure-logic layer (curl and HAR parsing, header analysis, SSRF validation, JWT, hashing, timestamps, diffing) plus headless Qt widget tests via `QT_QPA_PLATFORM=offscreen`, with Hypothesis property tests over the parsers
+- **Unit tests** — `test/test_utils/`, covering the pure-logic layer (curl and HAR parsing, header analysis, SSRF validation, JWT, hashing, timestamps, diffing) plus headless Qt widget tests via `QT_QPA_PLATFORM=offscreen`, with Hypothesis property tests over the parsers
 - **Startup tests** — `test/unit_test/start_automation/` launches the IDE in debug mode and verifies it comes up and exits cleanly
 - **CI** — GitHub Actions on Windows across Python 3.10 – 3.14, on every push and PR plus a nightly run
 - **Static analysis** — SonarCloud, Codacy and Bandit
