@@ -13,6 +13,7 @@ from pybreeze.extend.process_executor.test_pioneer.test_pioneer_process_manager 
     init_and_start_test_pioneer_process
 from pybreeze.pybreeze_ui.syntax.syntax_keyword import TEST_PIONEER_SUFFIXES
 from pybreeze.utils.logging.logger import pybreeze_logger
+from pybreeze.pybreeze_ui.plain_text import as_text
 
 if TYPE_CHECKING:
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
@@ -67,7 +68,7 @@ def create_template(ui_we_want_to_set: PyBreezeMainWindow) -> None:
     if template.exists():
         reply = QMessageBox.question(
             ui_we_want_to_set, title,
-            word.get("test_pioneer_template_exists").format(path=template),
+            as_text(word.get("test_pioneer_template_exists").format(path=template)),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No)
         if reply != QMessageBox.StandardButton.Yes:
@@ -78,10 +79,10 @@ def create_template(ui_we_want_to_set: PyBreezeMainWindow) -> None:
         pybreeze_logger.error("TestPioneer template not created in %s: %r", project, error)
         QMessageBox.warning(
             ui_we_want_to_set, title,
-            word.get("test_pioneer_template_failed").format(path=template, error=error))
+            as_text(word.get("test_pioneer_template_failed").format(path=template, error=error)))
         return
     QMessageBox.information(
-        ui_we_want_to_set, title, word.get("test_pioneer_template_created").format(path=template))
+        ui_we_want_to_set, title, as_text(word.get("test_pioneer_template_created").format(path=template)))
 
 
 def check_file(ui_we_want_to_set: PyBreezeMainWindow):

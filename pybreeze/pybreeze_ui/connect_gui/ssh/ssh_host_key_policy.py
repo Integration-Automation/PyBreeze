@@ -25,6 +25,7 @@ from PySide6.QtWidgets import QMessageBox
 from pybreeze.utils.app_dirs import pybreeze_data_dir
 from pybreeze.utils.file_process.replace_file import replace_written
 from pybreeze.utils.logging.logger import pybreeze_logger
+from pybreeze.pybreeze_ui.plain_text import as_text
 
 if TYPE_CHECKING:
     from PySide6.QtWidgets import QWidget
@@ -201,7 +202,7 @@ class HostKeyAsker(QObject):
         box.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         box.setIcon(QMessageBox.Icon.Warning)
         box.setWindowTitle(title)
-        box.setText(message)
+        box.setText(as_text(message))
         box.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         box.setDefaultButton(QMessageBox.StandardButton.No)
         self._answer = box.exec() == QMessageBox.StandardButton.Yes

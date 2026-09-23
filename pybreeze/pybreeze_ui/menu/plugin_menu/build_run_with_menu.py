@@ -25,6 +25,7 @@ from je_editor.utils.file.save.save_file import write_file_with_encoding
 from pybreeze.extend.process_executor.file_runner_process import FileRunnerProcess
 from pybreeze.extend.process_executor.process_executor_utils import open_run_window
 from pybreeze.utils.logging.logger import pybreeze_logger
+from pybreeze.pybreeze_ui.plain_text import as_text
 
 if TYPE_CHECKING:
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
@@ -93,9 +94,9 @@ def save_current_file_for_run(main_window: PyBreezeMainWindow) -> str | None:
         pybreeze_logger.error("Save before run failed: %r", error.__cause__ or error)
         QMessageBox.warning(
             main_window, language_wrapper.language_word_dict.get("run_with_menu_label"),
-            language_wrapper.language_word_dict.get("run_with_save_failed").format(
+            as_text(language_wrapper.language_word_dict.get("run_with_save_failed").format(
                 file=Path(str(widget.current_file or "")).name,
-                error=error.__cause__ or error))
+                error=error.__cause__ or error)))
         return None
 
 

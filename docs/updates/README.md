@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-195 | 2026-09-24 | Show file names, paths, hosts and errors in message boxes as text, and check every box | #fix #security #ui | [2026-09](2026-09.md) |
 | U-20260923-194 | 2026-09-24 | Wrap the three code lines past 120 characters | #refactor | [2026-09](2026-09.md) |
 | U-20260923-193 | 2026-09-24 | Bound a whole diagram image download, and a body cut short by the deadline | #fix #diagram #security | [2026-09](2026-09.md) |
 | U-20260923-192 | 2026-09-24 | Bound a whole AI request, its status line and headers included | #fix #ai #security #done | [2026-09](2026-09.md) |
@@ -275,4 +276,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 212 |
+| [2026-09.md](2026-09.md) | 2026-09 | 213 |

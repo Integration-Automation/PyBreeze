@@ -217,7 +217,10 @@ class TestAddingAnImageFromAUrl:
         editor._add_image_from_url()
         _wait_until(app, lambda: warned)
 
-        assert warned == ["nothing answered"]
+        # As text: the message quotes the server, and Qt read markup in it
+        from pybreeze.pybreeze_ui.plain_text import as_text
+
+        assert warned == [as_text("nothing answered")]
         assert editor._scene.get_all_images() == []
         editor.close()
 

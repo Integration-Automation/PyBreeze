@@ -12,6 +12,7 @@ from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.menu.menu_utils import open_web_browser
 from pybreeze.utils.logging.logger import pybreeze_logger
+from pybreeze.pybreeze_ui.plain_text import as_text
 
 if TYPE_CHECKING:
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
@@ -129,7 +130,7 @@ def safe_create_project(ui: PyBreezeMainWindow, import_name: str) -> Callable[[]
         except ImportError as error:
             pybreeze_logger.error("Failed to import %s: %r", import_name, error)
             QMessageBox.warning(
-                ui, title, word.get("create_project_not_installed").format(package=import_name, error=error))
+                ui, title, as_text(word.get("create_project_not_installed").format(package=import_name, error=error)))
             return
         project = Path(getattr(ui, "working_dir", None) or Path.cwd())
         target = project / _project_folder_name(package.create_project_dir)
@@ -139,9 +140,9 @@ def safe_create_project(ui: PyBreezeMainWindow, import_name: str) -> Callable[[]
             package.create_project_dir(project_path=str(project))
         except Exception as error:  # noqa: BLE001 — each package raises its own exception types for a write it could not make; it is logged and reported
             pybreeze_logger.error("%s project not created in %s: %r", import_name, project, error)
-            QMessageBox.warning(ui, title, word.get("create_project_failed").format(path=target, error=error))
+            QMessageBox.warning(ui, title, as_text(word.get("create_project_failed").format(path=target, error=error)))
             return
-        QMessageBox.information(ui, title, word.get("create_project_created").format(path=target))
+        QMessageBox.information(ui, title, as_text(word.get("create_project_created").format(path=target)))
     return _create
 
 
@@ -156,7 +157,7 @@ def _project_folder_name(create_project_dir: Callable) -> str:
 def _may_replace(ui: PyBreezeMainWindow, title: str, target: Path) -> bool:
     """Ask whether the template files under *target* may be written over."""
     reply = QMessageBox.question(
-        ui, title, language_wrapper.language_word_dict.get("create_project_exists").format(path=target),
+        ui, title, as_text(language_wrapper.language_word_dict.get("create_project_exists").format(path=target)),
         QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         QMessageBox.StandardButton.No)
     return reply == QMessageBox.StandardButton.Yes

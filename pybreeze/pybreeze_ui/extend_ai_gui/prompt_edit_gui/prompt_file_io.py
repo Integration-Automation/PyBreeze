@@ -12,6 +12,7 @@ from PySide6.QtWidgets import QMessageBox, QWidget
 
 from pybreeze.utils.file_process.replace_file import replace_text
 from pybreeze.utils.logging.logger import pybreeze_logger
+from pybreeze.pybreeze_ui.plain_text import as_text
 
 
 def save_prompt_text(parent: QWidget, path: str, content: str, error_title: str) -> bool:
@@ -32,5 +33,5 @@ def save_prompt_text(parent: QWidget, path: str, content: str, error_title: str)
         return True
     except OSError as error:
         pybreeze_logger.error("Prompt file write failed for %s: %r", path, error)
-        QMessageBox.warning(parent, error_title, error.strerror or type(error).__name__)
+        QMessageBox.warning(parent, error_title, as_text(error.strerror or type(error).__name__))
         return False

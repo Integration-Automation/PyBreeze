@@ -22,6 +22,7 @@ from je_editor import language_wrapper
 from pybreeze.extend.prthinker_extend.prthinker_setting import (
     BACKENDS, PLATFORMS, RAG_MODES, load_setting, read_extra_arguments, save_setting, setting_path
 )
+from pybreeze.pybreeze_ui.plain_text import as_text
 
 # 以圓點顯示的欄位 / The fields shown as dots
 SECRET_FIELDS = (
@@ -133,4 +134,4 @@ class PRThinkerSettingDialog(QDialog):
         # It used to go to the log only: the window stayed open with no reason given
         QMessageBox.warning(
             self, self.word_dict.get("prthinker_setting_dialog_title"),
-            self.word_dict.get("prthinker_setting_save_failed").format(path=setting_path()))
+            as_text(self.word_dict.get("prthinker_setting_save_failed").format(path=setting_path())))

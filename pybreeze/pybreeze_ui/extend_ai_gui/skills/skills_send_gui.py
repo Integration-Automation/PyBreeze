@@ -23,6 +23,7 @@ from pybreeze.utils.network.http_client import (
 )
 from pybreeze.utils.network.public_http import overall_deadline, public_session
 from pybreeze.utils.network.url_validation import UnsafeURLError, validate_url
+from pybreeze.pybreeze_ui.plain_text import as_text
 
 
 # Where a skill template wants the code; the user puts it there before sending
@@ -177,7 +178,7 @@ class SkillsSendGUI(QWidget):
         """
         reply = QMessageBox.question(
             self, language_wrapper.language_word_dict.get("skills_prompt_select_label"),
-            language_wrapper.language_word_dict.get("skills_switch_over_edits").format(name=name),
+            as_text(language_wrapper.language_word_dict.get("skills_switch_over_edits").format(name=name)),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No)
         return reply == QMessageBox.StandardButton.Yes

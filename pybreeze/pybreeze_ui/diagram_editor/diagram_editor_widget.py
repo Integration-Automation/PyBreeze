@@ -468,7 +468,7 @@ class DiagramEditorWidget(QWidget):
             QMessageBox.warning(
                 self,
                 _lang("diagram_editor_import_error", "Parse Error"),
-                str(e),
+                as_text(str(e)),
             )
 
     def may_close(self) -> bool:
@@ -526,8 +526,8 @@ class DiagramEditorWidget(QWidget):
         QMessageBox.warning(
             self,
             _lang("diagram_editor_error_title", "Error"),
-            _lang("diagram_editor_export_failed", "Could not export the diagram to:\n{path}")
-            .format(path=path),
+            as_text(_lang("diagram_editor_export_failed", "Could not export the diagram to:\n{path}")
+            .format(path=path)),
         )
 
     def _export_png(self) -> None:
@@ -646,7 +646,9 @@ class DiagramEditorWidget(QWidget):
     def _on_url_image_failed(self, url: str, message: str) -> None:
         """Say why the image at *url* could not be added. UI thread."""
         pybreeze_logger.error("URL image load failed: %s", message)
-        QMessageBox.warning(self, _lang("diagram_editor_error_title", "Error"), message)
+        # As text: the message quotes the server (its reason phrase, its
+        # Content-Type), and Qt read markup in it, an <img> and all
+        QMessageBox.warning(self, _lang("diagram_editor_error_title", "Error"), as_text(message))
 
     # ------------------------------------------------------------------
     # View helpers

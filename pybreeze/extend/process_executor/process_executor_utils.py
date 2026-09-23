@@ -15,6 +15,7 @@ from pybreeze.extend.mail_thunder_extend.mail_thunder_setting import DEFAULT_REP
 from pybreeze.extend.process_executor.python_task_process_manager import TaskProcessManager
 from pybreeze.utils.file_process.get_dir_file_list import get_dir_files_as_list
 from pybreeze.utils.logging.logger import pybreeze_logger
+from pybreeze.pybreeze_ui.plain_text import as_text
 
 if TYPE_CHECKING:
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
@@ -156,7 +157,7 @@ def _ask_for_action_files(main_window: PyBreezeMainWindow) -> list[str]:
         lang = language_wrapper.language_word_dict
         QMessageBox.information(
             main_window, lang.get("run_folder_title"),
-            lang.get("run_folder_no_action_files").format(folder=folder))
+            as_text(lang.get("run_folder_no_action_files").format(folder=folder)))
     return files
 
 

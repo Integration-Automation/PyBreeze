@@ -26,6 +26,7 @@ from pybreeze.pybreeze_ui.extend_ai_gui.prompt_store import (
     prompt_dir, prompt_path, read_prompt_file
 )
 from pybreeze.utils.logging.logger import pybreeze_logger
+from pybreeze.pybreeze_ui.plain_text import as_text
 
 
 @dataclass(frozen=True)
@@ -141,7 +142,7 @@ class PromptEditorWidget(QWidget):
         word = language_wrapper.language_word_dict
         reply = QMessageBox.question(
             self, word.get(self._labels.info_title),
-            word.get(question_key).format(filename=filename),
+            as_text(word.get(question_key).format(filename=filename)),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No)
         return reply == QMessageBox.StandardButton.Yes
@@ -184,8 +185,8 @@ class PromptEditorWidget(QWidget):
                 return
             QMessageBox.information(
                 self, language_wrapper.language_word_dict.get(self._labels.info_title),
-                language_wrapper.language_word_dict.get("prompt_editor_not_utf8").format(
-                    filename=path.name))
+                as_text(language_wrapper.language_word_dict.get("prompt_editor_not_utf8").format(
+                    filename=path.name)))
         self._show_text(text)
 
     def _show_text(self, text: str) -> None:
@@ -201,7 +202,7 @@ class PromptEditorWidget(QWidget):
         if Path(self.current_file).is_file():
             QMessageBox.information(
                 self, word.get(self._labels.info_title),
-                word.get(self._labels.file_exists).format(filename=self.current_file))
+                as_text(word.get(self._labels.file_exists).format(filename=self.current_file)))
             return
 
         # Text typed into the empty editor would be replaced by the template
@@ -217,7 +218,7 @@ class PromptEditorWidget(QWidget):
         self.watcher.addPath(self.current_file)
         QMessageBox.information(
             self, word.get(self._labels.success_title),
-            word.get(self._labels.file_created).format(filename=self.current_file))
+            as_text(word.get(self._labels.file_created).format(filename=self.current_file)))
         self.load_file_content(self.file_selector.currentIndex())
 
     def may_close(self) -> bool:
@@ -270,4 +271,4 @@ class PromptEditorWidget(QWidget):
         self.middle_editor.document().setModified(False)
         QMessageBox.information(
             self, word.get(self._labels.success_title),
-            word.get(self._labels.file_saved).format(filename=self.current_file))
+            as_text(word.get(self._labels.file_saved).format(filename=self.current_file)))

@@ -20,6 +20,7 @@ from je_editor import language_wrapper
 from pybreeze.pybreeze_ui.tools_gui.exact_text import exact_text
 from pybreeze.utils.file_process.replace_file import replace_text
 from pybreeze.utils.logging.logger import pybreeze_logger
+from pybreeze.pybreeze_ui.plain_text import as_text
 
 # A value that is either fixed or computed on demand (e.g. depends on a selector)
 StrOrCallable = str | Callable[[], str]
@@ -135,7 +136,7 @@ class OutputActions:
             word = language_wrapper.language_word_dict
             QMessageBox.warning(
                 self._parent, word.get("output_actions_save_failed_title"),
-                word.get("output_actions_save_failed_message").format(
-                    file=Path(path).name, error=error.strerror or error))
+                as_text(word.get("output_actions_save_failed_message").format(
+                    file=Path(path).name, error=error.strerror or error)))
             return None
         return path
