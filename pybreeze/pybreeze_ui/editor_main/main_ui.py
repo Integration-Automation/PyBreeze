@@ -120,10 +120,19 @@ class PyBreezeMainWindow(EditorMain):
         JEditor asks about its own editor tabs only, and closes any other tab
         whatever its ``closeEvent`` says: a prompt or a diagram being edited
         was lost. A tab with a ``may_close()`` is asked first.
+
+        A tool tab is deleted once it is closed. ``removeTab`` keeps the page,
+        so every tool tab ever closed stayed in memory until the IDE exited,
+        a diagram with its scene and an SSH panel among them; a docked one is
+        already deleted as its dock closes. JEditor's own editor tabs are left
+        to JEditor.
         """
-        if not may_close(self.tab_widget.widget(index)):
+        widget = self.tab_widget.widget(index)
+        if not may_close(widget):
             return
         super().close_tab(index)
+        if widget is not None and not isinstance(widget, EditorWidget) and self.tab_widget.indexOf(widget) == -1:
+            widget.deleteLater()
 
     def _tool_tabs_may_close(self) -> bool:
         """Whether every PyBreeze tab and docked widget agrees to close (each may ask)."""

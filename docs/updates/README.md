@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-184 | 2026-09-24 | Delete a tool tab once it is closed | #fix #ui | [2026-09](2026-09.md) |
 | U-20260923-183 | 2026-09-24 | Free a run window once the main window lets go of it | #fix #executor | [2026-09](2026-09.md) |
 | U-20260923-182 | 2026-09-24 | Refuse a query byte that is not UTF-8 and a JSON key given twice instead of losing them | #fix #tools | [2026-09](2026-09.md) |
 | U-20260923-181 | 2026-09-24 | Show a response's status when its code is not a registered one | #fix #tools | [2026-09](2026-09.md) |
@@ -264,4 +265,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 201 |
+| [2026-09.md](2026-09.md) | 2026-09 | 202 |

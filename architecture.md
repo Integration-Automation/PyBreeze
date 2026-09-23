@@ -149,7 +149,7 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
   `line_ending`, `mark_ignore_next_file_change()` and `mark_saved()`, on its private `_file_watcher`,
   `_ignore_next_change`, `_is_modified` and `_on_text_changed()` (a rename puts the unsaved mark
   back after `rename_self_tab()` clears it), on `EditorMain.close_tab(index)` (overridden to ask a
-  tab's `may_close()` first) and on `CodeEditor`'s `reset_highlighter()`, `load_git_baseline()` and
+  tab's `may_close()` first, and to delete a closed tool tab, which its `removeTab` keeps) and on `CodeEditor`'s `reset_highlighter()`, `load_git_baseline()` and
   `start_language_server()` (a rename moves the tab the way `open_an_file` does), and on `language_wrapper`'s
   `choose_language_dict` serving English and Traditional Chinese from the exported dict objects
   themselves. Having je_editor export the names in the table is workspace X-17. It
