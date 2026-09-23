@@ -10,6 +10,7 @@ from test_pioneer import create_template_dir
 
 from pybreeze.extend.process_executor.test_pioneer.test_pioneer_process_manager import \
     init_and_start_test_pioneer_process
+from pybreeze.utils.logging.logger import pybreeze_logger
 
 if TYPE_CHECKING:
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
@@ -18,6 +19,8 @@ if TYPE_CHECKING:
 # A TestPioneer script is YAML, under either of YAML's extensions
 _YAML_SUFFIXES = (".yml", ".yaml")
 _YAML_FILTER = "YAML (*.yml *.yaml)"
+# Where TestPioneer puts its template, under the project directory
+_TEMPLATE_DIR = ".TestPioneer"
 
 
 def set_test_pioneer_menu(ui_we_want_to_set: PyBreezeMainWindow):
@@ -32,7 +35,7 @@ def set_test_pioneer_menu(ui_we_want_to_set: PyBreezeMainWindow):
     ui_we_want_to_set.create_template_action = QAction(
         language_wrapper.language_word_dict.get("test_pioneer_create_template_label"))
     ui_we_want_to_set.create_template_action.triggered.connect(
-        lambda: create_template_dir()
+        lambda: create_template(ui_we_want_to_set)
     )
     ui_we_want_to_set.test_pioneer_menu.addAction(
         ui_we_want_to_set.create_template_action
@@ -46,6 +49,39 @@ def set_test_pioneer_menu(ui_we_want_to_set: PyBreezeMainWindow):
     ui_we_want_to_set.test_pioneer_menu.addAction(
         ui_we_want_to_set.run_yaml_action
     )
+
+
+def create_template(ui_we_want_to_set: PyBreezeMainWindow) -> None:
+    """Create TestPioneer's template in the project directory, asking before replacing one.
+
+    TestPioneer rewrites ``.TestPioneer/.TestPioneer.yml`` whenever the folder
+    exists, so a second click used to wipe an edited template without a word.
+    The project directory is the IDE's working directory, falling back to the
+    process's, and a failure to write is reported rather than raised from the
+    menu slot.
+    """
+    word = language_wrapper.language_word_dict
+    title = word.get("test_pioneer_create_template_label")
+    project = Path(getattr(ui_we_want_to_set, "working_dir", None) or Path.cwd())
+    template = project / _TEMPLATE_DIR / f"{_TEMPLATE_DIR}.yml"
+    if template.exists():
+        reply = QMessageBox.question(
+            ui_we_want_to_set, title,
+            word.get("test_pioneer_template_exists").format(path=template),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No)
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+    try:
+        create_template_dir(project_path=str(project), parent_name=_TEMPLATE_DIR)
+    except Exception as error:  # noqa: BLE001 — TestPioneer raises its unexported ProjectException, a bare Exception subclass, for a write it could not make; it is logged and reported
+        pybreeze_logger.error("TestPioneer template not created in %s: %r", project, error)
+        QMessageBox.warning(
+            ui_we_want_to_set, title,
+            word.get("test_pioneer_template_failed").format(path=template, error=error))
+        return
+    QMessageBox.information(
+        ui_we_want_to_set, title, word.get("test_pioneer_template_created").format(path=template))
 
 
 def check_file(ui_we_want_to_set: PyBreezeMainWindow):
