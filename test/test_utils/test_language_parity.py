@@ -11,7 +11,12 @@ from pybreeze.extend_multi_language.extend_traditional_chinese import (
     pybreeze_traditional_chinese_word_dict as ZH,
 )
 
-_GET_KEY_RE = re.compile(r'language_word_dict\.get\(\s*["\']([A-Za-z0-9_]+)["\']')
+# language_word_dict.get("key"), the same through a local alias
+# (word = language_wrapper.language_word_dict; word.get("key")), and the
+# diagram editor's _lang("key", fallback), whose English fallback hid a key
+# missing from both dicts
+_GET_KEY_RE = re.compile(
+    r'(?:\b(?:language_word_dict|word_dict|word)\.get|\b_lang)\(\s*["\']([A-Za-z0-9_]+)["\']')
 
 
 def _placeholders(text: str) -> set[str]:

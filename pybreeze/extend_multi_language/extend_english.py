@@ -683,6 +683,7 @@ pybreeze_english_word_dict = {
     "diagram_editor_dialog_export_png": "Export PNG",
     "diagram_editor_dialog_export_svg": "Export SVG",
     "diagram_editor_error_title": "Error",
+    "diagram_editor_export_failed": "Could not export the diagram to:\n{path}",
     # Diagram Editor — Property Panel
     "diagram_editor_prop_title": "Properties",
     "diagram_editor_prop_no_selection": "No selection",

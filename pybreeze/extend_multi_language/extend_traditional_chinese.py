@@ -656,6 +656,7 @@ pybreeze_traditional_chinese_word_dict = {
     "diagram_editor_dialog_export_png": "匯出 PNG",
     "diagram_editor_dialog_export_svg": "匯出 SVG",
     "diagram_editor_error_title": "錯誤",
+    "diagram_editor_export_failed": "無法把架構圖匯出到：\n{path}",
     # Diagram Editor — 屬性面板
     "diagram_editor_prop_title": "屬性",
     "diagram_editor_prop_no_selection": "未選取",
