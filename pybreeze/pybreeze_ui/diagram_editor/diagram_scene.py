@@ -253,7 +253,7 @@ class DiagramScene(QGraphicsScene):
 
         if self._mode == ToolMode.SELECT:
             super().mousePressEvent(event)
-            if any(isinstance(i, DiagramNode) for i in self.selectedItems()):
+            if any(isinstance(i, (DiagramNode, DiagramImage)) for i in self.selectedItems()):
                 self.begin_undo("Move")
             return
 
@@ -332,6 +332,13 @@ class DiagramScene(QGraphicsScene):
         menu = QMenu()
         item = self._node_at(event.scenePos())
         conn = self._connection_at(event.scenePos())
+        clicked = item if item is not None else conn
+        # The view pans on a right press, so the scene never selected what was
+        # clicked: Delete removed whatever was selected before. A click on an
+        # item outside the selection makes it the selection, as elsewhere.
+        if clicked is not None and not clicked.isSelected():
+            self.clearSelection()
+            clicked.setSelected(True)
 
         if item is not None or conn is not None:
             menu.addAction(
@@ -403,11 +410,24 @@ class DiagramScene(QGraphicsScene):
             self._temp_line = None
 
     def _change_z(self, direction: int) -> None:
-        """Raise or lower the selected nodes. Undoable, and kept in the file."""
+        """Put the selected nodes above (1) or below (-1) every other node.
+
+        Their order among themselves is kept. Undoable, and kept in the file.
+        Stepping z by one left a node under any other whose z was already
+        higher.
+        """
+        chosen = sorted((item for item in self.selectedItems() if isinstance(item, DiagramNode)),
+                        key=lambda node: node.zValue())
+        others = [node.zValue() for node in self.get_all_nodes() if node not in chosen]
+        if not chosen or not others:
+            return
         with self.undo_scope("Change Z"):
-            for item in self.selectedItems():
-                if isinstance(item, DiagramNode):
-                    item.setZValue(item.zValue() + direction)
+            if direction > 0:
+                start = max(others) + 1
+            else:
+                start = min(others) - len(chosen)
+            for offset, node in enumerate(chosen):
+                node.setZValue(start + offset)
 
     # ------------------------------------------------------------------
     # Operations (all undoable)
@@ -621,17 +641,26 @@ class DiagramScene(QGraphicsScene):
         return img
 
     def get_all_images(self) -> list[DiagramImage]:
-        return [item for item in self.items() if isinstance(item, DiagramImage)]
+        return [item for item in self._bottom_first() if isinstance(item, DiagramImage)]
 
     # ------------------------------------------------------------------
     # Serialisation
     # ------------------------------------------------------------------
 
     def get_all_nodes(self) -> list[DiagramNode]:
-        return [item for item in self.items() if isinstance(item, DiagramNode)]
+        return [item for item in self._bottom_first() if isinstance(item, DiagramNode)]
 
     def get_all_connections(self) -> list[DiagramConnection]:
-        return [item for item in self.items() if isinstance(item, DiagramConnection)]
+        return [item for item in self._bottom_first() if isinstance(item, DiagramConnection)]
+
+    def _bottom_first(self) -> list:
+        """Every item, lowest in the stacking order first.
+
+        Saved and restored in this order, items of equal z come back stacked as
+        they were: a later item is drawn above an earlier one. Listed topmost
+        first, an undo turned overlapping nodes the other way up.
+        """
+        return self.items(Qt.SortOrder.AscendingOrder)
 
     def to_dict(self) -> dict:
         nodes = self.get_all_nodes()

@@ -112,6 +112,14 @@ _MIN_NODE_H = 20.0
 # contents transform to a scale nothing can be drawn at.
 MAX_ITEM_SIZE = 10000.0
 _MIN_IMAGE_SIDE = 40.0
+# The label sizes the property panel offers; a file may say anything
+MIN_FONT_SIZE = 6
+MAX_FONT_SIZE = 48
+
+
+def _clamped_font_size(size: int) -> int:
+    """*size* as a whole point size within what the panel offers."""
+    return max(MIN_FONT_SIZE, min(int(size), MAX_FONT_SIZE))
 _NODE_PEN_COLOR = "#455a64"
 _NODE_BRUSH_COLOR = "#e3f2fd"
 _NODE_SELECTED_COLOR = "#1565c0"
@@ -298,7 +306,7 @@ class DiagramNode(QGraphicsRectItem):
         # Colors
         self._fill_color = _safe_color(style.fill_color, _NODE_BRUSH_COLOR)
         self._border_color = _safe_color(style.border_color, _NODE_PEN_COLOR)
-        self._font_size = style.font_size
+        self._font_size = _clamped_font_size(style.font_size)
 
         # Shape body (child)
         self.body: QGraphicsItem = self._make_body(w, h)
@@ -465,7 +473,7 @@ class DiagramNode(QGraphicsRectItem):
         self.body.setPen(QPen(color, 2))
 
     def set_font_size(self, size: int) -> None:
-        self._font_size = max(6, min(size, 48))
+        self._font_size = _clamped_font_size(size)
         self.label.setFont(QFont(_LABEL_FONT_FAMILY, self._font_size))
         self._center_label()
 

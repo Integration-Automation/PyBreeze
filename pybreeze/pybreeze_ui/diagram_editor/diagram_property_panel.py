@@ -18,9 +18,13 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+import shiboken6
 from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.diagram_editor.diagram_items import (
+    MAX_FONT_SIZE,
+    MAX_ITEM_SIZE,
+    MIN_FONT_SIZE,
     ConnectionStyle,
     DiagramConnection,
     DiagramImage,
@@ -30,6 +34,11 @@ from pybreeze.pybreeze_ui.diagram_editor.diagram_items import (
 
 if TYPE_CHECKING:
     from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene
+
+
+# The smallest sides the items themselves allow
+_MIN_NODE_SIDE = 40
+_MIN_NODE_HEIGHT = 20
 
 
 def _lang(key: str, fallback: str = "") -> str:
@@ -166,12 +175,12 @@ class DiagramPropertyPanel(QWidget):
         nf.addRow(_lang("diagram_editor_prop_text", "Text"), self._node_text)
 
         self._node_w = QSpinBox()
-        self._node_w.setRange(40, 800)
+        self._node_w.setRange(int(_MIN_NODE_SIDE), int(MAX_ITEM_SIZE))
         self._node_w.valueChanged.connect(self._on_node_size)
         nf.addRow(_lang("diagram_editor_prop_width", "Width"), self._node_w)
 
         self._node_h = QSpinBox()
-        self._node_h.setRange(20, 600)
+        self._node_h.setRange(int(_MIN_NODE_HEIGHT), int(MAX_ITEM_SIZE))
         self._node_h.valueChanged.connect(self._on_node_size)
         nf.addRow(_lang("diagram_editor_prop_height", "Height"), self._node_h)
 
@@ -190,7 +199,7 @@ class DiagramPropertyPanel(QWidget):
         nf.addRow(_lang("diagram_editor_prop_border_color", "Border"), self._node_border)
 
         self._node_font = QSpinBox()
-        self._node_font.setRange(6, 48)
+        self._node_font.setRange(MIN_FONT_SIZE, MAX_FONT_SIZE)
         self._node_font.valueChanged.connect(self._on_node_font)
         nf.addRow(_lang("diagram_editor_prop_font_size", "Font"), self._node_font)
 
@@ -238,12 +247,12 @@ class DiagramPropertyPanel(QWidget):
         imf.addRow(_lang("diagram_editor_prop_source", "Source"), self._img_source)
 
         self._img_w = QSpinBox()
-        self._img_w.setRange(40, 2000)
+        self._img_w.setRange(int(_MIN_NODE_SIDE), int(MAX_ITEM_SIZE))
         self._img_w.valueChanged.connect(self._on_img_size)
         imf.addRow(_lang("diagram_editor_prop_width", "Width"), self._img_w)
 
         self._img_h = QSpinBox()
-        self._img_h.setRange(40, 2000)
+        self._img_h.setRange(int(_MIN_NODE_SIDE), int(MAX_ITEM_SIZE))
         self._img_h.valueChanged.connect(self._on_img_size)
         imf.addRow(_lang("diagram_editor_prop_height", "Height"), self._img_h)
 
@@ -256,6 +265,10 @@ class DiagramPropertyPanel(QWidget):
     # ------------------------------------------------------------------
 
     def _on_selection_changed(self) -> None:
+        # A scene being destroyed with the editor still emits this as it
+        # empties; asking it for its selection then raised RuntimeError.
+        if not shiboken6.isValid(self._scene):
+            return
         self._updating = True
         self._current_node = None
         self._current_conn = None

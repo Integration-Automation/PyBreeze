@@ -119,7 +119,12 @@ class DiagramView(QGraphicsView):
     # --- zoom ---
 
     def wheelEvent(self, event) -> None:
-        factor = _ZOOM_FACTOR if event.angleDelta().y() > 0 else 1.0 / _ZOOM_FACTOR
+        vertical = event.angleDelta().y()
+        if vertical == 0:
+            # A sideways wheel or trackpad swipe: not a zoom (it used to zoom out)
+            super().wheelEvent(event)
+            return
+        factor = _ZOOM_FACTOR if vertical > 0 else 1.0 / _ZOOM_FACTOR
         current = self.transform().m11()
         if current * factor < _MIN_SCALE or current * factor > _MAX_SCALE:
             return
