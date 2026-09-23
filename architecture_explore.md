@@ -210,7 +210,7 @@ call_X_multi_file_and_send()   → run_dir_files_with_package(..., True)
 
 ---
 
-## 6. 工具分頁 `pybreeze_ui/tools_gui/`（13 個工具 widget + 3 個共用機制）
+## 6. 工具分頁 `pybreeze_ui/tools_gui/`（13 個工具 widget + 2 個共用機制）
 
 每個工具都是 `QWidget`，UI 極薄，真正邏輯全在 `pybreeze/utils/` 對應的純函式套件裡（所以測得動、也測了）。
 
@@ -230,10 +230,9 @@ call_X_multi_file_and_send()   → run_dir_files_with_package(..., True)
 | `HeaderAnalyzerGUI` | `utils/header_tools/` | HTTP header 安全稽核（HSTS、CSP、CORS、Set-Cookie、banner…）|
 | `ResponseInspectorGUI` | `utils/response_inspector/` | 貼整包 response → 拆狀態列/headers/body，順便挖出 JWT；`curl -i` 印出的多段回應（`100 Continue`、proxy 的 `Connection established`、`-L` 的轉址）取最後一段；只有一行又沒有狀態列就當 body |
 
-### 三個橫向共用機制
+### 兩個橫向共用機制
 
 - **`tool_tabs.open_tool_tab()`** — 工具之間互相「轉交」：Response Inspector 把狀態碼丟給 HTTP Status、headers 丟給 Header Analyzer、JWT 丟給 JWT Decoder、JSON body 丟給 JSON Format；curl 匯入把 URL 丟給 URL Builder。開新分頁並自動聚焦。
-- **`exact_text.exact_text()`** — 讀工具輸入一律走它（`document().toRawText()`，區塊分隔換回 `\n`）：`toPlainText()` 是顯示用的，會把不斷行空白（U+00A0）變成空白、U+2028 變成換行，Hash 算的是別的字串、Diff 看不出差別
 - **`output_actions.OutputActions`** — 統一的「複製 / 在編輯器開啟 / 存檔」三顆按鈕，綁在工具的唯讀輸出 `QTextEdit` 上，輸出也經 `exact_text()` 讀（不讓 U+00A0、U+2028 被改掉）；副檔名與檔名可傳 callable 動態決定。存檔經 `replace_text()` 整檔替換，失敗（唯讀資料夾、被鎖住的檔案、磁碟滿）時原檔不動、會跳警告，說出檔名與原因。Qt 的文字元件留不住貼上的 CR，換行一律讀成 LF
 
 ---
@@ -426,6 +425,8 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 垃圾回收只在 UI 執行緒跑：`start_editor()` 裝上 `gui_thread_gc.GuiThreadGarbageCollector`，關掉自動回收，改由 UI 執行緒上每秒一次的 QTimer 照直譯器自己的門檻回收（單元測試由 `test/test_utils/conftest.py` 做同樣的事）。自動回收會在任何配置超過門檻的執行緒跑，worker 上的一次回收曾把 UI 執行緒建立的 Qt 物件在 worker 上銷毀，計時器停不掉，之後 UI 執行緒把計時器事件送給已釋放的物件而崩潰。不要在 IDE 裡呼叫 `gc.enable()`。
 
 給使用者看的文字：伺服器或檔案來的字（遠端路徑、錯誤訊息、主機名、檔名）放進 `QMessageBox` / `QLabel` 前經 `pybreeze_ui/plain_text.as_text()`（`Qt.convertFromPlainText`），Qt 才不會把它當 markup、去載入裡面的 `<img>`；`test_message_boxes_show_text.py` 檢查每個 `QMessageBox`。
+
+讀使用者輸入的文字一律走 `pybreeze_ui/exact_text.exact_text()`（`document().toRawText()`，區塊分隔換回 `\n`）：`toPlainText()` 是顯示用的，會把不斷行空白（U+00A0）變成空白、U+2028 變成換行，Hash 算的是別的字串、Diff 看不出差別。
 
 鐵律：worker thread 一律不碰 UI。普通執行緒走 Queue + QTimer，`QThread` 走 Signal/Slot。分頁或視窗關閉時還在跑的 `QThread` 交給 `thread_keeper.let_run_out()`，不等它、也不讓它在執行中被銷毀。widget 留著的 thread（或其他物件）上接的 slot 不能抓住 widget 本身：接 bound method，或用 `thread_keeper.if_alive(weakref.ref(self), ...)`；lambda 抓 `self` 是經過 Qt 的循環參照，Python 的 GC 看不到，關掉的 widget 永遠不會釋放（`test_closed_panels_are_freed.py`）。
 

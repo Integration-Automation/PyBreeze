@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
-from pybreeze.pybreeze_ui.tools_gui.exact_text import exact_text
+from pybreeze.pybreeze_ui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.header_analyzer_gui import HeaderAnalyzerGUI
 from pybreeze.pybreeze_ui.tools_gui.http_status_gui import HttpStatusGUI
 from pybreeze.pybreeze_ui.tools_gui.json_format_gui import JsonFormatGUI

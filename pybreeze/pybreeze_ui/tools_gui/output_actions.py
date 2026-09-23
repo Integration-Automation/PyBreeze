@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
-from pybreeze.pybreeze_ui.tools_gui.exact_text import exact_text
+from pybreeze.pybreeze_ui.exact_text import exact_text
 from pybreeze.utils.file_process.replace_file import replace_text
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.pybreeze_ui.plain_text import as_text

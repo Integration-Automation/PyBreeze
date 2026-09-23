@@ -23,6 +23,7 @@ pybreeze/
 │   ├── thread_keeper.py         # let_run_out: a worker QThread outlives its closed widget; if_alive: weak slots
 │   ├── gui_thread_gc.py         # Garbage collected on a GUI-thread timer, never on a worker
 │   ├── plain_text.py            # as_text: server/file text shown in message boxes as text, not markup
+│   ├── exact_text.py            # exact_text: a text box read as typed (toPlainText changes U+00A0, U+2028)
 │   ├── closing.py               # may_close / AskingDock: tabs and docks with unsaved work are asked first
 │   ├── dialog/                  # prthinker settings dialog
 │   └── syntax/                  # Automation keyword highlighting definitions

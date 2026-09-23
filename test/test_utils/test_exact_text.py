@@ -11,7 +11,7 @@ import pytest
 from PySide6.QtWidgets import QApplication, QPlainTextEdit, QTextEdit
 
 from pybreeze.extend_multi_language.update_language_dict import update_language_dict
-from pybreeze.pybreeze_ui.tools_gui.exact_text import exact_text
+from pybreeze.pybreeze_ui.exact_text import exact_text
 
 # A non-breaking space, and a line separator inside a line
 _ENTERED = "price: 100\nnext line"

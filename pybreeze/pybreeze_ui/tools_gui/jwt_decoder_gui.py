@@ -9,7 +9,7 @@ from __future__ import annotations
 from PySide6.QtWidgets import QLabel, QPushButton, QTextEdit, QVBoxLayout, QWidget
 from je_editor import language_wrapper
 
-from pybreeze.pybreeze_ui.tools_gui.exact_text import exact_text
+from pybreeze.pybreeze_ui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.utils.exception.exceptions import JwtDecodeException
 from pybreeze.utils.jwt_tools.jwt_decoder import (

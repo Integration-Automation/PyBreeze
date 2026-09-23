@@ -10,7 +10,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtWidgets import QApplication, QPlainTextEdit  # noqa: E402 — the platform must be set first
 
-from pybreeze.pybreeze_ui.tools_gui.exact_text import exact_text  # noqa: E402
+from pybreeze.pybreeze_ui.exact_text import exact_text  # noqa: E402
 from pybreeze.utils.json_format.view_safe import dumps_for_view, escape_for_view  # noqa: E402
 
 # What a Qt text view does not give back: U+2029, U+FDD0 and U+FDD1 come back
