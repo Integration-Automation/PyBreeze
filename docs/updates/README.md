@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-201 | 2026-09-24 | Continue the September update log in 2026-09-b.md | #docs | [2026-09-b](2026-09-b.md) |
 | U-20260923-200 | 2026-09-24 | Check that every tool tab opened and closed is freed | #test | [2026-09](2026-09.md) |
 | U-20260923-199 | 2026-09-24 | Free the Regex tab and the SFTP tree after a match or a transfer | #fix #tools #ssh | [2026-09](2026-09.md) |
 | U-20260923-198 | 2026-09-24 | Free the SFTP tree after its listings and menu requests | #fix #ssh | [2026-09](2026-09.md) |
@@ -282,3 +283,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | File | Period | Entries |
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
+| [2026-09-b.md](2026-09-b.md) | 2026-09 | 1 |
