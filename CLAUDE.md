@@ -45,6 +45,7 @@ pybreeze/
     ├── network/                 # url_validation (SSRF), public_http (pinned connections), http_client (capped reads)
     ├── exception/               # ITEException hierarchy
     ├── logging/ file_process/ app_dirs.py / subprocess_util.py
+    ├── terminal_text.py         # Escape sequences and controls stripped from terminal output (SSH, run window)
     └── manager/package_manager/ # PackageManager — holds syntax_check_list
 ```
 

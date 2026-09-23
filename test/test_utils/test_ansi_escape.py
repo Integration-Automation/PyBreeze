@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_command_widget import ANSI_ESCAPE_PATTERN
+from pybreeze.utils.terminal_text import ANSI_ESCAPE_PATTERN
 
 
 def _strip(text: str) -> str:
@@ -61,6 +61,6 @@ class TestControlCharacters:
         ("x\x00y\x7fz", "xyz"),
     ])
     def test_controls_are_applied_or_dropped(self, raw, expected):
-        from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_command_widget import strip_terminal_controls
+        from pybreeze.utils.terminal_text import strip_terminal_controls
 
         assert strip_terminal_controls(raw) == expected

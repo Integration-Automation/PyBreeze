@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import codecs
 import os
-import re
 
 import paramiko
 from PySide6.QtCore import QThread, Signal
@@ -24,46 +23,10 @@ from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_key_loader import load_private_key
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_login_widget import LoginWidget
 from pybreeze.pybreeze_ui.thread_keeper import let_run_out
 from pybreeze.utils.logging.logger import pybreeze_logger
+from pybreeze.utils.terminal_text import split_incomplete_escape, strip_terminal_controls
 
 # What closing a channel or a client can raise on a connection already broken
 CLOSE_ERRORS = (OSError, EOFError, paramiko.SSHException)
-
-ANSI_ESCAPE_PATTERN = re.compile(
-    r'\x1B(?:'
-    # A control string -- OSC (titles, links), DCS, SOS, PM, APC -- ended by
-    # BEL or ST, or implicitly by the next ESC / the end
-    r'[\]PX^_][^\x07\x1B]*(?:\x07|\x1B\\)?'
-    r'|\[[0-?]*[ -/]*[@-~]'           # CSI (colours, cursor movement)
-    r'|[ -/]+[0-~]'                   # nF: character sets (ESC ( B, from tput sgr0), ESC # 8
-    r'|[0-~]'                         # Fp, Fe, Fs: ESC 7 / ESC 8, ESC = / ESC >, ESC M, ESC c
-    r')'
-)
-
-# Control characters the view cannot show, once the sequences are gone: BEL
-# and the rest of C0 but tab, newline and carriage return, and DEL.
-# Backspace is applied first (_BACKSPACED)
-_CONTROL_CHARACTER = re.compile('[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]')
-# A character and the backspace that takes it back (not across a line break)
-_BACKSPACED = re.compile('[^\n\x08]\x08')
-
-# The end of a read that stops inside an escape sequence: a lone ESC, a CSI
-# still waiting for its final byte, a control string still waiting for its
-# terminator (or the second byte of ST), or a character-set escape still
-# waiting for its final byte
-_INCOMPLETE_ESCAPE = re.compile(r'\x1B(?:\[[0-?]*[ -/]*|[\]PX^_][^\x07\x1B]*\x1B?|[ -/]+)?\Z')
-# Longest such tail held back for the next read; anything longer is shown as is
-_MAX_PENDING_ESCAPE = 256
-
-
-def strip_terminal_controls(text: str) -> str:
-    """*text* without escape sequences, with backspaces applied and other controls dropped."""
-    text = ANSI_ESCAPE_PATTERN.sub('', text)
-    while True:
-        applied = _BACKSPACED.sub('', text)
-        if applied == text:
-            break
-        text = applied
-    return _CONTROL_CHARACTER.sub('', text)
 
 
 class TerminalDecoder:
@@ -86,12 +49,7 @@ class TerminalDecoder:
 
     def feed(self, data: bytes) -> str:
         """Return the text *data* completes, escape sequences removed."""
-        text = self._pending + self._decoder.decode(data)
-        self._pending = ""
-        tail = _INCOMPLETE_ESCAPE.search(text)
-        if tail is not None and len(text) - tail.start() <= _MAX_PENDING_ESCAPE:
-            self._pending = text[tail.start():]
-            text = text[:tail.start()]
+        text, self._pending = split_incomplete_escape(self._pending + self._decoder.decode(data))
         return strip_terminal_controls(text)
 
 
