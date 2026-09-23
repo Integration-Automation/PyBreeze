@@ -41,6 +41,8 @@ def looks_like_a_fingerprint(line: str) -> bool:
 SUPPORTED_METHODS = ("GET", "POST", "PUT", "DELETE")
 # The methods that carry the code in a body / 會把程式碼放進 body 的方法
 METHODS_WITH_A_BODY = ("POST", "PUT")
+# A saved count longer than this is not a count this panel wrote
+_MAX_COUNT_DIGITS = 16
 
 
 class ReviewRequestThread(QThread):
@@ -86,6 +88,28 @@ class ReviewRequestThread(QThread):
         return send(self._url, **options)
 
 
+def read_stats(path: str) -> tuple[int, int]:
+    """Return the ``(accepted, rejected)`` totals saved in *path*.
+
+    The file is ours but lives in the user's home, so it is read as untrusted:
+    a line that is not ``Accepted: <n>`` or ``Rejected: <n>`` with a
+    non-negative whole number is skipped, and a missing or unreadable file
+    counts as none yet.
+    """
+    totals = {"Accepted": 0, "Rejected": 0}
+    try:
+        text = Path(path).read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as error:
+        pybreeze_logger.debug("AI review stats not read: %r", error)
+        return 0, 0
+    for line in text.splitlines():
+        name, separator, value = line.partition(":")
+        value = value.strip()
+        if separator and name.strip() in totals and value.isdecimal() and len(value) < _MAX_COUNT_DIGITS:
+            totals[name.strip()] = int(value)
+    return totals["Accepted"], totals["Rejected"]
+
+
 class AICodeReviewClient(QWidget):
     def __init__(self):
         super().__init__()
@@ -96,14 +120,15 @@ class AICodeReviewClient(QWidget):
 
         # 目前在飛的請求 / The request in flight, if any
         self.request_thread: ReviewRequestThread | None = None
-        # 記錄接受/拒絕次數
-        self.accept_count = 0
-        self.reject_count = 0
         # Store under the user's home (like the SSH known_hosts) so the data is
         # stable regardless of which directory the IDE was launched from.
         data_dir = pybreeze_data_dir()
         self.stats_file = str(data_dir / "response_stats.txt")
         self.url_file = str(data_dir / "urls.txt")
+        # 記錄接受/拒絕次數，接著上次的數字 / The running totals, carried on
+        # from the file: counting from 0 each time wrote one panel's counts over
+        # every earlier one.
+        self.accept_count, self.reject_count = read_stats(self.stats_file)
 
         # 主佈局 (垂直)
         main_layout = QVBoxLayout()

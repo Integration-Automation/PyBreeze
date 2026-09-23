@@ -206,3 +206,36 @@ class TestWhileARequestIsInFlight:
 
         assert started == []
         assert client.response_panel.toPlainText()
+
+
+class TestTheRunningTotals:
+    def test_a_new_panel_carries_on_from_the_saved_totals(self, app, tmp_path, monkeypatch):
+        (tmp_path / "response_stats.txt").write_text("Accepted: 7\nRejected: 2\n", encoding="utf-8")
+        monkeypatch.setattr(ai_code_review_gui, "pybreeze_data_dir", lambda: tmp_path)
+        panel = AICodeReviewClient()
+
+        panel.accept_response()
+
+        # It used to start from 0 and write "Accepted: 1" over the 7.
+        assert (tmp_path / "response_stats.txt").read_text(encoding="utf-8") == "Accepted: 8\nRejected: 2\n"
+        panel.deleteLater()
+
+    @pytest.mark.parametrize("text", [
+        "", "garbage", "Accepted: -3\nRejected: x", "Accepted: " + "9" * 40, "Accepted 5",
+    ])
+    def test_a_file_that_is_not_ours_counts_as_none(self, tmp_path, text):
+        from pybreeze.pybreeze_ui.connect_gui.url.ai_code_review_gui import read_stats
+
+        path = tmp_path / "response_stats.txt"
+        path.write_text(text, encoding="utf-8")
+
+        assert read_stats(str(path)) == (0, 0)
+
+    def test_a_missing_or_unreadable_file_counts_as_none(self, tmp_path):
+        from pybreeze.pybreeze_ui.connect_gui.url.ai_code_review_gui import read_stats
+
+        assert read_stats(str(tmp_path / "absent.txt")) == (0, 0)
+        binary = tmp_path / "binary.txt"
+        binary.write_bytes(b"\xff\xfe\x00")
+        assert read_stats(str(binary)) == (0, 0)
+
