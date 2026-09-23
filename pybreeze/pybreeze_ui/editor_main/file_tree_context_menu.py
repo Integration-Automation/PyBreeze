@@ -17,6 +17,7 @@ from je_editor import EditorWidget, language_wrapper
 from je_editor.pyside_ui.code.auto_save.auto_save_manager import (
     auto_save_manager_dict, file_is_open_manager_dict, init_new_auto_save_thread,
 )
+from je_editor.pyside_ui.main_ui.editor.editor_widget_dock import FullEditorWidget
 
 from pybreeze.utils.logging.logger import pybreeze_logger
 
@@ -193,6 +194,11 @@ def _action_new_folder(tree_view: QTreeView, path: Path | None) -> None:
     _perform_file_op(tree_view, lambda: new_path.mkdir(parents=True))
 
 
+def _is_at_or_under(file_path: Path, path: Path) -> bool:
+    """Whether *file_path* is *path* or lies under it."""
+    return file_path == path or path in file_path.parents
+
+
 def _editors_under(main_window, path: Path) -> list[tuple[EditorWidget, Path]]:
     """The editor tabs open on *path*, or on any file under it, with their files."""
     found = []
@@ -201,13 +207,52 @@ def _editors_under(main_window, path: Path) -> list[tuple[EditorWidget, Path]]:
         if not isinstance(widget, EditorWidget) or widget.current_file is None:
             continue
         file_path = Path(widget.current_file)
-        if file_path == path or path in file_path.parents:
+        if _is_at_or_under(file_path, path):
             found.append((widget, file_path))
     return found
 
 
+def _dock_editors_under(main_window, path: Path) -> list[tuple[FullEditorWidget, Path]]:
+    """The docked editors (JEditor's Dock Editor) open on *path* or under it, with their files.
+
+    A docked editor has no auto-save: it writes its buffer back when it closes,
+    and only if its file still exists. Left on the old name after a rename, it
+    wrote nothing, and every edit made in it was lost.
+    """
+    found = []
+    for editor in main_window.findChildren(FullEditorWidget):
+        if editor.current_file and _is_at_or_under(Path(editor.current_file), path):
+            found.append((editor, Path(editor.current_file)))
+    return found
+
+
+def _unwatch(editor: EditorWidget) -> None:
+    """Stop the tab watching its file for changes made outside the IDE.
+
+    Done before the file moves: once it is gone, Windows does not let go of
+    the old name.
+    """
+    watcher = editor._file_watcher  # noqa: SLF001 — JEditor's own watcher, handled as open_an_file handles it (test_jeditor_contract.py)
+    watched = watcher.files()
+    if watched:
+        watcher.removePaths(watched)
+
+
+def _watch(editor: EditorWidget, file_path: Path) -> None:
+    """Watch *file_path* for changes made outside the IDE, as JEditor's ``open_an_file`` does.
+
+    Left on the old name, a change made to the renamed file outside the IDE
+    raised no question, and the tab's auto-save wrote over it.
+    """
+    _unwatch(editor)
+    editor._file_watcher.addPath(str(file_path))  # noqa: SLF001 — see _unwatch
+    # A save to the old name may have left it set, and it would swallow the
+    # first real change to the new one
+    editor._ignore_next_change = False  # noqa: SLF001 — see _unwatch
+
+
 def _stop_auto_save(editor: EditorWidget) -> None:
-    """Stop the tab's auto-save and forget the path it was registered under.
+    """Stop the tab's auto-save and its watch, and forget the path it was registered under.
 
     JEditor's save thread loops for as long as the path it *started* with is a
     file, writing to whatever ``file`` holds; after a rename it would write the
@@ -217,6 +262,7 @@ def _stop_auto_save(editor: EditorWidget) -> None:
     if editor.code_save_thread is not None:
         editor.code_save_thread.still_run = False
         editor.code_save_thread = None
+    _unwatch(editor)
     old = str(editor.current_file)
     auto_save_manager_dict.pop(old, None)
     file_is_open_manager_dict.pop(str(Path(old)), None)
@@ -229,6 +275,12 @@ def _start_auto_save(editor: EditorWidget, file_path: Path) -> None:
     # Sets current_file, carries the tab's encoding and line ending, and starts
     # the thread, as JEditor does when it opens a file.
     init_new_auto_save_thread(str(file_path), editor)
+    _watch(editor, file_path)
+    # As when JEditor opens a file: a new suffix may be another language, and
+    # the git baseline and the language server go by the path
+    editor.code_edit.reset_highlighter()
+    editor.code_edit.load_git_baseline()
+    editor.code_edit.start_language_server()
     editor.rename_self_tab()
 
 
@@ -267,12 +319,16 @@ def _action_rename(tree_view: QTreeView, main_window, path: Path | None) -> None
     # Every tab open on the file, or on a file under the folder, follows it. Their
     # auto-save stops first, so none writes to the old path mid-rename.
     moving = _editors_under(main_window, path)
+    docked = _dock_editors_under(main_window, path)
     for editor, _old in moving:
         _stop_auto_save(editor)
     renamed = _perform_file_op(tree_view, lambda: path.rename(target))
     for editor, old in moving:
         now = target / old.relative_to(path) if renamed else old
         _start_auto_save(editor, now)
+    if renamed:
+        for dock_editor, old in docked:
+            dock_editor.current_file = str(target / old.relative_to(path))
 
 
 def _action_delete(tree_view: QTreeView, main_window, path: Path | None) -> None:

@@ -12,7 +12,7 @@ from pathlib import Path
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest
-from PySide6.QtCore import QPoint, Qt
+from PySide6.QtCore import QFileSystemWatcher, QPoint, Qt
 from PySide6.QtWidgets import (
     QApplication, QFileSystemModel, QMessageBox, QTabWidget, QTreeView, QWidget
 )
@@ -70,6 +70,23 @@ def warnings(monkeypatch):
     return shown
 
 
+class FakeCodeEdit:
+    """The editing area, recording what a rename reloads."""
+
+    def __init__(self, path: str) -> None:
+        self.current_file = path
+        self.reloaded: list[str] = []
+
+    def reset_highlighter(self) -> None:
+        self.reloaded.append("highlighter")
+
+    def load_git_baseline(self) -> None:
+        self.reloaded.append("git baseline")
+
+    def start_language_server(self) -> None:
+        self.reloaded.append("language server")
+
+
 class FakeEditor(QWidget):
     """Stands in for an EditorWidget holding one open file.
 
@@ -80,7 +97,10 @@ class FakeEditor(QWidget):
     def __init__(self, path: str) -> None:
         super().__init__()
         self.current_file = path
-        self.code_edit = type("Edit", (), {"current_file": path})()
+        self.code_edit = FakeCodeEdit(path)
+        # What JEditor's EditorWidget watches its file with
+        self._file_watcher = QFileSystemWatcher([path], self)
+        self._ignore_next_change = False
         self.renamed = False
         self.closed = False
         self.code_save_thread = None
@@ -93,10 +113,11 @@ class FakeEditor(QWidget):
         return super().close()
 
 
-class FakeWindow:
-    """A main window with just the tab widget the actions reach for."""
+class FakeWindow(QWidget):
+    """A main window with just the tab widget the actions reach for; docked editors are its children."""
 
     def __init__(self) -> None:
+        super().__init__()
         self.tab_widget = QTabWidget()
 
 
@@ -244,6 +265,10 @@ class TestRenaming:
         assert editor.current_file == str(tmp_path / "renamed.py")
         assert editor.code_edit.current_file == str(tmp_path / "renamed.py")
         assert editor.renamed
+        # As when JEditor opens a file: it watched the old name, and kept the
+        # old name's highlighter, git baseline and language server
+        assert [Path(one) for one in editor._file_watcher.files()] == [tmp_path / "renamed.py"]
+        assert editor.code_edit.reloaded == ["highlighter", "git baseline", "language server"]
 
 
 class TestDeleting:

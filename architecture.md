@@ -136,6 +136,7 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
   | `PluginBrowserWidget` | `pyside_ui.main_ui.plugin_browser.plugin_browser_widget` | `menu/plugin_menu/build_plugin_menu.py` |
   | `DestroyDock` | `pyside_ui.main_ui.dock.destroy_dock` | `menu/tools/tools_menu.py`, `editor_main/main_ui.py` |
   | `init_new_auto_save_thread`, `auto_save_manager_dict`, `file_is_open_manager_dict` | `pyside_ui.code.auto_save.auto_save_manager` | `editor_main/file_tree_context_menu.py` (a rename restarts the tab's auto-save on the new path) |
+  | `FullEditorWidget` | `pyside_ui.main_ui.editor.editor_widget_dock` | `editor_main/file_tree_context_menu.py` (a rename re-points a docked editor's `current_file`) |
   | `check_and_choose_venv` | `utils.venv_check.check_venv` | `extend/process_executor/python_task_process_manager.py` |
   | `choose_file_get_save_file_path` | `pyside_ui.dialog.file_dialog.save_file_dialog` | `menu/plugin_menu/build_run_with_menu.py` |
   | `write_file_with_encoding` | `utils.file.save.save_file` | `menu/plugin_menu/build_run_with_menu.py` |
@@ -143,7 +144,9 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
   | `actually_color_dict` | `pyside_ui.main_ui.save_settings.user_color_setting_file` | `show_code_window/code_window.py`, `automation_menu/auto_control_menu/build_autocontrol_menu.py` |
 
   PyBreeze also relies on `EditorWidget`'s `current_file`, `code_edit`, `file_encoding`,
-  `line_ending`, `mark_ignore_next_file_change()` and `mark_saved()`, and on `language_wrapper`'s
+  `line_ending`, `mark_ignore_next_file_change()` and `mark_saved()`, on its private `_file_watcher`
+  and `_ignore_next_change` and on `CodeEditor`'s `reset_highlighter()`, `load_git_baseline()` and
+  `start_language_server()` (a rename moves the tab the way `open_an_file` does), and on `language_wrapper`'s
   `choose_language_dict` serving English and Traditional Chinese from the exported dict objects
   themselves. Having je_editor export the names in the table is workspace X-17. It
   merges its strings by mutating JEditor's `english_word_dict` and `traditional_chinese_word_dict`

@@ -30,6 +30,8 @@ INTERNAL = [
      "editor_main/file_tree_context_menu.py"),
     ("je_editor.pyside_ui.code.auto_save.auto_save_manager", "file_is_open_manager_dict",
      "editor_main/file_tree_context_menu.py"),
+    ("je_editor.pyside_ui.main_ui.editor.editor_widget_dock", "FullEditorWidget",
+     "editor_main/file_tree_context_menu.py"),
     ("je_editor.utils.venv_check.check_venv", "check_and_choose_venv",
      "extend/process_executor/python_task_process_manager.py"),
     ("je_editor.pyside_ui.dialog.file_dialog.save_file_dialog", "choose_file_get_save_file_path",
@@ -136,6 +138,24 @@ class TestTheShapesPyBreezeCalls:
         thread = _internal("je_editor.pyside_ui.code.auto_save.auto_save_thread", "CodeEditSaveThread")
         source = inspect.getsource(thread)
         assert "self.still_run" in source and "self.file" in source
+
+    def test_a_rename_can_move_what_an_editor_tab_follows_its_file_with(self):
+        # The file tree moves the tab's watcher, as open_an_file does, and
+        # reloads what goes by the path
+        from je_editor import EditorWidget
+
+        source = inspect.getsource(EditorWidget)
+        assert "self._file_watcher = QFileSystemWatcher" in source
+        assert "self._ignore_next_change" in source
+        code_editor = _internal("je_editor.pyside_ui.code.plaintext_code_edit.code_edit_plaintext", "CodeEditor")
+        for method in ("reset_highlighter", "load_git_baseline", "start_language_server"):
+            assert callable(getattr(code_editor, method, None)), method
+
+    def test_a_docked_editor_writes_to_the_file_it_names_when_it_closes(self):
+        # A rename re-points current_file; the dock saves nothing else
+        docked = _internal("je_editor.pyside_ui.main_ui.editor.editor_widget_dock", "FullEditorWidget")
+        assert _parameters(docked.__init__) == ["current_file"]
+        assert "self.current_file" in inspect.getsource(docked.closeEvent)
 
     def test_the_language_wrapper_has_what_pybreeze_reads(self):
         from je_editor import language_wrapper

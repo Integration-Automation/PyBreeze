@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-105 | 2026-09-23 | A file-tree rename moves a docked editor and the tab's watch, highlighter, git baseline and language server with the file | #fix #editor | [2026-09](2026-09.md) |
 | U-20260923-104 | 2026-09-23 | Header Analyzer and Response Inspector read quoted max-age, folded lines, header names in any case and HTTP/2 :status | #fix #tools | [2026-09](2026-09.md) |
 | U-20260923-103 | 2026-09-23 | JSON Format and Minify keep numbers and characters as written, and report a repeated key | #fix #tools | [2026-09](2026-09.md) |
 | U-20260923-102 | 2026-09-23 | Prompt and diagram saves use the shared replace_text (refactor) | #refactor #tools | [2026-09](2026-09.md) |
@@ -185,4 +186,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 122 |
+| [2026-09.md](2026-09.md) | 2026-09 | 123 |
