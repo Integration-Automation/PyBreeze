@@ -154,3 +154,39 @@ class TestATokenPastedWithSomethingAroundIt:
 
         with pytest.raises(JwtDecodeException):
             decode_jwt(f"{header[:4]}!{header[4:]}.{payload}.{signature}")
+
+
+class TestTheSegmentsAsShown:
+    """The decoder keeps each segment's JSON text, and shows it as written."""
+
+    @staticmethod
+    def _raw_jwt(payload_text: str) -> str:
+        encoded = base64.urlsafe_b64encode(payload_text.encode("utf-8")).decode("ascii").rstrip("=")
+        return f"{_segment({'alg': 'none'})}.{encoded}.sig"
+
+    def test_numbers_keep_their_text(self):
+        from pybreeze.utils.jwt_tools.jwt_decoder import shown_json
+
+        decoded = decode_jwt(self._raw_jwt('{"n": 1e400, "big": 12345678901234567890123.5}'))
+        shown = shown_json(decoded.payload_json, decoded.payload)
+
+        # json.dumps wrote Infinity, which is not JSON, and rounded the long number
+        assert '"n": 1e400' in shown
+        assert '"big": 12345678901234567890123.5' in shown
+
+    def test_a_repeated_claim_falls_back_to_the_decoded_value(self):
+        from pybreeze.utils.jwt_tools.jwt_decoder import shown_json
+
+        decoded = decode_jwt(self._raw_jwt('{"a": 1, "a": 2}'))
+
+        assert json.loads(shown_json(decoded.payload_json, decoded.payload)) == {"a": 2}
+
+    def test_the_keys_are_sorted_unless_asked_not_to(self):
+        from pybreeze.utils.jwt_tools.jwt_decoder import shown_json
+
+        decoded = decode_jwt(self._raw_jwt('{"z": 1, "a": 2}'))
+
+        assert shown_json(decoded.payload_json, decoded.payload).index('"a"') < \
+            shown_json(decoded.payload_json, decoded.payload).index('"z"')
+        unsorted = shown_json(decoded.payload_json, decoded.payload, sort_keys=False)
+        assert unsorted.index('"z"') < unsorted.index('"a"')

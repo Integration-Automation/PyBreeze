@@ -10,7 +10,6 @@ inspector stays consistent with the standalone tools.
 """
 from __future__ import annotations
 
-import json
 import re
 from dataclasses import dataclass, field
 
@@ -19,7 +18,7 @@ from pybreeze.utils.header_tools.header_analyzer import FOLDED_LINE_START, HEADE
 from pybreeze.utils.http_reference.status_codes import StatusInfo, lookup
 from pybreeze.utils.jwt_tools.jwt_decoder import DecodedJwt, decode_jwt, find_tokens
 from pybreeze.utils.exception.exceptions import JwtDecodeException
-from pybreeze.utils.json_format.view_safe import dumps_for_view
+from pybreeze.utils.json_format.json_process import pretty_json_or_none
 
 # Matches the response status line, e.g. "HTTP/1.1 200 OK"
 _STATUS_LINE_RE = re.compile(r"^HTTP/\d(?:\.\d)?\s+(\d{3})\b")
@@ -140,15 +139,6 @@ def _continue_value(headers: dict[str, str | list[str]], name: str, more: str) -
         headers[name] = f"{value} {more}".strip()
 
 
-def _pretty_json(body: str) -> str | None:
-    """Return *body* pretty-printed if it is JSON, else ``None`` (key order kept)."""
-    try:
-        return dumps_for_view(json.loads(body), indent=4)
-    # RecursionError: a body nested past the recursion limit
-    except (ValueError, TypeError, RecursionError):
-        return None
-
-
 def _find_jwts(text: str) -> list[JwtFinding]:
     """Find and decode every JWT-looking token in *text*."""
     findings: list[JwtFinding] = []
@@ -168,7 +158,8 @@ def analyze_response(text: str) -> ResponseAnalysis:
     :return: the structured analysis
     """
     status_code, headers, body = _parse_head_and_body(text)
-    pretty_body = _pretty_json(body)
+    # Laid out as JSON Format would: numbers as written, a repeated key refused
+    pretty_body = pretty_json_or_none(body)
     return ResponseAnalysis(
         status=lookup(status_code) if status_code is not None else None,
         headers=headers,

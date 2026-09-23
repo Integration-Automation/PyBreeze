@@ -12,9 +12,8 @@ from je_editor import language_wrapper
 from pybreeze.pybreeze_ui.tools_gui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.utils.exception.exceptions import JwtDecodeException
-from pybreeze.utils.json_format.view_safe import dumps_for_view
 from pybreeze.utils.jwt_tools.jwt_decoder import (
-    DecodedJwt, decode_jwt, humanized_timestamp_claims
+    DecodedJwt, decode_jwt, humanized_timestamp_claims, shown_json
 )
 from pybreeze.utils.logging.logger import pybreeze_logger
 
@@ -28,10 +27,10 @@ def build_decoded_text(decoded: DecodedJwt) -> str:
     word = language_wrapper.language_word_dict
     sections = [
         word.get("jwt_decoder_header_label"),
-        dumps_for_view(decoded.header, indent=4, sort_keys=True),
+        shown_json(decoded.header_json, decoded.header),
         "",
         word.get("jwt_decoder_payload_label"),
-        dumps_for_view(decoded.payload, indent=4, sort_keys=True),
+        shown_json(decoded.payload_json, decoded.payload),
     ]
     readable = humanized_timestamp_claims(decoded.payload)
     if readable:

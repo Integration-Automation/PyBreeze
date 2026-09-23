@@ -18,7 +18,7 @@ from pybreeze.pybreeze_ui.tools_gui.json_format_gui import JsonFormatGUI
 from pybreeze.pybreeze_ui.tools_gui.jwt_decoder_gui import JwtDecoderGUI
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.pybreeze_ui.tools_gui.tool_tabs import open_tool_tab
-from pybreeze.utils.jwt_tools.jwt_decoder import humanized_timestamp_claims
+from pybreeze.utils.jwt_tools.jwt_decoder import humanized_timestamp_claims, shown_json
 from pybreeze.utils.json_format.view_safe import dumps_for_view
 from pybreeze.utils.response_inspector.response_analyzer import (
     ResponseAnalysis, analyze_response
@@ -46,7 +46,7 @@ def _jwt_section(analysis: ResponseAnalysis) -> list[str]:
     lines = [word.get("response_jwt_label")]
     for finding in analysis.jwt_findings:
         lines.append(dumps_for_view(finding.decoded.header))
-        lines.append(dumps_for_view(finding.decoded.payload, indent=4))
+        lines.append(shown_json(finding.decoded.payload_json, finding.decoded.payload, sort_keys=False))
         for claim, value in humanized_timestamp_claims(finding.decoded.payload).items():
             lines.append(f"    {claim}: {value}")
     lines.append("")

@@ -21,6 +21,8 @@ from pybreeze.utils.exception.exception_tags import (
     malformed_jwt_error,
 )
 from pybreeze.utils.exception.exceptions import JwtDecodeException
+from pybreeze.utils.json_format.json_process import pretty_json_or_none
+from pybreeze.utils.json_format.view_safe import dumps_for_view
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.timestamp_tools.timestamp_converter import utc_from_epoch_seconds
 
@@ -40,18 +42,33 @@ class DecodedJwt:
     :param header: decoded JOSE header (algorithm, type, ...)
     :param payload: decoded claims set
     :param signature: the raw (still-encoded) signature segment
+    :param header_json: the header's JSON text as the token carries it
+    :param payload_json: the payload's JSON text as the token carries it
     """
 
     header: dict
     payload: dict
     signature: str
+    header_json: str = ""
+    payload_json: str = ""
 
 
-def _decode_segment(segment: str) -> dict:
+def shown_json(text: str, value: dict, *, sort_keys: bool = True) -> str:
+    """A decoded segment laid out for display: its own *text*, numbers as written.
+
+    ``json.dumps`` of the decoded *value* wrote ``1e400`` as ``Infinity``, which
+    is not JSON, and a long number rounded. The decoded value stands in when
+    the text is not one JSON Format accepts (a claim repeated, ``NaN``), or
+    was not kept.
+    """
+    return pretty_json_or_none(text, sort_keys=sort_keys) or dumps_for_view(value, indent=4, sort_keys=sort_keys)
+
+
+def _decode_segment(segment: str) -> tuple[dict, str]:
     """Base64url-decode one JWT segment into a JSON object.
 
     :param segment: a single base64url-encoded segment
-    :return: the decoded JSON object
+    :return: the decoded JSON object, and its JSON text
     :raises JwtDecodeException: when the segment is not valid base64url/JSON
         or does not decode to a JSON object
     """
@@ -62,7 +79,8 @@ def _decode_segment(segment: str) -> dict:
         # the padding was worked out from a length that counted them, so a
         # stray quote decoded or failed depending on the segment's length
         raw = base64.b64decode(segment + padding, altchars=b"-_", validate=True)
-        decoded = json.loads(raw.decode("utf-8"))
+        text = raw.decode("utf-8")
+        decoded = json.loads(text)
     # binascii.Error and UnicodeDecodeError both derive from ValueError; a
     # payload nested past the recursion limit raises RecursionError.
     except (ValueError, RecursionError) as error:
@@ -70,7 +88,7 @@ def _decode_segment(segment: str) -> dict:
         raise JwtDecodeException(jwt_segment_decode_error) from error
     if not isinstance(decoded, dict):
         raise JwtDecodeException(jwt_segment_decode_error)
-    return decoded
+    return decoded, text
 
 
 def decode_jwt(token: str) -> DecodedJwt:
@@ -92,9 +110,10 @@ def decode_jwt(token: str) -> DecodedJwt:
         pybreeze_logger.error(malformed_jwt_error)
         raise JwtDecodeException(malformed_jwt_error)
 
-    header = _decode_segment(segments[0])
-    payload = _decode_segment(segments[1])
-    return DecodedJwt(header=header, payload=payload, signature=segments[2])
+    header, header_json = _decode_segment(segments[0])
+    payload, payload_json = _decode_segment(segments[1])
+    return DecodedJwt(header=header, payload=payload, signature=segments[2],
+                      header_json=header_json, payload_json=payload_json)
 
 
 def _the_token(text: str) -> str:

@@ -80,6 +80,20 @@ class TestBodyDetection:
         # Keys should appear in original order, not sorted.
         assert analysis.pretty_body.index('"z"') < analysis.pretty_body.index('"a"')
 
+    def test_numbers_keep_their_text(self):
+        # json.loads made 1e400 the Infinity that is not JSON, and rounded the long one
+        analysis = analyze_response('{"n": 1e400, "big": 12345678901234567890.5}')
+
+        assert '"n": 1e400' in analysis.pretty_body
+        assert '"big": 12345678901234567890.5' in analysis.pretty_body
+
+    def test_a_repeated_key_is_not_laid_out_as_json(self):
+        # It kept the last value without a word, and JSON Format then refused the body
+        analysis = analyze_response('{"a": 1, "a": 2}')
+
+        assert not analysis.is_json_body
+        assert analysis.pretty_body is None
+
     def test_body_without_blank_line(self):
         # Headers then a JSON body with no separating blank line.
         text = "HTTP/1.1 200 OK\nContent-Type: application/json\n{\"a\": 1}"

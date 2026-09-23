@@ -70,12 +70,22 @@ def _unique_pairs(pairs: list[tuple[str, object]]) -> dict:
     return members
 
 
+def _parse(json_string: str, numbers: _Numbers) -> object:
+    """Parse *json_string*, numbers held as their text.
+
+    :raises ValueError: when it is not JSON, repeats a key in one object
+        (``_DuplicateKey``), or uses ``NaN`` or ``Infinity``
+    :raises RecursionError: when it is nested past the recursion limit
+    """
+    return loads(
+        json_string, parse_float=numbers.hold, parse_int=numbers.hold,
+        parse_constant=_refuse_constant, object_pairs_hook=_unique_pairs)
+
+
 def _load(json_string: str, numbers: _Numbers) -> object:
     """Parse *json_string*, numbers held as their text; raise ``ITEJsonException`` when it is not JSON."""
     try:
-        return loads(
-            json_string, parse_float=numbers.hold, parse_int=numbers.hold,
-            parse_constant=_refuse_constant, object_pairs_hook=_unique_pairs)
+        return _parse(json_string, numbers)
     except _DuplicateKey as error:
         message = json_duplicate_key_error.format(key=error.args[0])
         pybreeze_logger.error(message)
@@ -113,6 +123,26 @@ def reformat_json(json_string: str, **kwargs) -> str:
         return _process_json(json_string, **kwargs)
     except ITEJsonException as err:
         raise ITEJsonException(f"{cant_reformat_json_error} ({err})") from err
+
+
+def pretty_json_or_none(json_string: str, *, sort_keys: bool = False) -> str | None:
+    """*json_string* indented by four, numbers and characters as written; ``None`` when it is not JSON.
+
+    For text that may be anything -- a response body, a token's segment -- so
+    nothing is logged when it is not JSON. What JSON Format refuses is refused
+    here too: a key repeated in one object (``json.loads`` kept its last value
+    without a word), ``NaN`` and ``Infinity``. A number keeps its text, where
+    ``float`` made ``1e400`` the ``Infinity`` that is not JSON.
+
+    :param json_string: the text to lay out
+    :param sort_keys: sort each object's keys; otherwise they keep their order
+    """
+    numbers = _Numbers()
+    try:
+        value = _parse(json_string, numbers)
+        return numbers.restore(dumps(value, indent=4, sort_keys=sort_keys, ensure_ascii=False))
+    except (ValueError, RecursionError):
+        return None
 
 
 # Compact separators for minified JSON: no spaces after ',' or ':'.
