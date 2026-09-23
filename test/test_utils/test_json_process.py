@@ -133,3 +133,18 @@ class TestTheDataIsNotChanged:
 
         with pytest.raises(ITEJsonException):
             minify_json(f"[{constant}]")
+
+
+class TestLoneSurrogates:
+    """Written out raw, the text view dropped them: an escaped lone surrogate came out as ""."""
+
+    def test_reformat_keeps_the_escape(self):
+        result = reformat_json(r'{"a": "\ud83d"}')
+
+        assert r'"\ud83d"' in result
+        assert json.loads(result) == {"a": "\ud83d"}
+
+    def test_minify_keeps_the_escape_and_a_pair_stays_one_character(self):
+        from pybreeze.utils.json_format.json_process import minify_json
+
+        assert minify_json(r'{"a": "\ud83d", "b": "\ud83d\ude00"}') == '{"a":"\\ud83d","b":"\U0001f600"}'

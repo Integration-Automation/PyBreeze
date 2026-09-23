@@ -188,3 +188,23 @@ class TestAQueryThatWouldNotComeBackAsWritten:
 
     def test_one_that_does_is_still_a_dict_to_edit(self):
         assert json.loads(url_to_json("https://h/p?a=1&b=x+y"))["query"] == {"a": "1", "b": "x y"}
+
+
+class TestQueryValuesAsWritten:
+    def test_a_number_goes_into_the_url_as_written(self):
+        url = json_to_url('{"scheme": "http", "host": "h", "query": {"v": 1E3, "p": 1.10}}')
+
+        assert url == "http://h?v=1E3&p=1.10"
+
+    def test_a_port_is_still_a_number(self):
+        assert json_to_url('{"scheme": "http", "host": "h", "port": 8080}') == "http://h:8080"
+        with pytest.raises(UrlConvertException):
+            json_to_url('{"scheme": "http", "host": "h", "port": 8080.5}')
+
+    def test_nan_is_refused(self):
+        with pytest.raises(UrlConvertException):
+            json_to_url('{"scheme": "http", "host": "h", "query": {"x": NaN}}')
+
+    def test_a_lone_surrogate_is_refused_not_raised(self):
+        with pytest.raises(UrlConvertException):
+            json_to_url('{"scheme": "http", "host": "h", "query": {"q": "\ud83d"}}')

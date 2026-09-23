@@ -99,3 +99,23 @@ def test_json_nested_too_deep_is_reported_not_raised_out_of_the_tab():
     # json.loads raises RecursionError, which the tab did not catch
     with pytest.raises(QueryConvertException):
         json_to_query("[" * 100000)
+
+
+class TestValuesAsWritten:
+    @pytest.mark.parametrize(("value", "sent"), [
+        ("1E3", "1E3"), ("1.10", "1.10"), ("12345678901234567890123.0", "12345678901234567890123.0"),
+        ("1e400", "1e400"), ("-0", "-0"),
+    ])
+    def test_a_number_goes_out_as_written(self, value, sent):
+        # Through float: 1000.0, 1.1, 1.2345678901234568e+22, inf
+        assert json_to_query(f'{{"v": {value}}}') == f"v={sent}".replace("+", "%2B")
+
+    @pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+    def test_python_constants_are_not_json(self, constant):
+        with pytest.raises(QueryConvertException):
+            json_to_query(f'{{"v": {constant}}}')
+
+    def test_a_lone_surrogate_is_refused_not_raised(self):
+        # The UnicodeEncodeError escaped the tab's slot
+        with pytest.raises(QueryConvertException):
+            json_to_query('{"q": "\ud83d"}')

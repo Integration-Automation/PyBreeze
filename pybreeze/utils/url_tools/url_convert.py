@@ -7,7 +7,7 @@ then turn it back into a URL. Pure logic — no Qt and no network access.
 from __future__ import annotations
 
 import json
-from urllib.parse import SplitResult, urlencode, urlsplit, urlunsplit
+from urllib.parse import SplitResult, urlsplit, urlunsplit
 
 from pybreeze.utils.exception.exception_tags import (
     invalid_json_for_url_error,
@@ -17,7 +17,9 @@ from pybreeze.utils.exception.exception_tags import (
 )
 from pybreeze.utils.exception.exceptions import QueryConvertException, UrlConvertException
 from pybreeze.utils.logging.logger import pybreeze_logger
-from pybreeze.utils.query_tools.query_convert import coerce_scalar, query_round_trips, query_to_dict
+from pybreeze.utils.query_tools.query_convert import (
+    coerce_scalar, encode_pairs, load_json_verbatim, query_round_trips, query_to_dict,
+)
 
 _MAX_PORT = 65535
 
@@ -133,9 +135,9 @@ def _build_query(query: object) -> str:
             for key, value in query.items():
                 values = value if isinstance(value, list) else [value]
                 pairs.extend((str(key), coerce_scalar(item)) for item in values)
+            return encode_pairs(pairs)
         except QueryConvertException as error:
             raise UrlConvertException(str(error)) from error
-        return urlencode(pairs)
     return str(query)
 
 
@@ -173,7 +175,8 @@ def json_to_url(json_text: str) -> str:
         object, or holds a part :func:`build_url` refuses
     """
     try:
-        components = json.loads(json_text)
+        # Numbers as written: a query value 1E3 went into the URL as 1000.0
+        components = load_json_verbatim(json_text)
     # RecursionError: JSON nested deeper than the parser goes, which escaped
     # the tab's slot
     except (ValueError, RecursionError) as error:

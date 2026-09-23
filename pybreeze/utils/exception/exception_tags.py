@@ -73,6 +73,9 @@ invalid_json_object_error: str = "the input must be a JSON object of key/value p
 nested_query_value_error: str = (
     "a query value must be a string, number, true/false or null, or a list of them")
 invalid_json_for_query_error: str = "can't parse the input as JSON"
+unencodable_text_error: str = (
+    "a value holds a character that cannot be written in a URL (a lone surrogate such as \\ud83d)"
+)
 
 # Regex testing
 empty_regex_pattern_error: str = "no pattern provided"

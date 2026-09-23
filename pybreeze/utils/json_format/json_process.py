@@ -41,10 +41,20 @@ class _Numbers:
         return f"\x00{self._marker}:{len(self._texts) - 1}\x00"
 
     def restore(self, serialised: str) -> str:
-        """*serialised* with every placeholder replaced by its number's text."""
+        """*serialised* with every placeholder replaced by its number's text.
+
+        A lone surrogate (``"\\ud83d"`` in the input) is written back as its
+        escape: with ``ensure_ascii=False`` it went out raw, and the text view
+        dropped it, so ``{"a": "\\ud83d"}`` came out as ``{"a": ""}``.
+        """
         # How dumps writes a placeholder: quoted, the NUL escaped
         placeholder = re.compile(rf'"\\u0000{self._marker}:(\d+)\\u0000"')
-        return placeholder.sub(lambda match: self._texts[int(match.group(1))], serialised)
+        restored = placeholder.sub(lambda match: self._texts[int(match.group(1))], serialised)
+        return _LONE_SURROGATE.sub(lambda match: f"\\u{ord(match.group()):04x}", restored)
+
+
+# Outside a string JSON holds no such character, so every one is inside a string
+_LONE_SURROGATE = re.compile("[\ud800-\udfff]")
 
 
 def _refuse_constant(name: str) -> None:

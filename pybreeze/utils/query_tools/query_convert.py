@@ -17,6 +17,7 @@ from pybreeze.utils.exception.exception_tags import (
     invalid_json_for_query_error,
     invalid_json_object_error,
     nested_query_value_error,
+    unencodable_text_error,
 )
 from pybreeze.utils.exception.exceptions import QueryConvertException
 from pybreeze.utils.logging.logger import pybreeze_logger
@@ -97,7 +98,7 @@ def json_to_query(json_text: str) -> str:
     :raises QueryConvertException: when the input is not valid JSON or not an object
     """
     try:
-        parsed = json.loads(json_text)
+        parsed = load_json_verbatim(json_text)
     # json.JSONDecodeError derives from ValueError; RecursionError is JSON
     # nested deeper than the parser goes, which escaped the tab's slot
     except (ValueError, RecursionError) as error:
@@ -113,4 +114,36 @@ def json_to_query(json_text: str) -> str:
             pairs.extend((key, coerce_scalar(item)) for item in value)
         else:
             pairs.append((key, coerce_scalar(value)))
-    return urlencode(pairs)
+    return encode_pairs(pairs)
+
+
+def encode_pairs(pairs: list[tuple[str, str]]) -> str:
+    """``urlencode`` *pairs*, refusing text a URL cannot carry.
+
+    :raises QueryConvertException: for a lone surrogate (``"\\ud83d"`` in the
+        JSON), which UTF-8 cannot encode: the ``UnicodeEncodeError`` escaped the
+        tab's slot, and the previous output stayed on screen, savable
+    """
+    try:
+        return urlencode(pairs)
+    except UnicodeEncodeError as error:
+        pybreeze_logger.error(unencodable_text_error)
+        raise QueryConvertException(unencodable_text_error) from error
+
+
+def _refuse_constant(name: str) -> None:
+    """``NaN`` and ``Infinity`` are Python's extensions, not JSON."""
+    raise ValueError(f"{name} is not JSON")
+
+
+def load_json_verbatim(json_text: str) -> object:
+    """Parse *json_text* with every number kept as the text it was written as.
+
+    Through ``float`` a query value changed: ``1E3`` became ``1000.0``, a long
+    integer written with a fraction lost its digits, ``1e400`` became ``inf``,
+    and ``NaN`` was accepted. ``NaN`` and ``Infinity`` are refused.
+
+    :raises ValueError: when it is not JSON
+    :raises RecursionError: when it is nested deeper than the parser goes
+    """
+    return json.loads(json_text, parse_float=str, parse_int=str, parse_constant=_refuse_constant)
