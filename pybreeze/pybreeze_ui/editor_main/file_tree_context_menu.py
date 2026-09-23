@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import os
 import shutil
+import stat
 import subprocess
 import sys
 from collections.abc import Callable
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 from PySide6.QtCore import Qt, QModelIndex
 from PySide6.QtGui import QCursor
@@ -158,7 +159,9 @@ def _action_new_file(tree_view: QTreeView, path: Path | None) -> None:
     )
     if not ok or not name.strip():
         return
-    new_path = parent / name.strip()
+    new_path = _inside(tree_view, parent, name.strip())
+    if new_path is None:
+        return
     if new_path.exists():
         QMessageBox.warning(
             tree_view,
@@ -183,7 +186,9 @@ def _action_new_folder(tree_view: QTreeView, path: Path | None) -> None:
     )
     if not ok or not name.strip():
         return
-    new_path = parent / name.strip()
+    new_path = _inside(tree_view, parent, name.strip())
+    if new_path is None:
+        return
     if new_path.exists():
         QMessageBox.warning(
             tree_view,
@@ -305,7 +310,9 @@ def _action_rename(tree_view: QTreeView, main_window, path: Path | None) -> None
     )
     if not ok or not new_name.strip() or new_name.strip() == path.name:
         return
-    target = path.parent / new_name.strip()
+    target = _inside(tree_view, path.parent, new_name.strip(), single=True)
+    if target is None:
+        return
     # On a case-insensitive filesystem "A.py" already exists when renaming
     # "a.py" to it -- it is the same file, and a change of case is a rename.
     if target.exists() and not _is_the_same_file(target, path):
@@ -352,8 +359,10 @@ def _action_delete(tree_view: QTreeView, main_window, path: Path | None) -> None
         _stop_auto_save(editor)
 
     def _delete() -> None:
-        if path.is_dir():
-            shutil.rmtree(path)
+        if _is_link(path):
+            _remove_link(path)
+        elif path.is_dir():
+            remove_folder(path)
         else:
             path.unlink()
 
@@ -398,3 +407,71 @@ def _action_reveal_in_explorer(path: Path | None) -> None:
         subprocess.Popen(["open", str(target)])  # nosec B603 B607  # nosemgrep  # noqa: S603,S607
     else:
         subprocess.Popen(["xdg-open", str(target)])  # nosec B603 B607  # nosemgrep  # noqa: S603,S607
+
+
+def _inside(tree_view: QTreeView, parent: Path, name: str, *, single: bool = False) -> Path | None:
+    """*parent* / *name*, or ``None`` after saying why *name* cannot go there.
+
+    A name with a drive, a root, ``..`` or a ``:`` (a drive-relative path, or an
+    NTFS stream) went elsewhere: ``/tmp/notes.py`` was created as
+    ``C:\\tmp\\notes.py`` and a rename to ``/a.py`` moved the file to the drive
+    root. With *single*, the name must be one entry (a rename), not a path.
+    """
+    parts = PureWindowsPath(name)
+    escapes = (parts.drive or parts.root or ":" in name or ".." in parts.parts
+               or (single and len(parts.parts) != 1))
+    target = parent / name
+    if not escapes:
+        try:
+            escapes = not target.resolve().is_relative_to(parent.resolve())
+        except OSError:
+            escapes = True
+    if not escapes:
+        return target
+    word = language_wrapper.language_word_dict
+    QMessageBox.warning(tree_view, word.get("file_tree_ctx_error"),
+                        word.get("file_tree_ctx_bad_name").format(name=name))
+    return None
+
+
+def _is_link(path: Path) -> bool:
+    """Whether *path* is a symbolic link or a Windows junction (a link either way)."""
+    if path.is_symlink():
+        return True
+    try:
+        attributes = getattr(os.lstat(path), "st_file_attributes", 0)
+    except OSError:
+        return False
+    return bool(attributes & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0))
+
+
+def _remove_link(path: Path) -> None:
+    """Remove the link at *path*, never what it points to.
+
+    ``rmtree`` refuses a link to a folder, so one could not be deleted at all.
+    """
+    try:
+        os.unlink(path)
+    except (IsADirectoryError, PermissionError):
+        os.rmdir(path)  # a junction, or a directory symlink on an older Windows
+
+
+def _clear_read_only_and_retry(function: Callable[[str], None], path: str, _error: object) -> None:
+    """``rmtree``'s error handler: make *path* writable and try *function* again."""
+    os.chmod(path, stat.S_IWRITE)
+    function(path)
+
+
+def remove_folder(path: Path) -> None:
+    """Delete the folder *path* and everything in it, read-only files included.
+
+    ``shutil.rmtree`` stops at the first read-only file on Windows, after
+    removing what came before it: git makes its objects read-only, so deleting
+    a cloned project left it half deleted with a broken repository.
+
+    :raises OSError: when something in it still cannot be removed
+    """
+    if sys.version_info >= (3, 12):
+        shutil.rmtree(path, onexc=_clear_read_only_and_retry)
+    else:
+        shutil.rmtree(path, onerror=_clear_read_only_and_retry)

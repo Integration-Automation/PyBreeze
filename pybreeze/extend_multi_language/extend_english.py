@@ -383,6 +383,7 @@ pybreeze_english_word_dict = {
     "file_tree_ctx_input_new_name": "New name for '{name}':",
     "file_tree_ctx_error": "Error",
     "file_tree_ctx_already_exists": "'{name}' already exists.",
+    "file_tree_ctx_bad_name": "'{name}' is not a name inside this folder: it may not have a drive, start with a slash, or contain '..' or ':'.",
     "file_tree_ctx_confirm_delete": "Confirm Delete",
     "file_tree_ctx_confirm_delete_message": "Are you sure you want to delete '{name}'?",
     # Diagram Editor — Menu

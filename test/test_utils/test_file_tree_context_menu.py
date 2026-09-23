@@ -426,3 +426,73 @@ class TestAttachingTheMenu:
         assert index == 0
         assert window.tab_widget.count() == 1
         placeholder.deleteLater()
+
+
+class TestANameStaysInItsFolder:
+    """A drive, a root, '..' or ':' put the file elsewhere: /tmp/notes.py became C:\\tmp\\notes.py."""
+
+    @pytest.mark.parametrize("name", ["/tmp/notes.py", "C:\\x.py", "C:x.py", "..\\up.py", "a/../../up.py", "notes.py:stream"])
+    def test_a_new_file_outside_the_folder_is_refused(self, tree, tmp_path, monkeypatch, warnings, name):
+        folder = tmp_path / "project"
+        folder.mkdir()
+        answer(monkeypatch, name)
+
+        _action_new_file(tree, folder)
+
+        assert warnings
+        assert list(folder.iterdir()) == []
+        assert sorted(item.name for item in tmp_path.iterdir()) == ["project"]
+
+    def test_a_new_file_in_a_subfolder_is_still_allowed(self, tree, tmp_path, monkeypatch):
+        answer(monkeypatch, "pkg/module.py")
+
+        _action_new_file(tree, None)
+
+        assert (tmp_path / "pkg" / "module.py").is_file()
+
+    @pytest.mark.parametrize("name", ["/a.py", "sub/a.py", "..\\a.py"])
+    def test_a_rename_is_one_name(self, tree, tmp_path, monkeypatch, warnings, name):
+        original = tmp_path / "a.py"
+        original.write_text("x", encoding="utf-8")
+        answer(monkeypatch, name)
+
+        _action_rename(tree, FakeWindow(), original)
+
+        assert warnings
+        assert original.is_file()
+
+
+class TestDeletingAFolder:
+    def test_read_only_files_go_too(self, tmp_path):
+        # rmtree stopped at the first one: git makes its objects read-only, and
+        # a cloned project was left half deleted with a broken repository
+        import stat
+
+        folder = tmp_path / "project"
+        (folder / ".git" / "objects" / "ab").mkdir(parents=True)
+        (folder / ".git" / "HEAD").write_text("ref", encoding="utf-8")
+        locked = folder / ".git" / "objects" / "ab" / "cdef"
+        locked.write_bytes(b"blob")
+        os.chmod(locked, stat.S_IREAD)
+
+        ctx.remove_folder(folder)
+
+        assert not folder.exists()
+
+    @pytest.mark.skipif(os.name != "nt", reason="junctions are Windows'")
+    def test_a_junction_is_removed_and_what_it_points_to_is_kept(self, tree, tmp_path, monkeypatch):
+        import subprocess
+
+        target = tmp_path / "real"
+        target.mkdir()
+        (target / "keep.txt").write_text("keep", encoding="utf-8")
+        link = tmp_path / "link"
+        subprocess.run(["cmd", "/c", "mklink", "/J", str(link), str(target)],
+                       check=True, capture_output=True, timeout=30)
+        confirm(monkeypatch, yes=True)
+
+        _action_delete(tree, FakeWindow(), link)
+
+        assert not link.exists() and not os.path.lexists(link)
+        assert (target / "keep.txt").read_text(encoding="utf-8") == "keep"
+
