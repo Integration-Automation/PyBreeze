@@ -14,6 +14,8 @@ _LEFT_LABEL = "expected"
 _RIGHT_LABEL = "actual"
 # Lines of unchanged context kept around each change in the unified diff
 _CONTEXT_LINES = 3
+# diff's own note under a last line that has no newline
+_NO_NEWLINE_MARK = "\\ No newline at end of file"
 
 
 @dataclass(frozen=True)
@@ -30,9 +32,34 @@ class DiffSummary:
     is_equal: bool
 
 
-def _split_lines(text: str) -> list[str]:
-    """Split *text* into lines, keeping a stable count for empty input."""
-    return text.splitlines()
+def _line_lists(left: str, right: str) -> tuple[list[str], list[str]]:
+    """The two texts as the lists of lines to compare, each line ending in ``\\n``.
+
+    Lines are compared without their endings. Only when that finds nothing
+    while the texts still differ -- a final newline, or ``\\r\\n`` against
+    ``\\n`` -- are the real endings kept: the summary called such texts
+    different, and the diff showed nothing.
+    """
+    left_lines, right_lines = left.splitlines(), right.splitlines()
+    if left_lines != right_lines or left == right:
+        return [f"{line}\n" for line in left_lines], [f"{line}\n" for line in right_lines]
+    return left.splitlines(keepends=True), right.splitlines(keepends=True)
+
+
+def _shown(diff_line: str) -> str:
+    """One line of the unified diff, its line ending taken off for display.
+
+    An added or removed line with no newline gets diff's own marker on the
+    next line; one with another ending (``\\r\\n``, a lone ``\\r``) names it.
+    Unchanged context lines are shown without comment.
+    """
+    content = diff_line.rstrip("\r\n")
+    ending = diff_line[len(content):]
+    if diff_line[:1] not in ("+", "-") or diff_line.startswith(("+++", "---")) or ending == "\n":
+        return content
+    if not ending:
+        return f"{content}\n{_NO_NEWLINE_MARK}"
+    return f"{content}  (line ends with {ending!r})"
 
 
 def unified_diff(
@@ -46,15 +73,16 @@ def unified_diff(
     :param right_label: header label for the second text
     :return: the unified diff text (empty when the inputs are identical)
     """
+    left_lines, right_lines = _line_lists(left, right)
     diff_lines = difflib.unified_diff(
-        _split_lines(left),
-        _split_lines(right),
+        left_lines,
+        right_lines,
         fromfile=left_label,
         tofile=right_label,
         lineterm="",
         n=_CONTEXT_LINES,
     )
-    return "\n".join(diff_lines)
+    return "\n".join(_shown(line) for line in diff_lines)
 
 
 def diff_summary(left: str, right: str) -> DiffSummary:
@@ -70,7 +98,7 @@ def diff_summary(left: str, right: str) -> DiffSummary:
     :param right: the second (actual) text
     :return: the counts of added and removed lines and whether they are equal
     """
-    matcher = difflib.SequenceMatcher(None, _split_lines(left), _split_lines(right))
+    matcher = difflib.SequenceMatcher(None, *_line_lists(left, right))
     added = 0
     removed = 0
     for tag, left_start, left_end, right_start, right_end in matcher.get_opcodes():

@@ -88,3 +88,21 @@ class TestSummaryMatchesTheShownDiff:
         # ndiff took over a minute here; the opcodes take milliseconds.
         assert time.perf_counter() - started < 5
         assert (summary.added, summary.removed) == (3000, 3000)
+
+
+class TestOnlyTheLineEndingsDiffer:
+    """Texts that differ in a final newline or a line ending: the diff says where."""
+
+    def test_a_missing_final_newline_shows_as_a_change(self):
+        # It said "not identical" and showed an empty diff: +0 / -0.
+        summary = diff_summary("a\n", "a")
+
+        assert (summary.added, summary.removed, summary.is_equal) == (1, 1, False)
+        assert unified_diff("a\n", "a").endswith("+a\n\\ No newline at end of file")
+
+    def test_a_different_line_ending_is_named(self):
+        assert "-a  (line ends with '\\r\\n')" in unified_diff("a\r\nb", "a\nb")
+
+    def test_other_changes_are_counted_as_before(self):
+        # A line added after a last line without a newline is one added line.
+        assert diff_summary("a", "a\nb").added == 1
