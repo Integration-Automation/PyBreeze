@@ -240,9 +240,9 @@ _HANDLE_CURSORS: dict[str, Qt.CursorShape] = {
 
 
 class ResizeHandle(QGraphicsRectItem):
-    """Draggable corner handle for node resizing."""
+    """Draggable corner handle that resizes its node or image."""
 
-    def __init__(self, role: str, parent_node: DiagramNode):
+    def __init__(self, role: str, parent_node: DiagramNode | DiagramImage):
         hs = _HANDLE_SIZE
         super().__init__(-hs / 2, -hs / 2, hs, hs, parent_node)
         self.role = role
@@ -260,7 +260,9 @@ class ResizeHandle(QGraphicsRectItem):
     def mousePressEvent(self, event) -> None:
         if event.button() == Qt.MouseButton.LeftButton:
             self._drag_start = event.scenePos()
-            self._orig_rect = QRectF(0, 0, self._parent_node.node_w, self._parent_node.node_h)
+            # rect() is the size for nodes and images alike (0, 0, w, h); an
+            # image has no node_w, and a drag on its handle raised on every event
+            self._orig_rect = QRectF(self._parent_node.rect())
             self._orig_pos = QPointF(self._parent_node.pos())
             self._parent_node._resizing = True
             scene = self.scene()

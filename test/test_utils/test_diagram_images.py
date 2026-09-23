@@ -292,3 +292,42 @@ class TestCopyingAnImage:
         scene.copy_selected()
 
         assert scene._clipboard["images"], "the clipboard was emptied by a copy of nothing"
+
+
+class _Drag:
+    """The parts of a mouse event a resize handle reads."""
+
+    def __init__(self, x: float, y: float) -> None:
+        from PySide6.QtCore import QPointF
+
+        self._pos = QPointF(x, y)
+
+    def scenePos(self):
+        return self._pos
+
+    @staticmethod
+    def button():
+        from PySide6.QtCore import Qt
+
+        return Qt.MouseButton.LeftButton
+
+    def accept(self) -> None:
+        """Handled."""
+
+
+def test_an_image_resizes_by_its_corner_handle(app):
+    # The handle read node_w, which an image does not have: every press and
+    # move raised, and only the property panel could resize an image
+    from pybreeze.pybreeze_ui.diagram_editor.diagram_items import DiagramImage
+
+    scene = DiagramScene()
+    image = DiagramImage(x=0, y=0, w=100, h=80)
+    scene.addItem(image)
+    handle = image._handles["br"]
+
+    handle.mousePressEvent(_Drag(100, 80))
+    handle.mouseMoveEvent(_Drag(150, 130))
+    handle.mouseReleaseEvent(_Drag(150, 130))
+
+    assert (image.img_w, image.img_h) == (150, 130)
+    assert scene.undo_stack.count() == 1
