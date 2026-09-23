@@ -194,3 +194,29 @@ class TestTheTextIsWhatWasGenerated:
         assert saved == self._GENERATED
         ast.parse(saved)
         parent.deleteLater()
+
+
+def test_a_save_that_fails_leaves_the_file_it_was_replacing(app, tmp_path):
+    # write_text emptied the chosen file first; a failure part-way lost it
+    from pybreeze.utils.file_process import replace_file
+
+    parent, output, actions = _make(app)
+    output.setPlainText("new content")
+    target = tmp_path / "keep.txt"
+    target.write_text("the user's file", encoding="utf-8")
+
+    def refuse(*_args):
+        raise OSError(28, "No space left on device")
+
+    with patch(
+        "pybreeze.pybreeze_ui.tools_gui.output_actions.QFileDialog.getSaveFileName",
+        return_value=(str(target), ""),
+    ), patch(
+        "pybreeze.pybreeze_ui.tools_gui.output_actions.QMessageBox.warning",
+        side_effect=lambda *args: None,
+    ), patch.object(replace_file.os, "replace", side_effect=refuse):
+        assert actions.save_to_file() is None
+
+    assert target.read_text(encoding="utf-8") == "the user's file"
+    assert list(tmp_path.iterdir()) == [target]
+    parent.deleteLater()

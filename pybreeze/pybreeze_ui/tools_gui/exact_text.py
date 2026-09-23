@@ -5,6 +5,10 @@ into a plain space and a line separator (U+2028) into a newline. A tool that
 hashes, diffs, matches or formats the text then works on something else than
 the user gave it -- the Hash tool showed the digest of a different string, and
 Diff called two texts that differ only there identical.
+
+Line endings are the one thing no Qt text widget keeps: a pasted ``\\r\\n`` or
+``\\r`` becomes a block break before anything can read it, so every line comes
+back ending in ``\\n``.
 """
 from __future__ import annotations
 
@@ -15,5 +19,5 @@ _BLOCK_SEPARATOR = " "
 
 
 def exact_text(edit: QTextEdit | QPlainTextEdit) -> str:
-    """The text in *edit*, every character as entered, lines ending in ``\\n``."""
+    """The text in *edit*, every character as entered but the line endings, which are ``\\n``."""
     return edit.document().toRawText().replace(_BLOCK_SEPARATOR, "\n")

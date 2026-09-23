@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.tools_gui.exact_text import exact_text
+from pybreeze.utils.file_process.replace_file import replace_text
 from pybreeze.utils.logging.logger import pybreeze_logger
 
 # A value that is either fixed or computed on demand (e.g. depends on a selector)
@@ -125,7 +126,9 @@ class OutputActions:
         if not path:
             return None
         try:
-            Path(path).write_text(exact_text(self._output), encoding="utf-8")
+            # Replaced in one step: write_text emptied the file first, so a
+            # failure part-way lost the file the user chose to replace
+            replace_text(Path(path), exact_text(self._output))
         except OSError as error:
             pybreeze_logger.error("output_actions.py save failed: %r", error)
             # It used to go to the log only, and the user took it as saved.
