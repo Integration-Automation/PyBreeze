@@ -19,6 +19,7 @@ from pybreeze.utils.header_tools.header_analyzer import FOLDED_LINE_START, HEADE
 from pybreeze.utils.http_reference.status_codes import StatusInfo, lookup
 from pybreeze.utils.jwt_tools.jwt_decoder import DecodedJwt, decode_jwt, find_tokens
 from pybreeze.utils.exception.exceptions import JwtDecodeException
+from pybreeze.utils.json_format.view_safe import dumps_for_view
 
 # Matches the response status line, e.g. "HTTP/1.1 200 OK"
 _STATUS_LINE_RE = re.compile(r"^HTTP/\d(?:\.\d)?\s+(\d{3})\b")
@@ -142,7 +143,7 @@ def _continue_value(headers: dict[str, str | list[str]], name: str, more: str) -
 def _pretty_json(body: str) -> str | None:
     """Return *body* pretty-printed if it is JSON, else ``None`` (key order kept)."""
     try:
-        return json.dumps(json.loads(body), indent=4, ensure_ascii=False)
+        return dumps_for_view(json.loads(body), indent=4)
     # RecursionError: a body nested past the recursion limit
     except (ValueError, TypeError, RecursionError):
         return None

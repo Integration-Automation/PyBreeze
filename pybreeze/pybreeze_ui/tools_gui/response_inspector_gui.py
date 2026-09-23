@@ -5,7 +5,6 @@ together the HTTP status, JSON format and JWT decoder tools.
 """
 from __future__ import annotations
 
-import json
 
 from PySide6.QtWidgets import (
     QHBoxLayout, QLabel, QPushButton, QTextEdit, QVBoxLayout, QWidget
@@ -20,6 +19,7 @@ from pybreeze.pybreeze_ui.tools_gui.jwt_decoder_gui import JwtDecoderGUI
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.pybreeze_ui.tools_gui.tool_tabs import open_tool_tab
 from pybreeze.utils.jwt_tools.jwt_decoder import humanized_timestamp_claims
+from pybreeze.utils.json_format.view_safe import dumps_for_view
 from pybreeze.utils.response_inspector.response_analyzer import (
     ResponseAnalysis, analyze_response
 )
@@ -45,8 +45,8 @@ def _jwt_section(analysis: ResponseAnalysis) -> list[str]:
     word = language_wrapper.language_word_dict
     lines = [word.get("response_jwt_label")]
     for finding in analysis.jwt_findings:
-        lines.append(json.dumps(finding.decoded.header, ensure_ascii=False))
-        lines.append(json.dumps(finding.decoded.payload, indent=4, ensure_ascii=False))
+        lines.append(dumps_for_view(finding.decoded.header))
+        lines.append(dumps_for_view(finding.decoded.payload, indent=4))
         for claim, value in humanized_timestamp_claims(finding.decoded.payload).items():
             lines.append(f"    {claim}: {value}")
     lines.append("")

@@ -20,6 +20,7 @@ from pybreeze.utils.exception.exception_tags import (
     unencodable_text_error,
 )
 from pybreeze.utils.exception.exceptions import QueryConvertException
+from pybreeze.utils.json_format.view_safe import dumps_for_view
 from pybreeze.utils.logging.logger import pybreeze_logger
 
 
@@ -66,7 +67,7 @@ def query_to_json(query: str) -> str:
     :param query: the query string to convert
     :return: a formatted JSON object string
     """
-    return json.dumps(query_to_dict(query), indent=4, ensure_ascii=False, sort_keys=True)
+    return dumps_for_view(query_to_dict(query), indent=4, sort_keys=True)
 
 
 def coerce_scalar(value: object) -> str:

@@ -5,7 +5,6 @@ subject, expiry) while building or debugging an API test, not for trusting it.
 """
 from __future__ import annotations
 
-import json
 
 from PySide6.QtWidgets import QLabel, QPushButton, QTextEdit, QVBoxLayout, QWidget
 from je_editor import language_wrapper
@@ -13,6 +12,7 @@ from je_editor import language_wrapper
 from pybreeze.pybreeze_ui.tools_gui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.utils.exception.exceptions import JwtDecodeException
+from pybreeze.utils.json_format.view_safe import dumps_for_view
 from pybreeze.utils.jwt_tools.jwt_decoder import (
     DecodedJwt, decode_jwt, humanized_timestamp_claims
 )
@@ -28,10 +28,10 @@ def build_decoded_text(decoded: DecodedJwt) -> str:
     word = language_wrapper.language_word_dict
     sections = [
         word.get("jwt_decoder_header_label"),
-        json.dumps(decoded.header, indent=4, sort_keys=True, ensure_ascii=False),
+        dumps_for_view(decoded.header, indent=4, sort_keys=True),
         "",
         word.get("jwt_decoder_payload_label"),
-        json.dumps(decoded.payload, indent=4, sort_keys=True, ensure_ascii=False),
+        dumps_for_view(decoded.payload, indent=4, sort_keys=True),
     ]
     readable = humanized_timestamp_claims(decoded.payload)
     if readable:

@@ -16,6 +16,7 @@ from pybreeze.utils.exception.exception_tags import cant_reformat_json_error
 from pybreeze.utils.exception.exception_tags import json_duplicate_key_error
 from pybreeze.utils.exception.exception_tags import wrong_json_data_error
 from pybreeze.utils.exception.exceptions import ITEJsonException
+from pybreeze.utils.json_format.view_safe import escape_for_view
 from pybreeze.utils.logging.logger import pybreeze_logger
 
 
@@ -43,18 +44,15 @@ class _Numbers:
     def restore(self, serialised: str) -> str:
         """*serialised* with every placeholder replaced by its number's text.
 
-        A lone surrogate (``"\\ud83d"`` in the input) is written back as its
-        escape: with ``ensure_ascii=False`` it went out raw, and the text view
-        dropped it, so ``{"a": "\\ud83d"}`` came out as ``{"a": ""}``.
+        A character the text view would not give back -- a lone surrogate
+        (``"\\ud83d"`` in the input), U+2029 -- is written back as its escape:
+        with ``ensure_ascii=False`` it went out raw, and ``{"a": "\\ud83d"}``
+        came out as ``{"a": ""}`` (see ``view_safe``).
         """
         # How dumps writes a placeholder: quoted, the NUL escaped
         placeholder = re.compile(rf'"\\u0000{self._marker}:(\d+)\\u0000"')
         restored = placeholder.sub(lambda match: self._texts[int(match.group(1))], serialised)
-        return _LONE_SURROGATE.sub(lambda match: f"\\u{ord(match.group()):04x}", restored)
-
-
-# Outside a string JSON holds no such character, so every one is inside a string
-_LONE_SURROGATE = re.compile("[\ud800-\udfff]")
+        return escape_for_view(restored)
 
 
 def _refuse_constant(name: str) -> None:

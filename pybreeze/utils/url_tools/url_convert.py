@@ -6,7 +6,6 @@ then turn it back into a URL. Pure logic — no Qt and no network access.
 """
 from __future__ import annotations
 
-import json
 from urllib.parse import SplitResult, urlsplit, urlunsplit
 
 from pybreeze.utils.exception.exception_tags import (
@@ -16,6 +15,7 @@ from pybreeze.utils.exception.exception_tags import (
     url_port_out_of_range_error,
 )
 from pybreeze.utils.exception.exceptions import QueryConvertException, UrlConvertException
+from pybreeze.utils.json_format.view_safe import dumps_for_view
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.query_tools.query_convert import (
     coerce_scalar, encode_pairs, load_json_verbatim, query_round_trips, query_to_dict,
@@ -90,7 +90,7 @@ def url_to_json(url: str) -> str:
         # from these parts would silently lose it.
         pybreeze_logger.error(url_port_out_of_range_error)
         raise UrlConvertException(url_port_out_of_range_error)
-    return json.dumps(components, indent=4, ensure_ascii=False)
+    return dumps_for_view(components, indent=4)
 
 
 def _has_port_text(url: str) -> bool:

@@ -12,7 +12,6 @@ Everything here is pure text generation; nothing is executed or sent.
 """
 from __future__ import annotations
 
-import json
 import re
 from urllib.parse import urlparse
 
@@ -20,6 +19,7 @@ from pybreeze.utils.curl_import.curl_parser import CurlRequest
 from pybreeze.utils.curl_import.request_body import body_kind, form_entries, sent_headers
 from pybreeze.utils.exception.exception_tags import action_cannot_read_files_error
 from pybreeze.utils.exception.exceptions import CurlParseException
+from pybreeze.utils.json_format.view_safe import dumps_for_view
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.curl_import.request_codegen import (
     REQUESTS_IMPORT, cookie_file_notes, data_from_file_expr, form_has_repeats, form_value_expr, python_literal,
@@ -39,7 +39,7 @@ _TEST_INDENT = "    "
 
 def _inline_json(value: object) -> str:
     """Render *value* as a compact one-line JSON literal for inline code."""
-    return json.dumps(value, ensure_ascii=False)
+    return dumps_for_view(value)
 
 
 def _inline_form(request: CurlRequest) -> str:
@@ -212,7 +212,7 @@ def to_apitestka_action_json(request: CurlRequest) -> str:
     :param request: the parsed curl request
     :return: a formatted JSON action list
     """
-    return json.dumps([to_apitestka_action(request)], indent=4, ensure_ascii=False) + "\n"
+    return dumps_for_view([to_apitestka_action(request)], indent=4) + "\n"
 
 
 def test_function_name(request: CurlRequest) -> str:

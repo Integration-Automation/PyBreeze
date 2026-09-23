@@ -10,12 +10,12 @@ templates use, so the two paths cannot drift apart.
 """
 from __future__ import annotations
 
-import json
 import re
 from collections.abc import Callable
 
 from pybreeze.utils.curl_import.curl_parser import CurlRequest
 from pybreeze.utils.curl_import.request_codegen import REQUESTS_IMPORT, request_statements
+from pybreeze.utils.json_format.view_safe import dumps_for_view
 from pybreeze.utils.curl_import.script_templates import (
     APITESTKA_IMPORT,
     LOADDENSITY_IMPORT,
@@ -98,7 +98,7 @@ def _apitestka_python_script(requests: list[CurlRequest]) -> str:
 def _apitestka_action_script(requests: list[CurlRequest]) -> str:
     """Collect every request into one action list, replayed in capture order."""
     actions = [to_apitestka_action(request) for request in requests]
-    return json.dumps(actions, indent=4, ensure_ascii=False) + "\n"
+    return dumps_for_view(actions, indent=4) + "\n"
 
 
 def _loaddensity_script(requests: list[CurlRequest]) -> str:
