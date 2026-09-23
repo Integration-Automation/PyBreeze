@@ -41,12 +41,18 @@ class _EdgeInfo:
 _DIRECTION_RE = re.compile(
     r"^\s*(?:graph|flowchart)\b(?:\s+(TD|TB|LR|RL|BT)\b)?", re.IGNORECASE
 )
+# A comment runs from %% to the end of the line; it is looked for only outside
+# quotes and brackets, where "100%% done" is label text
 _COMMENT_RE = re.compile(r"%%.*$")
+# Mermaid's keywords are lower case: "End", "Click" or "Style" is a node (the
+# mermaid docs suggest "End" to get round the "end" keyword), and matching
+# them in any case skipped the line
 _SKIP_RE = re.compile(
     r"^\s*(?:subgraph|end\b|style\b|classDef\b|class\s|click\b|linkStyle\b"
-    r"|direction\s+(?:TD|TB|LR|RL|BT)\b)",
-    re.IGNORECASE,
+    r"|direction\s+(?:TD|TB|LR|RL|BT)\b)"
 )
+# A node's ":::className" suffix: styling, not a label or a shape
+_CLASS_SUFFIX_RE = re.compile(r":::[\w-]+$")
 
 # Arrow / link operator with optional pipe-label. Handles every common mermaid
 # link: normal/thick/dotted bodies, optional right head (arrow ``>``, circle
@@ -79,9 +85,11 @@ def _normalize_inline_labels(line: str) -> str:
     The text may sit on any normal link: ``-- label -->``, ``-- label ---``
     (no head), ``-- label --o`` or ``-- label --x``.
     """
-    line = re.sub(rf"--\s+(\S[^|]{{0,{_LABEL_MAX}}}?)\s+(-{{2,}}[>ox]?)", r"\2|\1|", line)
+    # Only a "--" that starts a link: the last two dashes of "A --- B --- C"
+    # made B an edge label
+    line = re.sub(rf"(?<![-.=<])--\s+(\S[^|]{{0,{_LABEL_MAX}}}?)\s+(-{{2,}}[>ox]?)", r"\2|\1|", line)
     line = re.sub(rf"-\.\s+(\S[^|]{{0,{_LABEL_MAX}}}?)\s+\.->", r"-.->|\1|", line)
-    line = re.sub(rf"==\s+(\S[^|]{{0,{_LABEL_MAX}}}?)\s+==>", r"==>|\1|", line)
+    line = re.sub(rf"(?<![=<])==\s+(\S[^|]{{0,{_LABEL_MAX}}}?)\s+==>", r"==>|\1|", line)
     return line
 
 
@@ -191,7 +199,7 @@ def _parse_node_ref(raw: str, nodes: dict[str, _NodeInfo]) -> str | None:
     if not m:
         return None
     node_id = m.group(1)
-    rest = m.group(2).strip()
+    rest = _CLASS_SUFFIX_RE.sub("", m.group(2).strip()).strip()
     text, shape = _extract_shape(rest, default_text=node_id)
     existing = nodes.get(node_id)
     if existing is None:
@@ -247,7 +255,7 @@ def _parse_arrow(token: str) -> tuple[str, ConnectionStyle, float]:
     label = ""
     lm = re.search(r"\|([^|]*)\|", token)
     if lm:
-        label = lm.group(1).strip()
+        label = _unquote(lm.group(1).strip())
 
     if "==" in token:
         return label, ConnectionStyle.SOLID, 3.5  # thick link
@@ -552,7 +560,8 @@ def _parse_lines(text: str, nodes: dict[str, _NodeInfo], edges: list[_EdgeInfo])
     """Parse every line of *text* into *nodes* and *edges*; return the flow direction."""
     direction = "TD"
     for raw_line in text.splitlines():
-        line = _COMMENT_RE.sub("", raw_line).strip()
+        masked, stash = _protect(raw_line)
+        line = _restore(_COMMENT_RE.sub("", masked), stash).strip()
         if not line:
             continue
         parsed_dir = _parse_direction(line)

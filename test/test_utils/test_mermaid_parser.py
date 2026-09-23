@@ -339,3 +339,39 @@ class TestMoreLinks:
         assert _node_texts(result) == ["A", "B"]
         assert result["connections"] == []
 
+
+
+class TestWhatTheReviewFound:
+    def test_capitalised_keywords_are_nodes(self):
+        # "End", "Click", "Style" were taken for keywords and their lines skipped
+        result = parse_mermaid("graph TD\nStart --> End\nEnd((Finish))\nEnd --> C\nStyle[Style guide] --> Click")
+
+        assert _node_texts(result) == ["Start", "Finish", "C", "Style guide", "Click"]
+        assert ("Start", "Finish", "") in _edges(result)
+        assert ("Finish", "C", "") in _edges(result)
+
+    def test_lower_case_keywords_are_still_skipped(self):
+        result = parse_mermaid("graph TD\nsubgraph one\nA --> B\nend\nstyle A fill:#f9f\nclick A callback")
+
+        assert _node_texts(result) == ["A", "B"]
+
+    def test_a_class_suffix_keeps_the_label(self):
+        # "A[Label]:::hot" became a node labelled "A"
+        assert _node_texts(parse_mermaid("graph TD\nA[Label]:::hot --> B")) == ["Label", "B"]
+        assert _node_texts(parse_mermaid("graph TD\nA[Label] --> B\nA:::hot")) == ["Label", "B"]
+
+    def test_a_chain_of_open_links_keeps_its_middle_node(self):
+        # The last two dashes of "---" were read as the start of an edge label
+        result = parse_mermaid("graph TD\nA --- B --- C")
+
+        assert _node_texts(result) == ["A", "B", "C"]
+        assert _edges(result) == [("A", "B", ""), ("B", "C", "")]
+
+    def test_percent_signs_in_a_label_are_not_a_comment(self):
+        result = parse_mermaid('graph TD\nA["100%% done"] --> B %% a real comment\n%% a whole-line comment')
+
+        assert _node_texts(result) == ["100%% done", "B"]
+        assert _edges(result) == [("100%% done", "B", "")]
+
+    def test_a_quoted_edge_label_loses_its_quotes(self):
+        assert _edges(parse_mermaid('graph TD\nA -->|"quoted label"| B')) == [("A", "B", "quoted label")]
