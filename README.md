@@ -74,7 +74,7 @@ Each module gets the same menu shape: **Run** (single script, batch directory, w
 
 - **Automation-aware syntax highlighting** — the `AT_*` / GUI / Web / Load keyword sets are registered for `.json`, and TestPioneer's schema for `.yml` and `.yaml`, on top of JEditor's language support
 - **Code editor** — built on [JEditor](https://github.com/Integration-Automation/JEDITOR): tabs, project tree, format checker, debugger, terminal, variable inspector and a git client pane
-- **Script execution** — single or batch; a batch or file run passes each action file by path, so Windows' ~32 KB argv limit does not apply to it (running the tab in front passes its script on the command line)
+- **Script execution** — single or batch; action files are passed by path, and a script from the tab in front that is too long for a Windows command line (~32 KB) goes through a temporary file
 - **Report generation** — HTML / JSON / XML after a run, with optional email delivery
 - **Integrated JupyterLab** — launches as a tab, installing JupyterLab into the project venv if it is missing
 - **Virtual environment awareness** — `venv/` and `.venv/` are detected and used automatically

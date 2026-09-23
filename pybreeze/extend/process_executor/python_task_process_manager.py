@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import contextlib
 import json
+import os
 import subprocess
 import sys
+import tempfile
 import threading
 from typing import Callable
 from pathlib import Path
@@ -26,6 +29,11 @@ from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.subprocess_util import (
     no_window_creationflags, own_session_options, stop_tree, utf8_subprocess_env,
 )
+
+
+# Windows refuses a command line over 32,767 characters; a script longer than
+# this goes to the child as a file instead
+_MAX_COMMAND_LINE = 30_000
 
 
 def find_venv_path() -> Path:
@@ -71,6 +79,8 @@ class TaskProcessManager:
         self._reader_grace = ReaderGrace()
         # Stop was asked for: a batch run that follows this one does not go on
         self.was_stopped = False
+        # The file a script too long for the command line was written to
+        self._script_file: Path | None = None
 
         self.task_done_trigger_function: Callable = task_done_trigger_function
         self.error_trigger_function: Callable = error_trigger_function
@@ -95,18 +105,42 @@ class TaskProcessManager:
         return True
 
     def start_test_process(self, package: str, exec_str: str):
+        """Run *package* on the script *exec_str*, passed on the command line.
+
+        A script too long for a Windows command line goes as a file instead
+        (``--execute_file``): passed as it was, the run did not start at all.
+        """
         if not self.renew_path():
             return
-        if sys.platform in ["win32", "cygwin", "msys"]:
-            exec_str = json.dumps(exec_str)
-        args = [
-            str(self.compiler_path),
-            "-m",
-            package,
-            "--execute_str",
-            exec_str
-        ]
+        argument = json.dumps(exec_str) if sys.platform in ["win32", "cygwin", "msys"] else exec_str
+        args = [str(self.compiler_path), "-m", package, "--execute_str", argument]
+        if sys.platform == "win32" and len(subprocess.list2cmdline(args)) > _MAX_COMMAND_LINE:
+            args[-2:] = ["--execute_file", str(self._write_script_file(exec_str))]
         self._spawn_and_pump(package, args)
+
+    def _write_script_file(self, script: str) -> Path:
+        """Write *script* to a file of its own for the child to read, and return its path.
+
+        JSON is written back with every character escaped: some packages read
+        the file in the locale's encoding, and an escape reads the same in any.
+        The file goes when the run ends (``_remove_script_file``).
+        """
+        try:
+            text = json.dumps(json.loads(script), ensure_ascii=True)
+        except (ValueError, RecursionError):
+            text = script  # not JSON: the package reports it, as it would have
+        handle, name = tempfile.mkstemp(prefix="pybreeze_run_", suffix=".json")
+        with os.fdopen(handle, "w", encoding="utf-8") as file:
+            file.write(text)
+        self._script_file = Path(name)
+        return self._script_file
+
+    def _remove_script_file(self) -> None:
+        """Remove the file a long script was written to, if there is one."""
+        if self._script_file is not None:
+            with contextlib.suppress(OSError):
+                self._script_file.unlink()
+            self._script_file = None
 
     def start_test_process_file(self, package: str, file_path: str):
         # Pass the action JSON as a path so we never hit the Windows ~32K
@@ -162,6 +196,7 @@ class TaskProcessManager:
             # limit (a large script run as --execute_str): this raised out of
             # the menu and left a run window no one would ever see.
             pybreeze_logger.error("%s could not start: %r", package, error)
+            self._remove_script_file()
             self.main_window.append_output(
                 f"[Error] {package} could not start: {error.strerror or error}\n",
                 is_error=True, own_line=True)
@@ -238,6 +273,7 @@ class TaskProcessManager:
             self.main_window.append_output(
                 f"Task exit with code {self.process.returncode}\n", own_line=True)
             self.process = None
+        self._remove_script_file()
         if self.task_done_trigger_function is not None:
             try:
                 self.task_done_trigger_function()
