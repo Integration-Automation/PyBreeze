@@ -343,3 +343,56 @@ class TestTwoPanelsOpenAtOnce:
         assert (tmp_path / "response_stats.txt").read_text(encoding="utf-8") == "Accepted: 8\nRejected: 6\n"
         first.deleteLater()
         second.deleteLater()
+
+
+class TestWhatTheAnswerLooksLike:
+    def test_an_answer_about_html_is_shown_as_text(self, client):
+        # append() read it as rich text: the tags vanished and <img> was loaded
+        answer = '<b>Use</b> <script>alert(1)</script> instead of <img src="x"> here'
+
+        client.on_answered(answer)
+        client.accept_response()
+
+        text = client.response_panel.toPlainText()
+        assert text.startswith(answer)
+        assert "<img" not in client.response_panel.toHtml().replace("&lt;img", "")
+
+    def test_a_long_error_page_is_cut_short(self, app, monkeypatch):
+        class Response:
+            status_code = 500
+            reason = "Internal Server Error"
+            ok = False
+            is_redirect = False
+            headers: dict = {}
+            encoding = "utf-8"
+
+        monkeypatch.setattr(ai_code_review_gui, "validate_url", lambda url: None)
+        monkeypatch.setattr(ai_code_review_gui, "public_session", lambda: _FakeSession(lambda *_a, **_k: Response()))
+        monkeypatch.setattr(ai_code_review_gui, "read_capped_text", lambda response: "x" * 1_000_000)
+        thread = ai_code_review_gui.ReviewRequestThread("POST", _A_URL, "code")
+        failed: list = []
+        thread.failed.connect(failed.append)
+        thread.run()
+
+        assert len(failed[0]) < 20_000
+
+
+class TestSavingTheTotals:
+    def test_a_save_that_fails_keeps_the_totals_on_disk(self, client, monkeypatch):
+        # The file was opened for writing, emptied first
+        from pathlib import Path
+
+        from pybreeze.utils.file_process import replace_file
+
+        Path(client.stats_file).write_text("Accepted: 5\nRejected: 2\n", encoding="utf-8")
+
+        def refuse(*_args):
+            raise OSError(28, "No space left on device")
+
+        monkeypatch.setattr(replace_file.os, "replace", refuse)
+        client.on_answered("fine")
+        client.accept_response()
+
+        assert Path(client.stats_file).read_text(encoding="utf-8") == "Accepted: 5\nRejected: 2\n"
+        assert "No space left on device" in client.response_panel.toPlainText()
+        assert str(client.stats_file) not in client.response_panel.toPlainText()

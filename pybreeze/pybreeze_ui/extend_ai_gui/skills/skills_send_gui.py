@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from urllib.parse import urlsplit
+
 import requests
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLineEdit,
@@ -59,6 +61,23 @@ class RequestThread(QThread):
             self.error.emit(language_wrapper.language_word_dict.get("skills_exception").format(error=describe_request_error(e)))
 
 
+def _where(location: str) -> str:
+    """The scheme and host a redirect names, and nothing else.
+
+    A redirect usually repeats the request's path and query (a trailing-slash
+    redirect of ``?key=...``), and the whole URL used to be shown with the
+    token in it.
+    """
+    parts = urlsplit(location)
+    if not parts.scheme or not parts.hostname:
+        return "another path on this server" if location else "an unnamed place"
+    try:
+        port = f":{parts.port}" if parts.port else ""
+    except ValueError:  # not a port number
+        port = ""
+    return f"{parts.scheme}://{parts.hostname}{port}"
+
+
 def describe_failed_status(response, body: str) -> tuple[bool, str]:
     """Say what a non-2xx answer means: whether it is an error, and in what words.
 
@@ -66,7 +85,7 @@ def describe_failed_status(response, body: str) -> tuple[bool, str]:
     answer; a refused request and a server error are errors.
     """
     if response.is_redirect:
-        return False, f"Redirect to {response.headers.get('Location', 'unknown')}"
+        return False, f"Redirect (not followed) to {_where(response.headers.get('Location', ''))}"
     if response.status_code in (401, 403):
         return True, "Authentication/Authorization failed"
     if response.status_code >= 500:

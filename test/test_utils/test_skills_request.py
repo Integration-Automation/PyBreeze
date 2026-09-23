@@ -80,7 +80,15 @@ class TestWhatARequestReports:
         answered, errors = _run(monkeypatch, FakeResponse(302, location="https://elsewhere.example"))
 
         assert errors == []
-        assert "302" in answered[0] and "Redirect to https://elsewhere.example" in answered[0]
+        assert "302" in answered[0] and "Redirect (not followed) to https://elsewhere.example" in answered[0]
+
+    def test_a_redirect_shows_only_the_host_it_names(self, monkeypatch):
+        # A trailing-slash redirect repeats the query, and the token in it was shown
+        answered, _errors = _run(monkeypatch, FakeResponse(
+            301, location="https://user:pw@api.example:8443/x/?key=SECRET"))
+
+        assert "https://api.example:8443" in answered[0]
+        assert "SECRET" not in answered[0] and "pw" not in answered[0] and "/x/" not in answered[0]
 
     @pytest.mark.parametrize("status", [401, 403])
     def test_a_refusal_is_an_error(self, monkeypatch, status):

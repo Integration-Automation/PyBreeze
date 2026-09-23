@@ -5,6 +5,7 @@ from pathlib import Path
 
 import requests
 from PySide6.QtCore import QThread, Signal
+from PySide6.QtGui import QTextCursor
 from PySide6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLineEdit, QTextEdit, QComboBox, QLabel, QSizePolicy
@@ -13,10 +14,12 @@ from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.thread_keeper import let_run_out
 from pybreeze.utils.app_dirs import pybreeze_data_dir
+from pybreeze.utils.file_process.replace_file import replace_text
 from pybreeze.utils.hash_tools.hash_text import hash_text
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.network.http_client import (
     ResponseTooLargeError, read_capped_text, CONNECT_TIMEOUT, describe_request_error, succeeded,
+    truncate_for_display,
 )
 from pybreeze.utils.network.public_http import public_session
 from pybreeze.utils.network.url_validation import UnsafeURLError, validate_url
@@ -76,7 +79,9 @@ class ReviewRequestThread(QThread):
                 # Without this a 302 (redirects are not followed) or a 500 with
                 # an empty body would leave the panel looking like a success,
                 # open to an accept or reject vote.
-                self.failed.emit(f"HTTP {response.status_code} {response.reason}\n{body}")
+                # Cut short: a 16 MB error page froze the IDE in setPlainText
+                self.failed.emit(
+                    f"HTTP {response.status_code} {response.reason}\n{truncate_for_display(body)}")
         except (requests.RequestException, ResponseTooLargeError, UnsafeURLError) as error:
             # Not %r: a requests error carries the whole URL, which may hold a token.
             pybreeze_logger.error("AI code review request failed: %s", type(error).__name__)
@@ -264,8 +269,20 @@ class AICodeReviewClient(QWidget):
 
     def on_answered(self, body: str) -> None:
         """Show what came back; it may now be accepted or rejected, once."""
-        self.response_panel.append(body)
+        self._show_after(body)
         self._set_verdict_enabled(True)
+
+    def _show_after(self, text: str) -> None:
+        """Add *text* as plain text in a paragraph of its own after what is shown.
+
+        Not ``append``: it reads anything that looks like markup as rich text,
+        so an answer about HTML lost its tags and an ``<img>`` in it was loaded.
+        """
+        cursor = self.response_panel.textCursor()
+        cursor.movePosition(QTextCursor.MoveOperation.End)
+        if not self.response_panel.document().isEmpty():
+            cursor.insertBlock()
+        cursor.insertText(text)
 
     def on_failed(self, message: str) -> None:
         """Show why no answer came back."""
@@ -308,7 +325,7 @@ class AICodeReviewClient(QWidget):
         if is_new or any(not looks_like_a_fingerprint(line) for line in lines):
             seen.add(fingerprint)
             try:
-                path.write_text("\n".join(sorted(seen)) + "\n", encoding="utf-8")
+                replace_text(path, "\n".join(sorted(seen)) + "\n")
             except OSError as error:
                 # Only the "seen before" note is lost; the request still goes out.
                 pybreeze_logger.debug("Sent URLs not recorded: %r", error)
@@ -318,14 +335,14 @@ class AICodeReviewClient(QWidget):
         """Accept response code and save"""
         self._set_verdict_enabled(False)
         self._count_verdict(accepted=True)
-        self.response_panel.append(f"\n{self.word_dict.get('ai_code_review_gui_status_accepted')}")
+        self._show_after(f"\n{self.word_dict.get('ai_code_review_gui_status_accepted')}")
         self.save_stats()
 
     def reject_response(self):
         """Reject response code and save"""
         self._set_verdict_enabled(False)
         self._count_verdict(accepted=False)
-        self.response_panel.append(f"\n{self.word_dict.get('ai_code_review_gui_status_rejected')}")
+        self._show_after(f"\n{self.word_dict.get('ai_code_review_gui_status_rejected')}")
         self.save_stats()
 
     def _count_verdict(self, accepted: bool) -> None:
@@ -341,13 +358,19 @@ class AICodeReviewClient(QWidget):
             self.reject_count += 1
 
     def save_stats(self):
-        """Save accept/reject counts"""
+        """Save accept/reject counts, replacing the file in one step.
+
+        Opened for writing, the file was emptied first: a full disk or a crash
+        then lost every vote counted so far.
+        """
         try:
-            with open(self.stats_file, "w", encoding="utf-8") as f:
-                f.write(f"Accepted: {self.accept_count}\n")
-                f.write(f"Rejected: {self.reject_count}\n")
+            replace_text(Path(self.stats_file),
+                         f"Accepted: {self.accept_count}\nRejected: {self.reject_count}\n")
         except OSError as e:
-            self.response_panel.append(f"\n[{self.word_dict.get('ai_code_review_gui_status_save_failed')}: {e}]")
+            # The reason, not the error: its text carries the file's path
+            pybreeze_logger.error("Review totals not saved: %r", e)
+            self._show_after(
+                f"\n[{self.word_dict.get('ai_code_review_gui_status_save_failed')}: {e.strerror or type(e).__name__}]")
 
 
 if __name__ == "__main__":

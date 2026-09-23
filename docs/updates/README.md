@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-136 | 2026-09-24 | Show AI review answers as text, cut long error pages, save review totals in one step, and name only a redirect's host | #fix #ai #security | [2026-09](2026-09.md) |
 | U-20260923-135 | 2026-09-24 | Read the final response of curl -i output in the response inspector, and a one-line body as a body | #fix #tools #done | [2026-09](2026-09.md) |
 | U-20260923-134 | 2026-09-24 | Decode a JWT pasted with Bearer, quotes or line breaks around it, and refuse characters outside base64url | #fix #tools #done | [2026-09](2026-09.md) |
 | U-20260923-133 | 2026-09-24 | Read ISO-8601 the same on every Python, epoch microseconds and nanoseconds, and eight-digit dates in the timestamp converter | #fix #tools #done | [2026-09](2026-09.md) |
@@ -216,4 +217,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 153 |
+| [2026-09.md](2026-09.md) | 2026-09 | 154 |
