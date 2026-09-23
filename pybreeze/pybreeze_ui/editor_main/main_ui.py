@@ -125,7 +125,7 @@ class PyBreezeMainWindow(EditorMain):
             return
         super().close_tab(index)
 
-    def _tool_tabsmay_close(self) -> bool:
+    def _tool_tabs_may_close(self) -> bool:
         """Whether every PyBreeze tab and docked widget agrees to close (each may ask)."""
         widgets = [self.tab_widget.widget(index) for index in range(self.tab_widget.count())]
         widgets += [dock.widget() for dock in self.findChildren(DestroyDock)]
@@ -138,7 +138,7 @@ class PyBreezeMainWindow(EditorMain):
 
     def closeEvent(self, event) -> None:
         # Asked before anything is stopped: a No keeps the IDE open as it was
-        if not self._tool_tabsmay_close():
+        if not self._tool_tabs_may_close():
             event.ignore()
             return
         # A run's child outlives the IDE unless stopped here: it is a separate
@@ -190,7 +190,7 @@ def start_editor(debug_mode: bool = False, theme: str = "dark_amber.xml", **kwar
     # Workers allocate enough to trigger a collection, which then destroyed
     # Qt objects on the worker and crashed the IDE later
     collect_garbage_on_gui_thread(new_ide)
-    window =PyBreezeMainWindow(debug_mode=debug_mode, **kwargs)
+    window = PyBreezeMainWindow(debug_mode=debug_mode, **kwargs)
     apply_stylesheet(new_ide, theme=theme)
     window.showMaximized()
     try:
