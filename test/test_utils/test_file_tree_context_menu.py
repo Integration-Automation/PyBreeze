@@ -105,8 +105,15 @@ class FakeEditor(QWidget):
         self.closed = False
         self.code_save_thread = None
 
+    _is_modified = False
+
     def rename_self_tab(self) -> None:
+        # As JEditor's: it clears the unsaved mark
         self.renamed = True
+        self._is_modified = False
+
+    def _on_text_changed(self) -> None:
+        self._is_modified = True
 
     def close(self) -> bool:
         self.closed = True
@@ -495,4 +502,23 @@ class TestDeletingAFolder:
 
         assert not link.exists() and not os.path.lexists(link)
         assert (target / "keep.txt").read_text(encoding="utf-8") == "keep"
+
+
+def test_a_rename_keeps_the_unsaved_mark_of_an_edited_tab(tree, tmp_path, monkeypatch):
+    # rename_self_tab cleared it while nothing had been saved: closing the tab
+    # before the new auto-save wrote lost the edits without asking
+    original = tmp_path / "a.py"
+    original.write_text("x", encoding="utf-8")
+    editor = FakeEditor(str(original))
+    editor._is_modified = True
+    monkeypatch.setattr(ctx, "_editors_under", lambda _w, _p: [(editor, original)])
+    monkeypatch.setattr(
+        ctx, "init_new_auto_save_thread",
+        lambda file_path, widget: setattr(widget, "current_file", file_path))
+    answer(monkeypatch, "b.py")
+
+    _action_rename(tree, FakeWindow(), original)
+
+    assert (tmp_path / "b.py").is_file()
+    assert editor.renamed and editor._is_modified
 

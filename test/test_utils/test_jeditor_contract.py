@@ -147,6 +147,9 @@ class TestTheShapesPyBreezeCalls:
         source = inspect.getsource(EditorWidget)
         assert "self._file_watcher = QFileSystemWatcher" in source
         assert "self._ignore_next_change" in source
+        # A rename puts the unsaved mark back after rename_self_tab clears it
+        assert "self._is_modified" in inspect.getsource(EditorWidget.rename_self_tab)
+        assert "self._is_modified = True" in inspect.getsource(EditorWidget._on_text_changed)
         code_editor = _internal("je_editor.pyside_ui.code.plaintext_code_edit.code_edit_plaintext", "CodeEditor")
         for method in ("reset_highlighter", "load_git_baseline", "start_language_server"):
             assert callable(getattr(code_editor, method, None)), method

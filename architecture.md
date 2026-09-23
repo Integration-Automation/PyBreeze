@@ -146,8 +146,9 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
   | `actually_color_dict` | `pyside_ui.main_ui.save_settings.user_color_setting_file` | `show_code_window/code_window.py`, `automation_menu/auto_control_menu/build_autocontrol_menu.py` |
 
   PyBreeze also relies on `EditorWidget`'s `current_file`, `code_edit`, `file_encoding`,
-  `line_ending`, `mark_ignore_next_file_change()` and `mark_saved()`, on its private `_file_watcher`
-  and `_ignore_next_change` and on `CodeEditor`'s `reset_highlighter()`, `load_git_baseline()` and
+  `line_ending`, `mark_ignore_next_file_change()` and `mark_saved()`, on its private `_file_watcher`,
+  `_ignore_next_change`, `_is_modified` and `_on_text_changed()` (a rename puts the unsaved mark
+  back after `rename_self_tab()` clears it) and on `CodeEditor`'s `reset_highlighter()`, `load_git_baseline()` and
   `start_language_server()` (a rename moves the tab the way `open_an_file` does), and on `language_wrapper`'s
   `choose_language_dict` serving English and Traditional Chinese from the exported dict objects
   themselves. Having je_editor export the names in the table is workspace X-17. It

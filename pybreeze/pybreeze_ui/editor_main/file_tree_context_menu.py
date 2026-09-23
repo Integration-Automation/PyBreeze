@@ -286,7 +286,13 @@ def _start_auto_save(editor: EditorWidget, file_path: Path) -> None:
     editor.code_edit.reset_highlighter()
     editor.code_edit.load_git_baseline()
     editor.code_edit.start_language_server()
+    # rename_self_tab clears the unsaved mark, but nothing was saved: the old
+    # save thread was stopped without writing and the new one waits before its
+    # first write, and closing the tab in that time lost the edits unasked
+    unsaved = bool(getattr(editor, "_is_modified", False))
     editor.rename_self_tab()
+    if unsaved:
+        editor._on_text_changed()
 
 
 def _is_the_same_file(first: Path, second: Path) -> bool:
