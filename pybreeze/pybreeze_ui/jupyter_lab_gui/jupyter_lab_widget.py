@@ -13,7 +13,11 @@ from pybreeze.pybreeze_ui.thread_keeper import let_run_out
 
 class JupyterLabWidget(QWidget):
 
-    def __init__(self):
+    def __init__(self, python_exe: str | None = None):
+        """
+        :param python_exe: the interpreter chosen in the IDE; the lab and its
+            kernels run in it (see ``choose_python``)
+        """
         super().__init__()
 
         layout = QVBoxLayout(self)
@@ -25,7 +29,7 @@ class JupyterLabWidget(QWidget):
         self.browser.hide()
         layout.addWidget(self.browser)
 
-        self.thread = JupyterLauncherThread()
+        self.thread = JupyterLauncherThread(python_exe=python_exe)
         self.thread.status_update.connect(self.update_status)
         self.thread.server_ready.connect(self.load_lab)
         self.thread.error_occurred.connect(self.show_error)

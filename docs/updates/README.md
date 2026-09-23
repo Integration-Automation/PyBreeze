@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-116 | 2026-09-23 | JupyterLab runs in the interpreter chosen in the IDE, finds itself without pip, and fails fast on a taken port | #fix #jupyter | [2026-09](2026-09.md) |
 | U-20260923-115 | 2026-09-23 | The run window shows coloured and redrawn output as text, not escape codes | #fix #executor | [2026-09](2026-09.md) |
 | U-20260923-114 | 2026-09-23 | A run's output waits in a bounded queue, so a print loop no longer fills memory or floods Stop | #fix #executor | [2026-09](2026-09.md) |
 | U-20260923-113 | 2026-09-23 | The run window shows output past its 10,000-line cap without freezing the IDE | #fix #executor #performance | [2026-09](2026-09.md) |
@@ -196,4 +197,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 133 |
+| [2026-09.md](2026-09.md) | 2026-09 | 134 |

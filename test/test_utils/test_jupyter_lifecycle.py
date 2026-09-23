@@ -113,7 +113,7 @@ class TestHowTheServerIsStarted:
 class FinishedLauncher:
     """A launcher whose thread has finished: the server it started is still up."""
 
-    def __init__(self) -> None:
+    def __init__(self, **_options) -> None:
         self.stopped = False
         from PySide6.QtCore import QObject, Signal
 

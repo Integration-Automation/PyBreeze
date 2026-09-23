@@ -25,6 +25,6 @@ def extend_tab_tools_menu(ui_we_want_to_set: PyBreezeMainWindow):
 def add_jupyterlab_tab(ui_we_want_to_set: PyBreezeMainWindow):
     pybreeze_logger.info(f"jupyter_lab_tab.py add jupyter tab ui_we_want_to_set: {ui_we_want_to_set}")
     ui_we_want_to_set.tab_widget.addTab(
-        JupyterLabWidget(),
+        JupyterLabWidget(getattr(ui_we_want_to_set, "python_compiler", None)),
         f"{language_wrapper.language_word_dict.get('tab_menu_jupyterlab_tab_name')} "
         f"{ui_we_want_to_set.tab_widget.count()}")

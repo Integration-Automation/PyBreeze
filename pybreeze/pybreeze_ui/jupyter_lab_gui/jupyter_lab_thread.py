@@ -18,13 +18,17 @@ from pybreeze.utils.subprocess_util import no_window_creationflags
 JUPYTER_STARTUP_TIMEOUT = 60
 # How much of a failure's reason the tab shows: pip's stderr can run long
 _SHOWN_REASON_CHARACTERS = 2000
+# Run by the chosen interpreter: exits 0 when it can import jupyterlab
+_HAS_JUPYTERLAB = "import importlib.util, sys; sys.exit(0 if importlib.util.find_spec('jupyterlab') else 1)"
+# The server listens on localhost; the port is checked, and polled, on IPv4 loopback
+_LOOPBACK = "127.0.0.1"
 
 
 def find_free_port() -> int:
     # Bind to loopback only: this socket exists purely to have the kernel pick an
     # unused port, which the JupyterLab server (also localhost-only) will reuse.
     with socket.socket() as s:
-        s.bind(("127.0.0.1", 0))
+        s.bind((_LOOPBACK, 0))
         return s.getsockname()[1]
 
 
@@ -52,11 +56,30 @@ def get_venv_python() -> str:
     raise RuntimeError("Cannot find venv python executable")
 
 
+def choose_python(chosen: str | None) -> str:
+    """The interpreter the lab runs in: the one chosen in the IDE, else a venv's, else the IDE's own.
+
+    It took the IDE's own or a ``venv``/``.venv`` in the working directory and
+    never the one chosen in the IDE, so kernels ran in the wrong environment,
+    and an IDE installed outside a venv could not start the lab at all.
+    """
+    if chosen:
+        return chosen
+    try:
+        return get_venv_python()
+    except RuntimeError:
+        return sys.executable
+
+
 def is_jupyter_installed(python_exe: str) -> bool:
-    # Query local venv for jupyterlab. python_exe is resolved via get_venv_python()
-    # from a fixed allowlist of venv paths; shell=False. nosec B603.
+    """Whether *python_exe* can import jupyterlab.
+
+    Asked of the interpreter, not of pip: a venv made without pip (``uv venv``)
+    failed ``pip show`` with jupyterlab installed, and the install that
+    followed failed with "No module named pip". shell=False. nosec B603.
+    """
     result = subprocess.run(  # nosec B603  # nosemgrep  # noqa: S603
-        [python_exe, "-m", "pip", "show", "jupyterlab"],
+        [python_exe, "-c", _HAS_JUPYTERLAB],
         capture_output=True,
         timeout=30,
         check=False,
@@ -70,8 +93,11 @@ class JupyterLauncherThread(QThread):
     status_update = Signal(str)
     error_occurred = Signal(str)
 
-    def __init__(self, parent=None, startup_timeout: int = JUPYTER_STARTUP_TIMEOUT):
+    def __init__(self, parent=None, startup_timeout: int = JUPYTER_STARTUP_TIMEOUT,
+                 python_exe: str | None = None):
         super().__init__(parent)
+        # The interpreter chosen in the IDE, if any (choose_python)
+        self._chosen_python = python_exe
         self.process = None
         # Set by stop(). Checked, under the lock, before the server is started:
         # a tab closed during the install would otherwise get a server started
@@ -84,7 +110,7 @@ class JupyterLauncherThread(QThread):
 
     def run(self):
         try:
-            python_exe = get_venv_python()
+            python_exe = choose_python(self._chosen_python)
 
             if not is_jupyter_installed(python_exe):
                 self.status_update.emit(language_wrapper.language_word_dict.get("jupyterlab_downloading"))
@@ -149,6 +175,9 @@ class JupyterLauncherThread(QThread):
             "--no-browser",
             "--ServerApp.ip=localhost",
             f"--ServerApp.port={port}",
+            # A port taken since it was found fails at once: the server moved
+            # to the next free one, and the tab waited on (or loaded) this one
+            "--ServerApp.port_retries=0",
             "--ServerApp.token=",
             "--ServerApp.password=",
             "--ServerApp.disable_check_xsrf=True",
@@ -158,7 +187,7 @@ class JupyterLauncherThread(QThread):
     @staticmethod
     def _port_open(port: int) -> bool:
         try:
-            with socket.create_connection(("localhost", port), timeout=0.5):
+            with socket.create_connection((_LOOPBACK, port), timeout=0.5):
                 return True
         except OSError:
             return False
