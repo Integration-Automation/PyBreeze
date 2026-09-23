@@ -144,7 +144,7 @@ call_X_multi_file_and_send()   → run_dir_files_with_package(..., True)
   - 編譯式：`compiler file -o out` → 執行 `out` → 執行完整個建置資料夾刪掉。`out` 建在 `tempfile.mkdtemp()` 開的資料夾裡，不在原始檔旁邊（旁邊同名的檔案會被蓋掉再刪掉，同一個檔案跑兩次也會互搶）。編譯器跟執行一樣走 `_start_process()`（輸出即時串流、不佔 UI 執行緒），結束碼交給 `after_exit`：0 才接著跑產物，否則印 `[Compile failed]`
   - 編譯最多 `COMPILE_TIME_LIMIT_SECONDS`（60 秒），由 pump 檢查、超過就 `terminate()`；編譯中也能 `stop()`。QTimer 間隔 50 ms（比 Python 執行器更快），編譯與執行共用同一個
   - 讀取、pump、drain 與寫進視窗都用 §4.5 的共用函式
-  - `run_current_file_with()` 建好後同樣掛在執行視窗的 `runner` 上
+  - `run_current_file_with()` 建好後同樣掛在執行視窗的 `runner` 上；輸出用執行設定的 `"encoding"` 解碼（`output_encoding()`，`"locale"` 表示本機字碼頁，Java 與中文化的編譯器就是輸出本機字碼頁），沒寫就用 IDE 的編碼
   - 有和 `TaskProcessManager` 相同語意的 `stop()`
   - 子行程的 `stdin` 是 `DEVNULL`：執行視窗沒有輸入欄，讀取要立刻拿到 EOF，不能卡在沒人寫的管線上
   - 啟動失敗（找不到指令、是資料夾、沒有執行權限、產物被鎖）都寫進執行視窗，建置資料夾經 `_remove_build_dir()` 一併刪掉。`stop()` 會設 `_cancelled`：編譯中或剛編譯完按停止都顯示「[Stopped]」、不執行產物；每個子行程有自己的讀取旗標（`_reading`），編譯的讀取執行緒不會延續到執行階段
@@ -446,7 +446,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 18. 測試與 CI
 
-- **單元測試** `test/test_utils/` — 111 個 `test_*.py`、1875 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
+- **單元測試** `test/test_utils/` — 111 個 `test_*.py`、1882 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
 - **整合測試** `test/unit_test/start_automation/` — 以 `debug_mode=True` 啟動 IDE，10 秒後自動關閉，驗證啟動流程與 extend tab
 - **CI** `.github/workflows/{dev,stable}.yml` — `unit-tests` job 跑 Windows runner、Python 3.10–3.14 矩陣，3.12 那一腳額外上傳 `coverage-xml` artifact；`sonarcloud` job 跑 ubuntu、`needs: unit-tests`。每日 02:00 排程 + push/PR 觸發。`stable.yml` 另有 `publish` job 負責版號遞增與 PyPI 發布
 - **覆蓋率** `.coveragerc` — `relative_files = True` 是必要的：報告在 Windows 產生、由 Linux 上的 scanner 讀取，路徑不能帶機器資訊。目前整體 60%（`utils/`、`tools_gui`、`dialog` 95–100%；`editor_main` 58%、`menu` 54%；仍低的是 `diagram_editor` 45%、`process_executor` 39%、`connect_gui` 28%）

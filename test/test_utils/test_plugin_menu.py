@@ -429,3 +429,43 @@ class TestAPluginThatDoesNotFollowTheRules:
         set_run_with_menu(window)
 
         assert labels(window.run_with_menu) == ["Go  (.go)", "Unknown"]
+
+
+class TestTheEncodingAProgramWrites:
+    """Java and localized compilers write the console code page, not UTF-8."""
+
+    def test_the_ides_encoding_by_default(self):
+        from pybreeze.pybreeze_ui.menu.plugin_menu.build_run_with_menu import output_encoding
+
+        assert output_encoding({"name": "Go"}, "utf-8") == "utf-8"
+
+    def test_a_config_can_name_its_own(self):
+        from pybreeze.pybreeze_ui.menu.plugin_menu.build_run_with_menu import output_encoding
+
+        assert output_encoding({"name": "Java", "encoding": "MS950"}, "utf-8") == "cp950"
+
+    def test_locale_means_this_machines(self):
+        import locale
+
+        from pybreeze.pybreeze_ui.menu.plugin_menu.build_run_with_menu import output_encoding
+
+        assert output_encoding({"encoding": "locale"}, "utf-8") == locale.getpreferredencoding(False)
+
+    @pytest.mark.parametrize("named", ["no-such-codec", 5, "  "])
+    def test_anything_else_keeps_the_default(self, named):
+        from pybreeze.pybreeze_ui.menu.plugin_menu.build_run_with_menu import output_encoding
+
+        assert output_encoding({"name": "Odd", "encoding": named}, "utf-8") == "utf-8"
+
+    def test_the_run_decodes_with_it(self, window, monkeypatch, tmp_path):
+        script = tmp_path / "anything.xyz"
+        script.touch()
+        monkeypatch.setattr(run_with, "save_current_file_for_run", lambda _w: str(script))
+        made: list = []
+        monkeypatch.setattr(
+            run_with, "FileRunnerProcess",
+            lambda **kwargs: made.append(kwargs) or type("R", (), {"run_file": lambda *a: None})())
+
+        run_current_file_with(window, {"name": "Java", "compiler": "java", "encoding": "cp950"})
+
+        assert made[0]["program_encoding"] == "cp950"

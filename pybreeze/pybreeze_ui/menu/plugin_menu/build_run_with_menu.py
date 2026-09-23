@@ -6,6 +6,8 @@ Plugins menu's run entries go through ``run_current_file_with`` here as well.
 """
 from __future__ import annotations
 
+import codecs
+import locale
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -143,9 +145,31 @@ def run_current_file_with(main_window: PyBreezeMainWindow, run_config: dict) -> 
 
     code_window.runner = FileRunnerProcess(
         main_window=code_window,
-        program_encoding=main_window.encoding,
+        program_encoding=output_encoding(run_config, main_window.encoding),
     )
     code_window.runner.run_file(run_config, file_path)
+
+
+def output_encoding(run_config: dict, default: str) -> str:
+    """The encoding the program run by *run_config* writes: its ``encoding``, else *default*.
+
+    Go, Rust and C programs write the bytes they were given, usually UTF-8, but
+    Java and localized compilers write the console's code page (MS950 on a
+    Traditional Chinese Windows): decoded as UTF-8 their text was garbled. A
+    plugin says so with ``"encoding": "cp950"``, or ``"locale"`` for the
+    machine's own. A name Python does not know is logged and ignored.
+    """
+    named = run_config.get("encoding")
+    if not isinstance(named, str) or not named.strip():
+        return default
+    if named.strip().lower() == "locale":
+        return locale.getpreferredencoding(False)
+    try:
+        return codecs.lookup(named.strip()).name
+    except LookupError:
+        pybreeze_logger.error("Run config %s names an unknown encoding %r; using %s",
+                              plugin_text(run_config.get("name"), "Run"), named, default)
+        return default
 
 
 def set_run_with_menu(ui_we_want_to_set: PyBreezeMainWindow) -> None:

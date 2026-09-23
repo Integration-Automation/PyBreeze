@@ -182,7 +182,8 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
   prthinker's config (`prthinker.cli._build_parser`, `_build_config`, both in its `__all__`) to check
   each backend gets the model.
 - **IDE_Plugins**: the plugin browser's default repo (set in JEditor). Its run configs execute here via
-  `FileRunnerProcess`.
+  `FileRunnerProcess`. PyBreeze reads one key JEditor's plugin guide does not define: `"encoding"`, the
+  encoding the program's output is in (`"locale"` for the machine's own), documented in `PLUGIN_GUIDE.md`.
 - **PySide6 pin**: it must match JEditor and FrontEngine. PyBreeze pins it in `pyproject.toml`,
   `dev.toml` and `requirements.txt`. All three pin 6.11.2, the exact pin of the published je_editor
   1.0.26 and frontengine 1.0.78 (both `==`, so PyBreeze cannot move ahead of them without becoming
