@@ -27,6 +27,25 @@ if TYPE_CHECKING:
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
 
 
+def run_config_suffixes(run_config: dict) -> tuple[str, ...]:
+    """The suffixes a plugin's run config accepts, as ``Path.suffix`` gives them: lower case, with the dot.
+
+    JEditor keeps what the plugin registered as it was, so ``".R"`` or ``"r"``
+    never matched a file's suffix and the run was always refused.
+    """
+    suffixes = run_config.get("suffixes", ())
+    if isinstance(suffixes, str):
+        suffixes = (suffixes,)
+    normalized: list[str] = []
+    for suffix in suffixes:
+        if not isinstance(suffix, str) or not suffix.strip(". "):
+            continue
+        one = "." + suffix.strip().lstrip(".").lower()
+        if one not in normalized:
+            normalized.append(one)
+    return tuple(normalized)
+
+
 def save_current_file_for_run(main_window: PyBreezeMainWindow) -> str | None:
     """Save the current editor tab and return its path, or None when there is nothing to run.
 
@@ -82,7 +101,7 @@ def run_current_file_with(main_window: PyBreezeMainWindow, run_config: dict) -> 
 
     # Check suffix match
     suffix = Path(file_path).suffix.lower()
-    supported = run_config.get("suffixes", ())
+    supported = run_config_suffixes(run_config)
     if supported and suffix not in supported:
         msg = QMessageBox(main_window)
         msg.setWindowTitle(language_wrapper.language_word_dict.get("run_with_menu_label"))
@@ -122,7 +141,7 @@ def set_run_with_menu(ui_we_want_to_set: PyBreezeMainWindow) -> None:
 
     for config in configs:
         name = config.get("name", "Unknown")
-        suffixes = ", ".join(config.get("suffixes", ()))
+        suffixes = ", ".join(run_config_suffixes(config))
         label = f"{name}  ({suffixes})" if suffixes else name
 
         action = QAction(label, ui_we_want_to_set.run_with_menu)

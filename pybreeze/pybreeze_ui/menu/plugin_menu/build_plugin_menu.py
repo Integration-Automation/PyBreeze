@@ -8,7 +8,7 @@ from PySide6.QtWidgets import QMessageBox
 from je_editor import get_all_plugin_metadata, language_wrapper
 from je_editor.pyside_ui.main_ui.plugin_browser.plugin_browser_widget import PluginBrowserWidget
 
-from pybreeze.pybreeze_ui.menu.plugin_menu.build_run_with_menu import run_current_file_with
+from pybreeze.pybreeze_ui.menu.plugin_menu.build_run_with_menu import run_config_suffixes, run_current_file_with
 
 if TYPE_CHECKING:
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
@@ -18,8 +18,9 @@ def set_plugin_menu(ui_we_want_to_set: PyBreezeMainWindow) -> None:
     """
     建立插件選單，顯示所有已載入插件的名稱、版本、作者。
     Build Plugin menu showing all loaded plugins with name, version, author.
-    同一語言若支援多種副檔名，以子選單呈現。
-    If a language plugin supports multiple suffixes, show them in a submenu.
+    有執行設定的插件是一個子選單：About 和一個「Run with」項目，支援多種副檔名時一併列出。
+    A plugin with a run config gets a submenu: About, and one Run with entry
+    that lists the suffixes when there are several.
     """
     metadata_list = get_all_plugin_metadata()
     if not metadata_list:
@@ -59,7 +60,7 @@ def _add_plugin_entry(ui_we_want_to_set: PyBreezeMainWindow, meta: dict) -> None
         ui_we_want_to_set.plugin_menu.addAction(about_action)
         return
 
-    suffixes = run_config.get("suffixes", ())
+    suffixes = run_config_suffixes(run_config)
     config_name = run_config.get("name", plugin_name)
     sub_menu = ui_we_want_to_set.plugin_menu.addMenu(config_name)
 
@@ -73,16 +74,9 @@ def _add_plugin_entry(ui_we_want_to_set: PyBreezeMainWindow, meta: dict) -> None
     sub_menu.addAction(about_action)
     sub_menu.addSeparator()
 
-    if len(suffixes) > 1:
-        # 多種副檔名：每個副檔名一個執行動作
-        # Multiple suffixes: one run action per suffix
-        for suffix in suffixes:
-            _add_run_action(ui_we_want_to_set, sub_menu, run_config,
-                            label_name=f"{config_name} ({suffix})")
-    else:
-        # 單一副檔名：一個執行動作
-        # Single suffix: one run action
-        _add_run_action(ui_we_want_to_set, sub_menu, run_config, label_name=config_name)
+    # One entry: every one ran the same config, whatever suffix its label named
+    label_name = f"{config_name} ({', '.join(suffixes)})" if len(suffixes) > 1 else config_name
+    _add_run_action(ui_we_want_to_set, sub_menu, run_config, label_name=label_name)
 
 
 def _add_run_action(ui_we_want_to_set: PyBreezeMainWindow, parent_menu,

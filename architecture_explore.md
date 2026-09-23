@@ -196,8 +196,8 @@ call_X_multi_file_and_send()   → run_dir_files_with_package(..., True)
 
 ### 5.4 插件選單
 
-- **`build_plugin_menu.py`** — 讀 `je_editor.plugins.get_all_plugin_metadata()`，每個插件一個子選單（About + 每個副檔名一個 Run 動作，動作直接呼叫 `run_current_file_with()`）；另有「Plugin Browser」分頁入口
-- **`build_run_with_menu.py`** — 讀 `get_all_plugin_run_configs()`，在 Run 選單下加「Run with…」。`run_current_file_with()` 先經 `save_current_file_for_run()` 存檔（已有檔名的分頁照 JEditor 自己存檔的方式寫：`write_file_with_encoding()` 用分頁的編碼與行尾，寫成功後才 `mark_ignore_next_file_change()` 與 `mark_saved()`；存檔失敗跳警告、不執行；沒檔名的走 JEditor 的另存新檔），再驗副檔名、交給 `FileRunnerProcess`。Plugins 選單的 Run 動作也走這一條
+- **`build_plugin_menu.py`** — 讀 `je_editor.plugins.get_all_plugin_metadata()`，每個插件一個子選單（About + 一個 Run 動作，多個副檔名時一併列在標籤裡，動作直接呼叫 `run_current_file_with()`）；另有「Plugin Browser」分頁入口
+- **`build_run_with_menu.py`** — 讀 `get_all_plugin_run_configs()`，在 Run 選單下加「Run with…」。`run_config_suffixes()` 把插件登記的副檔名正規化成 `Path.suffix` 的樣子（小寫、一個前導點；JEditor 原樣保存，`.R`、`r` 以前永遠比對不上）。`run_current_file_with()` 先經 `save_current_file_for_run()` 存檔（已有檔名的分頁照 JEditor 自己存檔的方式寫：`write_file_with_encoding()` 用分頁的編碼與行尾，寫成功後才 `mark_ignore_next_file_change()` 與 `mark_saved()`；存檔失敗跳警告、不執行；沒檔名的走 JEditor 的另存新檔），再驗副檔名、交給 `FileRunnerProcess`。Plugins 選單的 Run 動作也走這一條
 
 ### 5.5 安裝選單
 
@@ -438,7 +438,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 18. 測試與 CI
 
-- **單元測試** `test/test_utils/` — 106 個 `test_*.py`、1589 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
+- **單元測試** `test/test_utils/` — 106 個 `test_*.py`、1596 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
 - **整合測試** `test/unit_test/start_automation/` — 以 `debug_mode=True` 啟動 IDE，10 秒後自動關閉，驗證啟動流程與 extend tab
 - **CI** `.github/workflows/{dev,stable}.yml` — `unit-tests` job 跑 Windows runner、Python 3.10–3.14 矩陣，3.12 那一腳額外上傳 `coverage-xml` artifact；`sonarcloud` job 跑 ubuntu、`needs: unit-tests`。每日 02:00 排程 + push/PR 觸發。`stable.yml` 另有 `publish` job 負責版號遞增與 PyPI 發布
 - **覆蓋率** `.coveragerc` — `relative_files = True` 是必要的：報告在 Windows 產生、由 Linux 上的 scanner 讀取，路徑不能帶機器資訊。目前整體 60%（`utils/`、`tools_gui`、`dialog` 95–100%；`editor_main` 58%、`menu` 54%；仍低的是 `diagram_editor` 45%、`process_executor` 39%、`connect_gui` 28%）

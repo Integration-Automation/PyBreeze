@@ -20,7 +20,7 @@ from pybreeze.pybreeze_ui.menu.plugin_menu import build_plugin_menu as plugin_me
 from pybreeze.pybreeze_ui.menu.plugin_menu import build_run_with_menu as run_with
 from pybreeze.pybreeze_ui.menu.plugin_menu.build_plugin_menu import set_plugin_menu
 from pybreeze.pybreeze_ui.menu.plugin_menu.build_run_with_menu import (
-    run_current_file_with, save_current_file_for_run, set_run_with_menu
+    run_config_suffixes, run_current_file_with, save_current_file_for_run, set_run_with_menu
 )
 
 GO_CONFIG = {"name": "Go", "compiler": "go", "args": ("run",), "suffixes": (".go",)}
@@ -109,6 +109,35 @@ class TestTheRunWithMenu:
             run_with, "get_all_plugin_run_configs", lambda: [{"name": "Bare"}])
         set_run_with_menu(window)
         assert labels(window.run_with_menu) == ["Bare"]
+
+
+class TestTheSuffixesAPluginRegistered:
+    @pytest.mark.parametrize(("registered", "expected"), [
+        ((".go",), (".go",)),
+        ((".R",), (".r",)),
+        (("r",), (".r",)),
+        ((" .Py ", "py"), (".py",)),
+        (".rs", (".rs",)),
+        (("", ".", None, 3), ()),
+    ])
+    def test_they_read_as_a_file_suffix_does(self, registered, expected):
+        assert run_config_suffixes({"suffixes": registered}) == expected
+
+    def test_a_file_matching_a_suffix_registered_in_capitals_runs(self, window, tmp_path, monkeypatch):
+        script = tmp_path / "analysis.r"
+        script.touch()
+        monkeypatch.setattr(run_with, "save_current_file_for_run", lambda _w: str(script))
+        refused: list = []
+        monkeypatch.setattr(run_with.QMessageBox, "exec", lambda self: refused.append(self.text()))
+        started: list = []
+        monkeypatch.setattr(
+            run_with, "FileRunnerProcess",
+            lambda **kwargs: type("R", (), {"run_file": lambda *a: started.append(a)})())
+
+        run_current_file_with(window, {"name": "R", "compiler": "Rscript", "suffixes": (".R",)})
+
+        assert refused == []
+        assert started
 
 
 class TestFindingTheFileToRun:
@@ -209,7 +238,9 @@ class TestThePluginMenu:
         # About, a separator (empty text), then one run action for the suffix
         assert [text for text in submenus[0] if text] == ["About", "Run with Go"]
 
-    def test_multiple_suffixes_get_one_run_action_each(self, window, monkeypatch):
+    def test_multiple_suffixes_share_one_run_action_that_lists_them(self, window, monkeypatch):
+        # There was one entry per suffix, and every one ran the same config:
+        # the file's own suffix decides what runs, not the entry picked.
         monkeypatch.setattr(
             plugin_menu, "get_all_plugin_metadata",
             lambda: [{"name": "C++", "version": "1.0", "author": "someone",
@@ -217,8 +248,8 @@ class TestThePluginMenu:
         set_plugin_menu(window)
         submenu = submenu_action_texts(window.plugin_menu)[0]
         runs = [text for text in submenu if "(" in text]
-        assert len(runs) == 2
-        assert ".cpp" in runs[0] and ".hpp" in runs[1]
+        assert len(runs) == 1
+        assert ".cpp, .hpp" in runs[0]
 
     def test_the_browser_entry_comes_first(self, window, monkeypatch):
         monkeypatch.setattr(
