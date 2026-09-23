@@ -27,6 +27,28 @@ if TYPE_CHECKING:
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
 
 
+def plugin_text(value: object, fallback: str) -> str:
+    """A plugin-supplied name or label as text, *fallback* when there is none.
+
+    A plugin is anyone's code: a ``None`` name reached ``QMenu.addMenu(None)``,
+    which is an access violation, not a Python error, and a mix of ``None``
+    and text names made sorting the configs raise, both while the IDE started.
+    """
+    text = "" if value is None else str(value).strip()
+    return text or fallback
+
+
+def plugin_run_configs() -> list[dict]:
+    """The registered run configs that are dicts, named, in name order; others are logged and skipped."""
+    configs = []
+    for config in get_all_plugin_run_configs():
+        if isinstance(config, dict):
+            configs.append(config)
+        else:
+            pybreeze_logger.error("Plugin run config ignored: not a dict (%s)", type(config).__name__)
+    return sorted(configs, key=lambda config: plugin_text(config.get("name"), "Unknown").lower())
+
+
 def run_config_suffixes(run_config: dict) -> tuple[str, ...]:
     """The suffixes a plugin's run config accepts, as ``Path.suffix`` gives them: lower case, with the dot.
 
@@ -117,7 +139,7 @@ def run_current_file_with(main_window: PyBreezeMainWindow, run_config: dict) -> 
     # JEditor does not check what a plugin registers: a config without a
     # name raised KeyError here, after the file had been saved.
     code_window = open_run_window(
-        main_window, f"{run_config.get('name', 'Run')} - {Path(file_path).name}")
+        main_window, f"{plugin_text(run_config.get('name'), 'Run')} - {Path(file_path).name}")
 
     code_window.runner = FileRunnerProcess(
         main_window=code_window,
@@ -128,19 +150,16 @@ def run_current_file_with(main_window: PyBreezeMainWindow, run_config: dict) -> 
 
 def set_run_with_menu(ui_we_want_to_set: PyBreezeMainWindow) -> None:
     """Build the 'Run with...' submenu. Only creates if configs exist."""
-    configs = get_all_plugin_run_configs()
+    configs = plugin_run_configs()
     if not configs:
         return
-
-    # 依名稱排序 / Sort by name
-    configs = sorted(configs, key=lambda c: c.get("name", ""))
 
     ui_we_want_to_set.run_with_menu = ui_we_want_to_set.run_menu.addMenu(
         language_wrapper.language_word_dict.get("run_with_menu_label")
     )
 
     for config in configs:
-        name = config.get("name", "Unknown")
+        name = plugin_text(config.get("name"), "Unknown")
         suffixes = ", ".join(run_config_suffixes(config))
         label = f"{name}  ({suffixes})" if suffixes else name
 

@@ -8,7 +8,10 @@ from PySide6.QtWidgets import QMessageBox
 from je_editor import get_all_plugin_metadata, language_wrapper
 from je_editor.pyside_ui.main_ui.plugin_browser.plugin_browser_widget import PluginBrowserWidget
 
-from pybreeze.pybreeze_ui.menu.plugin_menu.build_run_with_menu import run_config_suffixes, run_current_file_with
+from pybreeze.pybreeze_ui.menu.plugin_menu.build_run_with_menu import (
+    plugin_text, run_config_suffixes, run_current_file_with,
+)
+from pybreeze.utils.logging.logger import pybreeze_logger
 
 if TYPE_CHECKING:
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
@@ -40,15 +43,25 @@ def set_plugin_menu(ui_we_want_to_set: PyBreezeMainWindow) -> None:
     ui_we_want_to_set.plugin_menu.addSeparator()
 
     for meta in metadata_list:
-        _add_plugin_entry(ui_we_want_to_set, meta)
+        # One plugin with bad metadata costs its own entry, not the IDE's start
+        if not isinstance(meta, dict):
+            pybreeze_logger.error("Plugin metadata ignored: not a dict (%s)", type(meta).__name__)
+            continue
+        try:
+            _add_plugin_entry(ui_we_want_to_set, meta)
+        except Exception as error:  # noqa: BLE001 — a plugin is third-party code; the menu must still build
+            pybreeze_logger.error("Plugin %r left out of the menu: %r", meta.get("name"), error)
 
 
 def _add_plugin_entry(ui_we_want_to_set: PyBreezeMainWindow, meta: dict) -> None:
     """Add one plugin's menu entries (submenu with run actions, or a bare About action)."""
-    plugin_name = meta.get("name", "Unknown")
-    plugin_author = meta.get("author", "")
-    plugin_version = meta.get("version", "")
+    plugin_name = plugin_text(meta.get("name"), "Unknown")
+    plugin_author = plugin_text(meta.get("author"), "")
+    plugin_version = plugin_text(meta.get("version"), "")
     run_config = meta.get("run_config")
+    if run_config is not None and not isinstance(run_config, dict):
+        pybreeze_logger.error("Plugin %s run config ignored: not a dict", plugin_name)
+        run_config = None
 
     if run_config is None:
         # 沒有執行設定的插件（如翻譯插件），只顯示關於
@@ -61,7 +74,7 @@ def _add_plugin_entry(ui_we_want_to_set: PyBreezeMainWindow, meta: dict) -> None
         return
 
     suffixes = run_config_suffixes(run_config)
-    config_name = run_config.get("name", plugin_name)
+    config_name = plugin_text(run_config.get("name"), plugin_name)
     sub_menu = ui_we_want_to_set.plugin_menu.addMenu(config_name)
 
     about_action = QAction(

@@ -396,3 +396,36 @@ class TestRunConfigsJEditorDoesNotCheck:
         FileRunnerProcess(run_window).run_file({"name": "Broken"}, "main.go")
 
         assert "names no compiler" in run_window.code_result.toPlainText()
+
+
+class TestAPluginThatDoesNotFollowTheRules:
+    """A plugin is third-party code: one bad plugin stopped the IDE from starting."""
+
+    def test_a_run_config_that_is_not_a_dict_is_skipped(self, window, monkeypatch):
+        # run_config_suffixes raised AttributeError while the main window was built
+        monkeypatch.setattr(
+            plugin_menu, "get_all_plugin_metadata",
+            lambda: [{"name": "Odd", "run_config": ["not", "a", "dict"]},
+                     {"name": "Go", "run_config": GO_CONFIG}])
+        set_plugin_menu(window)
+
+        assert "Odd" in labels(window.plugin_menu)
+        assert [text for text in submenu_action_texts(window.plugin_menu)[0] if text] == ["About", "Run with Go"]
+
+    def test_a_name_that_is_none_gets_a_label(self, window, monkeypatch):
+        # addMenu(None) is an access violation, not a Python error
+        monkeypatch.setattr(
+            plugin_menu, "get_all_plugin_metadata",
+            lambda: [{"name": None, "run_config": {"name": None, "suffixes": [".x"]}}, "not metadata"])
+        set_plugin_menu(window)
+
+        assert submenu_action_texts(window.plugin_menu)
+
+    def test_run_configs_with_none_and_text_names_sort(self, window, monkeypatch):
+        # sorted() raised comparing None with a string
+        monkeypatch.setattr(
+            run_with, "get_all_plugin_run_configs",
+            lambda: [{"name": "Go", "suffixes": [".go"]}, {"name": None}, "not a config"])
+        set_run_with_menu(window)
+
+        assert labels(window.run_with_menu) == ["Go  (.go)", "Unknown"]
