@@ -289,7 +289,10 @@ class TestTerminalCodes:
         ("\x1b]0;window title\x07after\n", "after\n"),
         ("\x1b]8;;https://example.com\x1b\\link\x1b]8;;\x1b\\\n", "link\n"),
         ("\x1b[2K\x1b[1Gprogress 50%\n", "progress 50%\n"),
-        ("a\bb\x0cc\x00\tt\n", "abc\tt\n"),
+        # A backspace takes the character before it back, as in a terminal
+        ("a\bb\x0cc\x00\tt\n", "bc\tt\n"),
+        # Two-byte escapes: tput sgr0's character-set reset, save/restore cursor
+        ("a\x1b(Bb\x1b7c\x1b8d\n", "abcd\n"),
         ("\u4e2d\u6587 stays\n", "\u4e2d\u6587 stays\n"),
     ])
     def test_what_the_window_shows(self, qt_app, written, shown):
@@ -299,6 +302,28 @@ class TestTerminalCodes:
         window.append_output(written)
 
         assert window.code_result.toPlainText() == shown
+
+    def test_a_colour_code_cut_between_two_reads_is_not_shown(self, qt_app):
+        # The reader hands output over in pieces; stripped one by one,
+        # "\x1b[3" + "2m" showed "[32m"
+        import io
+        from queue import Queue
+
+        from pybreeze.extend.process_executor.queue_pump import read_stream_into_queue
+        from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
+
+        written = b"".join(b"\x1b[32mPASSED test_%d\x1b[0m\n" % number for number in range(300))
+        pieces: Queue = Queue()
+        read_stream_into_queue(
+            io.BufferedReader(io.BytesIO(written), buffer_size=7), pieces,
+            buffer_size=7, encoding="utf-8", keep_reading=lambda: True)
+        window = CodeWindow()
+        while not pieces.empty():
+            window.append_output(pieces.get())
+
+        shown = window.code_result.toPlainText()
+        assert "[" not in shown
+        assert shown.splitlines() == [f"PASSED test_{number}" for number in range(300)]
 
     def test_a_coloured_progress_bar_still_redraws_its_line(self, qt_app):
         from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow

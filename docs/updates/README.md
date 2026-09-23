@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-186 | 2026-09-24 | Strip escape sequences a read cuts in two, and every two-byte escape, from the run window | #fix #executor | [2026-09](2026-09.md) |
 | U-20260923-185 | 2026-09-24 | Move the terminal escape handling out of the SSH widget into utils | #refactor #ssh | [2026-09](2026-09.md) |
 | U-20260923-184 | 2026-09-24 | Delete a tool tab once it is closed | #fix #ui | [2026-09](2026-09.md) |
 | U-20260923-183 | 2026-09-24 | Free a run window once the main window lets go of it | #fix #executor | [2026-09](2026-09.md) |
@@ -266,4 +267,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 203 |
+| [2026-09.md](2026-09.md) | 2026-09 | 204 |

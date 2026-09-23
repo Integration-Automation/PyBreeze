@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-import re
 from typing import TYPE_CHECKING
 
 from je_editor.pyside_ui.main_ui.save_settings.user_color_setting_file import actually_color_dict
 from PySide6.QtCore import QTimer, Signal
 from PySide6.QtGui import QGuiApplication, QTextCharFormat, QTextCursor
 from PySide6.QtWidgets import QWidget, QGridLayout, QPlainTextEdit, QScrollArea
+
+from pybreeze.utils.terminal_text import strip_terminal_controls
 
 if TYPE_CHECKING:
     from pybreeze.extend.process_executor.file_runner_process import FileRunnerProcess
@@ -19,26 +20,6 @@ if TYPE_CHECKING:
 # every line written past the cap cost about 15 ms to drop the oldest one, and
 # a chatty run froze the IDE for seconds a tick.
 MAX_OUTPUT_BLOCKS = 10000
-
-
-# A terminal's control sequences: CSI (colours, cursor moves: ESC [ ... final
-# byte), OSC (titles, links: ESC ] ... BEL or ESC \), and any other two-byte
-# escape
-_TERMINAL_SEQUENCE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[@-Z\\-_]")
-# Control characters a text view cannot show: all of C0 but tab, newline and
-# carriage return (which _insert_rewinding handles), and DEL
-_CONTROL_CHARACTER = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
-
-
-def strip_terminal_codes(text: str) -> str:
-    """*text* without the terminal's control sequences and control characters.
-
-    A script that colours its output (``colorama``, ``rich``, ``pytest
-    --color=yes``, ``FORCE_COLOR``) filled the window with ``←[31m``; a
-    backspace or form feed showed as a box. Carriage returns are left for
-    :func:`_insert_rewinding`.
-    """
-    return _CONTROL_CHARACTER.sub("", _TERMINAL_SEQUENCE.sub("", text))
 
 
 def _insert_rewinding(cursor: QTextCursor, text: str, text_format: QTextCharFormat) -> None:
@@ -157,6 +138,6 @@ class CodeWindow(QWidget):
         text_format = QTextCharFormat()
         color_key = "error_output_color" if is_error else "normal_output_color"
         text_format.setForeground(actually_color_dict.get(color_key))
-        _insert_rewinding(cursor, strip_terminal_codes(text), text_format)
+        _insert_rewinding(cursor, strip_terminal_controls(text), text_format)
         if follow_output:
             scroll_bar.setValue(scroll_bar.maximum())

@@ -158,7 +158,7 @@ call_X_multi_file_and_send()   → run_dir_files_with_package(..., True)
 - `pump_message_queue(q, append_fn, is_error, max_messages)` — UI 執行緒用。`MAX_MESSAGES_PER_PUMP = 256`：每 tick 只抽一則的話輸出上限只有 ~10 行/秒，聒噪的腳本會爬行；有上界則避免洪水輸出卡住 UI 執行緒。`max_messages=None` 是收尾時一次抽乾。只跳過空字串
 - `output_queue()` — 每條管線的 queue 最多 `MAX_QUEUED_MESSAGES`（10,000）則；滿了 reader 就等（每 0.2 秒看一次 `keep_reading`），子行程寫管線也跟著等，跑得跟視窗顯示一樣快，像終端機；以前不設上限，印個不停的腳本會一直吃記憶體，按 Stop 後再一口氣全倒進視窗
 - `ReaderGrace` / `any_alive()` / `OUTPUT_STILL_HELD_NOTE` — 子行程結束後 reader 還能讀多久（`READER_GRACE_SECONDS = 2.0`，從結束後第一個 tick 起算）。管線要等最後一個握著它的行程結束才會 EOF，子行程開的行程沒轉向輸出時會一直握著；以前兩個執行器在 UI 執行緒上各 join 2 秒，IDE 卡 4 秒還是丟掉之後的輸出。現在由 pump 逐 tick 詢問，時間到就結束執行並在視窗註明
-- `CodeWindow.append_output(text, is_error, own_line=False)`（`show_code_window/code_window.py`，輸出是上限 10,000 行的 `QPlainTextEdit`：`QTextEdit` 到上限後每寫一行要花約 15 ms 丟掉最舊的一行）— 一律寫在文件**尾端**（不用 widget 自己的游標：那個游標跟著使用者的點擊與選取走，寫在那裡會把輸出插進中間、或蓋掉使用者選取的文字）。終端機控制碼（CSI 顏色與游標移動、OSC 標題與超連結）和 tab、換行、`\r` 以外的控制字元先拿掉（`strip_terminal_codes()`），`\r\n` 是換行，單獨的 `\r` 像終端機一樣回到行首、由後面的文字取代這一行（`_insert_rewinding()`；結尾的 `\r` 等下一段來才回捲，跑完的進度條不會被清掉）；換行只出現在文字本身有換行的地方，所以超過 buffer 被切段的長行會接回同一行。`own_line=True` 給視窗自己的狀態訊息（`Task exit with code …`），程式留下沒換行的半行時先補一個換行。捲軸在最底時畫面跟著輸出走（像終端機）；使用者往上捲去讀時就停在原處
+- `CodeWindow.append_output(text, is_error, own_line=False)`（`show_code_window/code_window.py`，輸出是上限 10,000 行的 `QPlainTextEdit`：`QTextEdit` 到上限後每寫一行要花約 15 ms 丟掉最舊的一行）— 一律寫在文件**尾端**（不用 widget 自己的游標：那個游標跟著使用者的點擊與選取走，寫在那裡會把輸出插進中間、或蓋掉使用者選取的文字）。終端機控制碼（CSI 顏色與游標移動、OSC 等控制字串、`ESC ( B` 這類 nF 與其他兩位元組 escape）先拿掉、backspace 套用到前一個字元、tab、換行、`\r` 以外的控制字元丟掉（與 SSH terminal 共用 `utils/terminal_text.strip_terminal_controls()`；讀取切斷在 escape 中間時，reader 把尾巴留給下一段，`queue_pump` 的 `split_incomplete_escape()`），`\r\n` 是換行，單獨的 `\r` 像終端機一樣回到行首、由後面的文字取代這一行（`_insert_rewinding()`；結尾的 `\r` 等下一段來才回捲，跑完的進度條不會被清掉）；換行只出現在文字本身有換行的地方，所以超過 buffer 被切段的長行會接回同一行。`own_line=True` 給視窗自己的狀態訊息（`Task exit with code …`），程式留下沒換行的半行時先補一個換行。捲軸在最底時畫面跟著輸出走（像終端機）；使用者往上捲去讀時就停在原處
 
 ---
 
@@ -449,7 +449,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 18. 測試與 CI
 
-- **單元測試** `test/test_utils/` — 117 個 `test_*.py`、1974 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
+- **單元測試** `test/test_utils/` — 117 個 `test_*.py`、1976 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
 - **整合測試** `test/unit_test/start_automation/` — 以 `debug_mode=True` 啟動 IDE，10 秒後自動關閉，驗證啟動流程與 extend tab
 - **CI** `.github/workflows/{dev,stable}.yml` — `unit-tests` job 跑 Windows runner、Python 3.10–3.14 矩陣，3.12 那一腳額外上傳 `coverage-xml` artifact；`sonarcloud` job 跑 ubuntu、`needs: unit-tests`。每日 02:00 排程 + push/PR 觸發。`stable.yml` 另有 `publish` job 負責版號遞增與 PyPI 發布
 - **覆蓋率** `.coveragerc` — `relative_files = True` 是必要的：報告在 Windows 產生、由 Linux 上的 scanner 讀取，路徑不能帶機器資訊。目前整體 60%（`utils/`、`tools_gui`、`dialog` 95–100%；`editor_main` 58%、`menu` 54%；仍低的是 `diagram_editor` 45%、`process_executor` 39%、`connect_gui` 28%）
