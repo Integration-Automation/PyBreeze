@@ -57,6 +57,21 @@ class FakeClient:
     def close(self) -> None:
         self.closed = True
 
+    @staticmethod
+    def get_transport():
+        return None
+
+    def invoke_shell(self, **_options):
+        self.shell_thread = QThread.currentThread()
+        return FakeShellChannel()
+
+
+class FakeShellChannel:
+    closed = False
+
+    def settimeout(self, _timeout) -> None:
+        """Non-blocking is what the reader expects."""
+
 
 def _shell(monkeypatch, client: FakeClient):
     widget = shell_mod.SSHCommandWidget()
@@ -97,7 +112,28 @@ class TestShellConnect:
         _wait_for(lambda: started and states)
 
         assert client.connect_thread is not app.thread()
-        assert started == [app.thread()]  # the shell is opened on the UI thread
+        # The channel is opened where the connect ran: it waits on the server
+        # (up to an hour for the session) and used to hold the UI thread
+        assert client.shell_thread is client.connect_thread
+        assert started == [app.thread()]  # only its reader is started on the UI thread
+
+    def test_a_shell_that_will_not_open_is_reported_like_a_failed_connect(self, app, monkeypatch):
+        client = FakeClient()
+
+        def refuse(**_options):
+            raise shell_mod.paramiko.SSHException("administratively prohibited")
+
+        client.invoke_shell = refuse
+        widget = _shell(monkeypatch, client)
+        states = []
+        widget.state_changed.connect(lambda: states.append("changed"))
+
+        widget.connect_ssh()
+        _wait_for(lambda: states)
+
+        assert "administratively prohibited" in widget.terminal.toPlainText()
+        assert client.closed
+        assert widget.shell_channel is None
 
     def test_a_second_click_while_connecting_is_ignored(self, app, monkeypatch):
         release = threading.Event()

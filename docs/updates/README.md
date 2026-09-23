@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-123 | 2026-09-24 | Open the SSH shell's channel on the connect thread, not the UI thread | #fix #ssh #threading #done | [2026-09](2026-09.md) |
 | U-20260923-122 | 2026-09-24 | Send a whole SSH command however long, and strip the escapes and controls the terminal still showed | #fix #ssh #done | [2026-09](2026-09.md) |
 | U-20260923-121 | 2026-09-24 | Keep the SFTP tree's paths right after a folder rename, refresh the folder written to, and refuse names that are paths | #fix #ssh #done | [2026-09](2026-09.md) |
 | U-20260923-120 | 2026-09-24 | Answer No for an SSH host key nobody could be asked about, instead of the previous question's Yes | #fix #security #ssh | [2026-09](2026-09.md) |
@@ -203,4 +204,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 140 |
+| [2026-09.md](2026-09.md) | 2026-09 | 141 |

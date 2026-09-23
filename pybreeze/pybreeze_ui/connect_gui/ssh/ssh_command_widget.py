@@ -51,6 +51,8 @@ _BACKSPACED = re.compile('[^\n\x08]\x08')
 # terminator (or the second byte of ST), or a character-set escape still
 # waiting for its final byte
 _INCOMPLETE_ESCAPE = re.compile(r'\x1B(?:\[[0-?]*[ -/]*|[\]PX^_][^\x07\x1B]*\x1B?|[ -/]+)?\Z')
+# Longest such tail held back for the next read; anything longer is shown as is
+_MAX_PENDING_ESCAPE = 256
 
 
 def strip_terminal_controls(text: str) -> str:
@@ -62,8 +64,6 @@ def strip_terminal_controls(text: str) -> str:
             break
         text = applied
     return _CONTROL_CHARACTER.sub('', text)
-# Longest such tail held back for the next read; anything longer is shown as is
-_MAX_PENDING_ESCAPE = 256
 
 
 class TerminalDecoder:
@@ -123,6 +123,19 @@ def send_all(channel: paramiko.Channel, data: bytes) -> None:
         channel.sendall(data)
     finally:
         channel.settimeout(0.0)
+
+
+def open_shell_channel(client: paramiko.SSHClient) -> paramiko.Channel:
+    """Open an interactive shell on *client*'s connection. Waits on the network: not the UI thread.
+
+    The channel comes back non-blocking: its reader polls it.
+    """
+    transport = client.get_transport()
+    if transport is not None:
+        transport.set_keepalive(SSH_KEEPALIVE_SECONDS)
+    channel = client.invoke_shell(term="xterm", width=120, height=32)
+    channel.settimeout(0.0)
+    return channel
 
 
 class SSHReaderThread(QThread):
@@ -300,18 +313,22 @@ class SSHCommandWidget(QWidget):
         self.ssh_client = client
         apply_host_key_policy(client, self)
         pybreeze_logger.info("SSH connecting to %s:%s", host, port)
-        if use_key:
-            def connect() -> None:
+        opened: dict = {}
+
+        def connect() -> None:
+            if use_key:
                 self._connect_with_key(client, host, port, user, key_path, password)
-        else:
-            def connect() -> None:
+            else:
                 client.connect(
                     hostname=host, port=port, username=user, password=password, timeout=10,
                     disabled_algorithms=SHA1_ALGORITHMS)
-        # The connect itself runs off the UI thread: an unreachable host used to
-        # hold the IDE for the connect, banner and auth timeouts together.
+            opened["channel"] = open_shell_channel(client)
+        # The connect and the shell's channel are made off the UI thread: an
+        # unreachable host used to hold the IDE for the connect, banner and auth
+        # timeouts together, and a server gone quiet after auth held it while
+        # the channel waited to open.
         thread = SshConnectThread(connect)
-        thread.connected.connect(lambda: self._on_connected(client, host, port, user))
+        thread.connected.connect(lambda: self._on_connected(client, opened["channel"], host, port, user))
         thread.failed.connect(lambda message: self._on_connect_failed(client, message))
         self._connecting = thread
         thread.start()
@@ -332,16 +349,13 @@ class SSHCommandWidget(QWidget):
             raise RuntimeError(
                 f"{self.word_dict.get('ssh_command_widget_error_message_key_auth_failed')} {e}") from e
 
-    def _on_connected(self, client: paramiko.SSHClient, host: str, port: int, user: str) -> None:
-        """Open the shell once the connect has succeeded. UI thread."""
+    def _on_connected(self, client: paramiko.SSHClient, channel: paramiko.Channel,
+                      host: str, port: int, user: str) -> None:
+        """Start reading the shell once it is open. UI thread."""
         if client is not self.ssh_client:
             client.close()  # disconnected, or reconnected, while it was connecting
             return
-        try:
-            self._start_shell(host, port, user)
-        except CONNECT_ERRORS as error:
-            self._on_connect_failed(client, str(error))
-            return
+        self._start_shell(channel, host, port, user)
         self.state_changed.emit()
 
     def _on_connect_failed(self, client: paramiko.SSHClient, message: str) -> None:
@@ -354,12 +368,9 @@ class SSHCommandWidget(QWidget):
         self._cleanup()
         self.state_changed.emit()
 
-    def _start_shell(self, host: str, port: int, user: str) -> None:
-        transport = self.ssh_client.get_transport()
-        if transport is not None:
-            transport.set_keepalive(SSH_KEEPALIVE_SECONDS)
-        self.shell_channel = self.ssh_client.invoke_shell(term='xterm', width=120, height=32)
-        self.shell_channel.settimeout(0.0)
+    def _start_shell(self, channel: paramiko.Channel, host: str, port: int, user: str) -> None:
+        """Show *channel*'s output from now on. UI thread; nothing here waits on the network."""
+        self.shell_channel = channel
         self._decoder.reset()
         self.reader_thread = SSHReaderThread(self.shell_channel)
         self.reader_thread.data_received.connect(self._on_data)
