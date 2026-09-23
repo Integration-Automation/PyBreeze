@@ -46,6 +46,19 @@ def query_to_dict(query: str) -> dict[str, str | list[str]]:
     return result
 
 
+def query_round_trips(query: str) -> bool:
+    """Whether decoding *query* into pairs and encoding them again gives it back.
+
+    The cURL and HAR import split only such a query into ``params``, and the
+    URL Builder shows only such a query as a dict; any other stays the text it
+    was, which ``requests`` sends as it is. Split and encoded again,
+    ``?flag&q=%B0&r=/x`` went out as ``?flag=&q=%EF%BF%BD&r=%2Fx``: a
+    valueless key gained ``=``, a byte that is not UTF-8 became U+FFFD, and
+    ``/`` was escaped, which breaks a signed URL.
+    """
+    return urlencode(parse_qsl(query, keep_blank_values=True)) == query
+
+
 def query_to_json(query: str) -> str:
     """Convert a URL query string into pretty-printed JSON.
 

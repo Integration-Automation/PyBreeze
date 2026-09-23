@@ -36,8 +36,8 @@ class TestParseUrl:
         assert "username" not in parts
 
     def test_query_values_url_decoded(self):
-        parts = parse_url("https://x/?q=hello%20world")
-        assert parts["query"]["q"] == "hello world"
+        parts = parse_url("https://x/?q=hello+world&t=a%2Bb")
+        assert parts["query"] == {"q": "hello world", "t": "a+b"}
 
     def test_whitespace_is_stripped(self):
         assert parse_url("  https://x/api  ")["path"] == "/api"
@@ -173,3 +173,18 @@ class TestJsonNestedTooDeep:
         # json.loads raises RecursionError, which the tab did not catch
         with pytest.raises(UrlConvertException):
             json_to_url("[" * 100000)
+
+
+class TestAQueryThatWouldNotComeBackAsWritten:
+    @pytest.mark.parametrize("url", [
+        "http://h/p?%zz=1&x=%ff", "http://h/p?flag", "http://h/p?a=b/c;d", "https://h/p?q=a%20b",
+    ])
+    def test_it_is_kept_as_text_and_rebuilt_unchanged(self, url):
+        # Decoded and encoded again, %zz became %25zz, %ff U+FFFD, flag flag=, / %2F
+        parts = json.loads(url_to_json(url))
+
+        assert isinstance(parts["query"], str)
+        assert json_to_url(url_to_json(url)) == url
+
+    def test_one_that_does_is_still_a_dict_to_edit(self):
+        assert json.loads(url_to_json("https://h/p?a=1&b=x+y"))["query"] == {"a": "1", "b": "x y"}

@@ -26,6 +26,7 @@ from pybreeze.utils.exception.exception_tags import (
     not_a_curl_command_error,
 )
 from pybreeze.utils.exception.exceptions import CurlParseException
+from pybreeze.utils.query_tools.query_convert import query_round_trips
 from pybreeze.utils.header_tools.header_merge import (
     add_header, set_default_header, stored_header_name
 )
@@ -552,18 +553,6 @@ def _split_url_query(request: CurlRequest) -> None:
     request.url = base
     for key, value in parse_qsl(query, keep_blank_values=True):
         add_repeated_value(request.params, key, value)
-
-
-def query_round_trips(query: str) -> bool:
-    """Whether decoding *query* into pairs and encoding them again gives it back.
-
-    Only such a query is split into ``params``; any other stays in the URL as
-    written, which ``requests`` sends as it is. Split and encoded again,
-    ``?flag&q=%B0&r=/x`` went out as ``?flag=&q=%EF%BF%BD&r=%2Fx``: a
-    valueless key gained ``=``, a byte that is not UTF-8 became U+FFFD, and
-    ``/`` was escaped, which breaks a signed URL.
-    """
-    return urlencode(parse_qsl(query, keep_blank_values=True)) == query
 
 
 def url_is_well_formed(url: str) -> bool:

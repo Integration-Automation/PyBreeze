@@ -17,7 +17,7 @@ from pybreeze.utils.exception.exception_tags import (
 )
 from pybreeze.utils.exception.exceptions import QueryConvertException, UrlConvertException
 from pybreeze.utils.logging.logger import pybreeze_logger
-from pybreeze.utils.query_tools.query_convert import coerce_scalar, query_to_dict
+from pybreeze.utils.query_tools.query_convert import coerce_scalar, query_round_trips, query_to_dict
 
 _MAX_PORT = 65535
 
@@ -35,7 +35,8 @@ def parse_url(url: str) -> dict:
 
     :param url: the URL to parse (leading/trailing whitespace is ignored)
     :return: a dict with scheme, host, port, path, query and fragment, plus
-        username/password when the URL carries credentials
+        username/password when the URL carries credentials; the query is a dict
+        of its values, or its text when that would not rebuild it as written
     """
     split = urlsplit(url.strip())
     components: dict = {
@@ -43,8 +44,10 @@ def parse_url(url: str) -> dict:
         "host": split.hostname or "",
         "port": _safe_port(split),
         "path": split.path,
-        # A repeated key keeps every value, as a list, like the query tool.
-        "query": query_to_dict(split.query),
+        # A repeated key keeps every value, as a list, like the query tool. A
+        # query that decoding and encoding again would change stays the text
+        # it was: rebuilt, %zz became %25zz and a bare key gained "=".
+        "query": query_to_dict(split.query) if query_round_trips(split.query) else split.query,
         "fragment": split.fragment,
     }
     if split.username is not None:

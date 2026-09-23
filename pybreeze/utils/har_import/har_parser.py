@@ -15,8 +15,9 @@ from dataclasses import dataclass, field
 from urllib.parse import parse_qsl, urlparse
 
 from pybreeze.utils.curl_import.curl_parser import (
-    CurlRequest, add_repeated_value, http_method, query_round_trips, url_is_well_formed,
+    CurlRequest, add_repeated_value, http_method, url_is_well_formed,
 )
+from pybreeze.utils.query_tools.query_convert import query_round_trips
 from pybreeze.utils.exception.exception_tags import (
     empty_har_error,
     invalid_har_json_error,
