@@ -126,6 +126,21 @@ def validate_url(url: str) -> str:
     if not hostname:
         raise UnsafeURLError("URL has no hostname.")
 
+    public_address(hostname)
+    return url
+
+
+def public_address(hostname: str) -> str:
+    """Resolve *hostname* and return the address to connect to, if every address it has is public.
+
+    ``validate_url`` checks with this, and the connections in ``public_http``
+    call it again as they connect and connect to the address it returns, so a
+    name that answers differently the second time (DNS rebinding) is checked
+    on the answer actually used.
+
+    Raises ``UnsafeURLError`` when the name does not resolve or any of its
+    addresses is blocked.
+    """
     try:
         infos = socket.getaddrinfo(hostname, None, socket.AF_UNSPEC, socket.SOCK_STREAM)
     except (socket.gaierror, UnicodeError) as exc:
@@ -133,6 +148,8 @@ def validate_url(url: str) -> str:
         # over 63 characters, or an empty one). Callers catch UnsafeURLError, so
         # anything else here would escape into a Qt slot.
         raise UnsafeURLError(f"Cannot resolve hostname '{hostname}': {exc}") from exc
+    if not infos:
+        raise UnsafeURLError(f"Cannot resolve hostname '{hostname}'.")
 
     for *_unused, sockaddr in infos:
         ip = ipaddress.ip_address(sockaddr[0])
@@ -140,5 +157,4 @@ def validate_url(url: str) -> str:
             raise UnsafeURLError(
                 f"Access to non-public address {ip} is blocked."
             )
-
-    return url
+    return infos[0][4][0]

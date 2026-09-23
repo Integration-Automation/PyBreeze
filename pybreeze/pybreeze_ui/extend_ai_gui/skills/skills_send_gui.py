@@ -17,6 +17,7 @@ from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.network.http_client import (
     ResponseTooLargeError, read_capped_text, CONNECT_TIMEOUT, succeeded, truncate_for_display,
 )
+from pybreeze.utils.network.public_http import public_session
 from pybreeze.utils.network.url_validation import UnsafeURLError, validate_url
 
 
@@ -34,11 +35,12 @@ class RequestThread(QThread):
     def run(self):
         try:
             validate_url(self.api_url)
-            response = requests.post(
-                self.api_url, json={"code": self.code_text},
-                timeout=(CONNECT_TIMEOUT, 30), allow_redirects=False, stream=True,
-            )
-            body = read_capped_text(response)
+            with public_session() as session:
+                response = session.post(
+                    self.api_url, json={"code": self.code_text},
+                    timeout=(CONNECT_TIMEOUT, 30), allow_redirects=False, stream=True,
+                )
+                body = read_capped_text(response)
             if succeeded(response):
                 self.answered.emit(body)
                 return

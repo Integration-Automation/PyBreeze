@@ -77,6 +77,19 @@ class TestRecordingAUrl:
         assert all(looks_like_a_fingerprint(line) for line in text.split() if line)
 
 
+class _FakeSession:
+    """The session a request goes through, handing every request to *request*."""
+
+    def __init__(self, request) -> None:
+        self.request = request
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_exc) -> None:
+        """Nothing to close."""
+
+
 class TestTheRequestItself:
     """The request runs on its own thread; its two signals are what reaches the UI."""
 
@@ -84,21 +97,23 @@ class TestTheRequestItself:
         from pybreeze.pybreeze_ui.connect_gui.url.ai_code_review_gui import ReviewRequestThread
 
         monkeypatch.setattr(ai_code_review_gui, "validate_url", lambda url: url)
-        if raises is None:
-            monkeypatch.setattr(
-                ai_code_review_gui.requests, method.lower(), lambda *a, **k: response)
-            monkeypatch.setattr(ai_code_review_gui, "read_capped_text", lambda resp: resp.text)
-        else:
-            def refuse(*_args, **_kwargs):
-                raise raises
+        sent: list = []
 
-            monkeypatch.setattr(ai_code_review_gui.requests, method.lower(), refuse)
+        def request(sent_method, *_args, **_kwargs):
+            sent.append(sent_method)
+            if raises is not None:
+                raise raises
+            return response
+
+        monkeypatch.setattr(ai_code_review_gui, "public_session", lambda: _FakeSession(request))
+        monkeypatch.setattr(ai_code_review_gui, "read_capped_text", lambda resp: resp.text)
         thread = ReviewRequestThread(method, _A_URL, "print(1)")
         answered: list = []
         failed: list = []
         thread.answered.connect(answered.append)
         thread.failed.connect(failed.append)
         thread.run()
+        assert sent == [method]  # sent with the method chosen in the panel
         return answered, failed
 
     def test_an_answer_reaches_the_panel(self, app, monkeypatch):

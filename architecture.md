@@ -36,7 +36,7 @@ their output reaches the UI through Queue + QTimer.
 | `pybreeze/extend/process_executor/` | Subprocess isolation layer: `TaskProcessManager`, `process_executor_utils.py`, `FileRunnerProcess`, `queue_pump.py`, one sub-package per automation package, plus `test_pioneer/` and `prthinker/` |
 | `pybreeze/extend/mail_thunder_extend/`, `prthinker_extend/` | Post-test email hook; prthinker settings and argument assembly (pure logic) |
 | `pybreeze/extend_multi_language/` | PyBreeze's English and Traditional Chinese strings, merged into JEditor's dictionaries |
-| `pybreeze/utils/` | Pure logic, no Qt or JEditor (`test_utils_has_no_qt.py` guards it): request parsing and codegen, HTTP tools, `network/` SSRF validation and capped reads, exceptions, logging, `app_dirs.py`, `subprocess_util.py` |
+| `pybreeze/utils/` | Pure logic, no Qt or JEditor (`test_utils_has_no_qt.py` guards it): request parsing and codegen, HTTP tools, `network/` SSRF validation, pinned connections and capped reads, exceptions, logging, `app_dirs.py`, `subprocess_util.py` |
 | `test/test_utils/` | Unit tests (pure logic and headless widgets). `test/unit_test/start_automation/` holds the launch tests |
 | `pyproject.toml`, `dev.toml` | Stable packaging (CI bumps and publishes it) and the unpublished dev packaging (keep its dependencies identical) |
 | `.github/workflows/` | `dev.yml`, `stable.yml` (unit tests on a Windows matrix, then SonarCloud) |
@@ -194,7 +194,8 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
   IDE stops every run still going (`CodeWindow.stop_runner()`): a child is a separate, console-less
   process that would otherwise outlive it unseen.
 - Every outbound request to a user URL passes SSRF validation (`utils/network/url_validation.py`)
-  with timeouts and size caps (§ Security › Network).
+  with timeouts and size caps, and connects through `utils/network/public_http.py`, which connects
+  only to the address it checks as it connects (§ Security › Network).
 - SSH uses the interactive host-key policy, never auto-add (§ Security › SSH).
 - Work that waits on a network — an AI review request, a diagram's image downloads, an SSH
   connect, an SFTP listing or transfer — runs on a

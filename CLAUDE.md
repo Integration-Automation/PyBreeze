@@ -39,7 +39,7 @@ pybreeze/
     ├── header_tools/ jwt_tools/ hash_tools/ timestamp_tools/
     ├── regex_tools/ query_tools/ url_tools/ diff_tools/
     ├── http_reference/ json_format/ response_inspector/
-    ├── network/                 # url_validation (SSRF), http_client (capped reads)
+    ├── network/                 # url_validation (SSRF), public_http (pinned connections), http_client (capped reads)
     ├── exception/               # ITEException hierarchy
     ├── logging/ file_process/ app_dirs.py / subprocess_util.py
     └── manager/package_manager/ # PackageManager — holds syntax_check_list
@@ -101,8 +101,9 @@ ruff check pybreeze/                              # before committing non-trivia
 2. Resolve the hostname and reject private / loopback / link-local / reserved IPs
 3. Enforce timeouts (15 s downloads, 30 s API calls) and response size caps (20 MB binary)
 4. `allow_redirects=False`, or re-validate every redirect target
+5. Connect only to the address checked: send through `public_session()` (requests) or `PublicHTTPHandler` / `PublicHTTPSHandler` (urllib) from `utils/network/public_http.py`, which check again as they connect and connect to that address, so a name that resolves differently after validation (DNS rebinding) gets nowhere private. `test_http_goes_through_public_connections.py` fails on a direct `requests.*` or `urlopen` call
 
-Reference implementations: `utils/network/url_validation.py` (`validate_url`), `utils/network/http_client.py` (`read_capped_text`), `diagram_editor/diagram_net_utils.py` (`safe_download_image`). Never pass a user URL to `urlopen()` / `requests.*` unvalidated, and never set `verify=False`.
+Reference implementations: `utils/network/url_validation.py` (`validate_url`), `utils/network/public_http.py` (`public_session`), `utils/network/http_client.py` (`read_capped_text`), `diagram_editor/diagram_net_utils.py` (`safe_download_image`). Never pass a user URL to `urlopen()` / `requests.*` unvalidated, and never set `verify=False`.
 
 **SSH** — never `paramiko.AutoAddPolicy()` or `WarningPolicy()`. Use `apply_host_key_policy(client, parent_widget)` from `connect_gui/ssh/ssh_host_key_policy.py`: it shows the SHA256 fingerprint for confirmation on first connect and persists to `~/.pybreeze/ssh_known_hosts`. Every `connect()` passes `disabled_algorithms=SHA1_ALGORITHMS` (`connect_gui/ssh/ssh_connect_thread.py`): `requirements.txt` does not pin paramiko, and paramiko 4 still offers SHA-1 signatures and key exchanges (CVE-2026-44405).
 

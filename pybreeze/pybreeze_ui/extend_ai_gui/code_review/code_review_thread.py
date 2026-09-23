@@ -12,6 +12,7 @@ from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.network.http_client import (
     ResponseTooLargeError, read_capped_text, CONNECT_TIMEOUT, succeeded, truncate_for_display,
 )
+from pybreeze.utils.network.public_http import public_session
 from pybreeze.utils.network.url_validation import UnsafeURLError, validate_url
 
 
@@ -33,7 +34,7 @@ class SenderThread(QThread):
             return
         # One session reuses a single TCP/TLS connection across all the
         # sequential per-template POSTs to the same endpoint.
-        session = requests.Session()
+        session = public_session()
         try:
             self._run_templates(session, self.code)
         finally:

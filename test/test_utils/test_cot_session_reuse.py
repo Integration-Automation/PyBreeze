@@ -154,7 +154,7 @@ def test_run_closes_session_even_on_error(monkeypatch):
             super().__init__()
             created["session"] = self
 
-    monkeypatch.setattr(mod.requests, "Session", _TrackedSession)
+    monkeypatch.setattr(mod, "public_session", _TrackedSession)
     # Make the work raise to prove the finally still closes the session.
     monkeypatch.setattr(SenderThread, "_run_templates",
                         lambda self, session, code: (_ for _ in ()).throw(RuntimeError("boom")))

@@ -2,7 +2,8 @@
 
 Security measures:
   - Only ``http`` and ``https`` schemes are allowed (blocks ``file://``, ``ftp://``, etc.)
-  - Resolved IPs are checked against private/loopback ranges to prevent SSRF
+  - Resolved IPs are checked against private/loopback ranges to prevent SSRF,
+    again as each connection is made, which connects to the address checked
   - Downloads are capped at ``MAX_DOWNLOAD_BYTES`` to prevent memory exhaustion
   - Connection timeout is enforced
 """
@@ -10,6 +11,7 @@ from __future__ import annotations
 
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
+from pybreeze.utils.network.public_http import PublicHTTPHandler, PublicHTTPSHandler
 from pybreeze.utils.network.url_validation import UnsafeURLError, validate_url
 
 MAX_DOWNLOAD_BYTES = 20 * 1024 * 1024  # 20 MB
@@ -42,7 +44,9 @@ class _ValidatingRedirectHandler(HTTPRedirectHandler):
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
-_OPENER = build_opener(_ValidatingRedirectHandler())
+# The HTTP handlers connect only to the address they check as they connect,
+# so a name that resolves differently after validation gets nowhere private
+_OPENER = build_opener(_ValidatingRedirectHandler(), PublicHTTPHandler(), PublicHTTPSHandler())
 
 
 def _parse_content_length(raw: str | None) -> int | None:

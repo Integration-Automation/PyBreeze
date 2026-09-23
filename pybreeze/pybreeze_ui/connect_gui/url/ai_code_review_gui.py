@@ -18,6 +18,7 @@ from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.network.http_client import (
     ResponseTooLargeError, read_capped_text, CONNECT_TIMEOUT, succeeded,
 )
+from pybreeze.utils.network.public_http import public_session
 from pybreeze.utils.network.url_validation import UnsafeURLError, validate_url
 
 
@@ -66,8 +67,9 @@ class ReviewRequestThread(QThread):
     def run(self) -> None:
         try:
             validate_url(self._url)
-            response = self._send()
-            body = read_capped_text(response)
+            with public_session() as session:
+                response = self._send(session)
+                body = read_capped_text(response)
             if succeeded(response):
                 self.answered.emit(body)
             else:
@@ -80,13 +82,12 @@ class ReviewRequestThread(QThread):
             pybreeze_logger.error("AI code review request failed: %s", type(error).__name__)
             self.failed.emit(str(error))
 
-    def _send(self) -> requests.Response:
+    def _send(self, session: requests.Session) -> requests.Response:
         """Send the request with the chosen method, code in the body where there is one."""
-        send = getattr(requests, self._method.lower())
         options = {"timeout": (CONNECT_TIMEOUT, 30), "allow_redirects": False, "stream": True}
         if self._method in METHODS_WITH_A_BODY:
-            return send(self._url, data={"code": self._code_text}, **options)
-        return send(self._url, **options)
+            return session.request(self._method, self._url, data={"code": self._code_text}, **options)
+        return session.request(self._method, self._url, **options)
 
 
 def read_stats(path: str) -> tuple[int, int]:

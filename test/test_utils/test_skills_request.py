@@ -40,6 +40,19 @@ class FakeResponse:
         """Nothing to close."""
 
 
+class FakeSession:
+    """The session a request is sent through, answering every post with *post*."""
+
+    def __init__(self, post) -> None:
+        self.post = post
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_exc) -> None:
+        """Nothing to close."""
+
+
 def _run(monkeypatch, answer) -> tuple[list[str], list[str]]:
     """Run one request against *answer* (a response, or an exception to raise)."""
     monkeypatch.setattr(skills_send_gui, "validate_url", lambda url: url)
@@ -49,7 +62,7 @@ def _run(monkeypatch, answer) -> tuple[list[str], list[str]]:
             raise answer
         return answer
 
-    monkeypatch.setattr(skills_send_gui.requests, "post", post)
+    monkeypatch.setattr(skills_send_gui, "public_session", lambda: FakeSession(post))
     answered: list[str] = []
     errors: list[str] = []
     thread = RequestThread(_URL, "print(1)")
