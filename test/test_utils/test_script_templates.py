@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from pybreeze.utils.curl_import.curl_parser import parse_curl
 from pybreeze.utils.curl_import.request_body import body_kind, form_parts
 from pybreeze.utils.curl_import.request_codegen import to_requests_code
@@ -59,10 +61,12 @@ class TestFormParts:
 
 
 class TestRequestsCodeForm:
-    def test_form_uses_data_and_files(self):
+    def test_every_form_field_goes_in_files(self):
+        # data= made requests send a text-only form URL-encoded; curl sends multipart
         code = to_requests_code(parse_curl("curl -F 'name=x' -F 'photo=@a.jpg' https://up"))
-        assert "data=data" in code
+        assert "data=data" not in code
         assert "files=files" in code
+        assert '"name": (None, "x"),' in code
         assert 'open("a.jpg", "rb")' in code
 
     def test_form_code_is_valid_python(self):
@@ -137,10 +141,10 @@ class TestApitestkaPython:
         )
         compile(to_apitestka_python(parse_curl(command)), "<generated>", "exec")
 
-    def test_form_data_and_files(self):
+    def test_form_fields_and_files_go_in_files(self):
         code = to_apitestka_python(parse_curl("curl -F 'name=x' -F 'photo=@a.jpg' https://up"))
-        assert "data=" in code
-        assert "files=" in code
+        assert "data=" not in code
+        assert '"name": (None, "x")' in code
         assert 'open("a.jpg", "rb")' in code
         compile(code, "<generated>", "exec")
 
@@ -178,11 +182,22 @@ class TestApitestkaActionJson:
         action = json.loads(to_apitestka_action_json(parse_curl("curl -G https://x -d 'a=1'")))
         assert action[0][1]["params"] == {"a": "1"}
 
-    def test_form_data_fields_included(self):
-        action = json.loads(
-            to_apitestka_action_json(parse_curl("curl -F 'name=x' -F 'photo=@a.jpg' https://up")))
-        # Plain form fields go under "data"; file uploads are omitted (no file handles in JSON).
-        assert action[0][1]["data"] == {"name": "x"}
+    def test_form_text_fields_are_sent_as_multipart(self):
+        action = json.loads(to_apitestka_action_json(parse_curl("curl -F 'name=x' -F 'a=b' https://up")))
+        # [null, text] is requests' (None, text): a multipart field, as curl sends it
+        assert action[0][1]["files"] == {"name": [None, "x"], "a": [None, "b"]}
+        assert "data" not in action[0][1]
+
+    @pytest.mark.parametrize("command", [
+        "curl -F 'name=x' -F 'photo=@a.jpg' https://up",
+        "curl -d @body.json -H 'Content-Type: application/json' https://up",
+    ])
+    def test_a_file_it_cannot_open_is_refused_not_left_out(self, command):
+        # The upload, or the body read from a file, was left out without a word
+        from pybreeze.utils.exception.exceptions import CurlParseException
+
+        with pytest.raises(CurlParseException):
+            to_apitestka_action_json(parse_curl(command))
 
 
 class TestLoadDensityPython:

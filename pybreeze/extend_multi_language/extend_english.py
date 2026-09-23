@@ -424,6 +424,7 @@ pybreeze_english_word_dict = {
     "har_import_empty_hint":
         "Open a .har file saved from your browser's dev tools (Network → Save all as HAR).",
     "har_import_error": "Could not read the HAR export: {error}",
+    "har_import_generate_error": "Could not write the script: {error}",
     "har_import_not_utf8": "it is not UTF-8 text",
     "har_import_read_error": "Could not open the file: {error}",
     # Shared output actions (copy / open in editor / save to file)

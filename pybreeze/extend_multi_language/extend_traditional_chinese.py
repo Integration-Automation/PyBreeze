@@ -398,6 +398,7 @@ pybreeze_traditional_chinese_word_dict = {
     "har_import_empty_hint":
         "請開啟從瀏覽器開發者工具存出的 .har 檔（Network → Save all as HAR）。",
     "har_import_error": "無法讀取這份 HAR 匯出檔：{error}",
+    "har_import_generate_error": "無法產生腳本：{error}",
     "har_import_not_utf8": "不是 UTF-8 文字檔",
     "har_import_read_error": "無法開啟檔案：{error}",
     # 共用輸出動作（複製 / 開成分頁 / 存檔）

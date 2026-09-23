@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-108 | 2026-09-23 | cURL and HAR import send a form as multipart without the copied Content-Type, and the JSON action refuses what it cannot carry | #fix #tools | [2026-09](2026-09.md) |
 | U-20260923-107 | 2026-09-23 | Tool output is copied and saved as generated, and Regex and HAR report patterns and files they cannot take | #fix #tools | [2026-09](2026-09.md) |
 | U-20260923-106 | 2026-09-23 | prthinker settings refuse extra arguments with an open quote at Save instead of dropping them at run time | #fix #prthinker | [2026-09](2026-09.md) |
 | U-20260923-105 | 2026-09-23 | A file-tree rename moves a docked editor and the tab's watch, highlighter, git baseline and language server with the file | #fix #editor | [2026-09](2026-09.md) |
@@ -188,4 +189,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | File | Period | Entries |
 |---|---|---:|
-| [2026-09.md](2026-09.md) | 2026-09 | 125 |
+| [2026-09.md](2026-09.md) | 2026-09 | 126 |

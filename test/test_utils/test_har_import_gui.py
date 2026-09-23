@@ -204,3 +204,18 @@ class TestReadingAFileThatIsNotUsable:
         shown = widget.output_edit.toPlainText()
         assert shown
         assert "private-folder-name" not in shown
+
+
+def test_a_target_that_cannot_carry_an_upload_says_so(widget):
+    # The APITestka JSON action cannot open a file: it raised out of the slot
+    har = json.dumps({"log": {"entries": [{"request": {
+        "method": "POST", "url": "https://api.example.com/upload", "headers": [],
+        "postData": {"mimeType": "multipart/form-data",
+                     "params": [{"name": "photo", "fileName": "a.jpg"}]},
+    }}]}})
+    widget.load_text(har)
+    widget.target_select.setCurrentIndex(widget.target_select.findData("apitestka_action"))
+
+    widget.generate_all()
+
+    assert "choose a Python target" in widget.output_edit.toPlainText()

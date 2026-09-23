@@ -65,7 +65,8 @@ class TestRepeatedFormFields:
     def test_the_apitestka_call_uploads_both_files(self):
         block = apitestka_call_block(parse_curl(self.COMMAND))
 
-        assert 'files=[("f", open("a.txt", "rb")), ("f", open("b.txt", "rb"))],' in block
+        assert '("f", open("a.txt", "rb")), ("f", open("b.txt", "rb"))' in block
+        assert '("k", (None, "1")), ("k", (None, "2"))' in block
 
     def test_a_field_given_once_is_written_as_before(self):
         assert 'files={"f": open("a.txt", "rb")},' in apitestka_call_block(
@@ -83,3 +84,59 @@ class TestRepeatedFormFields:
         (entry,) = parse_har(har)
 
         assert form_parts(entry.request)[1] == {"f": ["a.txt", "b.txt"]}
+
+
+def _what_requests_sends(code: str):
+    """Run generated ``requests`` code with the network cut out, and prepare what it would send."""
+    import requests
+
+    sent: list = []
+
+    def capture(method, url, **kwargs):
+        sent.append(requests.Request(method, url, **kwargs).prepare())
+        return type("Response", (), {"status_code": 200, "text": ""})()
+
+    namespace = {"requests": type("R", (), {"request": staticmethod(capture)})}
+    exec(compile(code.replace("import requests\n", ""), "<generated>", "exec"), namespace)  # noqa: S102 — our own generated code, run against a stand-in
+    return sent[0]
+
+
+class TestAFormIsSentAsMultipart:
+    """curl sends every -F form as multipart/form-data, text-only or not."""
+
+    def test_a_text_only_form(self):
+        # It was data=: requests sent it URL-encoded, name=x&note=a+b
+        prepared = _what_requests_sends(to_requests_code(parse_curl("curl -F name=x -F 'note=a b' https://h/api")))
+
+        assert prepared.headers["Content-Type"].startswith("multipart/form-data; boundary=")
+        assert b'name="note"\r\n\r\na b\r\n' in prepared.body
+
+    def test_a_copied_multipart_header_does_not_hide_the_boundary(self):
+        # Kept, it went out with no boundary, and requests does not replace a header it is given
+        command = "curl -H 'Content-Type: multipart/form-data' -H 'X-Kept: 1' -F name=x https://h/api"
+        prepared = _what_requests_sends(to_requests_code(parse_curl(command)))
+
+        assert prepared.headers["Content-Type"].startswith("multipart/form-data; boundary=")
+        assert prepared.headers["X-Kept"] == "1"
+
+    def test_a_json_body_keeps_its_content_type(self):
+        command = "curl -H 'Content-Type: application/json' -d '{\"a\": 1}' https://h/api"
+        prepared = _what_requests_sends(to_requests_code(parse_curl(command)))
+
+        assert prepared.headers["Content-Type"] == "application/json"
+
+    def test_a_recorded_multipart_form_leaves_the_browsers_boundary_out(self):
+        import json
+
+        har = json.dumps({"log": {"entries": [{"request": {
+            "method": "POST", "url": "https://h/api",
+            "headers": [{"name": "Content-Type", "value": "multipart/form-data; boundary=----WebKitFormBoundaryX"}],
+            "postData": {"mimeType": "multipart/form-data; boundary=----WebKitFormBoundaryX",
+                         "params": [{"name": "title", "value": "hi"}]},
+        }}]}})
+        (entry,) = parse_har(har)
+
+        prepared = _what_requests_sends(to_requests_code(entry.request))
+
+        assert "WebKitFormBoundaryX" not in prepared.headers["Content-Type"]
+        assert prepared.headers["Content-Type"].split("boundary=")[1].encode() in prepared.body

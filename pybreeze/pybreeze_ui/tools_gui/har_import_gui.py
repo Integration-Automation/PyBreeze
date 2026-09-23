@@ -18,7 +18,7 @@ from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.utils.curl_import.script_templates import TEMPLATE_TARGETS
-from pybreeze.utils.exception.exceptions import HarParseException
+from pybreeze.utils.exception.exceptions import CurlParseException, HarParseException
 from pybreeze.utils.har_import.har_codegen import generate_har_script
 from pybreeze.utils.har_import.har_parser import HarEntry, api_entries, parse_har, summarize
 from pybreeze.utils.logging.logger import pybreeze_logger
@@ -179,8 +179,15 @@ class HarImportGUI(QWidget):
             self._generated_code = None
             self.output_edit.setPlainText(word.get(empty_hint_key))
             return
-        code = generate_har_script(
-            self.selected_target(), [entry.request for entry in entries])
+        try:
+            code = generate_har_script(
+                self.selected_target(), [entry.request for entry in entries])
+        except CurlParseException as error:
+            # A target that cannot carry a recorded file upload says so
+            pybreeze_logger.info("har_import_gui.py generate failed: %r", error)
+            self._generated_code = None
+            self.output_edit.setPlainText(word.get("har_import_generate_error").format(error=str(error)))
+            return
         self._generated_code = code
         self.output_edit.setPlainText(code)
 

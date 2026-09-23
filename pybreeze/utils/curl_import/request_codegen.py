@@ -11,7 +11,7 @@ import math
 import re
 
 from pybreeze.utils.curl_import.curl_parser import CurlRequest
-from pybreeze.utils.curl_import.request_body import body_kind, file_uploads, form_parts
+from pybreeze.utils.curl_import.request_body import FormEntry, body_kind, form_entries, sent_headers
 
 # Keyword argument passing the request body to ``requests.request``.
 _DATA_KWARG = "data=data"
@@ -37,19 +37,29 @@ def _format_dict(name: str, mapping: dict[str, str | list[str]]) -> str | None:
     return "\n".join(lines)
 
 
-def _format_files(file_fields: dict[str, str | list[str]]) -> str:
-    """Render a ``files = ...`` block that opens each upload.
+def form_value_expr(entry: FormEntry) -> str:
+    """The Python expression ``files=`` holds for one form field: the opened file, or ``(None, text)``."""
+    _name, is_file, value = entry
+    return f'open({python_string(value)}, "rb")' if is_file else f"(None, {python_string(value)})"
 
-    A dict while every field is given once; a list of ``(field, file)`` pairs
+
+def form_has_repeats(entries: list[FormEntry]) -> bool:
+    """Whether a field name repeats, so ``files`` must be a list of pairs rather than a dict."""
+    names = [name for name, _is_file, _value in entries]
+    return len(set(names)) < len(names)
+
+
+def _format_form(entries: list[FormEntry]) -> str:
+    """Render a ``files = ...`` block holding every form field, sent as multipart.
+
+    A dict while every field is given once; a list of ``(field, value)`` pairs
     when one repeats, since a dict cannot hold the same key twice.
     """
-    uploads = file_uploads(file_fields)
-    repeated = len(uploads) > len(file_fields)
+    repeated = form_has_repeats(entries)
     lines = ["files = [" if repeated else "files = {"]
-    for field, filename in uploads:
-        opened = f'open({python_string(filename)}, "rb")'
-        lines.append(f"    ({python_string(field)}, {opened}),"
-                     if repeated else f"    {python_string(field)}: {opened},")
+    for entry in entries:
+        name, value = python_string(entry[0]), form_value_expr(entry)
+        lines.append(f"    ({name}, {value})," if repeated else f"    {name}: {value},")
     lines.append("]" if repeated else "}")
     return "\n".join(lines)
 
@@ -134,17 +144,8 @@ def payload_python_parts(request: CurlRequest) -> tuple[list[str], list[str]]:
     :return: ``(assignment_lines, keyword_arguments)``
     """
     if request.has_form:
-        data_fields, file_fields = form_parts(request)
-        sections: list[str] = []
-        kwargs: list[str] = []
-        data_block = _format_dict("data", data_fields)
-        if data_block is not None:
-            sections.append(data_block)
-            kwargs.append(_DATA_KWARG)
-        if file_fields:
-            sections.append(_format_files(file_fields))
-            kwargs.append("files=files")
-        return sections, kwargs
+        entries = form_entries(request)
+        return ([_format_form(entries)], ["files=files"]) if entries else ([], [])
 
     if request.data_file_refs:
         return [f"data = {data_from_file_expr(request)}"], [_DATA_KWARG]
@@ -160,7 +161,7 @@ def payload_python_parts(request: CurlRequest) -> tuple[list[str], list[str]]:
 def _call_keyword_arguments(request: CurlRequest, payload_kwargs: list[str]) -> list[str]:
     """Build the keyword arguments passed to ``requests.request``."""
     arguments = ["url"]
-    if request.headers:
+    if sent_headers(request):
         arguments.append("headers=headers")
     if request.params:
         arguments.append("params=params")
@@ -187,7 +188,7 @@ def request_statements(request: CurlRequest) -> list[str]:
     payload_sections, payload_kwargs = payload_python_parts(request)
     statements: list[str] = [f"url = {python_string(request.url)}"]
 
-    headers_block = _format_dict("headers", request.headers)
+    headers_block = _format_dict("headers", sent_headers(request))
     if headers_block is not None:
         statements.append(headers_block)
     params_block = _format_dict("params", request.params)

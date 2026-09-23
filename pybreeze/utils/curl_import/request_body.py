@@ -82,3 +82,43 @@ def file_uploads(file_fields: dict[str, str | list[str]]) -> list[tuple[str, str
         (field, name) for field, names in file_fields.items()
         for name in (names if isinstance(names, list) else [names])
     ]
+
+
+# One multipart field as sent: its name, whether it uploads a file, and the
+# file name or the text
+FormEntry = tuple[str, bool, str]
+
+# The media type every -F form is sent as
+_MULTIPART_MEDIA_TYPE = "multipart/"
+
+
+def form_entries(request: CurlRequest) -> list[FormEntry]:
+    """Every ``-F`` field of *request*, uploads and text alike, each repeat kept.
+
+    curl sends a form given with ``-F`` as ``multipart/form-data`` whether or
+    not it uploads a file. Generated as ``data=`` when it held only text,
+    ``requests`` sent it URL-encoded instead: the generators now put every
+    field in ``files=``, a text field as ``(None, text)``.
+    """
+    data_fields, file_fields = form_parts(request)
+    entries: list[FormEntry] = []
+    for fields, is_file in ((data_fields, False), (file_fields, True)):
+        for name, values in fields.items():
+            entries.extend((name, is_file, value) for value in (values if isinstance(values, list) else [values]))
+    return entries
+
+
+def sent_headers(request: CurlRequest) -> dict[str, str]:
+    """The headers to generate for *request*.
+
+    A form's ``Content-Type: multipart/...`` is left out: ``requests`` writes
+    its own with the boundary it chose, and does not replace one given
+    explicitly, so the copied header (without a boundary, or with the browser's)
+    left the server unable to read the body.
+    """
+    if not request.has_form:
+        return dict(request.headers)
+    return {
+        name: value for name, value in request.headers.items()
+        if not (name.lower() == _CONTENT_TYPE_HEADER and value.lower().lstrip().startswith(_MULTIPART_MEDIA_TYPE))
+    }
