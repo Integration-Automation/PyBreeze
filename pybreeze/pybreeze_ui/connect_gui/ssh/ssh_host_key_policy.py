@@ -22,6 +22,7 @@ from PySide6.QtCore import QObject, Qt, QThread, Signal, Slot
 from PySide6.QtWidgets import QMessageBox
 
 from pybreeze.utils.app_dirs import pybreeze_data_dir
+from pybreeze.utils.file_process.replace_file import replace_written
 from pybreeze.utils.logging.logger import pybreeze_logger
 
 if TYPE_CHECKING:
@@ -81,7 +82,9 @@ def _store(hostname: str, key_type: str, key: paramiko.PKey) -> None:
     known = _read_known_hosts()
     known.add(hostname, key_type, key)
     try:
-        known.save(str(_known_hosts_path()))
+        # Replaced in one step: HostKeys.save opens the file for writing, which
+        # empties it, and a failure part-way lost every host trusted so far
+        replace_written(_known_hosts_path(), lambda target: known.save(str(target)))
     except OSError as err:
         pybreeze_logger.warning(
             "Failed to persist SSH host key for %s: %s", hostname, err

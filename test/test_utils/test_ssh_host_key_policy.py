@@ -150,3 +150,20 @@ class TestAQuestionNobodyCanAnswer:
         worker.join(1)
 
         assert answers == [False]
+
+
+def test_a_store_that_fails_keeps_the_hosts_already_trusted(asked, keys, tmp_path, monkeypatch):
+    # HostKeys.save emptied the file first: a failure part-way lost every host
+    from pybreeze.utils.file_process import replace_file
+
+    _meet("first.example", keys[0])
+    before = (tmp_path / "ssh_known_hosts").read_text(encoding="utf-8")
+
+    def refuse(*_args):
+        raise OSError(28, "No space left on device")
+
+    monkeypatch.setattr(replace_file.os, "replace", refuse)
+    _meet("second.example", keys[1])
+
+    assert (tmp_path / "ssh_known_hosts").read_text(encoding="utf-8") == before
+    assert sorted(path.name for path in tmp_path.iterdir()) == ["ssh_known_hosts"]
