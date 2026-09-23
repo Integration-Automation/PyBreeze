@@ -481,7 +481,8 @@ class DiagramEditorWidget(QWidget):
             return True
         reply = QMessageBox.question(
             self, _lang("unsaved_close_title", "Unsaved changes"),
-            _lang("diagram_editor_close_over_edits", "The diagram has changes that are not saved. Close and lose them?"),
+            _lang("diagram_editor_close_over_edits",
+                  "The diagram has changes that are not saved. Close and lose them?"),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
         return reply == QMessageBox.StandardButton.Yes
 

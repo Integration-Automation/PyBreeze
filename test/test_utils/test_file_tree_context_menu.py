@@ -438,7 +438,8 @@ class TestAttachingTheMenu:
 class TestANameStaysInItsFolder:
     """A drive, a root, '..' or ':' put the file elsewhere: /tmp/notes.py became C:\\tmp\\notes.py."""
 
-    @pytest.mark.parametrize("name", ["/tmp/notes.py", "C:\\x.py", "C:x.py", "..\\up.py", "a/../../up.py", "notes.py:stream"])
+    @pytest.mark.parametrize(
+        "name", ["/tmp/notes.py", "C:\\x.py", "C:x.py", "..\\up.py", "a/../../up.py", "notes.py:stream"])
     def test_a_new_file_outside_the_folder_is_refused(self, tree, tmp_path, monkeypatch, warnings, name):
         folder = tmp_path / "project"
         folder.mkdir()

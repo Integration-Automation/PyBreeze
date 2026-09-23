@@ -828,7 +828,7 @@ class DiagramScene(QGraphicsScene):
                 self._pixmap_cache[source] = pix
                 img.set_pixmap(pix, source)
                 return
-        if source.startswith(("http://", "https://")):  # NOSONAR S5332 — scheme detection; actual fetch goes through safe_download_image with SSRF validation
+        if source.startswith(("http://", "https://")):  # NOSONAR S5332 — scheme check; fetched via safe_download_image
             self._start_image_download(source)
 
     def _start_image_download(self, source: str) -> None:
