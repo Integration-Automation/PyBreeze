@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 
 from pybreeze.utils.curl_import.curl_parser import add_repeated_value
 from pybreeze.utils.header_tools.header_analyzer import FOLDED_LINE_START, HEADER_LINE_RE
-from pybreeze.utils.http_reference.status_codes import StatusInfo, lookup
+from pybreeze.utils.http_reference.status_codes import StatusInfo, status_of
 from pybreeze.utils.jwt_tools.jwt_decoder import DecodedJwt, decode_jwt, find_tokens
 from pybreeze.utils.exception.exceptions import JwtDecodeException
 from pybreeze.utils.json_format.json_process import pretty_json_or_none
@@ -64,8 +64,12 @@ def _normalise(text: str) -> str:
     return text.replace("\r\n", "\n").replace("\r", "\n")
 
 
-def _parse_head_and_body(text: str) -> tuple[int | None, dict[str, str], str]:
-    """Split *text* into the final response's status code, headers and body.
+# A response's status: its code and the reason phrase its status line gave
+_Status = tuple[int, str]
+
+
+def _parse_head_and_body(text: str) -> tuple[_Status | None, dict[str, str], str]:
+    """Split *text* into the final response's status, headers and body.
 
     ``curl -i`` prints every response it read: ``100 Continue``, a proxy's
     ``200 Connection established``, each redirect with ``-L``. The first status
@@ -77,22 +81,22 @@ def _parse_head_and_body(text: str) -> tuple[int | None, dict[str, str], str]:
         # One line and no status line is a body: "Error: invalid token" is
         # not a header
         return None, {}, text.strip()
-    status_code, headers, body = _parse_one_response(lines)
+    status, headers, body = _parse_one_response(lines)
     while _STATUS_LINE_RE.match(body):
-        status_code, headers, body = _parse_one_response(body.split("\n"))
-    return status_code, headers, body
+        status, headers, body = _parse_one_response(body.split("\n"))
+    return status, headers, body
 
 
-def _parse_one_response(lines: list[str]) -> tuple[int | None, dict[str, str], str]:
-    """Split *lines* into a status code, headers and body.
+def _parse_one_response(lines: list[str]) -> tuple[_Status | None, dict[str, str], str]:
+    """Split *lines* into a status, headers and body.
 
     Headers run from an optional status line until a blank line or the first line
     that is not a ``Name: Value`` header; everything after is the body.
     """
     index = 0
-    status_code: int | None = None
-    if lines and _STATUS_LINE_RE.match(lines[0]):
-        status_code = int(_STATUS_LINE_RE.match(lines[0]).group(1))
+    status: _Status | None = None
+    if lines and (status_line := _STATUS_LINE_RE.match(lines[0])) is not None:
+        status = (int(status_line.group(1)), lines[0][status_line.end():].strip())
         index = 1
 
     headers: dict[str, str | list[str]] = {}
@@ -108,8 +112,8 @@ def _parse_one_response(lines: list[str]) -> tuple[int | None, dict[str, str], s
             _continue_value(headers, last_name, line.strip())
         elif (pseudo := _PSEUDO_HEADER_RE.match(line)) is not None:
             # It ended the headers, and the rest was read as the body
-            if pseudo.group(1) == "status" and status_code is None and pseudo.group(2).strip().isdigit():
-                status_code = int(pseudo.group(2).strip())
+            if pseudo.group(1) == "status" and status is None and pseudo.group(2).strip().isdigit():
+                status = (int(pseudo.group(2).strip()), "")
         elif (match := HEADER_LINE_RE.match(line)) is not None:
             last_name = _same_name(headers, match.group(1))
             add_repeated_value(headers, last_name, match.group(2).strip())
@@ -118,7 +122,7 @@ def _parse_one_response(lines: list[str]) -> tuple[int | None, dict[str, str], s
         index += 1
 
     body = "\n".join(lines[index:]).strip()
-    return status_code, headers, body
+    return status, headers, body
 
 
 def _same_name(headers: dict[str, str | list[str]], name: str) -> str:
@@ -157,11 +161,13 @@ def analyze_response(text: str) -> ResponseAnalysis:
     :param text: the raw response text (status line + headers + body, or just a body)
     :return: the structured analysis
     """
-    status_code, headers, body = _parse_head_and_body(text)
+    status, headers, body = _parse_head_and_body(text)
     # Laid out as JSON Format would: numbers as written, a repeated key refused
     pretty_body = pretty_json_or_none(body)
     return ResponseAnalysis(
-        status=lookup(status_code) if status_code is not None else None,
+        # A code nobody registered (299, 599) is still shown: lookup found
+        # nothing, and the status section and Open status went with it
+        status=status_of(*status) if status is not None else None,
         headers=headers,
         body=body,
         pretty_body=pretty_body,

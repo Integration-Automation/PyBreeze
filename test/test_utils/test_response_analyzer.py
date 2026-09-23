@@ -31,9 +31,21 @@ class TestStatusDetection:
         analysis = analyze_response('{"a": 1}')
         assert analysis.status is None
 
-    def test_unknown_status_code(self):
+    def test_an_unregistered_code_is_shown_with_its_class_and_own_phrase(self):
+        # It was dropped: no status section, and Open status greyed out
         analysis = analyze_response("HTTP/1.1 299 Weird\n\n")
-        assert analysis.status is None  # 299 is not a known code
+
+        assert (analysis.status.code, analysis.status.phrase, analysis.status.category) == (
+            299, "Weird", "Success")
+
+    def test_an_unregistered_pseudo_header_status_has_no_phrase(self):
+        analysis = analyze_response(":status: 599\ncontent-type: text/plain\n\nx")
+
+        assert (analysis.status.code, analysis.status.phrase, analysis.status.category) == (
+            599, "", "Server Error")
+
+    def test_a_registered_code_keeps_its_registered_phrase(self):
+        assert analyze_response("HTTP/1.1 404 Nope\n\n").status.phrase == "Not Found"
 
 
 class TestHeaderParsing:
