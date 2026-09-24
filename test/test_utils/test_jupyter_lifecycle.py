@@ -54,7 +54,7 @@ def launched(monkeypatch) -> list:
         started.append(server)
         return server
 
-    monkeypatch.setattr(jupyter_lab_thread, "get_venv_python", lambda: "python")
+    monkeypatch.setattr(jupyter_lab_thread, "default_interpreter", lambda: "python")
     monkeypatch.setattr(jupyter_lab_thread, "is_jupyter_installed", lambda _python: True)
     monkeypatch.setattr(jupyter_lab_thread.subprocess, "Popen", popen)
     monkeypatch.setattr(

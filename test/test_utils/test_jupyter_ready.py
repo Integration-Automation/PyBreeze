@@ -121,7 +121,7 @@ class TestRunCleansUpOnFailure:
                 self.terminated = True
 
         proc = _RecordingProc()
-        monkeypatch.setattr(mod, "get_venv_python", lambda: "python")
+        monkeypatch.setattr(mod, "default_interpreter", lambda: "python")
         monkeypatch.setattr(mod, "is_jupyter_installed", lambda exe: True)
         monkeypatch.setattr(mod, "find_free_port", lambda: 59999)
         monkeypatch.setattr(mod.subprocess, "Popen", lambda *a, **k: proc)
@@ -199,23 +199,58 @@ class TestWhichInterpreterRunsTheLab:
     def test_the_one_chosen_in_the_ide_comes_first(self, monkeypatch):
         from pybreeze.pybreeze_ui.jupyter_lab_gui import jupyter_lab_thread as mod
 
-        monkeypatch.setattr(mod, "get_venv_python", lambda: "venv-python")
+        monkeypatch.setattr(mod, "default_interpreter", lambda: "run-python")
 
         assert mod.choose_python("C:/envs/project/python.exe") == "C:/envs/project/python.exe"
-        assert mod.choose_python(None) == "venv-python"
+        assert mod.choose_python(None) == "run-python"
 
-    def test_without_a_venv_the_ides_own_is_used(self, monkeypatch):
-        # It raised "Cannot find venv python executable" and the lab never started
+    def test_the_lab_runs_where_a_run_would(self, monkeypatch, tmp_path):
+        # An IDE started from a venv of its own ran the lab there, while a run of
+        # the same project used the project's .venv: its notebooks did not see
+        # the project's packages
+        import sys
+
+        from pybreeze.extend.process_executor.python_task_process_manager import default_interpreter
+        from pybreeze.pybreeze_ui.jupyter_lab_gui import jupyter_lab_thread as mod
+
+        scripts = tmp_path / ".venv" / ("Scripts" if sys.platform == "win32" else "bin")
+        scripts.mkdir(parents=True)
+        project_python = scripts / ("python.exe" if sys.platform == "win32" else "python")
+        project_python.write_bytes(b"")
+        project_python.chmod(0o755)
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(sys, "base_prefix", sys.prefix + "-elsewhere")  # the IDE runs in a venv
+
+        assert mod.choose_python(None) == default_interpreter()
+        assert mod.choose_python(None).startswith(str(scripts))
+
+    def test_without_a_venv_the_ides_own_is_used(self, monkeypatch, tmp_path):
         import sys
 
         from pybreeze.pybreeze_ui.jupyter_lab_gui import jupyter_lab_thread as mod
 
-        def no_venv():
-            raise RuntimeError("Cannot find venv python executable")
-
-        monkeypatch.setattr(mod, "get_venv_python", no_venv)
+        monkeypatch.chdir(tmp_path)
 
         assert mod.choose_python(None) == sys.executable
+
+    def test_a_packaged_build_with_no_python_says_so(self, qt_app, monkeypatch):
+        # default_interpreter raises JEditorExecException there, which the
+        # thread did not catch: it would have died with nothing shown
+        from je_editor import JEditorExecException
+
+        from pybreeze.pybreeze_ui.jupyter_lab_gui import jupyter_lab_thread as mod
+
+        def none_found():
+            raise JEditorExecException("no python interpreter found")
+
+        monkeypatch.setattr(mod, "default_interpreter", none_found)
+        thread = mod.JupyterLauncherThread()
+        errors: list = []
+        thread.error_occurred.connect(errors.append)
+
+        thread.run()
+
+        assert errors == ["no python interpreter found"]
 
     def test_installed_is_asked_of_the_interpreter_not_of_pip(self, tmp_path, monkeypatch):
         # A venv made without pip failed "pip show" with jupyterlab installed
