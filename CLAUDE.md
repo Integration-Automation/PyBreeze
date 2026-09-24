@@ -99,6 +99,15 @@ ruff check pybreeze/                              # before committing non-trivia
 - Delete unused code immediately — no dead imports, unreachable branches, commented-out blocks, or `_old_` prefixes
 - Follow PEP 8 and standard Pythonic practice; `ruff` is the arbiter
 
+## README & translations
+
+**`README.md` and every translated README must stay in sync with the code.** This repo ships
+`README.md`, `README/README_zh-TW.md` and `README/README_zh-CN.md`. Any user-facing change —
+features, commands, CLI flags, install/setup, configuration or requirements — updates `README.md`
+**and every language variant in the same commit**, structure and content aligned. Never update one
+language and leave the others stale. No README-parity test guards this, so it is a manual check
+across the three files above.
+
 ## Security
 
 **General**
