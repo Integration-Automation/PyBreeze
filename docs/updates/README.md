@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260924-242 | 2026-09-24 | The CoT review's last English words in Traditional Chinese | #fix #ai #i18n | [2026-09-b](2026-09-b.md) |
 | U-20260924-241 | 2026-09-24 | Drop five translations nothing shows | #cleanup #i18n | [2026-09-b](2026-09-b.md) |
 | U-20260924-240 | 2026-09-24 | A Save As button in the diagram editor | #fix #diagram #ui | [2026-09-b](2026-09-b.md) |
 | U-20260924-239 | 2026-09-24 | Why JupyterLab did not start, in the IDE language | #fix #jupyter #i18n | [2026-09-b](2026-09-b.md) |
@@ -323,4 +324,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | File | Period | Entries |
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
-| [2026-09-b.md](2026-09-b.md) | 2026-09 | 41 |
+| [2026-09-b.md](2026-09-b.md) | 2026-09 | 42 |

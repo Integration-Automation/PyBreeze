@@ -70,7 +70,8 @@ class CoTCodeReviewGUI(QWidget):
         # 取得 URL
         url = self.url_input.text().strip()
         if not url:
-            QMessageBox.warning(self, "Warning", language_wrapper.language_word_dict.get("cot_gui_error_no_url"))
+            word = language_wrapper.language_word_dict
+            QMessageBox.warning(self, word.get("cot_gui_warning_title"), word.get("cot_gui_error_no_url"))
             return
         # The URL is checked by the worker, which reports a refusal as the
         # "error" answer: checked here too, its DNS lookup froze the IDE.

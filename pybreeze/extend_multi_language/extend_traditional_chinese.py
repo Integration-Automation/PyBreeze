@@ -337,15 +337,16 @@ pybreeze_traditional_chinese_word_dict = {
     "extend_tools_menu_skill_prompt_send_dock_action": "Skill Prompt 傳送停駐窗格",
     "extend_tools_menu_skill_prompt_send_dock_title": "Skill 提示詞傳送 GUI",
     # CoT code-review GUI
-    "cot_gui_window_title": "Prompt Sender UI",
+    "cot_gui_window_title": "Prompt 傳送介面",
     "cot_gui_label_api_url": "API URL:",
     "cot_gui_placeholder_api_url": "請輸入要傳送的 API URL，例如 http://127.0.0.1:5000/api",
     "cot_gui_placeholder_code_paste_area": "這裡會顯示要傳送的 Prompt 內容",
     "cot_gui_label_prompt_area": "傳送資料區域",
     "cot_gui_label_response_area": "回傳區域",
     "cot_gui_button_send": "開始傳送",
+    "cot_gui_warning_title": "警告",
     "cot_gui_error_no_url": "請先輸入 API URL！",
-    "cot_gui_error_sending": "Error sending:",
+    "cot_gui_error_sending": "傳送失敗：",
     # Skills GUI
     "skills_error_status": "錯誤: {status_code}\n{text}",
     "skills_exception": "發生例外: {error}",
@@ -421,7 +422,7 @@ pybreeze_traditional_chinese_word_dict = {
     "output_actions_save_dialog_title": "儲存輸出",
     "output_actions_filter_python": "Python (*.py)",
     "output_actions_filter_json": "JSON (*.json)",
-    "output_actions_filter_text": "Text (*.txt)",
+    "output_actions_filter_text": "文字檔 (*.txt)",
     # JWT 解碼器 — 選單
     "extend_tools_menu_jwt_decoder_tab_action": "JWT 解碼器分頁",
     "extend_tools_menu_jwt_decoder_tab_label": "JWT 解碼器",

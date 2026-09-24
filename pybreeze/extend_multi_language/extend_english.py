@@ -345,6 +345,7 @@ pybreeze_english_word_dict = {
     "cot_gui_label_prompt_area": "Prompt Area",
     "cot_gui_label_response_area": "Response Area",
     "cot_gui_button_send": "Start Sending",
+    "cot_gui_warning_title": "Warning",
     "cot_gui_error_no_url": "Please enter the API URL first!",
     "cot_gui_error_sending": "Error sending:",
     # Skills GUI

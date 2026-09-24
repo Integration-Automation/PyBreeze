@@ -121,3 +121,21 @@ class TestSkillsCloseEvent:
         SkillsSendGUI.closeEvent(gui, event)
 
         event.accept.assert_called_once()
+
+
+class TestCoTWithoutAUrl:
+    def test_the_warning_speaks_the_ide_language(self, qapp, monkeypatch):
+        # Its title was "Warning" whatever the IDE spoke
+        from pybreeze.extend_multi_language.extend_traditional_chinese import (
+            pybreeze_traditional_chinese_word_dict as word,
+        )
+        from pybreeze.pybreeze_ui.extend_ai_gui.code_review import cot_code_review_gui as cot_mod
+        monkeypatch.setattr(cot_mod.language_wrapper, "language_word_dict", word)
+        shown: list = []
+        monkeypatch.setattr(cot_mod.QMessageBox, "warning", lambda *args: shown.append(args[1:3]))
+        gui = CoTCodeReviewGUI()
+
+        gui.start_sending()
+
+        assert shown == [("警告", "請先輸入 API URL！")]
+        gui.deleteLater()
