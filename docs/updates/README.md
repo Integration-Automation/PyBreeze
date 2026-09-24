@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-213 | 2026-09-24 | Show one changed line in a long repetitive text as one line | #fix #diff | [2026-09-b](2026-09-b.md) |
 | U-20260923-212 | 2026-09-24 | Read an HTTP/2 status pseudo-header only when it is ASCII digits | #fix #inspector | [2026-09-b](2026-09-b.md) |
 | U-20260923-211 | 2026-09-24 | Keep an empty host empty when the URL Builder rebuilds a URL | #fix #url | [2026-09-b](2026-09-b.md) |
 | U-20260923-210 | 2026-09-24 | Keep a quoted Mermaid edge label that holds a bar | #fix #diagram | [2026-09-b](2026-09-b.md) |
@@ -294,4 +295,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | File | Period | Entries |
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
-| [2026-09-b.md](2026-09-b.md) | 2026-09 | 12 |
+| [2026-09-b.md](2026-09-b.md) | 2026-09 | 13 |

@@ -1,6 +1,7 @@
 """Tests for the text diff utility."""
 from __future__ import annotations
 
+import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
@@ -138,18 +139,61 @@ def test_a_removed_line_starting_with_dashes_gets_its_ending_named():
 _LINES = st.lists(st.sampled_from(["a", "b", "c", "", "d e"]), max_size=25)
 
 
+def _applied(diff: str, left: list[str]) -> list[str]:
+    """*left* with the unified *diff* applied, each context and removed line checked."""
+    import re
+
+    out: list[str] = []
+    position = 0
+    for line in diff.splitlines()[2:]:
+        if line.startswith("@@"):
+            start, length = re.match(r"@@ -(\d+)(?:,(\d+))? ", line).groups()
+            begin = int(start) - 1 if length != "0" else int(start)
+            out += left[position:begin]
+            position = begin
+        elif line.startswith("\\ No newline"):
+            continue
+        elif line.startswith("+"):
+            out.append(line[1:])
+        else:
+            assert left[position] == line[1:]
+            if line.startswith(" "):
+                out.append(line[1:])
+            position += 1
+    return out + left[position:]
+
+
 @settings(max_examples=300, deadline=None)
 @given(left=_LINES, right=_LINES)
-def test_the_diff_is_the_one_difflib_writes(left, right):
-    # One line matching now serves the counts and the diff; the diff must stay
-    # exactly difflib.unified_diff's
+def test_the_diff_turns_the_left_into_the_right_and_is_no_longer_than_difflibs(left, right):
+    # Where two alignments are as short, the unchanged head and tail set aside
+    # first may pick the other one; the diff must still be right, and never
+    # longer than difflib.unified_diff's
     import difflib
 
-    from pybreeze.utils.diff_tools.text_diff import _line_lists, _shown, compare_texts
+    from pybreeze.utils.diff_tools.text_diff import _line_lists, compare_texts
 
     left_text, right_text = "\n".join(left), "\n".join(right)
+    comparison = compare_texts(left_text, right_text)
+    body = comparison.diff.splitlines()[2:]
     left_lines, right_lines = _line_lists(left_text, right_text)
-    written = list(difflib.unified_diff(left_lines, right_lines, "expected", "actual", lineterm="", n=3))
-    expected = "\n".join(written[:2] + [_shown(line) for line in written[2:]])
+    written = list(difflib.unified_diff(left_lines, right_lines, lineterm="", n=3))[2:]
 
-    assert compare_texts(left_text, right_text).diff == expected
+    assert _applied(comparison.diff, left_text.splitlines()) == right_text.splitlines()
+    assert comparison.summary.added == sum(line.startswith("+") for line in body)
+    assert comparison.summary.removed == sum(line.startswith("-") for line in body)
+    changed = comparison.summary.added + comparison.summary.removed
+    assert changed <= sum(line[:1] in ("+", "-") for line in written)
+
+
+@pytest.mark.parametrize(("left", "right"), [
+    ("\n".join(["{", "  a", "}"] * 100), "\n".join(["{", "  a", "}"] * 100).replace("  a", "  b", 1)),
+    ("x\n" * 300, "y\n" + "x\n" * 299),
+])
+def test_one_changed_line_in_a_long_repetitive_text_is_one_line(left, right):
+    # A line making up over 1% of 200 or more was junk to difflib: 299 removed and added
+    from pybreeze.utils.diff_tools.text_diff import compare_texts
+
+    summary = compare_texts(left, right).summary
+
+    assert (summary.added, summary.removed) == (1, 1)

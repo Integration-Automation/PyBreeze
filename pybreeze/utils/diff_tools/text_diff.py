@@ -18,6 +18,8 @@ _CONTEXT_LINES = 3
 _HEADER_LINES = 2
 # diff's own note under a last line that has no newline
 _NO_NEWLINE_MARK = "\\ No newline at end of file"
+# Lines left to match past which SequenceMatcher's junk heuristic stays on
+_AUTOJUNK_FROM = 2000
 
 
 @dataclass(frozen=True)
@@ -77,6 +79,52 @@ class Comparison:
     diff: str
 
 
+class _TrimmedMatcher(difflib.SequenceMatcher):
+    """A line matcher that sets the unchanged head and tail aside before matching.
+
+    ``SequenceMatcher`` treats a line making up more than 1% of 200 or more as
+    junk that cannot anchor a match, so in a long text full of ``}`` one
+    changed line came out as hundreds removed and added. Trimmed, what is left
+    to match is usually short: under ``_AUTOJUNK_FROM`` lines the heuristic is
+    off, and it stays on above that, where matching without it grows with the
+    square of the lines (20,000 alike took a minute).
+    """
+
+    def __init__(self, left_lines: list[str], right_lines: list[str]) -> None:
+        head = 0
+        limit = min(len(left_lines), len(right_lines))
+        while head < limit and left_lines[head] == right_lines[head]:
+            head += 1
+        tail = 0
+        while (tail < limit - head
+               and left_lines[len(left_lines) - 1 - tail] == right_lines[len(right_lines) - 1 - tail]):
+            tail += 1
+        self._head, self._tail = head, tail
+        self._sizes = (len(left_lines), len(right_lines))
+        middle_left = left_lines[head:len(left_lines) - tail]
+        middle_right = right_lines[head:len(right_lines) - tail]
+        super().__init__(None, middle_left, middle_right,
+                         autojunk=max(len(middle_left), len(middle_right)) >= _AUTOJUNK_FROM)
+
+    def get_opcodes(self) -> list[tuple[str, int, int, int, int]]:
+        """The opcodes over the whole two texts, the head and tail as equal blocks."""
+        head, tail = self._head, self._tail
+        left_size, right_size = self._sizes
+        codes = [("equal", 0, head, 0, head)] if head else []
+        codes += [(tag, i1 + head, i2 + head, j1 + head, j2 + head)
+                  for tag, i1, i2, j1, j2 in super().get_opcodes()
+                  if (tag, i1, i2, j1, j2) != ("equal", 0, 0, 0, 0)]
+        if tail:
+            codes.append(("equal", left_size - tail, left_size, right_size - tail, right_size))
+        merged: list[tuple[str, int, int, int, int]] = []
+        for code in codes:
+            if merged and code[0] == merged[-1][0] == "equal":
+                code = ("equal", merged[-1][1], code[2], merged[-1][3], code[4])
+                merged.pop()
+            merged.append(code)
+        return merged or [("equal", 0, 0, 0, 0)]
+
+
 def _unified_range(start: int, stop: int) -> str:
     """A hunk header's ``start,length``, as ``diff -u`` and ``difflib.unified_diff`` write it."""
     length = stop - start
@@ -86,7 +134,7 @@ def _unified_range(start: int, stop: int) -> str:
 
 
 def _unified_lines(
-        matcher: difflib.SequenceMatcher, left_lines: list[str], right_lines: list[str],
+        matcher: _TrimmedMatcher, left_lines: list[str], right_lines: list[str],
         labels: tuple[str, str]) -> list[str]:
     """The unified diff lines of *matcher*'s match, as ``difflib.unified_diff`` writes them."""
     lines: list[str] = []
@@ -121,7 +169,7 @@ def compare_texts(
     :return: the counts and the diff
     """
     left_lines, right_lines = _line_lists(left, right)
-    matcher = difflib.SequenceMatcher(None, left_lines, right_lines)
+    matcher = _TrimmedMatcher(left_lines, right_lines)
     added = 0
     removed = 0
     for tag, left_start, left_end, right_start, right_end in matcher.get_opcodes():
