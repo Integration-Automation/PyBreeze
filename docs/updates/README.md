@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-56 | 2026-09-25 | The README says what the other languages in the menu do | #docs #readme #i18n | [2026-09-c](2026-09-c.md) |
 | U-20260925-55 | 2026-09-25 | The README says which Python JupyterLab starts in | #docs #readme | [2026-09-c](2026-09-c.md) |
 | U-20260925-54 | 2026-09-25 | Which interpreter a run uses, told right in the README and a docstring | #docs #readme #executor | [2026-09-c](2026-09-c.md) |
 | U-20260925-53 | 2026-09-25 | The README's project tree names the root documents | #docs #readme | [2026-09-c](2026-09-c.md) |
@@ -458,4 +459,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
-| [2026-09-c.md](2026-09-c.md) | 2026-09 | 55 |
+| [2026-09-c.md](2026-09-c.md) | 2026-09 | 56 |
