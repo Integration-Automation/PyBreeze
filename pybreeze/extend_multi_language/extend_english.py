@@ -603,7 +603,7 @@ pybreeze_english_word_dict = {
     "response_analyze_button": "Analyze",
     "response_output_label": "Analysis:",
     "response_open_jwt_button": "Open JWT in decoder",
-    "response_open_status_button": "Open status in reference",
+    "response_open_status_button": "Look up the status code",
     "response_open_headers_button": "Open headers in analyzer",
     "response_open_body_button": "Open body in JSON format",
     "response_empty_hint": "Paste a response above, then click analyze.",
@@ -630,7 +630,7 @@ pybreeze_english_word_dict = {
     "header_analyzer_empty_hint": "Paste a header block above, then click analyze.",
     "header_analyzer_level_warning": "WARNING",
     "header_analyzer_level_info": "INFO",
-    "header_analyzer_open_jwt_button": "Open token in JWT decoder",
+    "header_analyzer_open_jwt_button": "Open JWT in decoder",
     # HTTP Header Analyzer — Findings ({header} is the header, {detail} its value)
     "header_finding_duplicate_header":
         "{header}: sent {detail} times; the receiver joins the values into one.",

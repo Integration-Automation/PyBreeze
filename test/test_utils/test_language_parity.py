@@ -109,6 +109,17 @@ class TestLabelsAreTold:
             assert EN[dock] == EN[tab]
             assert ZH[dock] == ZH[tab]
 
+    def test_the_same_action_reads_the_same_on_every_tab(self):
+        # Header Analyzer said "Open token in JWT decoder", Response Inspector
+        # "Open JWT in decoder", for the same hand-over
+        for words in (EN, ZH):
+            assert words["header_analyzer_open_jwt_button"] == words["response_open_jwt_button"]
+
+    def test_a_hand_over_button_does_not_name_a_tab_that_is_not_there(self):
+        # "Open status in reference": no tab is called Reference (the HTTP Status tab looks codes up)
+        assert "reference" not in EN["response_open_status_button"].lower()
+        assert "參考" not in ZH["response_open_status_button"]
+
     def test_no_string_holds_an_ip_address(self):
         # The SSH host placeholder's example was a private address (CLAUDE.md: no
         # hardcoded IPs or hostnames outside documented loopback)

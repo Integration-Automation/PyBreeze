@@ -567,7 +567,7 @@ pybreeze_traditional_chinese_word_dict = {
     "response_analyze_button": "分析",
     "response_output_label": "分析結果：",
     "response_open_jwt_button": "在解碼器開啟 JWT",
-    "response_open_status_button": "在參考開啟狀態碼",
+    "response_open_status_button": "查詢狀態碼",
     "response_open_headers_button": "在分析器開啟標頭",
     "response_open_body_button": "在 JSON 格式化開啟內容",
     "response_empty_hint": "請先在上方貼上回應，再按分析。",
@@ -594,7 +594,7 @@ pybreeze_traditional_chinese_word_dict = {
     "header_analyzer_empty_hint": "請先在上方貼上標頭，再按分析。",
     "header_analyzer_level_warning": "警告",
     "header_analyzer_level_info": "資訊",
-    "header_analyzer_open_jwt_button": "在 JWT 解碼器開啟權杖",
+    "header_analyzer_open_jwt_button": "在解碼器開啟 JWT",
     # HTTP 標頭分析器 — 發現（{header} 為標頭名稱，{detail} 為其值）
     "header_finding_duplicate_header":
         "{header}：送出 {detail} 次，接收端會把這些值合併成一個。",
