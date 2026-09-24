@@ -173,7 +173,7 @@ pybreeze_english_word_dict = {
     "ssh_command_widget_error_message_key_auth_failed": "Key auth failed",
     "ssh_command_widget_status_label_connected": "Connected",
     "ssh_command_widget_status_label_disconnected": "Disconnected",
-    "ssh_command_widget_log_message_connected": "Connected to",
+    "ssh_command_widget_log_message_connected": "Connected to {host}:{port} as {user}",
     "ssh_command_widget_log_message_error": "[Error] ",
     "ssh_command_widget_log_message_channel_closed": "[Channel closed]",
     "ssh_command_widget_error_message_reader_failed": "Reader error",

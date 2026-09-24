@@ -349,9 +349,11 @@ class SSHCommandWidget(QWidget):
         self.reader_thread.closed.connect(self._on_closed)
         self.reader_thread.start()
         self.login_widget.status_label.setText(
-            self.word_dict.get("ssh_command_widget_log_message_connected"))
-        self.append_text(f"{self.word_dict.get('ssh_command_widget_log_message_connected')}"
-                         f" {host}:{port} as {user}\n")
+            self.word_dict.get("ssh_command_widget_status_label_connected"))
+        # An IPv6 address in brackets, or its port reads as one more group
+        shown_host = f"[{host}]" if ":" in host else host
+        self.append_text(self.word_dict.get("ssh_command_widget_log_message_connected").format(
+            host=shown_host, port=port, user=user) + "\n")
 
     def _on_data(self, data: bytes):
         self._insert_output(self._decoder.feed(data))

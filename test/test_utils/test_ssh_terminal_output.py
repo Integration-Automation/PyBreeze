@@ -193,3 +193,37 @@ class TestSendingACommand:
         assert widget.command_input_edit.text() == ""
         widget.shell_channel = None
         widget.close()
+
+
+class _IdleReader:
+    """A reader that is never started: the connect message is all that is looked at."""
+
+    def __init__(self, _channel) -> None:
+        self.data_received = self.closed = self
+
+    def connect(self, _slot) -> None:
+        """No signal is ever sent."""
+
+    def start(self) -> None:
+        """Nothing to read."""
+
+
+class TestTheConnectMessage:
+    """It read "Connected to host:22 as user" with " as " in English, and the status "Connected to"."""
+
+    @pytest.mark.parametrize(("host", "shown"), [("example.org", "example.org:22"), ("::1", "[::1]:22")])
+    def test_names_the_session_in_the_ide_language(self, app, monkeypatch, host, shown):
+        from pybreeze.extend_multi_language.extend_traditional_chinese import (
+            pybreeze_traditional_chinese_word_dict as word,
+        )
+        from pybreeze.pybreeze_ui.connect_gui.ssh import ssh_command_widget as shell_mod
+        monkeypatch.setattr(shell_mod, "SSHReaderThread", _IdleReader)
+        widget = SSHCommandWidget()
+        widget.word_dict = word
+
+        widget._start_shell(object(), host, 22, "alice")
+
+        assert widget.terminal.toPlainText().endswith(f"已以 alice 身分連線至 {shown}\n")
+        assert widget.login_widget.status_label.text() == "已連線"
+        widget.shell_channel = widget.reader_thread = None
+        widget.close()

@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260924-238 | 2026-09-24 | The SSH shell's connect line in the IDE language, and its status Connected | #fix #ssh #i18n | [2026-09-b](2026-09-b.md) |
 | U-20260924-237 | 2026-09-24 | SFTP tree speaks the IDE language, and an entry named ... is not its placeholder | #fix #ssh #i18n | [2026-09-b](2026-09-b.md) |
 | U-20260923-236 | 2026-09-24 | Apply backspaces in one pass, so a long rub-out does not hold the UI | #fix #output #perf | [2026-09-b](2026-09-b.md) |
 | U-20260923-235 | 2026-09-24 | Skip a HAR entry holding half a character instead of failing the whole file | #fix #har | [2026-09-b](2026-09-b.md) |
@@ -319,4 +320,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | File | Period | Entries |
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
-| [2026-09-b.md](2026-09-b.md) | 2026-09 | 37 |
+| [2026-09-b.md](2026-09-b.md) | 2026-09 | 38 |
