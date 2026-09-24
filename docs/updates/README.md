@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-44 | 2026-09-25 | Tests that stopping a run stops what it started | #test #executor | [2026-09-c](2026-09-c.md) |
 | U-20260925-43 | 2026-09-25 | Tests of the diagram editor's image download itself | #test #security #diagram | [2026-09-c](2026-09-c.md) |
 | U-20260925-42 | 2026-09-25 | Every undeclared direct import in progress #53 | #docs #deps | [2026-09-c](2026-09-c.md) |
 | U-20260925-41 | 2026-09-25 | Record cryptography with the undeclared direct imports in progress #53 | #docs #deps #security | [2026-09-c](2026-09-c.md) |
@@ -446,4 +447,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
-| [2026-09-c.md](2026-09-c.md) | 2026-09 | 43 |
+| [2026-09-c.md](2026-09-c.md) | 2026-09 | 44 |
