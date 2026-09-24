@@ -121,3 +121,20 @@ class TestCompileThenRun:
 
         assert "[Error] Command not found" in window.code_result.toPlainText()
         assert runner.process is None and runs == []
+
+
+class TestRunArguments:
+    """JEditor does not check a plugin's run config: ``"args": "run"`` ran ``go r u n main.go``."""
+
+    @pytest.mark.parametrize(("config", "expected"), [
+        ({"args": ("run",)}, ["run"]),
+        ({"args": ["build", "-v"]}, ["build", "-v"]),
+        ({"args": "run"}, ["run"]),
+        ({"args": ""}, []),
+        ({}, []),
+        ({"args": None}, []),
+        ({"args": 3}, []),
+        ({"args": (1, "x")}, ["1", "x"]),
+    ])
+    def test_what_goes_between_the_compiler_and_the_file(self, config, expected):
+        assert file_runner_process.run_arguments(config) == expected

@@ -36,6 +36,22 @@ from pybreeze.utils.subprocess_util import (
 COMPILE_TIME_LIMIT_SECONDS = 60
 
 
+def run_arguments(run_config: dict) -> list[str]:
+    """The arguments *run_config* puts between the compiler and the file.
+
+    ``args`` is meant to be a sequence, but JEditor does not check what a
+    plugin registers: ``"args": "run"`` was taken one character at a time,
+    and ran ``go r u n main.go``. A string is one argument, and nothing that
+    is neither gives none.
+    """
+    args = run_config.get("args", ())
+    if isinstance(args, str):
+        return [args] if args else []
+    if not isinstance(args, (list, tuple)):
+        return []
+    return [str(arg) for arg in args]
+
+
 class FileRunnerProcess:
     """Manages subprocess execution for any language file."""
 
@@ -87,7 +103,7 @@ class FileRunnerProcess:
             # A plugin's config is not checked by JEditor when it registers.
             self.main_window.append_output("[Error] The run config names no compiler\n", is_error=True)
             return
-        args = [str(arg) for arg in run_config.get("args", ())]
+        args = run_arguments(run_config)
 
         if compile_then_run:
             self._compile_and_run(compiler, args, run_config.get("output_flag", "-o"), file_path)
