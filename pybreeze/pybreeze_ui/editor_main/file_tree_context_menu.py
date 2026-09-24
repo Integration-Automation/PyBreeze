@@ -9,7 +9,6 @@ from collections.abc import Callable
 from pathlib import Path, PureWindowsPath
 
 from PySide6.QtCore import Qt, QModelIndex
-from PySide6.QtGui import QCursor
 from PySide6.QtWidgets import (
     QTreeView, QMenu, QFileSystemModel, QInputDialog,
     QMessageBox, QApplication,
@@ -121,7 +120,7 @@ def _show_context_menu(pos, tree_view: QTreeView, main_window) -> None:
     reveal_act = menu.addAction(word.get("file_tree_ctx_reveal_in_explorer"))
     reveal_act.setEnabled(path is not None)
 
-    action = menu.exec(QCursor.pos())
+    action = menu.exec(tree_view.viewport().mapToGlobal(pos))
     menu.deleteLater()  # a child of the tree: kept for good otherwise, one per right-click
     if action is None:
         return

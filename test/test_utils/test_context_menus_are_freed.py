@@ -1,4 +1,5 @@
-"""A right-click menu is deleted once it closes, not kept as a child of its tree for good."""
+"""The trees' right-click menus: deleted once they close, not kept as children of the tree
+for good, and shown where they were asked for."""
 from __future__ import annotations
 
 import os
@@ -57,3 +58,21 @@ def test_the_sftp_tree_menu_goes_once_closed(app, menus_dismissed):
         viewer.on_context_menu(QPoint(1, 1))
     assert _menus_left(viewer) == 0
     viewer.deleteLater()
+
+
+def test_the_project_tree_menu_opens_where_it_was_asked_for(app, tmp_path, monkeypatch):
+    # It opened at the mouse pointer, wherever that was, when the Menu key asked for it
+    shown_at = []
+
+    class RecordingMenu(QMenu):
+        def exec(self, position, *args):
+            shown_at.append(position)
+
+    monkeypatch.setattr(file_tree_context_menu, "QMenu", RecordingMenu)
+    tree = QTreeView()
+    model = QFileSystemModel()
+    model.setRootPath(str(tmp_path))
+    tree.setModel(model)
+    file_tree_context_menu._show_context_menu(QPoint(7, 9), tree, main_window=None)
+    assert shown_at == [tree.viewport().mapToGlobal(QPoint(7, 9))]
+    tree.deleteLater()

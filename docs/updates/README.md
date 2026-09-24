@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-04 | 2026-09-25 | The project tree's menu opens where it was asked for | #fix #ui | [2026-09-c](2026-09-c.md) |
 | U-20260925-03 | 2026-09-25 | Free the project and SFTP trees' right-click menus | #fix #ui #ssh | [2026-09-c](2026-09-c.md) |
 | U-20260925-02 | 2026-09-25 | Full-width punctuation in the Traditional Chinese strings | #fix #i18n | [2026-09-c](2026-09-c.md) |
 | U-20260925-01 | 2026-09-25 | Start the 2026-09-c batch | #docs | [2026-09-c](2026-09-c.md) |
@@ -406,4 +407,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
-| [2026-09-c.md](2026-09-c.md) | 2026-09 | 3 |
+| [2026-09-c.md](2026-09-c.md) | 2026-09 | 4 |
