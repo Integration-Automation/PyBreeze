@@ -502,17 +502,17 @@ class TestColours:
         widget._on_data(b"\x1b[31mred\x1b[0m plain")
 
         assert widget.terminal.toPlainText() == "red plain"
-        assert _colour_at(widget, 0) == QColor(205, 0, 0)
-        assert _colour_at(widget, 4) != QColor(205, 0, 0)
+        assert _colour_at(widget, 0) == QColor(205, 49, 49)
+        assert _colour_at(widget, 4) != QColor(205, 49, 49)
         widget.close()
 
     def test_a_colour_carries_over_to_the_next_read(self, app):
         widget = SSHCommandWidget()
 
-        widget._on_data(b"\x1b[32mgr")
-        widget._on_data(b"een")
+        widget._on_data(b"\x1b[31mr")
+        widget._on_data(b"ed")
 
-        assert _colour_at(widget, 4) == QColor(0, 205, 0)
+        assert _colour_at(widget, 2) == QColor(205, 49, 49)  # the same on any background
         widget.close()
 
     def test_a_new_session_starts_without_the_last_one_colour(self, app):

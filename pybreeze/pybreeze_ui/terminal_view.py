@@ -41,19 +41,27 @@ def terminal_size(view: QPlainTextEdit) -> tuple[int, int]:
     return max(columns, MIN_COLUMNS), max(rows, MIN_ROWS)
 
 
-def _qcolour(colour: Colour | None) -> QColor | None:
-    return None if colour is None else QColor(*colour_rgb(colour))
+# Background lightness (0–255) below which a view counts as dark
+_DARK_BELOW = 128
+
+
+def _qcolour(colour: Colour | None, on_dark: bool) -> QColor | None:
+    return None if colour is None else QColor(*colour_rgb(colour, on_dark=on_dark))
 
 
 def style_format(style: TextStyle, palette: QPalette) -> QTextCharFormat:
-    """The format for text in *style*; *palette* gives the view's own colours, for inverse.
+    """The format for text in *style* in a view with *palette*.
 
-    The plain style is an empty format: the view's own font and colours.
+    The palette's background picks the dark or the light set of the 16 basic
+    colours, and its colours stand in for defaults in inverse. The plain style
+    is an empty format: the view's own font and colours.
     """
     text_format = QTextCharFormat()
     if style == PLAIN:
         return text_format
-    foreground, background = _qcolour(style.foreground), _qcolour(style.background)
+    on_dark = palette.color(QPalette.ColorRole.Base).lightness() < _DARK_BELOW
+    foreground = _qcolour(style.foreground, on_dark)
+    background = _qcolour(style.background, on_dark)
     if style.inverse:
         foreground, background = (background or palette.color(QPalette.ColorRole.Base),
                                   foreground or palette.color(QPalette.ColorRole.Text))

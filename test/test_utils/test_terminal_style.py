@@ -51,9 +51,17 @@ class TestApplySgr:
 
 
 class TestColourRgb:
+    @pytest.mark.parametrize(("colour", "on_dark", "rgb"), [
+        (4, True, (36, 114, 200)),   # xterm's (0, 0, 238) was unreadable on a dark theme
+        (4, False, (4, 81, 165)),
+        (7, True, (229, 229, 229)),
+        (7, False, (85, 85, 85)),    # "white" text stays readable on white
+        (1, True, (205, 49, 49)),
+    ])
+    def test_the_basic_colours_suit_the_background(self, colour, on_dark, rgb):
+        assert colour_rgb(colour, on_dark=on_dark) == rgb
+
     @pytest.mark.parametrize(("colour", "rgb"), [
-        (1, (205, 0, 0)),
-        (15, (255, 255, 255)),
         (16, (0, 0, 0)),
         (196, (255, 0, 0)),
         (231, (255, 255, 255)),
@@ -61,8 +69,9 @@ class TestColourRgb:
         (255, (238, 238, 238)),
         ((1, 2, 3), (1, 2, 3)),
     ])
-    def test_as_xterm_shows_it(self, colour, rgb):
-        assert colour_rgb(colour) == rgb
+    @pytest.mark.parametrize("on_dark", [True, False])
+    def test_the_rest_of_the_palette_is_xterm_on_any_background(self, colour, rgb, on_dark):
+        assert colour_rgb(colour, on_dark=on_dark) == rgb
 
 
 class TestSplitStyled:
@@ -100,7 +109,7 @@ class TestStyleFormat:
     def test_colours_and_emphasis(self, palette):
         text_format = style_format(TextStyle(foreground=1, background=(1, 2, 3), bold=True, underline=True), palette)
 
-        assert text_format.foreground().color() == QColor(205, 0, 0)
+        assert text_format.foreground().color() == QColor(205, 49, 49)
         assert text_format.background().color() == QColor(1, 2, 3)
         assert text_format.fontWeight() == QFont.Weight.Bold
         assert text_format.fontUnderline()
@@ -109,4 +118,20 @@ class TestStyleFormat:
         text_format = style_format(TextStyle(foreground=1, inverse=True), palette)
 
         assert text_format.foreground().color() == palette.color(QPalette.ColorRole.Base)
-        assert text_format.background().color() == QColor(205, 0, 0)
+        assert text_format.background().color() == QColor(205, 49, 49)
+
+
+def _palette_with_base(colour: QColor) -> QPalette:
+    palette = QPalette()
+    palette.setColor(QPalette.ColorRole.Base, colour)
+    return palette
+
+
+@pytest.mark.parametrize(("base", "blue"), [
+    (QColor(30, 30, 30), QColor(36, 114, 200)),
+    (QColor(255, 255, 255), QColor(4, 81, 165)),
+])
+def test_the_view_background_picks_the_basic_colours(palette, base, blue):
+    text_format = style_format(TextStyle(foreground=4), _palette_with_base(base))
+
+    assert text_format.foreground().color() == blue

@@ -34,20 +34,28 @@ _RUN_LENGTH = 8
 _PALETTE_FORM = 5  # 38;5;n
 _RGB_FORM = 2      # 38;2;r;g;b
 
-# xterm's first 16 colours: normal, then bright
-_BASIC_COLOURS = (
-    (0, 0, 0), (205, 0, 0), (0, 205, 0), (205, 205, 0),
-    (0, 0, 238), (205, 0, 205), (0, 205, 205), (229, 229, 229),
-    (127, 127, 127), (255, 0, 0), (0, 255, 0), (255, 255, 0),
-    (92, 92, 255), (255, 0, 255), (0, 255, 255), (255, 255, 255),
+# The first 16 colours (normal, then bright) as VS Code's terminal shows them
+# on a dark and on a light theme. xterm's own blue (0, 0, 238) was all but
+# unreadable on the IDE's dark background.
+_ON_DARK = (
+    (0, 0, 0), (205, 49, 49), (13, 188, 121), (229, 229, 16),
+    (36, 114, 200), (188, 63, 188), (17, 168, 205), (229, 229, 229),
+    (102, 102, 102), (241, 76, 76), (35, 209, 139), (245, 245, 67),
+    (59, 142, 234), (214, 112, 214), (41, 184, 219), (229, 229, 229),
+)
+_ON_LIGHT = (
+    (0, 0, 0), (205, 49, 49), (16, 124, 16), (148, 152, 0),
+    (4, 81, 165), (188, 5, 188), (5, 152, 188), (85, 85, 85),
+    (102, 102, 102), (241, 76, 76), (20, 206, 20), (181, 186, 0),
+    (59, 142, 234), (214, 112, 214), (41, 184, 219), (165, 165, 165),
 )
 _CUBE_LEVELS = (0, 95, 135, 175, 215, 255)
 _CUBE_START = 16
 _GREY_START = 232
 _PALETTE_SIZE = 256
 _CHANNEL_MAX = 255
-# Longest parameter read: past it (a server can send thousands of digits, and
-# int() refuses more than 4300) it is one no parameter means
+# Longest parameter read: a longer one (a server can send thousands of digits,
+# and int() refuses more than 4300) is taken as unknown
 _MAX_PARAMETER_DIGITS = 5
 _UNKNOWN = -1
 
@@ -67,12 +75,17 @@ class TextStyle:
 PLAIN = TextStyle()
 
 
-def colour_rgb(colour: Colour) -> tuple[int, int, int]:
-    """The (red, green, blue) of *colour*, as xterm shows it."""
+def colour_rgb(colour: Colour, *, on_dark: bool) -> tuple[int, int, int]:
+    """The (red, green, blue) of *colour*, on a dark background or a light one.
+
+    The first 16 differ between the two; the rest of the palette (xterm's
+    colour cube and greys) and a colour given as red, green and blue do not.
+    """
     if isinstance(colour, tuple):
         return colour
-    if colour < len(_BASIC_COLOURS):
-        return _BASIC_COLOURS[colour]
+    basic = _ON_DARK if on_dark else _ON_LIGHT
+    if colour < len(basic):
+        return basic[colour]
     if colour < _GREY_START:
         index = colour - _CUBE_START
         return (_CUBE_LEVELS[index // 36], _CUBE_LEVELS[index // 6 % 6], _CUBE_LEVELS[index % 6])
