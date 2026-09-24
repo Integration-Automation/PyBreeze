@@ -511,9 +511,9 @@ pybreeze_traditional_chinese_word_dict = {
     "url_builder_empty_hint": "請在上方輸入 URL 或描述 URL 各部分的 JSON 物件。",
     # 正規表示式測試器 — 選單
     "extend_tools_menu_regex_tab_action": "正規表示式測試器分頁",
-    "extend_tools_menu_regex_tab_label": "Regex",
+    "extend_tools_menu_regex_tab_label": "正規表示式",
     "extend_tools_menu_regex_dock_action": "正規表示式測試器停駐窗格",
-    "extend_tools_menu_regex_dock_title": "Regex",
+    "extend_tools_menu_regex_dock_title": "正規表示式",
     # 正規表示式測試器 — 介面
     "regex_pattern_label": "樣式：",
     "regex_pattern_placeholder": r"(\d{4})-(\d{2})-(\d{2})",

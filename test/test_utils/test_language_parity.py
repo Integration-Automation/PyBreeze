@@ -126,6 +126,14 @@ class TestLabelsAreTold:
         for *_start, action_key in _DOCK_ACTIONS:
             assert EN[action_key].endswith(" Dock") and ZH[action_key].endswith("停駐窗格"), action_key
 
+    def test_a_tab_is_titled_as_its_menu_entry_names_it(self):
+        # The Regex tab was "Regex" in Traditional Chinese, opened by 正規表示式測試器分頁
+        from pybreeze.pybreeze_ui.menu.tools.tools_menu import _TAB_ACTIONS
+
+        for *_start, action_key, label_key in _TAB_ACTIONS:
+            for words in (EN, ZH):
+                assert words[label_key] in words[action_key], (label_key, words[label_key], words[action_key])
+
     def test_a_dock_is_titled_like_the_tab_of_the_same_tool(self):
         # "AI Code-Review" and "Skill Send GUI" as titles; the Skill Send dock's
         # menu entry read "Skill Prompt Dock"
