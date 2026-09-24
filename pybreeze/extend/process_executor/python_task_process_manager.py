@@ -78,13 +78,10 @@ class TaskProcessManager:
             self,
             main_window: CodeWindow,
             task_done_trigger_function: Callable | None = None,
-            error_trigger_function: Callable | None = None,
             program_buffer_size: int = 1024,
             program_encoding: str = "utf-8"
     ):
-        super().__init__()
         self.compiler_path = None
-        # ite_instance param
         self.read_program_error_output_from_thread: threading.Thread | None = None
         self.read_program_output_from_thread: threading.Thread | None = None
         self.main_window: CodeWindow = main_window
@@ -100,8 +97,7 @@ class TaskProcessManager:
         # The file a script too long for the command line was written to
         self._script_file: Path | None = None
 
-        self.task_done_trigger_function: Callable = task_done_trigger_function
-        self.error_trigger_function: Callable = error_trigger_function
+        self.task_done_trigger_function: Callable | None = task_done_trigger_function
         self.program_buffer_size = program_buffer_size
 
     def renew_path(self) -> bool:
