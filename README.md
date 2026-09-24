@@ -76,7 +76,7 @@ Each module gets the same menu shape: **Run** (single script, batch directory, w
 - **Code editor** — built on [JEditor](https://github.com/Integration-Automation/JEDITOR): tabs, project tree, format checker, debugger, terminal, variable inspector and a git client pane
 - **Script execution** — single or batch, each run in a window of its own with a Stop button; action files are passed by path, and a script from the tab in front that is too long for a Windows command line (~32 KB) goes through a temporary file
 - **Report generation** — HTML / JSON / XML after a run, with optional email delivery
-- **Integrated JupyterLab** — launches as a tab, installing JupyterLab into the project venv if it is missing
+- **Integrated JupyterLab** — launches as a tab, in the same interpreter a run would use, installing JupyterLab there if it is missing
 - **Virtual environment awareness** — a run uses the interpreter chosen under **Python Env**; with none chosen, a `venv/` or `.venv/` in the working folder is detected and used, and without one, the interpreter the IDE runs on
 
 ---
