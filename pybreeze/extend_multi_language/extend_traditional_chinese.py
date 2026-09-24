@@ -262,7 +262,7 @@ pybreeze_traditional_chinese_word_dict = {
     "ssh_login_widget_label_user": "使用者",
     "ssh_login_widget_label_key": "金鑰",
     "ssh_login_widget_label_password": "密碼",
-    "ssh_login_widget_placeholder_host": "主機（例如：192.168.0.10）",
+    "ssh_login_widget_placeholder_host": "主機名稱或 IP 位址",
     "ssh_login_widget_placeholder_username": "使用者名稱",
     "ssh_login_widget_placeholder_password": "密碼",
     "ssh_login_widget_placeholder_private_key": "私鑰路徑（OpenSSH 或 PEM）",

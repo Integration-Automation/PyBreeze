@@ -272,7 +272,7 @@ pybreeze_english_word_dict = {
     "ssh_login_widget_label_user": "User",
     "ssh_login_widget_label_key": "Key",
     "ssh_login_widget_label_password": "Password",
-    "ssh_login_widget_placeholder_host": "Host (e.g., 192.168.0.10)",
+    "ssh_login_widget_placeholder_host": "Host name or IP address",
     "ssh_login_widget_placeholder_username": "Username",
     "ssh_login_widget_placeholder_password": "Password",
     "ssh_login_widget_placeholder_private_key": "Private key path (OpenSSH or PEM)",

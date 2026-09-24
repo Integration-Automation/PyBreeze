@@ -109,6 +109,14 @@ class TestLabelsAreTold:
             assert EN[dock] == EN[tab]
             assert ZH[dock] == ZH[tab]
 
+    def test_no_string_holds_an_ip_address(self):
+        # The SSH host placeholder's example was a private address (CLAUDE.md: no
+        # hardcoded IPs or hostnames outside documented loopback); the AI panels'
+        # placeholders name 127.0.0.1
+        addresses = {key: value for words in (EN, ZH) for key, value in words.items()
+                     if re.search(r"\b(?!127\.)\d{1,3}(\.\d{1,3}){3}\b", str(value))}
+        assert addresses == {}
+
     def test_no_label_is_in_capitals(self):
         # Every automation menu's Help submenu read "HELP", beside JEditor's "Help" menu
         acronyms = {"HTTP", "JSON", "MIME", "SFTP"}
