@@ -12,7 +12,8 @@ from PySide6.QtWidgets import QApplication, QPlainTextEdit, QWidget
 from pybreeze.extend_multi_language.update_language_dict import update_language_dict
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_command_widget import SSHCommandWidget
 from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
-from pybreeze.pybreeze_ui.terminal_view import MIN_COLUMNS, MIN_ROWS, terminal_size, use_terminal_font
+from pybreeze.pybreeze_ui.fixed_pitch import use_fixed_pitch_font
+from pybreeze.pybreeze_ui.terminal_view import MIN_COLUMNS, MIN_ROWS, terminal_size
 
 
 @pytest.fixture(scope="module")
@@ -32,7 +33,7 @@ def test_the_view_gets_the_fixed_pitch_font_at_its_own_size(app):
     font.setPointSizeF(13.5)
     view.setFont(font)
 
-    use_terminal_font(view)
+    use_fixed_pitch_font(view)
 
     assert view.font().family() == _fixed_family()
     assert view.font().pointSizeF() == 13.5
@@ -44,7 +45,7 @@ def test_a_theme_style_sheet_does_not_take_the_font_back(app):
     theme = QWidget()
     theme.setStyleSheet('* { font-family: "Arial"; }')
     view = QPlainTextEdit(theme)
-    use_terminal_font(view)
+    use_fixed_pitch_font(view)
 
     view.ensurePolished()
 
@@ -70,7 +71,7 @@ def test_the_run_window_shows_a_fixed_pitch_font(app):
 
 def _view(width: int, height: int) -> QPlainTextEdit:
     view = QPlainTextEdit()
-    use_terminal_font(view)
+    use_fixed_pitch_font(view)
     view.resize(width, height)
     view.show()
     QApplication.processEvents()
