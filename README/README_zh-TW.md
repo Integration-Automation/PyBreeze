@@ -344,7 +344,7 @@ start_editor(theme="dark_teal.xml")         # 任何 qt_material 主題
 | **WebRunner** | 瀏覽器驅動程式整合、元素定位與互動、Web 測試腳本、報告 |
 | **LoadDensity** | 併發請求模擬、效能指標、壓力情境管理、報告 |
 | **MailThunder** | SMTP 寄信、HTML 報告寄送、附件、以環境變數設定 |
-| **TestPioneer** | YAML 測試定義、範本產生、結構化執行 |
+| **TestPioneer** | YAML 測試定義、範本產生、結構化執行；`Install ▸ Automation ▸ Install TestPioneer` 可安裝或升級（0.1.34 起不論系統語系，都以 UTF-8 讀取 YAML 檔） |
 | **File Automation** | 自動化檔案與目錄操作、批次處理 |
 | **prthinker** | 對檔案或 Pull Request 進行思維鏈程式碼審查；設定存於 `~/.pybreeze/prthinker_setting.json`；透過 `Install ▸ Automation ▸ Install prthinker` 從它自己的原始碼資料夾安裝（需要 Python 3.12 以上） |
 

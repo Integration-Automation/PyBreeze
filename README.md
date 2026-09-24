@@ -344,7 +344,7 @@ Once launched:
 | **WebRunner** | Browser driver integration, element location and interaction, web test scripting, reports |
 | **LoadDensity** | Concurrent request simulation, performance metrics, stress scenario management, reports |
 | **MailThunder** | SMTP sending, HTML report delivery, attachments, environment-variable configuration |
-| **TestPioneer** | YAML test definitions, template generation, structured execution |
+| **TestPioneer** | YAML test definitions, template generation, structured execution; `Install ▸ Automation ▸ Install TestPioneer` installs or upgrades it (0.1.34 and later read a YAML file as UTF-8 whatever the system locale) |
 | **File Automation** | Automated file and directory operations, batch processing |
 | **prthinker** | Chain-of-thought code review of a file or a Pull Request; settings in `~/.pybreeze/prthinker_setting.json`; installed from its own source folder via `Install ▸ Automation ▸ Install prthinker` (needs Python 3.12+) |
 

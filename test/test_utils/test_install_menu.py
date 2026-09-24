@@ -144,6 +144,7 @@ class TestTheAutomationInstallMenu:
             (words.get("install_menu_webrunner"), "je_web_runner"),
             (words.get("install_menu_automation_file"), "automation_file"),
             (words.get("install_menu_mail_thunder"), "je_mail_thunder"),
+            (words.get("install_menu_test_pioneer"), "test_pioneer"),
         ]
         assert menu.actions()[-1].text() == words.get("install_menu_prthinker")
 

@@ -24,6 +24,7 @@ PYPI_PACKAGES: tuple[tuple[str, str], ...] = (
     ("install_menu_webrunner", "je_web_runner"),
     ("install_menu_automation_file", "automation_file"),
     ("install_menu_mail_thunder", "je_mail_thunder"),
+    ("install_menu_test_pioneer", "test_pioneer"),
 )
 
 

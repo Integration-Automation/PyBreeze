@@ -104,6 +104,7 @@ pybreeze_english_word_dict = {
     "install_menu_webrunner": "Install WebRunner",
     "install_menu_automation_file": "Install Automation File",
     "install_menu_mail_thunder": "Install MailThunder",
+    "install_menu_test_pioneer": "Install TestPioneer",
     "install_menu_prthinker": "Install prthinker (code review)",
     "install_menu_tools_install_menu_label": "Tools",
     "install_menu_tools_install_build_tools": "Install Build Tools",

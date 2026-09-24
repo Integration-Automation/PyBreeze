@@ -207,7 +207,7 @@ call_X_multi_file_and_send()   → run_dir_files_with_package(..., True)
 
 `install_utils.install_packages()` 用 `build_task_process()` 開一個執行視窗，`start_module_process("pip", ["install", "-U", *packages])`：參數清單、不經 shell（以前借 JEditor 的 `ShellManager`，它用 `shell=True` 交給 `cmd.exe`，使用者選的資料夾名稱裡有 `&` 就會把指令切開）。多個套件一次 pip（建置工具以前是三個 pip 同時對同一個環境跑）。pip 用 IDE 選定的直譯器，沒選時照一般執行的退路。`install_package()` 是單一套件的寫法
 
-- `automation_menu/` — 七個自動化套件的一鍵安裝。**prthinker 例外**：不在 PyPI 上，第一次會問來源資料夾、記進設定，之後裝 `<path>[runner]`
+- `automation_menu/` — 八個自動化套件的一鍵安裝（PyPI 上的七個列在 `PYPI_PACKAGES`）。**prthinker 例外**：不在 PyPI 上，第一次會問來源資料夾、記進設定，之後裝 `<path>[runner]`
 - `tools_menu/` — 安裝 setuptools / build / wheel
 
 ---
