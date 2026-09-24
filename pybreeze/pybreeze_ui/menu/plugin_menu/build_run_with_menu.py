@@ -132,12 +132,13 @@ def run_current_file_with(main_window: PyBreezeMainWindow, run_config: dict) -> 
         msg = QMessageBox(main_window)
         msg.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         msg.setWindowTitle(language_wrapper.language_word_dict.get("run_with_menu_label"))
-        msg.setText(
+        # The suffixes are the plugin's and the file's: text, not markup
+        msg.setText(as_text(
             language_wrapper.language_word_dict.get("run_with_suffix_mismatch").format(
                 suffix=suffix,
                 expected=", ".join(supported),
             )
-        )
+        ))
         msg.exec()
         return
 
