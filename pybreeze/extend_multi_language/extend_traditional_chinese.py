@@ -349,7 +349,7 @@ pybreeze_traditional_chinese_word_dict = {
     # CoT code-review GUI
     "cot_gui_window_title": "Prompt 傳送介面",
     "cot_gui_label_api_url": "API URL：",
-    "cot_gui_placeholder_api_url": "請輸入要傳送的 API URL，例如 http://127.0.0.1:5000/api",
+    "cot_gui_placeholder_api_url": "要傳送到的 API URL，例如 https://llm.example.com/api",
     "cot_gui_placeholder_code_paste_area": "在這裡貼上要審查的程式碼",
     "cot_gui_label_step": "步驟：",
     "cot_gui_placeholder_no_answers": "還沒有回覆",
@@ -363,7 +363,7 @@ pybreeze_traditional_chinese_word_dict = {
     "skills_error_status": "錯誤：{status_code}\n{text}",
     "skills_exception": "發生例外：{error}",
     "skills_api_url_label": "LLM API URL：",
-    "skills_api_url_placeholder": "請輸入要傳送的 API URL，例如 http://127.0.0.1:5000/api",
+    "skills_api_url_placeholder": "要傳送到的 API URL，例如 https://llm.example.com/api",
     "skills_prompt_select_label": "選擇 Prompt 範本：",
     "skills_prompt_label": "Prompt：",
     "skills_send_button": "傳送",

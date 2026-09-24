@@ -359,7 +359,7 @@ pybreeze_english_word_dict = {
     # CoT code-review GUI
     "cot_gui_window_title": "Prompt Sender UI",
     "cot_gui_label_api_url": "API URL:",
-    "cot_gui_placeholder_api_url": "Please enter the API URL to send, e.g. http://127.0.0.1:5000/api",
+    "cot_gui_placeholder_api_url": "The API URL to send to, e.g. https://llm.example.com/api",
     "cot_gui_placeholder_code_paste_area": "Paste the code to review here",
     "cot_gui_label_step": "Step:",
     "cot_gui_placeholder_no_answers": "No answers yet",
@@ -373,7 +373,7 @@ pybreeze_english_word_dict = {
     "skills_error_status": "Error: {status_code}\n{text}",
     "skills_exception": "Exception occurred: {error}",
     "skills_api_url_label": "LLM API URL:",
-    "skills_api_url_placeholder": "Enter the API URL to send, e.g. http://127.0.0.1:5000/api",
+    "skills_api_url_placeholder": "The API URL to send to, e.g. https://llm.example.com/api",
     "skills_prompt_select_label": "Select Prompt Template:",
     "skills_prompt_label": "Prompt:",
     "skills_send_button": "Send",

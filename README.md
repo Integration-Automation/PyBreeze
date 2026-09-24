@@ -165,7 +165,7 @@ Password or private-key authentication (the key file picked with Browse, startin
 
 ![AI code review client](images/ai_code_review.png)
 
-*Shown in the pre-send state.* Send a selection to an LLM endpoint, then accept or reject the suggestion — the tally is kept in `~/.pybreeze/response_stats.txt`. The URL is SSRF-validated, the connection goes only to the address that was checked, redirects are not followed, and the response body is size-capped before it reaches the panel.
+*Shown in the pre-send state.* Send a selection to an LLM endpoint, then accept or reject the suggestion — the tally is kept in `~/.pybreeze/response_stats.txt`. The URL is SSRF-validated, the connection goes only to the address that was checked, redirects are not followed, and the response body is size-capped before it reaches the panel. An endpoint on this machine or on a private network, such as a local model server, is therefore refused; CoT Code Review and Skill Send check their endpoint URL the same way.
 
 ### Chain-of-Thought Code Review (prthinker)
 

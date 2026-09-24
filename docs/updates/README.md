@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-11 | 2026-09-25 | AI panels no longer suggest an endpoint they refuse | #fix #ai #readme | [2026-09-c](2026-09-c.md) |
 | U-20260925-10 | 2026-09-25 | JWT, Query and URL tools in the fixed-pitch font | #fix #tools #ui | [2026-09-c](2026-09-c.md) |
 | U-20260925-09 | 2026-09-25 | No private address in the SSH host placeholder | #fix #ssh #i18n | [2026-09-c](2026-09-c.md) |
 | U-20260925-08 | 2026-09-25 | Say what to do with a PuTTY key instead of offering it | #fix #ssh #i18n #readme | [2026-09-c](2026-09-c.md) |
@@ -413,4 +414,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
-| [2026-09-c.md](2026-09-c.md) | 2026-09 | 10 |
+| [2026-09-c.md](2026-09-c.md) | 2026-09 | 11 |

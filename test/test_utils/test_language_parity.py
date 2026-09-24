@@ -111,11 +111,36 @@ class TestLabelsAreTold:
 
     def test_no_string_holds_an_ip_address(self):
         # The SSH host placeholder's example was a private address (CLAUDE.md: no
-        # hardcoded IPs or hostnames outside documented loopback); the AI panels'
-        # placeholders name 127.0.0.1
+        # hardcoded IPs or hostnames outside documented loopback)
         addresses = {key: value for words in (EN, ZH) for key, value in words.items()
                      if re.search(r"\b(?!127\.)\d{1,3}(\.\d{1,3}){3}\b", str(value))}
         assert addresses == {}
+
+    def test_an_example_url_is_one_the_ide_would_send_to(self, monkeypatch):
+        # CoT Code Review and Skill Send suggested http://127.0.0.1:5000/api, which
+        # the URL check they send through refuses as not public
+        import ipaddress
+        import socket
+
+        from pybreeze.utils.network.url_validation import UnsafeURLError, validate_url
+
+        def getaddrinfo(host, *_args, **_kwargs):
+            try:
+                address = str(ipaddress.ip_address(host))
+            except ValueError:
+                address = "127.0.0.1" if host == "localhost" else "8.8.8.8"
+            return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (address, 0))]
+
+        monkeypatch.setattr(socket, "getaddrinfo", getaddrinfo)
+        refused = {}
+        for words in (EN, ZH):
+            for key, value in words.items():
+                for url in re.findall(r"https?://[^\s'\"，）)]+", str(value)):
+                    try:
+                        validate_url(url)
+                    except UnsafeURLError as error:
+                        refused[key] = (url, str(error))
+        assert refused == {}
 
     def test_no_label_is_in_capitals(self):
         # Every automation menu's Help submenu read "HELP", beside JEditor's "Help" menu

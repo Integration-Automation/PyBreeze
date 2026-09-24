@@ -165,7 +165,7 @@ PyBreeze 开箱即用，涵盖自动化测试的完整范围：
 
 ![AI 代码审查客户端](../images/ai_code_review.png)
 
-*图中为发送前的状态。* 把选中的代码发送到 LLM 端点，然后接受或拒绝建议——统计记录保存在 `~/.pybreeze/response_stats.txt`。URL 会经过 SSRF 验证，连接只会连到经过检查的地址，不跟随重定向，响应体在到达面板之前会被限制大小。
+*图中为发送前的状态。* 把选中的代码发送到 LLM 端点，然后接受或拒绝建议——统计记录保存在 `~/.pybreeze/response_stats.txt`。URL 会经过 SSRF 验证，连接只会连到经过检查的地址，不跟随重定向，响应体在到达面板之前会被限制大小。因此本机或私有网络上的端点（例如在本机运行的模型服务器）会被拒绝；CoT Code Review 与 Skill Send 也以同样的方式检查端点 URL。
 
 ### 思维链代码审查（prthinker）
 
