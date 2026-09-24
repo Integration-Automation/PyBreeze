@@ -284,6 +284,10 @@ class TestTheMenu:
 
             assert shown == ["重新整理", "建立資料夾", "重新命名", "刪除", "下載", "上傳至此資料夾"]
             assert [headers.text(i) for i in range(4)] == ["名稱", "類型", "大小", "路徑"]
+            # The Type column read "dir" / "file"
+            folder, file = widget.make_item("a", "dir", 0, "/a"), widget.make_item("b", "file", 5, "/b")
+            assert (folder.text(1), file.text(1)) == ("資料夾", "檔案")
+            assert tree_mod.is_folder(folder) and tree_mod.is_file(file)
         finally:
             widget.close()
             widget.deleteLater()

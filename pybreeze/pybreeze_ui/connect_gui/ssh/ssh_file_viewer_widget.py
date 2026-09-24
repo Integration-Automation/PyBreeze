@@ -285,7 +285,8 @@ class SSHFileTreeManager(QWidget):
         建立帶有中繼資料的樹狀項目。
         """
         size_text = "" if typ == "dir" else format_size(size)
-        item = QTreeWidgetItem([name, typ, size_text, full_path])
+        kind_text = self.word_dict.get(f"ssh_file_viewer_type_{typ}")
+        item = QTreeWidgetItem([name, kind_text, size_text, full_path])
         item.setData(0, KIND_ROLE, typ)
         if typ == "dir":
             # Use QStyle enum for standard icons

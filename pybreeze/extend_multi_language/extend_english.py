@@ -244,6 +244,8 @@ pybreeze_english_word_dict = {
     "ssh_file_viewer_tree_header_type": "Type",
     "ssh_file_viewer_tree_header_size": "Size",
     "ssh_file_viewer_tree_header_path": "Path",
+    "ssh_file_viewer_type_dir": "Folder",
+    "ssh_file_viewer_type_file": "File",
     "ssh_file_viewer_dialog_title_missing_input": "Missing input",
     "ssh_file_viewer_dialog_message_missing_input": "Host, user, and password are required.",
     "ssh_file_viewer_dialog_title_connection_failed": "Connection failed",

@@ -243,6 +243,8 @@ pybreeze_traditional_chinese_word_dict = {
     "ssh_file_viewer_tree_header_type": "類型",
     "ssh_file_viewer_tree_header_size": "大小",
     "ssh_file_viewer_tree_header_path": "路徑",
+    "ssh_file_viewer_type_dir": "資料夾",
+    "ssh_file_viewer_type_file": "檔案",
     "ssh_file_viewer_dialog_title_missing_input": "缺少輸入",
     "ssh_file_viewer_dialog_message_missing_input": "必須輸入主機、使用者與密碼。",
     "ssh_file_viewer_dialog_title_connection_failed": "連線失敗",
