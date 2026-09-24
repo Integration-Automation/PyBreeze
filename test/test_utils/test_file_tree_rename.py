@@ -88,6 +88,9 @@ docked_elsewhere = FullEditorWidget(str(other))
 other_dock.setWidget(docked_elsewhere)
 window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, other_dock)
 docked.code_edit.setPlainText("edited in the dock\\n")
+# setPlainText leaves the document unmodified; a real edit marks it, and the
+# dock now writes on close only when modified (je_editor >= 1.0.27)
+docked.code_edit.document().setModified(True)
 
 menu.QInputDialog.getText = staticmethod(lambda *args, **kwargs: ("b.py", True))
 menu._action_rename(QTreeView(), window, original)

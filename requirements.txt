@@ -6,7 +6,7 @@
 # and dev.toml. It does not list pybreeze itself: that would install the published
 # build, so CI would be testing PyPI's code instead of the working tree.
 PySide6==6.11.2
-je-editor
+je-editor>=1.0.27
 je_auto_control
 je_web_runner
 je_load_density

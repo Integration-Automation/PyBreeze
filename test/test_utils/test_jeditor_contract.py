@@ -164,7 +164,7 @@ class TestTheShapesPyBreezeCalls:
     def test_a_docked_editor_writes_to_the_file_it_names_when_it_closes(self):
         # A rename re-points current_file; the dock saves nothing else
         docked = _internal("je_editor.pyside_ui.main_ui.editor.editor_widget_dock", "FullEditorWidget")
-        assert _parameters(docked.__init__) == ["current_file"]
+        assert _parameters(docked.__init__) == ["current_file", "encoding", "line_ending"]
         assert "self.current_file" in inspect.getsource(docked.closeEvent)
 
     def test_the_language_wrapper_has_what_pybreeze_reads(self):
