@@ -7,7 +7,7 @@ PyBreeze 整合了多個 AI 驅動的工具，用於程式碼審查、提示詞�
 AI 程式碼審查用戶端
 --------------------
 
-**選單：** Tools > AI Code-Review Tab / AI Code-Review Dock
+**選單：** Tools > AI Code Review Tab / AI Code Review Dock
 
 用於將程式碼發送到 AI API 端點進行自動程式碼審查的用戶端。
 
@@ -40,7 +40,7 @@ AI 程式碼審查用戶端
 CoT 程式碼審查 GUI
 --------------------
 
-**選單：** Tools > AI Code-Review Tab / Dock
+**選單：** Tools > AI Code Review Tab / Dock
 
 使用思維鏈（CoT）提示詞進行更結構化和詳細審查的進階程式碼審查工具。
 
@@ -118,7 +118,7 @@ Skill 提示詞編輯器
 Skills 傳送 GUI
 ----------------
 
-**選單：** Tools > Skill Send GUI Tab / Skill Prompt Dock
+**選單：** Tools > Skill Send Tab / Skill Send Dock
 
 用於將基於技能的提示詞發送到 LLM API 並查看回應的介面。
 

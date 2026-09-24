@@ -109,10 +109,10 @@ Several tools can be opened as **dock widgets** instead of tabs, allowing you to
 arrange them freely around the main window:
 
 - SSH Client Dock
-- AI Code-Review Dock
+- AI Code Review Dock
 - CoT Prompt Editor Dock
 - Skill Prompt Editor Dock
-- Skill Send GUI Dock
+- Skill Send Dock
 - Diagram Editor Dock
 
 Dock widgets can be dragged, resized, and snapped to any edge of the main window.

@@ -20,7 +20,7 @@ SSH Client Dock
 AI 工具
 -------
 
-AI Code-Review Tab / Dock
+AI Code Review Tab / Dock
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 開啟 AI 程式碼審查用戶端，允許您將程式碼發送到 AI API 端點進行自動程式碼審查。
@@ -38,7 +38,7 @@ Skill Prompt Editor Tab / Dock
 開啟基於技能的提示詞編輯器，用於建立特定任務的提示詞範本
 （如程式碼審查提示詞、程式碼解釋提示詞）。詳細資訊請參閱 :doc:`ai_tools`。
 
-Skill Send GUI Tab / Dock
+Skill Send Tab / Dock
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 開啟技能提示詞傳送介面，用於將提示詞發送到 LLM API 並查看回應。

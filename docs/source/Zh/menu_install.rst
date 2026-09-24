@@ -23,7 +23,7 @@ Automation 子選單
      - 執行 ``pip install -U je_load_density``
    * - **Install WebRunner**
      - 執行 ``pip install -U je_web_runner``
-   * - **Install Automation File**
+   * - **Install FileAutomation**
      - 執行 ``pip install -U automation_file``
    * - **Install MailThunder**
      - 執行 ``pip install -U je_mail_thunder``

@@ -7,7 +7,7 @@ Automation 選單
 每個自動化模組都遵循一致的選單結構：
 
 - **RUN** 子選單 -- 執行腳本（單檔或多檔，可選擇是否以郵件發送結果）
-- **HELP** 子選單 -- 連結到文件和 GitHub 儲存庫
+- **Help** 子選單 -- 連結到文件和 GitHub 儲存庫
 - **Project** 子選單 -- 建立新的專案範本
 - **GUI Tab** -- 開啟嵌入式 GUI 元件（部分模組可用）
 
@@ -35,7 +35,7 @@ RUN 子選單
    * - **Run Multi AutoControl Script With Send**
      - 執行多個腳本並透過郵件發送結果。
 
-HELP 子選單
+Help 子選單
 ^^^^^^^^^^^
 
 .. list-table::
@@ -106,7 +106,7 @@ RUN 子選單
    * - **Run Multi APITestka Script With Send**
      - 執行多個腳本並透過郵件發送結果。
 
-HELP 子選單
+Help 子選單
 ^^^^^^^^^^^
 
 - **Open APITestka Doc** -- 開啟 https://apitestka.readthedocs.io/
@@ -146,7 +146,7 @@ RUN 子選單
    * - **Run Multi WebRunner Script With Send**
      - 執行多個腳本並透過郵件發送結果。
 
-HELP 子選單
+Help 子選單
 ^^^^^^^^^^^
 
 - **Open WebRunner Doc** -- 開啟 https://webrunner.readthedocs.io/
@@ -180,7 +180,7 @@ RUN 子選單
    * - **Run Multi LoadDensity Script With Send**
      - 執行多個腳本並透過郵件發送結果。
 
-HELP 子選單
+Help 子選單
 ^^^^^^^^^^^
 
 - **Open LoadDensity Doc** -- 開啟 https://loaddensity.readthedocs.io/
@@ -220,7 +220,7 @@ RUN 子選單
    * - **Run Multi FileAutomation Script With Send**
      - 執行多個腳本並透過郵件發送結果。
 
-HELP 子選單
+Help 子選單
 ^^^^^^^^^^^
 
 - **Open FileAutomation Doc** -- 開啟 https://fileautomation.readthedocs.io/
@@ -248,7 +248,7 @@ RUN 子選單
    * - **Run MailThunder Script**
      - 將目前編輯器內容作為 MailThunder 腳本執行。
 
-HELP 子選單
+Help 子選單
 ^^^^^^^^^^^
 
 - **Open MailThunder Doc** -- 開啟 https://mailthunder.readthedocs.io/
@@ -270,9 +270,9 @@ TestPioneer 選單
 
    * - 選單項目
      - 說明
-   * - **Create TestPioneer Yaml Template**
+   * - **Create TestPioneer YAML Template**
      - 產生用於定義測試案例的 YAML 範本檔案。
-   * - **Execute Test Pioneer Yaml**
+   * - **Run TestPioneer YAML**
      - 開啟檔案對話框選擇 ``.yml`` 檔案，並執行其中定義的測試。
 
 腳本執行流程

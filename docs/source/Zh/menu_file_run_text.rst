@@ -17,7 +17,7 @@ File 選單
    * - **Save File**
      - 將目前程式碼編輯區的內容儲存到檔案。
    * - **Encoding**
-     - 開啟對話框選擇程式運行器和 Shell 運行器的編碼
+     - 開啟對話框選擇程式執行器和 Shell 執行器的編碼
        （如 UTF-8、ASCII、Big5）。
 
 Run 選單
@@ -30,7 +30,7 @@ Run 選單
    * - 選單項目
      - 說明
    * - **Run Program**
-     - 使用程式運行器（Python 直譯器）執行目前程式碼編輯區的內容。
+     - 使用程式執行器（Python 直譯器）執行目前程式碼編輯區的內容。
    * - **Run On Shell**
      - 使用系統 Shell 執行目前程式碼編輯區的內容。
    * - **Clean Result**
@@ -48,9 +48,9 @@ Run Help 子選單
    * - 選單項目
      - 說明
    * - **Run Help**
-     - 顯示程式運行器的說明資訊。
+     - 顯示程式執行器的說明資訊。
    * - **Shell Help**
-     - 顯示 Shell 運行器的說明資訊。
+     - 顯示 Shell 執行器的說明資訊。
 
 Text 選單
 ---------
@@ -90,7 +90,7 @@ Venv 選單
    * - 選單項目
      - 說明
    * - **Create Venv**
-     - 在目前工作目錄中使用 Shell 運行器建立 Python 虛擬環境。
+     - 在目前工作目錄中使用 Shell 執行器建立 Python 虛擬環境。
    * - **pip upgrade package**
      - 在虛擬環境中使用 pip 升級指定的套件。
    * - **pip package**

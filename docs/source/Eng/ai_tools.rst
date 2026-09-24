@@ -5,10 +5,10 @@ PyBreeze integrates several AI-powered tools for code review, prompt engineering
 and LLM interaction. All AI tools are accessible from the **Tools** menu and can
 be opened as either tabs or dock widgets.
 
-AI Code-Review Client
+AI Code Review Client
 ---------------------
 
-**Menu:** Tools > AI Code-Review Tab / AI Code-Review Dock
+**Menu:** Tools > AI Code Review Tab / AI Code Review Dock
 
 A client for sending code to an AI API endpoint for automated code review.
 
@@ -41,7 +41,7 @@ Usage
 CoT Code Review GUI
 --------------------
 
-**Menu:** Tools > AI Code-Review Tab / Dock
+**Menu:** Tools > AI Code Review Tab / Dock
 
 An advanced code review tool using Chain-of-Thought (CoT) prompting for
 more structured and detailed reviews.
@@ -120,7 +120,7 @@ Pre-built Skill Templates
 Skills Send GUI
 ---------------
 
-**Menu:** Tools > Skill Send GUI Tab / Skill Prompt Dock
+**Menu:** Tools > Skill Send Tab / Skill Send Dock
 
 An interface for sending skill-based prompts to an LLM API and viewing responses.
 

@@ -23,7 +23,7 @@ Installs the automation module packages via pip.
      - Runs ``pip install -U je_load_density``
    * - **Install WebRunner**
      - Runs ``pip install -U je_web_runner``
-   * - **Install Automation File**
+   * - **Install FileAutomation**
      - Runs ``pip install -U automation_file``
    * - **Install MailThunder**
      - Runs ``pip install -U je_mail_thunder``

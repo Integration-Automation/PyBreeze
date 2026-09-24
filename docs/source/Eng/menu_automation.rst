@@ -8,7 +8,7 @@ and email automation.
 Each automation module follows a consistent menu structure:
 
 - **RUN** submenu -- Execute scripts (single or multi-file, with or without email reporting)
-- **HELP** submenu -- Links to documentation and GitHub repository
+- **Help** submenu -- Links to documentation and GitHub repository
 - **Project** submenu -- Create new project templates
 - **GUI Tab** -- Open an embedded GUI widget (available for some modules)
 
@@ -36,7 +36,7 @@ RUN Submenu
    * - **Run Multi AutoControl Script With Send**
      - Runs multiple scripts and sends the results via email.
 
-HELP Submenu
+Help Submenu
 ^^^^^^^^^^^^
 
 .. list-table::
@@ -109,7 +109,7 @@ RUN Submenu
    * - **Run Multi APITestka Script With Send**
      - Runs multiple scripts and sends results via email.
 
-HELP Submenu
+Help Submenu
 ^^^^^^^^^^^^
 
 - **Open APITestka Doc** -- Opens https://apitestka.readthedocs.io/
@@ -149,7 +149,7 @@ RUN Submenu
    * - **Run Multi WebRunner Script With Send**
      - Runs multiple scripts and sends results via email.
 
-HELP Submenu
+Help Submenu
 ^^^^^^^^^^^^
 
 - **Open WebRunner Doc** -- Opens https://webrunner.readthedocs.io/
@@ -184,7 +184,7 @@ RUN Submenu
    * - **Run Multi LoadDensity Script With Send**
      - Runs multiple scripts and sends results via email.
 
-HELP Submenu
+Help Submenu
 ^^^^^^^^^^^^
 
 - **Open LoadDensity Doc** -- Opens https://loaddensity.readthedocs.io/
@@ -224,7 +224,7 @@ RUN Submenu
    * - **Run Multi FileAutomation Script With Send**
      - Runs multiple scripts and sends results via email.
 
-HELP Submenu
+Help Submenu
 ^^^^^^^^^^^^
 
 - **Open FileAutomation Doc** -- Opens https://fileautomation.readthedocs.io/
@@ -253,7 +253,7 @@ RUN Submenu
    * - **Run MailThunder Script**
      - Executes the current editor content as a MailThunder script.
 
-HELP Submenu
+Help Submenu
 ^^^^^^^^^^^^
 
 - **Open MailThunder Doc** -- Opens https://mailthunder.readthedocs.io/
@@ -275,9 +275,9 @@ TestPioneer Menu
 
    * - Menu Item
      - Description
-   * - **Create TestPioneer Yaml Template**
+   * - **Create TestPioneer YAML Template**
      - Generates a YAML template file for defining test cases.
-   * - **Execute Test Pioneer Yaml**
+   * - **Run TestPioneer YAML**
      - Opens a file dialog to select a ``.yml`` file and executes the test
        definitions within it.
 

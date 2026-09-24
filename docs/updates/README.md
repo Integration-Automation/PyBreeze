@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-58 | 2026-09-25 | The Sphinx docs name the menu entries as they now read | #docs #i18n | [2026-09-c](2026-09-c.md) |
 | U-20260925-57 | 2026-09-25 | 外掛, not 插件, in the plugin guide | #docs #i18n | [2026-09-c](2026-09-c.md) |
 | U-20260925-56 | 2026-09-25 | The README says what the other languages in the menu do | #docs #readme #i18n | [2026-09-c](2026-09-c.md) |
 | U-20260925-55 | 2026-09-25 | The README says which Python JupyterLab starts in | #docs #readme | [2026-09-c](2026-09-c.md) |
@@ -460,4 +461,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
-| [2026-09-c.md](2026-09-c.md) | 2026-09 | 57 |
+| [2026-09-c.md](2026-09-c.md) | 2026-09 | 58 |

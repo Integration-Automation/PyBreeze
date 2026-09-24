@@ -23,7 +23,7 @@ around the edges of the main window.
 AI Tools
 --------
 
-AI Code-Review Tab / Dock
+AI Code Review Tab / Dock
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Opens the AI Code Review client, which allows you to send code to an AI API
@@ -41,7 +41,7 @@ Skill Prompt Editor Tab / Dock
 Opens the Skill-based Prompt Editor for creating task-specific prompt templates
 (e.g., code review prompts, code explanation prompts). See :doc:`ai_tools` for full details.
 
-Skill Send GUI Tab / Dock
+Skill Send Tab / Dock
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Opens the Skill Prompt Sender interface for sending prompts to an LLM API
