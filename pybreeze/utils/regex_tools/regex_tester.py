@@ -34,6 +34,11 @@ MAX_MATCHES = 1000
 # How long a pattern may run, in its own process, before it is stopped.
 MATCH_TIMEOUT_SECONDS = 5.0
 
+# Groups nested past this overflow the C stack of ``re``'s parser on CPython
+# 3.10 — a hard interpreter crash, not a catchable ``RecursionError`` — so the
+# depth is checked here before the pattern ever reaches ``re.compile``.
+MAX_GROUP_NESTING = 100
+
 # Human-facing flag names mapped to their ``re`` values.
 _FLAG_NAMES: dict[str, int] = {
     "IGNORECASE": re.IGNORECASE,
@@ -78,6 +83,38 @@ def build_flags(flag_names: list[str] | set[str]) -> int:
     return combined
 
 
+def _group_nesting_too_deep(pattern: str) -> bool:
+    """Return whether *pattern* nests groups past :data:`MAX_GROUP_NESTING`.
+
+    The scan is iterative, so it cannot itself overflow the stack. It skips
+    escaped characters and the contents of character classes, where a
+    parenthesis is a literal rather than a group.
+
+    :param pattern: the regular expression to scan
+    :return: ``True`` when the open-group nesting depth exceeds the cap
+    """
+    depth = 0
+    in_class = False
+    escaped = False
+    for char in pattern:
+        if escaped:
+            escaped = False
+        elif char == "\\":
+            escaped = True
+        elif in_class:
+            if char == "]":
+                in_class = False
+        elif char == "[":
+            in_class = True
+        elif char == "(":
+            depth += 1
+            if depth > MAX_GROUP_NESTING:
+                return True
+        elif char == ")" and depth > 0:
+            depth -= 1
+    return False
+
+
 def compile_pattern(pattern: str, flag_names: list[str] | set[str] | None = None) -> re.Pattern:
     """Compile *pattern*, raising a friendly error on failure.
 
@@ -89,6 +126,11 @@ def compile_pattern(pattern: str, flag_names: list[str] | set[str] | None = None
     if pattern == "":
         pybreeze_logger.error(empty_regex_pattern_error)
         raise RegexTesterException(empty_regex_pattern_error)
+    if _group_nesting_too_deep(pattern):
+        message = invalid_regex_pattern_error.format(
+            detail=f"groups nested more than {MAX_GROUP_NESTING} deep")
+        pybreeze_logger.error(message)
+        raise RegexTesterException(message)
     try:
         return re.compile(pattern, build_flags(flag_names or []))
     # OverflowError: a repeat count past what re takes (a{4294967296});

@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260924-270 | 2026-09-24 | Report a deeply nested regex instead of crashing on CPython 3.10 | #fix #regex | [2026-09-b](2026-09-b.md) |
 | U-20260924-269 | 2026-09-24 | Adopt je_editor 1.0.27 docked-editor contract | #done #cross-project | [2026-09-b](2026-09-b.md) |
 | U-20260924-268 | 2026-09-24 | A file that is not a diagram, and a refused CoT URL, say why in the IDE language | #fix #i18n #diagram #ai | [2026-09-b](2026-09-b.md) |
 | U-20260924-267 | 2026-09-24 | Refactor: the diagram file checks raise from exception_tags | #refactor #i18n #diagram | [2026-09-b](2026-09-b.md) |
