@@ -12,7 +12,7 @@ from PySide6.QtWidgets import QApplication, QMenu
 from pybreeze.extend_multi_language.update_language_dict import update_language_dict
 from pybreeze.pybreeze_ui.menu.tools.tools_menu import extend_dock_menu
 
-_AI_DOCKS = 5  # AI Code-Review, CoT Prompt Editor, CoT Code Review, Skill Prompt Editor, Skill Send
+_AI_DOCKS = 5  # AI Code Review, CoT Prompt Editor, CoT Code Review, Skill Prompt Editor, Skill Send
 
 
 @pytest.fixture(scope="module")

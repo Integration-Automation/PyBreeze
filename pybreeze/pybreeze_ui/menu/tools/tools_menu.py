@@ -107,7 +107,7 @@ _TAB_ACTIONS: tuple[tuple[str, str, str, str, str], ...] = (
      "extend_tools_menu_skill_prompt_editor_tab_action",
      "extend_tools_menu_skill_prompt_editor_tab_label"),
     ("SkillSendGUI", "tools_ai_skill_send_action", "tools_ai_menu",
-     "extend_tools_menu_skill_prompt_send_tab_label",
+     "extend_tools_menu_skill_prompt_send_tab_action",
      "extend_tools_menu_skill_prompt_send_tab_label"),
     ("DiagramEditor", "tools_diagram_editor_action", "tools_menu",
      "extend_tools_menu_diagram_editor_tab_action", "extend_tools_menu_diagram_editor_tab_label"),

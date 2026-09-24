@@ -116,6 +116,32 @@ class TestLabelsAreTold:
             assert EN[dock] == EN[tab]
             assert ZH[dock] == ZH[tab]
 
+    def test_every_tools_entry_says_whether_it_opens_a_tab_or_a_dock(self):
+        # Tools > AI read "CoT Prompt Editor", "Skill Send GUI" beside "CoT Code Review Tab"
+        from pybreeze.pybreeze_ui.menu.tools.tools_menu import _DOCK_ACTIONS, _TAB_ACTIONS
+
+        for *_start, action_key, _label_key in _TAB_ACTIONS:
+            assert EN[action_key].endswith(" Tab") and ZH[action_key].endswith("分頁"), action_key
+        for *_start, action_key in _DOCK_ACTIONS:
+            assert EN[action_key].endswith(" Dock") and ZH[action_key].endswith("停駐窗格"), action_key
+
+    def test_a_dock_is_titled_like_the_tab_of_the_same_tool(self):
+        # "AI Code-Review" and "Skill Send GUI" as titles; the Skill Send dock's
+        # menu entry read "Skill Prompt Dock"
+        for tool in ("ai_code_review", "cot_code_review", "cot_prompt_editor", "skill_prompt_editor",
+                     "skill_prompt_send"):
+            for words in (EN, ZH):
+                tab = words[f"extend_tools_menu_{tool}_tab_label"]
+                assert words[f"extend_tools_menu_{tool}_dock_title"] == tab
+                assert words[f"extend_tools_menu_{tool}_dock_action"].startswith(tab), tool
+
+    def test_a_name_is_spelled_one_way(self):
+        # "Autocontrol" beside "AutoControl GUI" and "Install AutoControl";
+        # "Test Pioneer" beside "TestPioneer"; "Yaml" for YAML
+        misspelt = {key: value for words in (EN, ZH) for key, value in words.items()
+                    if re.search(r"Autocontrol|Test Pioneer|Yaml|Code-Review", str(value))}
+        assert misspelt == {}
+
     def test_the_same_action_reads_the_same_on_every_tab(self):
         # Header Analyzer said "Open token in JWT decoder", Response Inspector
         # "Open JWT in decoder", for the same hand-over
@@ -162,7 +188,7 @@ class TestLabelsAreTold:
 
     def test_no_label_is_in_capitals(self):
         # Every automation menu's Help submenu read "HELP", beside JEditor's "Help" menu
-        acronyms = {"HTTP", "JSON", "MIME", "SFTP"}
+        acronyms = {"HTTP", "JSON", "MIME", "SFTP", "YAML"}
         shouted = {key: text for key, text in EN.items() if key.endswith("_label")
                    for word in re.findall(r"\b[A-Z]{4,}\b", text) if word not in acronyms}
         assert shouted == {}
