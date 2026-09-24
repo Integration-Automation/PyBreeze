@@ -25,6 +25,7 @@ from pybreeze.utils.exception.exceptions import CurlParseException
 from pybreeze.utils.header_tools.header_merge import stored_header_name
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.pybreeze_ui.error_text import error_text
+from pybreeze.pybreeze_ui.fixed_pitch import use_fixed_pitch_font
 
 # The single target that generates JSON rather than Python
 _JSON_TARGET = "apitestka_action"
@@ -47,6 +48,7 @@ class CurlImportGUI(QWidget):
 
         self.input_label = QLabel(word.get("curl_import_input_label"))
         self.input_edit = QTextEdit()
+        use_fixed_pitch_font(self.input_edit)
         self.input_edit.setPlaceholderText(word.get("curl_import_input_placeholder"))
         self.input_edit.setAcceptRichText(False)
 
@@ -63,6 +65,7 @@ class CurlImportGUI(QWidget):
 
         self.output_label = QLabel(word.get("curl_import_output_label"))
         self.output_edit = QTextEdit()
+        use_fixed_pitch_font(self.output_edit)
         self.output_edit.setReadOnly(True)
 
         # Cross-tool actions: hand the parsed parts to the tool that specialises

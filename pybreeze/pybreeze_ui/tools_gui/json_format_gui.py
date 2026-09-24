@@ -12,6 +12,7 @@ from pybreeze.utils.exception.exceptions import ITEJsonException
 from pybreeze.utils.json_format.json_process import minify_json, reformat_json
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.pybreeze_ui.error_text import error_text
+from pybreeze.pybreeze_ui.fixed_pitch import use_fixed_pitch_font
 
 
 class JsonFormatGUI(QWidget):
@@ -29,6 +30,7 @@ class JsonFormatGUI(QWidget):
 
         self.input_label = QLabel(word.get("json_format_input_label"))
         self.input_edit = QTextEdit()
+        use_fixed_pitch_font(self.input_edit)
         self.input_edit.setPlaceholderText(word.get("json_format_input_placeholder"))
         self.input_edit.setAcceptRichText(False)
 
@@ -43,6 +45,7 @@ class JsonFormatGUI(QWidget):
 
         self.output_label = QLabel(word.get("json_format_output_label"))
         self.output_edit = QTextEdit()
+        use_fixed_pitch_font(self.output_edit)
         self.output_edit.setReadOnly(True)
 
         self.actions = OutputActions(

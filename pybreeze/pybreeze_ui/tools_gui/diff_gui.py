@@ -12,6 +12,7 @@ from je_editor.pyside_ui.main_ui.save_settings.user_color_setting_file import ac
 from pybreeze.pybreeze_ui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.pybreeze_ui.thread_keeper import let_run_out
+from pybreeze.pybreeze_ui.fixed_pitch import use_fixed_pitch_font
 from pybreeze.utils.diff_tools.text_diff import Comparison, DiffSummary, compare_texts
 
 # A unified diff line's first characters -> JEditor theme colour (a dark and a
@@ -87,9 +88,11 @@ class DiffGUI(QWidget):
 
         self.left_label = QLabel(word.get("diff_left_label"))
         self.left_edit = QTextEdit()
+        use_fixed_pitch_font(self.left_edit)
         self.left_edit.setAcceptRichText(False)
         self.right_label = QLabel(word.get("diff_right_label"))
         self.right_edit = QTextEdit()
+        use_fixed_pitch_font(self.right_edit)
         self.right_edit.setAcceptRichText(False)
 
         inputs = QHBoxLayout()
@@ -107,6 +110,7 @@ class DiffGUI(QWidget):
 
         self.summary_label = QLabel("")
         self.output_edit = QTextEdit()
+        use_fixed_pitch_font(self.output_edit)
         self.output_edit.setReadOnly(True)
         self._highlighter = UnifiedDiffHighlighter(self.output_edit.document())
 

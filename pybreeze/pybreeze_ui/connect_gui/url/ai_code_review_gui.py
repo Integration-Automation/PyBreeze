@@ -26,6 +26,7 @@ from pybreeze.utils.network.http_client import (
 from pybreeze.utils.network.public_http import overall_deadline, public_session
 from pybreeze.utils.network.url_validation import UnsafeURLError, validate_url
 from pybreeze.pybreeze_ui.exact_text import exact_text
+from pybreeze.pybreeze_ui.fixed_pitch import use_fixed_pitch_font
 
 
 # What the "seen this URL before" file keeps. An API URL can carry a token in
@@ -200,6 +201,7 @@ class AICodeReviewClient(QWidget):
         left_layout.addWidget(QLabel(
             self.word_dict.get("ai_code_review_gui_label_code_to_send")))
         self.code_input = QTextEdit()
+        use_fixed_pitch_font(self.code_input)
         self.code_input.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         left_layout.addWidget(self.code_input)
 
