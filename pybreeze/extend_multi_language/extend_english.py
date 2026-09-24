@@ -565,6 +565,12 @@ pybreeze_english_word_dict = {
     "extend_tools_menu_http_status_dock_title": "HTTP Status",
     # HTTP Status Reference — Widget
     "http_status_search_label": "Search by code or keyword:",
+    "http_status_category_informational": "Informational",
+    "http_status_category_success": "Success",
+    "http_status_category_redirection": "Redirection",
+    "http_status_category_client_error": "Client Error",
+    "http_status_category_server_error": "Server Error",
+    "http_status_category_unknown": "Unknown",
     "http_status_search_placeholder": "404   or   not found",
     "http_status_no_match": "No matching status codes.",
     # Text Diff — Menu

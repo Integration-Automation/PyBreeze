@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-17 | 2026-09-25 | HTTP status classes in the IDE's language | #fix #tools #i18n | [2026-09-c](2026-09-c.md) |
 | U-20260925-16 | 2026-09-25 | One wording for the JWT hand-over, and a status button that says what it does | #fix #tools #i18n | [2026-09-c](2026-09-c.md) |
 | U-20260925-15 | 2026-09-25 | The architecture map on what the AI review panels send | #docs #ai | [2026-09-c](2026-09-c.md) |
 | U-20260925-14 | 2026-09-25 | AI Code Review and CoT Code Review send no empty code, and the code as pasted | #fix #ai #i18n | [2026-09-c](2026-09-c.md) |
@@ -419,4 +420,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
-| [2026-09-c.md](2026-09-c.md) | 2026-09 | 16 |
+| [2026-09-c.md](2026-09-c.md) | 2026-09 | 17 |

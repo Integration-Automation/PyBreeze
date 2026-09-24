@@ -18,6 +18,7 @@ BUILT_OR_READ_ELSEWHERE = (
     "ssh_file_viewer_type_",
     "header_analyzer_level_",                # header_analyzer_gui: f"...{finding.level}"
     "header_finding_",
+    "http_status_category_",                 # http_status_gui.CATEGORY_KEY_PREFIX + the class
     "plugin_browser_",
 )
 

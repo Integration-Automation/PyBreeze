@@ -529,6 +529,12 @@ pybreeze_traditional_chinese_word_dict = {
     "extend_tools_menu_http_status_dock_title": "HTTP 狀態碼",
     # HTTP 狀態碼參考 — 介面
     "http_status_search_label": "以代碼或關鍵字搜尋：",
+    "http_status_category_informational": "資訊",
+    "http_status_category_success": "成功",
+    "http_status_category_redirection": "重新導向",
+    "http_status_category_client_error": "用戶端錯誤",
+    "http_status_category_server_error": "伺服器錯誤",
+    "http_status_category_unknown": "未知",
     "http_status_search_placeholder": "404   或   not found",
     "http_status_no_match": "沒有符合的狀態碼。",
     # 文字差異 — 選單

@@ -13,7 +13,7 @@ from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.header_analyzer_gui import HeaderAnalyzerGUI
-from pybreeze.pybreeze_ui.tools_gui.http_status_gui import HttpStatusGUI
+from pybreeze.pybreeze_ui.tools_gui.http_status_gui import HttpStatusGUI, status_heading
 from pybreeze.pybreeze_ui.tools_gui.json_format_gui import JsonFormatGUI
 from pybreeze.pybreeze_ui.tools_gui.jwt_decoder_gui import JwtDecoderGUI
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
@@ -31,7 +31,7 @@ def _status_section(analysis: ResponseAnalysis) -> list[str]:
         return []
     word = language_wrapper.language_word_dict
     status = analysis.status
-    lines = [word.get("response_status_label"), f"{status.code} {status.phrase}  [{status.category}]"]
+    lines = [word.get("response_status_label"), status_heading(status)]
     if status.description:
         lines.append(f"    {status.description}")
     lines.append("")

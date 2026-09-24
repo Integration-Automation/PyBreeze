@@ -70,3 +70,42 @@ class TestHttpStatusGUI:
         assert widget.actions.suggested_filename() == "http_status.txt"
         widget.actions.copy()
         assert "200 OK" in QApplication.clipboard().text()
+
+
+class TestTheCategoryInTheIdeLanguage:
+    """The class of a status ([Client Error]) was English in the Traditional Chinese IDE."""
+
+    @pytest.fixture()
+    def chinese(self, app, monkeypatch):
+        from je_editor import language_wrapper
+
+        from pybreeze.extend_multi_language.extend_traditional_chinese import (
+            pybreeze_traditional_chinese_word_dict,
+        )
+        monkeypatch.setattr(language_wrapper, "language_word_dict", pybreeze_traditional_chinese_word_dict)
+
+    def test_the_reference_says_it_in_the_ide_language(self, chinese):
+        from pybreeze.pybreeze_ui.tools_gui.http_status_gui import HttpStatusGUI
+        gui = HttpStatusGUI(initial_search="404")
+        assert "404 Not Found  [用戶端錯誤]" in gui.output_edit.toPlainText()
+        gui.deleteLater()
+
+    def test_the_response_inspector_says_it_too(self, chinese):
+        from pybreeze.pybreeze_ui.tools_gui.response_inspector_gui import ResponseInspectorGUI
+        gui = ResponseInspectorGUI()
+        gui.input_edit.setPlainText("HTTP/1.1 503 Service Unavailable\n")
+        gui.analyze()
+        assert "503 Service Unavailable  [伺服器錯誤]" in gui.output_edit.toPlainText()
+        gui.deleteLater()
+
+    def test_every_class_has_words_in_both_languages(self):
+        from pybreeze.extend_multi_language.extend_english import pybreeze_english_word_dict
+        from pybreeze.extend_multi_language.extend_traditional_chinese import (
+            pybreeze_traditional_chinese_word_dict,
+        )
+        from pybreeze.pybreeze_ui.tools_gui.http_status_gui import category_key
+        from pybreeze.utils.http_reference.status_codes import status_of
+
+        for code in (100, 200, 300, 400, 500, 999):
+            key = category_key(status_of(code))
+            assert pybreeze_english_word_dict.get(key) and pybreeze_traditional_chinese_word_dict.get(key), key
