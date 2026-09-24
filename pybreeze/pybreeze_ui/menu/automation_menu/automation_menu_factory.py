@@ -67,7 +67,7 @@ def build_automation_menu(ui: PyBreezeMainWindow, spec: AutomationMenu) -> QMenu
     if spec.run_actions:
         _add_run_menu(menu, spec.run_actions)
     if spec.help_links:
-        _add_help_menu(ui, menu, spec.help_links)
+        add_help_menu(ui, menu, spec.help_links)
     if spec.create_project and spec.create_project_label_key:
         _add_project_menu(menu, spec.create_project, spec.create_project_label_key)
     if spec.gui_widget_class and spec.gui_label:
@@ -84,7 +84,8 @@ def _add_run_menu(menu: QMenu, run_actions: tuple[RunAction, ...]) -> None:
         run_menu.addAction(action)
 
 
-def _add_help_menu(ui: PyBreezeMainWindow, menu: QMenu, links: tuple[HelpLink, ...]) -> None:
+def add_help_menu(ui: PyBreezeMainWindow, menu: QMenu, links: tuple[HelpLink, ...]) -> None:
+    """Add a HELP submenu to *menu*: one entry per link, each opening its page in a browser tab."""
     lang = language_wrapper.language_word_dict
     help_menu = menu.addMenu(lang.get("help_label"))
     for link in links:
