@@ -215,7 +215,7 @@ call_X_multi_file_and_send()   → run_dir_files_with_package(..., True)
 
 ---
 
-## 6. 工具分頁 `pybreeze_ui/tools_gui/`（13 個工具 widget + 3 個共用機制）
+## 6. 工具分頁 `pybreeze_ui/tools_gui/`（13 個工具 widget + 2 個共用機制）
 
 每個工具都是 `QWidget`，UI 極薄，真正邏輯全在 `pybreeze/utils/` 對應的純函式套件裡（所以測得動、也測了）。
 
@@ -238,7 +238,7 @@ call_X_multi_file_and_send()   → run_dir_files_with_package(..., True)
 ### 兩個橫向共用機制
 
 - **`tool_tabs.open_tool_tab()`** — 工具之間互相「轉交」：Response Inspector 把狀態碼丟給 HTTP Status、headers 丟給 Header Analyzer、JWT 丟給 JWT Decoder、JSON body 丟給 JSON Format；curl 匯入把 URL 丟給 URL Builder。開新分頁並自動聚焦。
-- **`run_shortcut.press_on_ctrl_enter()`** — 只有一個主要動作的工具（cURL、Diff、Hash、Header、JSON Format、JWT、Regex、Response）在工具裡任何地方按 Ctrl+Enter 就等於按那顆鈕（文字框裡的 Enter 是換行）；shortcut 是工具的子物件、`WidgetWithChildrenShortcut`，焦點不在工具裡時不會搶走編輯器的按鍵，按鈕停用時（還在跑）不會觸發
+- **`pybreeze_ui/run_shortcut.press_on_ctrl_enter()`**（不在 `tools_gui/` 裡）— 只有一個主要動作的工具（cURL、Diff、Hash、Header、JSON Format、JWT、Regex、Response）在工具裡任何地方按 Ctrl+Enter 就等於按那顆鈕（文字框裡的 Enter 是換行）；shortcut 是工具的子物件、`WidgetWithChildrenShortcut`，焦點不在工具裡時不會搶走編輯器的按鍵，按鈕停用時（還在跑）不會觸發
 - **`output_actions.OutputActions`** — 統一的「複製 / 在編輯器開啟 / 存檔」三顆按鈕，綁在工具的唯讀輸出 `QTextEdit` 上，輸出也經 `exact_text()` 讀（不讓 U+00A0、U+2028 被改掉）；副檔名與檔名可傳 callable 動態決定。存檔經 `replace_text()` 整檔替換，失敗（唯讀資料夾、被鎖住的檔案、磁碟滿）時原檔不動、會跳警告，說出檔名與原因。Qt 的文字元件留不住貼上的 CR，換行一律讀成 LF
 
 ---

@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
-from pybreeze.pybreeze_ui.tools_gui.run_shortcut import press_on_ctrl_enter
+from pybreeze.pybreeze_ui.run_shortcut import press_on_ctrl_enter
 from pybreeze.pybreeze_ui.thread_keeper import let_run_out
 from pybreeze.pybreeze_ui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
