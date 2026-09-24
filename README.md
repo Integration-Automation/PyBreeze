@@ -72,7 +72,7 @@ Each module gets the same menu shape: **Run** (single script, batch directory, w
 
 ### IDE core
 
-- **Automation-aware syntax highlighting** — the `AT_*` / GUI / Web / Load keyword sets are registered for `.json`, and TestPioneer's schema for `.yml` and `.yaml`, on top of JEditor's language support
+- **Automation keyword sets** — the `AT_*` / GUI / Web / Load keyword sets are registered for `.json`, and TestPioneer's schema for `.yml` and `.yaml`, on top of JEditor's language support. JEditor does not colour them yet: it highlights those files with its own rules for the suffix, which leave registered keywords out
 - **Code editor** — built on [JEditor](https://github.com/Integration-Automation/JEDITOR): tabs, project tree, format checker, debugger, terminal, variable inspector and a git client pane
 - **Script execution** — single or batch, each run in a window of its own with a Stop button; action files are passed by path, and a script from the tab in front that is too long for a Windows command line (~32 KB) goes through a temporary file
 - **Report generation** — HTML / JSON / XML after a run, with optional email delivery
@@ -331,7 +331,7 @@ start_editor(theme="dark_teal.xml")         # any qt_material theme
 
 Once launched:
 
-1. **Write** an automation script in the editor — automation keywords highlight as you type
+1. **Write** an automation script in the editor
 2. **Run** it from the `Automation` menu, picking the target module
 3. **Watch** the output stream into the run window
 4. **Generate** an HTML / JSON / XML report

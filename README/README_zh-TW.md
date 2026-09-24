@@ -72,7 +72,7 @@ PyBreeze 開箱即用，涵蓋自動化測試的完整範疇：
 
 ### IDE 核心
 
-- **認得自動化的語法高亮** — 在 JEditor 的語言支援之上，`AT_*`／GUI／Web／Load 關鍵字集註冊給 `.json`，TestPioneer 的結構描述註冊給 `.yml` 與 `.yaml`
+- **自動化關鍵字集** — 在 JEditor 的語言支援之上，`AT_*`／GUI／Web／Load 關鍵字集註冊給 `.json`，TestPioneer 的結構描述註冊給 `.yml` 與 `.yaml`。JEditor 目前還不會為它們上色：它用自己針對這些副檔名的規則高亮，不會用到註冊的關鍵字
 - **程式碼編輯器** — 以 [JEditor](https://github.com/Integration-Automation/JEDITOR) 為基礎：分頁、專案樹、格式檢查、除錯器、終端機、變數檢視器與 git 用戶端面板
 - **腳本執行** — 單一或批次執行，每次執行都有自己的視窗與 Stop 按鈕；動作檔以路徑傳入，而目前分頁中的腳本若超過 Windows 命令列長度上限（約 32 KB），會改用暫存檔傳遞
 - **報告產生** — 執行後產生 HTML／JSON／XML 報告，並可選擇以電子郵件寄送
@@ -331,7 +331,7 @@ start_editor(theme="dark_teal.xml")         # 任何 qt_material 主題
 
 啟動後：
 
-1. **撰寫** — 在編輯器中撰寫自動化腳本，自動化關鍵字會隨著輸入高亮
+1. **撰寫** — 在編輯器中撰寫自動化腳本
 2. **執行** — 從 `Automation` 選單執行，選擇目標模組
 3. **觀看** — 輸出即時傳進執行視窗
 4. **產生** — HTML／JSON／XML 報告
