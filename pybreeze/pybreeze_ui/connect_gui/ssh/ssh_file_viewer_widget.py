@@ -13,7 +13,7 @@ from collections.abc import Callable
 
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QTreeWidget, QTreeWidgetItem,
+    QWidget, QVBoxLayout, QLineEdit, QTreeWidget, QTreeWidgetItem,
     QMenu, QFileDialog, QMessageBox, QSplitter, QInputDialog, QStyle
 )
 from je_editor import language_wrapper
@@ -523,8 +523,9 @@ class SSHFileTreeManager(QWidget):
         old_path = item.text(3)
         new_name, ok = self.get_text(
             self.word_dict.get("ssh_file_viewer_dialog_title_rename"),
-            f"{self.word_dict.get('ssh_file_viewer_dialog_label_new_name_for_item')}: {item.text(0)}")
-        if not ok or not new_name.strip():
+            f"{self.word_dict.get('ssh_file_viewer_dialog_label_new_name_for_item')}: {item.text(0)}",
+            item.text(0))
+        if not ok or not new_name.strip() or new_name.strip() == item.text(0):
             return
         new_name = self._checked_name(new_name)
         if new_name is None:
@@ -694,10 +695,10 @@ class SSHFileTreeManager(QWidget):
             as_text(f"{self.word_dict.get('ssh_file_viewer_dialog_message_operation_failed')}: "
                     f"{error_message}"))
 
-    def get_text(self, title: str, label: str):
+    def get_text(self, title: str, label: str, text: str = ""):
         """
-        Ask for one line of text; ``(text, ok)`` as ``QInputDialog.getText`` gives it.
+        Ask for one line of text, starting from *text*; ``(text, ok)`` as ``QInputDialog.getText`` gives it.
         詢問一行文字。
         """
-        text, ok = QInputDialog.getText(self, title, label)
-        return text, ok
+        answer, ok = QInputDialog.getText(self, title, label, QLineEdit.EchoMode.Normal, text)
+        return answer, ok

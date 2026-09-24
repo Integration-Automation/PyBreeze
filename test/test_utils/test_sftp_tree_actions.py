@@ -302,3 +302,33 @@ class TestTheMenu:
         self._open(widget, monkeypatch, folder.child(0), choose=0)
 
         assert refreshed == [folder]
+
+
+class TestRenaming:
+    def test_starts_from_the_current_name(self, tree, monkeypatch):
+        # The box was empty: changing one letter meant typing the whole name
+        widget, _client, root, _warnings = tree
+        asked: list = []
+        monkeypatch.setattr(widget, "get_text", lambda *args: asked.append(args) or ("", False))
+
+        widget.action_rename(_child(root, "notes.txt"))
+
+        assert asked[0][2] == "notes.txt"
+
+    def test_the_same_name_sends_nothing(self, tree, monkeypatch):
+        widget, client, root, _warnings = tree
+        _answer(widget, monkeypatch, " notes.txt ")
+
+        widget.action_rename(_child(root, "notes.txt"))
+
+        assert client.renamed == []
+        assert not widget._calls
+
+    def test_the_dialog_is_given_the_name(self, tree, monkeypatch):
+        widget, _client, _root, _warnings = tree
+        given: list = []
+        monkeypatch.setattr(tree_mod.QInputDialog, "getText",
+                            staticmethod(lambda *args: given.append(args) or ("x", True)))
+
+        assert widget.get_text("t", "l", "start") == ("x", True)
+        assert given[0][-1] == "start"
