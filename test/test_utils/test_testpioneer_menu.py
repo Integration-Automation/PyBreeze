@@ -84,3 +84,24 @@ def test_cancelling_does_nothing(app, chosen):
     menu.check_file(None)
 
     assert chosen["ran"] == [] and chosen["told"] == 0
+
+
+def test_its_help_opens_the_github_page(app, monkeypatch):
+    # Every other automation menu has a HELP submenu; TestPioneer's had none.
+    from types import SimpleNamespace
+
+    from PySide6.QtWidgets import QMenu
+
+    from pybreeze.pybreeze_ui.menu.automation_menu import automation_menu_factory
+
+    opened: list = []
+    monkeypatch.setattr(
+        automation_menu_factory, "open_web_browser", lambda _ui, url, label: opened.append((url, label)))
+    window = SimpleNamespace(automation_menu=QMenu())
+    menu.set_test_pioneer_menu(window)
+
+    (help_menu,) = [action.menu() for action in window.test_pioneer_menu.actions() if action.menu()]
+    for action in help_menu.actions():
+        action.trigger()
+
+    assert opened == [("https://github.com/Integration-Automation/TestPioneer", "TestPioneer GitHub")]

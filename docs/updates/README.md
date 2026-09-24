@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260924-304 | 2026-09-24 | A HELP submenu for TestPioneer | #feature #menu | [2026-09-b](2026-09-b.md) |
 | U-20260924-303 | 2026-09-24 | Make the automation menus' HELP builder public | #refactor #menu | [2026-09-b](2026-09-b.md) |
 | U-20260924-302 | 2026-09-24 | Install TestPioneer from the Install menu | #feature #menu | [2026-09-b](2026-09-b.md) |
 | U-20260924-301 | 2026-09-24 | Build the automation Install menu from a table | #refactor #menu | [2026-09-b](2026-09-b.md) |
@@ -385,4 +386,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | File | Period | Entries |
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
-| [2026-09-b.md](2026-09-b.md) | 2026-09 | 101 |
+| [2026-09-b.md](2026-09-b.md) | 2026-09 | 102 |

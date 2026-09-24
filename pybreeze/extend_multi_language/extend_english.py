@@ -116,6 +116,8 @@ pybreeze_english_word_dict = {
     "tools_menu_re_edge_gpt_github_tab_label": "ReEdgeGPT GitHub",
     # Test Pioneer Menu
     "test_pioneer_label": "TestPioneer",
+    "test_pioneer_github_label": "Open TestPioneer GitHub",
+    "test_pioneer_github_tab_label": "TestPioneer GitHub",
     "test_pioneer_create_template_label": "Create TestPioneer Yaml template",
     "test_pioneer_template_exists": "{path} already exists. Replace it with a fresh template and lose its content?",
     "test_pioneer_template_failed": "The template could not be created at {path}: {error}",

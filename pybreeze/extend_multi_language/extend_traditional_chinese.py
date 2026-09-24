@@ -111,6 +111,8 @@ pybreeze_traditional_chinese_word_dict = {
     "tools_menu_re_edge_gpt_github_tab_label": "ReEdgeGPT GitHub",
     # Test Pioneer Menu
     "test_pioneer_label": "TestPioneer",
+    "test_pioneer_github_label": "開啟 TestPioneer GitHub",
+    "test_pioneer_github_tab_label": "TestPioneer GitHub",
     "test_pioneer_create_template_label": "建立 TestPioneer Yaml 模板",
     "test_pioneer_template_exists": "{path} 已經存在。要用新的範本取代，並捨棄它目前的內容嗎？",
     "test_pioneer_template_failed": "無法在 {path} 建立範本：{error}",

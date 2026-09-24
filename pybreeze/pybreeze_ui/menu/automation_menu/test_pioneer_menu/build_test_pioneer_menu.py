@@ -11,6 +11,7 @@ from test_pioneer import create_template_dir
 
 from pybreeze.extend.process_executor.test_pioneer.test_pioneer_process_manager import \
     init_and_start_test_pioneer_process
+from pybreeze.pybreeze_ui.menu.automation_menu.automation_menu_factory import HelpLink, add_help_menu
 from pybreeze.pybreeze_ui.syntax.syntax_keyword import TEST_PIONEER_SUFFIXES
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.pybreeze_ui.plain_text import as_text
@@ -22,6 +23,11 @@ if TYPE_CHECKING:
 _YAML_FILTER = "YAML ({})".format(" ".join(f"*{suffix}" for suffix in TEST_PIONEER_SUFFIXES))
 # Where TestPioneer puts its template, under the project directory
 _TEMPLATE_DIR = ".TestPioneer"
+# Its README is its manual: the readthedocs site it links to is not built
+_HELP_LINKS = (
+    HelpLink("https://github.com/Integration-Automation/TestPioneer",
+             "test_pioneer_github_label", "test_pioneer_github_tab_label"),
+)
 
 
 def set_test_pioneer_menu(ui_we_want_to_set: PyBreezeMainWindow):
@@ -50,6 +56,7 @@ def set_test_pioneer_menu(ui_we_want_to_set: PyBreezeMainWindow):
     ui_we_want_to_set.test_pioneer_menu.addAction(
         ui_we_want_to_set.run_yaml_action
     )
+    add_help_menu(ui_we_want_to_set, ui_we_want_to_set.test_pioneer_menu, _HELP_LINKS)
 
 
 def create_template(ui_we_want_to_set: PyBreezeMainWindow) -> None:
