@@ -136,6 +136,10 @@ class TestLabelsAreTold:
                 assert words[f"extend_tools_menu_{tool}_dock_title"] == tab
                 assert words[f"extend_tools_menu_{tool}_dock_action"].startswith(tab), tool
 
+    def test_traditional_chinese_says_prompt_one_way(self):
+        # The prompt editors' tabs said 提示詞 and their labels "Prompt 檔案位置（會覆寫內建 prompt）"
+        assert {key: value for key, value in ZH.items() if re.search(r"\b[Pp]rompt\b", str(value))} == {}
+
     def test_a_name_is_spelled_one_way(self):
         # "Autocontrol" beside "AutoControl GUI" and "Install AutoControl";
         # "Test Pioneer" beside "TestPioneer"; "Yaml" for YAML; "Install Automation File"

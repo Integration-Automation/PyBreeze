@@ -359,7 +359,7 @@ pybreeze_english_word_dict = {
     "extend_tools_menu_skill_prompt_send_dock_action": "Skill Send Dock",
     "extend_tools_menu_skill_prompt_send_dock_title": "Skill Send",
     # CoT code-review GUI
-    "cot_gui_window_title": "Prompt Sender UI",
+    "cot_gui_window_title": "CoT Code Review",
     "cot_gui_label_api_url": "API URL:",
     "cot_gui_placeholder_api_url": "The API URL to send to, e.g. https://llm.example.com/api",
     "cot_gui_placeholder_code_paste_area": "Paste the code to review here",

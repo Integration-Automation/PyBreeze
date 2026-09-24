@@ -146,7 +146,7 @@ pybreeze_traditional_chinese_word_dict = {
     "prthinker_setting_bad_extra_arguments": "額外參數無法解讀：有引號沒有關上。請補上或刪掉後再存檔。",
     "prthinker_setting_save_failed": "設定無法存到 {path}，原本的設定保持不變。",
     # Prompt 編輯器 —— 編輯過的 prompt 會覆寫內建版本
-    "prompt_editor_stored_at_label": "Prompt 檔案位置（會覆寫內建 prompt）：",
+    "prompt_editor_stored_at_label": "提示詞檔案位置（會覆寫內建提示詞）：",
     "prthinker_choose_source_path_label": "選擇 prthinker 原始碼資料夾",
     "prthinker_need_source_path_message":
         "prthinker 是從原始碼安裝的。請選擇含有 pyproject.toml 的資料夾，"
@@ -349,7 +349,7 @@ pybreeze_traditional_chinese_word_dict = {
     "extend_tools_menu_skill_prompt_send_dock_action": "Skill 提示詞傳送停駐窗格",
     "extend_tools_menu_skill_prompt_send_dock_title": "Skill 提示詞傳送",
     # CoT code-review GUI
-    "cot_gui_window_title": "Prompt 傳送介面",
+    "cot_gui_window_title": "CoT 程式碼審查",
     "cot_gui_label_api_url": "API URL：",
     "cot_gui_placeholder_api_url": "要傳送到的 API URL，例如 https://llm.example.com/api",
     "cot_gui_placeholder_code_paste_area": "在這裡貼上要審查的程式碼",
@@ -367,14 +367,14 @@ pybreeze_traditional_chinese_word_dict = {
     "skills_exception": "發生例外：{error}",
     "skills_api_url_label": "LLM API URL：",
     "skills_api_url_placeholder": "要傳送到的 API URL，例如 https://llm.example.com/api",
-    "skills_prompt_select_label": "選擇 Prompt 範本：",
-    "skills_prompt_label": "Prompt：",
+    "skills_prompt_select_label": "選擇提示詞範本：",
+    "skills_prompt_label": "提示詞：",
     "skills_send_button": "傳送",
     "skills_response_label": "回傳結果：",
-    "skills_missing_input": "請輸入 API URL 和 Prompt",
+    "skills_missing_input": "請輸入 API URL 和提示詞",
     "skills_generating": "產生中...",
-    "skills_switch_over_edits": "Prompt 已經修改過。要換成 {name}，並捨棄這些修改嗎？",
-    "skills_code_missing": "送出前，請把程式碼放在 prompt 裡 {code_diff} 的位置。",
+    "skills_switch_over_edits": "提示詞已經修改過。要換成 {name}，並捨棄這些修改嗎？",
+    "skills_code_missing": "送出前，請把程式碼放在提示詞裡 {code_diff} 的位置。",
     # JupyterLab GUI
     "jupyterlab_init": "初始化中...",
     "jupyterlab_downloading": "下載中...",
