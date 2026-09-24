@@ -83,7 +83,7 @@ Each module gets the same menu shape: **Run** (single script, batch directory, w
 
 ## Built-in Tools
 
-In a tool with one main button, Ctrl+Enter anywhere in it presses that button: its text boxes take Enter as a new line.
+In a tool with one main button, Ctrl+Enter anywhere in it presses that button: its text boxes take Enter as a new line. In Query ↔ JSON and the URL parser/builder, which convert both ways, it goes the way the input reads: from JSON when the input is a JSON object.
 
 ### cURL Import — a copied request becomes a runnable script
 
@@ -215,7 +215,7 @@ Loaded plugins appear under their own **Plugins** menu with an About entry and o
 - **English** (default)
 - **Traditional Chinese** (繁體中文)
 
-Menus, dialogs, the reasons a tool refuses its input and the run window's own notices (`[Error] …`, `[Run] …`) all follow the chosen language. Both dictionaries carry the same 756 keys, and a test enforces that parity so a new string can never land in one language only. Further languages can be added via translation plugins.
+Menus, dialogs, the reasons a tool refuses its input and the run window's own notices (`[Error] …`, `[Run] …`) all follow the chosen language. Both dictionaries carry the same 758 keys, and a test enforces that parity so a new string can never land in one language only. Further languages can be added via translation plugins.
 
 ---
 

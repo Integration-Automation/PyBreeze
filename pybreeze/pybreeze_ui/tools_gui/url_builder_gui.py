@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.run_shortcut import act_on_ctrl_enter
 from pybreeze.pybreeze_ui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.utils.exception.exceptions import UrlConvertException
@@ -37,6 +38,10 @@ class UrlBuilderGUI(QWidget):
         self.to_json_button.clicked.connect(self.convert_to_json)
         self.to_url_button = QPushButton(word.get("url_builder_to_url_button"))
         self.to_url_button.clicked.connect(self.convert_to_url)
+        # Ctrl+Enter goes the way the input reads: from JSON for a JSON object
+        self.to_json_button.setToolTip(word.get("ctrl_enter_when_not_json"))
+        self.to_url_button.setToolTip(word.get("ctrl_enter_when_json"))
+        act_on_ctrl_enter(self, self.convert_as_pasted)
 
         buttons = QHBoxLayout()
         buttons.addWidget(self.to_json_button)
@@ -63,6 +68,11 @@ class UrlBuilderGUI(QWidget):
         if initial_url:
             self.input_edit.setPlainText(initial_url)
             self.convert_to_json()
+
+    def convert_as_pasted(self) -> None:
+        """Ctrl+Enter: JSON → URL for a JSON object, URL → JSON otherwise."""
+        pasted_json = exact_text(self.input_edit).lstrip().startswith("{")
+        (self.to_url_button if pasted_json else self.to_json_button).click()
 
     def convert_to_json(self) -> None:
         """Parse the input URL into its JSON parts."""

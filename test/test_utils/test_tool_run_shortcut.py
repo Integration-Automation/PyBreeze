@@ -111,3 +111,29 @@ def test_ctrl_enter_sends_from_an_ai_panel(app, module, name):
 
     assert pressed == [True]
     panel.deleteLater()
+
+
+# The tools with a button for each direction: (module, class, to-JSON button, from-JSON button, text that is not JSON)
+TWO_WAY = [
+    ("query_json_gui", "QueryJsonGUI", "to_json_button", "to_query_button", "a=1&b=2"),
+    ("url_builder_gui", "UrlBuilderGUI", "to_json_button", "to_url_button", "https://api.example.com/v1?x=1"),
+]
+
+
+@pytest.mark.parametrize(("module", "name", "to_json", "from_json", "text"), TWO_WAY, ids=[t[1] for t in TWO_WAY])
+@pytest.mark.parametrize("pasted", ["text", "json"])
+def test_ctrl_enter_goes_the_way_the_input_reads(app, module, name, to_json, from_json, text, pasted):
+    tool = _tool(module, name)
+    pressed: list = []
+    getattr(tool, to_json).clicked.connect(lambda: pressed.append(to_json))
+    getattr(tool, from_json).clicked.connect(lambda: pressed.append(from_json))
+    tool.input_edit.setPlainText(text if pasted == "text" else '  {"a": "1"}')
+
+    shortcuts = _run_shortcuts(tool)
+    assert len(shortcuts) == 2
+    shortcuts[0].activated.emit()
+
+    assert pressed == [to_json if pasted == "text" else from_json]
+    assert "Ctrl+Enter" in getattr(tool, to_json).toolTip()
+    assert "Ctrl+Enter" in getattr(tool, from_json).toolTip()
+    tool.deleteLater()

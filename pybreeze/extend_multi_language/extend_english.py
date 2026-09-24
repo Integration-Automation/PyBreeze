@@ -526,6 +526,8 @@ pybreeze_english_word_dict = {
     # Query <-> JSON — Widget
     "query_json_input_label": "Query string or JSON object:",
     "query_json_input_placeholder": "a=1&b=2   or   {\"a\": \"1\", \"b\": \"2\"}",
+    "ctrl_enter_when_json": "Ctrl+Enter, when the input is a JSON object",
+    "ctrl_enter_when_not_json": "Ctrl+Enter, when the input is not a JSON object",
     "query_json_to_json_button": "Query → JSON",
     "query_json_to_query_button": "JSON → Query",
     "query_json_output_label": "Result:",

@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-50 | 2026-09-25 | Ctrl+Enter in the two-way tools goes the way the input reads | #feature #tools #readme | [2026-09-c](2026-09-c.md) |
 | U-20260925-49 | 2026-09-25 | Refactor: Ctrl+Enter can call any action | #refactor #ui | [2026-09-c](2026-09-c.md) |
 | U-20260925-48 | 2026-09-25 | Tests of a saved diagram's local images | #test #diagram #security | [2026-09-c](2026-09-c.md) |
 | U-20260925-47 | 2026-09-25 | Re-measure the coverage the architecture map quotes | #docs #test | [2026-09-c](2026-09-c.md) |
@@ -452,4 +453,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
-| [2026-09-c.md](2026-09-c.md) | 2026-09 | 49 |
+| [2026-09-c.md](2026-09-c.md) | 2026-09 | 50 |

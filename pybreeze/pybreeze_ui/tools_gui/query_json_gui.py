@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.run_shortcut import act_on_ctrl_enter
 from pybreeze.pybreeze_ui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.utils.exception.exceptions import QueryConvertException
@@ -36,6 +37,10 @@ class QueryJsonGUI(QWidget):
         self.to_json_button.clicked.connect(self.convert_to_json)
         self.to_query_button = QPushButton(word.get("query_json_to_query_button"))
         self.to_query_button.clicked.connect(self.convert_to_query)
+        # Ctrl+Enter goes the way the input reads: from JSON for a JSON object
+        self.to_json_button.setToolTip(word.get("ctrl_enter_when_not_json"))
+        self.to_query_button.setToolTip(word.get("ctrl_enter_when_json"))
+        act_on_ctrl_enter(self, self.convert_as_pasted)
 
         buttons = QHBoxLayout()
         buttons.addWidget(self.to_json_button)
@@ -58,6 +63,11 @@ class QueryJsonGUI(QWidget):
         layout.addWidget(self.output_edit)
         layout.addLayout(self.actions.button_row())
         self.setLayout(layout)
+
+    def convert_as_pasted(self) -> None:
+        """Ctrl+Enter: JSON → query for a JSON object, query → JSON otherwise."""
+        pasted_json = exact_text(self.input_edit).lstrip().startswith("{")
+        (self.to_query_button if pasted_json else self.to_json_button).click()
 
     def convert_to_json(self) -> None:
         """Convert the input query string to JSON."""

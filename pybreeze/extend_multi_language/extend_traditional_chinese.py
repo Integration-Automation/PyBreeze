@@ -489,6 +489,8 @@ pybreeze_traditional_chinese_word_dict = {
     # Query <-> JSON — 介面
     "query_json_input_label": "查詢字串或 JSON 物件：",
     "query_json_input_placeholder": "a=1&b=2   或   {\"a\": \"1\", \"b\": \"2\"}",
+    "ctrl_enter_when_json": "Ctrl+Enter（輸入是 JSON 物件時）",
+    "ctrl_enter_when_not_json": "Ctrl+Enter（輸入不是 JSON 物件時）",
     "query_json_to_json_button": "Query → JSON",
     "query_json_to_query_button": "JSON → Query",
     "query_json_output_label": "結果：",
