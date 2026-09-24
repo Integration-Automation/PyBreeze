@@ -219,3 +219,41 @@ def test_a_target_that_cannot_carry_an_upload_says_so(widget):
     widget.generate_all()
 
     assert "choose a Python target" in widget.output_edit.toPlainText()
+
+
+class TestWhatTheOutputBelongsTo:
+    """Save writes the output: it must be the script of the file and target now shown."""
+
+    def test_loading_another_file_clears_the_previous_script(self, loaded):
+        loaded.generate_all()
+        other = _HAR.replace("api.example.com", "second.example")
+
+        assert loaded.load_text(other)
+
+        assert loaded.output_edit.toPlainText() == ""
+        assert not loaded.actions._has_output()
+
+    def test_a_file_that_cannot_be_read_unlists_the_previous_one(self, loaded, tmp_path):
+        with patch(
+            "pybreeze.pybreeze_ui.tools_gui.har_import_gui.QFileDialog.getOpenFileName",
+            return_value=(str(tmp_path / "gone.har"), ""),
+        ):
+            loaded.open_file()
+
+        assert loaded.entry_list.count() == 0
+        loaded.generate_all()
+        assert "/v1/items" not in loaded.output_edit.toPlainText()
+        assert not loaded.actions._has_output()
+
+    def test_choosing_another_target_generates_again(self, loaded):
+        loaded.generate_all()
+
+        loaded.target_select.setCurrentIndex(loaded.target_select.findData("apitestka_action"))
+
+        assert len(json.loads(loaded.output_edit.toPlainText())) == 2
+        assert loaded.actions.suggested_filename() == "actions.json"
+
+    def test_choosing_a_target_before_generating_generates_nothing(self, loaded):
+        loaded.target_select.setCurrentIndex(loaded.target_select.findData("pytest"))
+
+        assert loaded.output_edit.toPlainText() == ""

@@ -45,6 +45,9 @@ class HarImportGUI(QWidget):
         self._entries: list[HarEntry] = []
         self._shown: list[HarEntry] = []
         self._generated_code: str | None = None
+        # The requests the output was generated from, to generate again for
+        # another target
+        self._generated_from: list[HarEntry] = []
         word = language_wrapper.language_word_dict
 
         self.open_button = QPushButton(word.get("har_import_open_button"))
@@ -68,6 +71,9 @@ class HarImportGUI(QWidget):
         self.target_select = QComboBox()
         for target_key, label_key in TEMPLATE_TARGETS:
             self.target_select.addItem(word.get(label_key), target_key)
+        # Save names the file after the target: the output has to follow it,
+        # or Python was saved as actions.json
+        self.target_select.currentIndexChanged.connect(self._regenerate)
 
         self.generate_selected_button = QPushButton(word.get("har_import_generate_selected"))
         self.generate_selected_button.clicked.connect(self.generate_selected)
@@ -137,19 +143,28 @@ class HarImportGUI(QWidget):
             entries = parse_har(text)
         except HarParseException as error:
             pybreeze_logger.info("har_import_gui.py parse failed: %r", error)
-            self._entries = []
-            self._refresh_entry_list()
             self._report_error(
                 language_wrapper.language_word_dict.get("har_import_error").format(
                     error=str(error)))
             return False
         self._entries = entries
         self._refresh_entry_list()
+        # The previous file's script is not this one's: Save wrote it
+        self._generated_code = None
+        self._generated_from = []
+        self.output_edit.clear()
         return True
 
     def _report_error(self, message: str) -> None:
-        """Show *message* as the summary and clear any generated output."""
+        """Show *message* as the summary, with nothing listed and no output.
+
+        The previous file's requests went too: listed under the error, Generate
+        still made their script.
+        """
+        self._entries = []
+        self._refresh_entry_list()
         self._generated_code = None
+        self._generated_from = []
         self.summary_label.setText(message)
         self.output_edit.setPlainText(message)
 
@@ -178,9 +193,15 @@ class HarImportGUI(QWidget):
         rows = sorted(index.row() for index in self.entry_list.selectedIndexes())
         return [self._shown[row] for row in rows if 0 <= row < len(self._shown)]
 
+    def _regenerate(self) -> None:
+        """Generate the output again for the target now chosen, if there is output."""
+        if self._generated_code is not None:
+            self._generate(self._generated_from, "har_import_empty_hint")
+
     def _generate(self, entries: list[HarEntry], empty_hint_key: str) -> None:
         """Generate a script for *entries*, or show the hint when there are none."""
         word = language_wrapper.language_word_dict
+        self._generated_from = list(entries)
         if not entries:
             self._generated_code = None
             self.output_edit.setPlainText(word.get(empty_hint_key))
