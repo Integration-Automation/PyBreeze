@@ -146,7 +146,7 @@ class HarImportGUI(QWidget):
             pybreeze_logger.info("har_import_gui.py parse failed: %r", error)
             self._report_error(
                 language_wrapper.language_word_dict.get("har_import_error").format(
-                    error=str(error)))
+                    error=error_text(str(error))))
             return False
         self._entries = entries
         self._refresh_entry_list()

@@ -92,3 +92,17 @@ class TestATab:
         assert "無法辨識為 epoch 數值或 ISO-8601 日期時間" in shown
         assert "recognized" not in shown
         tab.deleteLater()
+
+    def test_a_har_file_that_is_not_one(self, app, chinese, monkeypatch):
+        from pybreeze.pybreeze_ui.tools_gui import har_import_gui
+        from pybreeze.pybreeze_ui.tools_gui.har_import_gui import HarImportGUI
+
+        monkeypatch.setattr(har_import_gui.language_wrapper, "language_word_dict", CHINESE)
+        tab = HarImportGUI()
+
+        assert not tab.load_text('{"log": {}}')
+
+        shown = tab.output_edit.toPlainText()
+        assert "這份 JSON 沒有 log.entries 清單，不是 HAR 匯出檔" in shown
+        assert "entries list" not in shown
+        tab.deleteLater()

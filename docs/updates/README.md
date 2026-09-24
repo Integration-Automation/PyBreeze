@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260924-256 | 2026-09-24 | A HAR file that is not one says why in the IDE language too | #fix #tools #i18n | [2026-09-b](2026-09-b.md) |
 | U-20260924-255 | 2026-09-24 | A plugin run config's args given as a string is one argument | #fix #plugins #run | [2026-09-b](2026-09-b.md) |
 | U-20260924-254 | 2026-09-24 | Why a tool refused its input, in the IDE language | #fix #tools #i18n | [2026-09-b](2026-09-b.md) |
 | U-20260924-253 | 2026-09-24 | The AI review panel lists its methods from one place | #refactor #ai | [2026-09-b](2026-09-b.md) |
@@ -337,4 +338,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | File | Period | Entries |
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
-| [2026-09-b.md](2026-09-b.md) | 2026-09 | 55 |
+| [2026-09-b.md](2026-09-b.md) | 2026-09 | 56 |
