@@ -52,7 +52,7 @@ class FakeSftp:
     def mkdir(self, _path) -> None:
         self._request()
 
-    def get(self, _remote, local) -> None:
+    def get(self, _remote, local, callback=None) -> None:
         with open(local, "wb") as target:
             if self.fail_after is not None:
                 target.write(self.fail_after)

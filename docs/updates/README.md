@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260924-263 | 2026-09-24 | An SFTP transfer can be cancelled | #feature #ssh #ui | [2026-09-b](2026-09-b.md) |
 | U-20260924-262 | 2026-09-24 | The SFTP context menu dispatches from a table | #refactor #ssh | [2026-09-b](2026-09-b.md) |
 | U-20260924-261 | 2026-09-24 | A Stop button in the run window | #feature #run #ui | [2026-09-b](2026-09-b.md) |
 | U-20260924-260 | 2026-09-24 | The SFTP menu opens with exec, not the deprecated exec_ | #cleanup #ssh #qt | [2026-09-b](2026-09-b.md) |
@@ -344,4 +345,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | File | Period | Entries |
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
-| [2026-09-b.md](2026-09-b.md) | 2026-09 | 62 |
+| [2026-09-b.md](2026-09-b.md) | 2026-09 | 63 |

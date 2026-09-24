@@ -40,7 +40,7 @@ class FakeSftp:
             raise OSError(errno.ENOENT, "No such file")
         return object()
 
-    def put(self, local: str, remote: str) -> None:
+    def put(self, local: str, remote: str, callback=None) -> None:
         self.put_to.append(remote)
         with open(local, "rb") as source:
             data = source.read()

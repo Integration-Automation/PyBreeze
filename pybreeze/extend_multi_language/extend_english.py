@@ -201,6 +201,10 @@ pybreeze_english_word_dict = {
     "ssh_file_viewer_context_menu_action_delete": "Delete",
     "ssh_file_viewer_context_menu_action_download": "Download",
     "ssh_file_viewer_context_menu_action_upload": "Upload to this folder",
+    "ssh_file_viewer_context_menu_action_cancel_transfer": "Cancel the transfer",
+    "ssh_file_viewer_dialog_title_transfer_cancelled": "Transfer cancelled",
+    "ssh_file_viewer_message_transfer_cancelled":
+        "The transfer was cancelled. What had arrived was removed; a file it was to replace is unchanged.",
     "ssh_file_viewer_dialog_title_no_selection": "No selection",
     "ssh_file_viewer_dialog_message_select_folder_to_create": "Select a folder to create inside.",
     "ssh_file_viewer_dialog_message_bad_name": "A name is one entry: it cannot contain '/', or be '.' or '..'.",

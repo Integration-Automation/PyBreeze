@@ -223,7 +223,7 @@ class SSHFileTreeManager(QWidget):
         transfer = self._transfer
         transfer_running = transfer is not None and transfer.isRunning()
         if transfer_running:
-            let_run_out(transfer, transfer.done, transfer.failed)
+            let_run_out(transfer, transfer.done, transfer.failed, transfer.cancelled)
             transfer.finished.connect(self.client.close)
         for listing in list(self._listings):
             if listing.isRunning():
@@ -406,6 +406,10 @@ class SSHFileTreeManager(QWidget):
                 ("upload", self.action_upload),
         ):
             handlers[menu.addAction(self.word_dict.get(f"ssh_file_viewer_context_menu_action_{name}"))] = handler
+        if self._transfer is not None and self._transfer.isRunning():
+            menu.addSeparator()
+            cancel = menu.addAction(self.word_dict.get("ssh_file_viewer_context_menu_action_cancel_transfer"))
+            handlers[cancel] = self.action_cancel_transfer
 
         chosen = menu.exec(self.tree.viewport().mapToGlobal(pos))
         handler = handlers.get(chosen)
@@ -637,12 +641,25 @@ class SSHFileTreeManager(QWidget):
         self._transfer.done.connect(
             lambda path: self._transfer_done(title, message, path, after))
         self._transfer.failed.connect(self._transfer_failed)
+        self._transfer.cancelled.connect(self._transfer_cancelled)
         self._transfer.finished.connect(self._forget_transfer)
         self._transfer.exists.connect(lambda path: self._ask_to_replace(path, lambda: self._start_transfer(
             downloading=False, remote_path=remote_path, local_path=local_path,
             title=title, message=message, after=after, replace=True)))
         self._transfer.start()
         return True
+
+    def action_cancel_transfer(self, _item: QTreeWidgetItem | None = None) -> None:
+        """Cancel the transfer in flight; the file it was writing is removed, the old copy kept."""
+        if self._transfer is not None and self._transfer.isRunning():
+            self._transfer.cancel()
+
+    def _transfer_cancelled(self) -> None:
+        """Say the transfer was cancelled and nothing was replaced. UI thread."""
+        QMessageBox.information(
+            self,
+            self.word_dict.get("ssh_file_viewer_dialog_title_transfer_cancelled"),
+            self.word_dict.get("ssh_file_viewer_message_transfer_cancelled"))
 
     def _forget_transfer(self) -> None:
         """Let go of the transfer that just finished. UI thread.

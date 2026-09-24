@@ -96,6 +96,14 @@ class ConnectAbandoned(RuntimeError):
     """The session came up after the connect was given up on, and was closed."""
 
 
+class TransferCancelled(Exception):
+    """The user cancelled the transfer; what had arrived under a temporary name is removed."""
+
+
+# How a transfer reports its progress to paramiko: (bytes so far, bytes in all)
+Progress = Callable[[int, int], None]
+
+
 class SFTPClientWrapper:
     """
     Lightweight wrapper around Paramiko SFTP client.
@@ -265,10 +273,13 @@ class SFTPClientWrapper:
         with self._session(UI_WAIT_SECONDS) as sftp:
             sftp.rename(old_path, new_path)
 
-    def download(self, remote_path: str, local_path: str):
+    def download(self, remote_path: str, local_path: str, progress: Progress | None = None):
         """
         Download remote to local. Worker thread.
         下載遠端檔案至本地。
+
+        *progress* is called as the bytes arrive; raising from it
+        (``TransferCancelled``) stops the transfer, and the partial file goes.
 
         The file arrives beside *local_path* under a temporary name and takes
         its place only when complete: ``get`` empties its target before the
@@ -283,7 +294,7 @@ class SFTPClientWrapper:
         complete = False
         try:
             with self._session() as sftp:
-                sftp.get(remote_path, partial)
+                sftp.get(remote_path, partial, callback=progress)
             os.replace(partial, local_path)
             complete = True
         finally:
@@ -291,7 +302,8 @@ class SFTPClientWrapper:
                 with suppress(OSError):
                     os.remove(partial)
 
-    def upload(self, local_path: str, remote_path: str, replace: bool = False) -> bool:
+    def upload(self, local_path: str, remote_path: str, replace: bool = False,
+               progress: Progress | None = None) -> bool:
         """
         Upload local to remote. Worker thread.
         上傳本地檔案至遠端。
@@ -309,7 +321,7 @@ class SFTPClientWrapper:
                 return False
             complete = False
             try:
-                sftp.put(local_path, partial)
+                sftp.put(local_path, partial, callback=progress)
                 _move_into_place(sftp, partial, remote_path)
                 complete = True
             finally:
@@ -376,6 +388,8 @@ class SftpTransferThread(QThread):
     failed = Signal(str)
     # An upload whose target exists, not replaced: nothing was sent
     exists = Signal(str)
+    # Cancelled by the user: what had arrived is removed, the old copy stays
+    cancelled = Signal()
 
     def __init__(self, client: "SFTPClientWrapper", downloading: bool,
                  remote_path: str, local_path: str, replace: bool = False) -> None:
@@ -385,14 +399,26 @@ class SftpTransferThread(QThread):
         self._remote_path = remote_path
         self._local_path = local_path
         self._replace = replace
+        self._cancel = threading.Event()
+
+    def cancel(self) -> None:
+        """Stop the transfer at its next block. Any thread."""
+        self._cancel.set()
+
+    def _progress(self, _sent: int, _total: int) -> None:
+        """paramiko's progress callback: raising here is how a transfer is cut short."""
+        if self._cancel.is_set():
+            raise TransferCancelled
 
     def run(self) -> None:
         try:
             if self._downloading:
-                self._client.download(self._remote_path, self._local_path)
-            elif not self._client.upload(self._local_path, self._remote_path, self._replace):
+                self._client.download(self._remote_path, self._local_path, self._progress)
+            elif not self._client.upload(self._local_path, self._remote_path, self._replace, self._progress):
                 self.exists.emit(self._remote_path)
                 return
+        except TransferCancelled:
+            self.cancelled.emit()
         except (OSError, RuntimeError, EOFError, paramiko.SSHException) as error:
             self.failed.emit(str(error))
         else:

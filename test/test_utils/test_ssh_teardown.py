@@ -153,7 +153,7 @@ class TestATransfer:
             staticmethod(lambda *args: shown.append(args)))
         tree = self._tree(app)
 
-        def slow_download(_remote, _local):
+        def slow_download(_remote, _local, _progress=None):
             started.set()
             answering.wait(10)
 
