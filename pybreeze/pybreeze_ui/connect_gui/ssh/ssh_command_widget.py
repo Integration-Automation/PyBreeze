@@ -22,7 +22,7 @@ from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_host_key_policy import (
 )
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_key_loader import load_private_key, unloadable_key_reason
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_login_widget import LoginWidget
-from pybreeze.pybreeze_ui.terminal_view import insert_rewinding, use_terminal_font
+from pybreeze.pybreeze_ui.terminal_view import insert_rewinding, terminal_size, use_terminal_font
 from pybreeze.pybreeze_ui.thread_keeper import if_alive, let_run_out
 from pybreeze.pybreeze_ui.error_text import error_text
 from pybreeze.utils.logging.logger import pybreeze_logger
@@ -136,15 +136,17 @@ def send_all(channel: paramiko.Channel, data: bytes) -> None:
         channel.settimeout(0.0)
 
 
-def open_shell_channel(client: paramiko.SSHClient) -> paramiko.Channel:
+def open_shell_channel(client: paramiko.SSHClient, size: tuple[int, int]) -> paramiko.Channel:
     """Open an interactive shell on *client*'s connection. Waits on the network: not the UI thread.
 
-    The channel comes back non-blocking: its reader polls it.
+    Its pty is *size* (columns, rows). The channel comes back non-blocking:
+    its reader polls it.
     """
     transport = client.get_transport()
     if transport is not None:
         transport.set_keepalive(SSH_KEEPALIVE_SECONDS)
-    channel = client.invoke_shell(term="xterm", width=120, height=32)
+    columns, rows = size
+    channel = client.invoke_shell(term="xterm", width=columns, height=rows)
     channel.settimeout(0.0)
     return channel
 
@@ -221,6 +223,8 @@ class SSHCommandWidget(QWidget):
         self._connecting: SshConnectThread | None = None
         # Lines sent, for Up and Down / 送出過的指令
         self._history = CommandHistory()
+        # The size the shell's pty was last given / pty 目前的大小
+        self._pty_size: tuple[int, int] | None = None
         host_key_asker()  # built here, on the UI thread, for a connect to ask through
 
         if self.add_login_widget:
@@ -278,10 +282,14 @@ class SSHCommandWidget(QWidget):
         self.command_input_edit.returnPressed.connect(self.send_command)
         self.interrupt_button.clicked.connect(self.send_interrupt)
         self.command_input_edit.installEventFilter(self)
+        self._terminal_viewport = self.terminal.viewport()
+        self._terminal_viewport.installEventFilter(self)
 
     def eventFilter(self, watched, event) -> bool:
-        """Keys the command line gives to the shell rather than to its own text."""
-        if (watched is self.command_input_edit and event.type() == QEvent.Type.KeyPress
+        """Keys the command line gives to the shell rather than to its own text; the view's size."""
+        if watched is self._terminal_viewport and event.type() == QEvent.Type.Resize:
+            self._follow_view_size()
+        elif (watched is self.command_input_edit and event.type() == QEvent.Type.KeyPress
                 and self._command_line_key(event.key(), event.modifiers())):
             return True
         return super().eventFilter(watched, event)
@@ -307,6 +315,23 @@ class SSHCommandWidget(QWidget):
         if line is not None:
             self.command_input_edit.setText(line)
         return True
+
+    def _follow_view_size(self) -> None:
+        """Give the shell's pty the size the view shows, as a terminal window does on a resize.
+
+        It had 120 columns whatever the view's width, so ``ls`` laid its
+        columns out for a width the view did not have.
+        """
+        size = terminal_size(self.terminal)
+        if not self._has_shell() or size == self._pty_size:
+            return
+        columns, rows = size
+        try:
+            self.shell_channel.resize_pty(width=columns, height=rows)
+        except (OSError, paramiko.SSHException) as error:
+            pybreeze_logger.debug("SSH pty resize: %r", error)
+            return
+        self._pty_size = size
 
     def append_text(self, text: str):
         """Add a notice of our own, starting on a line of its own."""
@@ -366,6 +391,7 @@ class SSHCommandWidget(QWidget):
         # connected would otherwise leak the old SSH client and orphan its
         # reader thread (which keeps appending to the terminal).
         self._cleanup()
+        size = self._pty_size = terminal_size(self.terminal)
         client = paramiko.SSHClient()
         self.ssh_client = client
         apply_host_key_policy(client, self)
@@ -379,7 +405,7 @@ class SSHCommandWidget(QWidget):
                 client.connect(
                     hostname=host, port=port, username=user, password=password, timeout=10,
                     disabled_algorithms=SHA1_ALGORITHMS)
-            opened["channel"] = open_shell_channel(client)
+            opened["channel"] = open_shell_channel(client, size)
         # The connect and the shell's channel are made off the UI thread: an
         # unreachable host used to hold the IDE for the connect, banner and auth
         # timeouts together, and a server gone quiet after auth held it while
@@ -435,6 +461,7 @@ class SSHCommandWidget(QWidget):
         self.reader_thread.data_received.connect(self._on_data)
         self.reader_thread.closed.connect(self._on_closed)
         self.reader_thread.start()
+        self._follow_view_size()  # resized while it was connecting
         self.login_widget.status_label.setText(
             self.word_dict.get("ssh_command_widget_status_label_connected"))
         # An IPv6 address in brackets, or its port reads as one more group

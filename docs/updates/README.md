@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260924-291 | 2026-09-24 | The SSH shell's pty follows the terminal's size | #feature #ssh | [2026-09-b](2026-09-b.md) |
 | U-20260924-290 | 2026-09-24 | Terminal output in a fixed-pitch font | #fix #ssh #ui | [2026-09-b](2026-09-b.md) |
 | U-20260924-289 | 2026-09-24 | A progress bar in the SSH terminal redraws its line | #fix #ssh | [2026-09-b](2026-09-b.md) |
 | U-20260924-288 | 2026-09-24 | Refactor: the run window's line rewinding in a shared module | #refactor | [2026-09-b](2026-09-b.md) |
@@ -372,4 +373,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | File | Period | Entries |
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
-| [2026-09-b.md](2026-09-b.md) | 2026-09 | 88 |
+| [2026-09-b.md](2026-09-b.md) | 2026-09 | 89 |

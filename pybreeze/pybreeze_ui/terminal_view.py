@@ -4,7 +4,7 @@ Shared by the run window and the SSH terminal.
 """
 from __future__ import annotations
 
-from PySide6.QtGui import QFontDatabase, QTextCharFormat, QTextCursor
+from PySide6.QtGui import QFontDatabase, QFontMetricsF, QTextCharFormat, QTextCursor
 from PySide6.QtWidgets import QPlainTextEdit
 
 
@@ -18,6 +18,25 @@ def use_terminal_font(view: QPlainTextEdit) -> None:
     font = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
     font.setPointSizeF(view.font().pointSizeF())
     view.setFont(font)
+
+
+# Smallest size given to a program for a view squeezed to almost nothing
+MIN_COLUMNS = 20
+MIN_ROWS = 5
+
+
+def terminal_size(view: QPlainTextEdit) -> tuple[int, int]:
+    """The columns and rows of text *view* shows whole, in its font.
+
+    What a pty is told, for programs to lay out their output (``ls``'s
+    columns, a progress bar's width) to fit the view.
+    """
+    metrics = QFontMetricsF(view.font())
+    margins = 2 * view.document().documentMargin()
+    viewport = view.viewport()
+    columns = int((viewport.width() - margins) // metrics.horizontalAdvance("M"))
+    rows = int((viewport.height() - margins) // metrics.lineSpacing())
+    return max(columns, MIN_COLUMNS), max(rows, MIN_ROWS)
 
 
 def insert_rewinding(cursor: QTextCursor, text: str, text_format: QTextCharFormat) -> bool:

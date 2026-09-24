@@ -1,4 +1,4 @@
-"""Terminal output is shown in a fixed-pitch font, so columns line up."""
+"""Terminal views: a fixed-pitch font, so columns line up, and the size a pty is given."""
 from __future__ import annotations
 
 import os
@@ -12,7 +12,7 @@ from PySide6.QtWidgets import QApplication, QPlainTextEdit
 from pybreeze.extend_multi_language.update_language_dict import update_language_dict
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_command_widget import SSHCommandWidget
 from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
-from pybreeze.pybreeze_ui.terminal_view import use_terminal_font
+from pybreeze.pybreeze_ui.terminal_view import MIN_COLUMNS, MIN_ROWS, terminal_size, use_terminal_font
 
 
 @pytest.fixture(scope="module")
@@ -52,3 +52,31 @@ def test_the_run_window_shows_a_fixed_pitch_font(app):
         assert window.code_result.font().family() == _fixed_family()
     finally:
         window.close()
+
+
+def _view(width: int, height: int) -> QPlainTextEdit:
+    view = QPlainTextEdit()
+    use_terminal_font(view)
+    view.resize(width, height)
+    view.show()
+    QApplication.processEvents()
+    return view
+
+
+def test_a_wider_view_has_more_columns_and_a_taller_one_more_rows(app):
+    small, wide, tall = _view(400, 300), _view(800, 300), _view(400, 600)
+    try:
+        assert terminal_size(wide)[0] > terminal_size(small)[0]
+        assert terminal_size(tall)[1] > terminal_size(small)[1]
+        assert terminal_size(wide)[1] == terminal_size(small)[1]
+    finally:
+        for view in (small, wide, tall):
+            view.close()
+
+
+def test_a_squeezed_view_still_gives_a_usable_size(app):
+    view = _view(10, 10)
+    try:
+        assert terminal_size(view) == (MIN_COLUMNS, MIN_ROWS)
+    finally:
+        view.close()

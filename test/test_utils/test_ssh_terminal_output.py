@@ -19,6 +19,7 @@ from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_command_widget import (
     SSHReaderThread,
     TerminalDecoder,
 )
+from pybreeze.pybreeze_ui.terminal_view import terminal_size
 
 
 @pytest.fixture(scope="module")
@@ -335,7 +336,7 @@ class TestTheConnectMessage:
         widget = SSHCommandWidget()
         widget.word_dict = word
 
-        widget._start_shell(object(), host, 22, "alice")
+        widget._start_shell(ResizableChannel(), host, 22, "alice")
 
         assert widget.terminal.toPlainText().endswith(f"已以 alice 身分連線至 {shown}\n")
         assert widget.login_widget.status_label.text() == "已連線"
@@ -390,3 +391,91 @@ class TestCommandHistory:
 
         assert history.older("") == "a"
         assert history.older("") == "b"
+
+
+class ResizableChannel:
+    """Records the pty sizes it is given."""
+
+    closed = False
+
+    def __init__(self, error: Exception | None = None) -> None:
+        self.sizes: list[tuple[int, int]] = []
+        self.error = error
+
+    def resize_pty(self, width: int, height: int) -> None:
+        if self.error is not None:
+            raise self.error
+        self.sizes.append((width, height))
+
+
+class TestThePtySize:
+    @staticmethod
+    def _shown(app, channel) -> SSHCommandWidget:
+        widget = SSHCommandWidget()
+        widget.resize(900, 600)
+        widget.show()
+        QApplication.processEvents()
+        widget.shell_channel = channel
+        return widget
+
+    @staticmethod
+    def _resize(widget: SSHCommandWidget, width: int) -> None:
+        widget.resize(width, 600)
+        QApplication.processEvents()
+
+    def test_the_pty_follows_the_view(self, app):
+        # It stayed at 120 columns whatever the view's width
+        channel = ResizableChannel()
+        widget = self._shown(app, channel)
+
+        self._resize(widget, 500)
+
+        assert channel.sizes[-1] == terminal_size(widget.terminal)
+        assert channel.sizes[-1][0] < 120 - 40
+        widget.shell_channel = None
+        widget.close()
+
+    def test_a_resize_within_a_column_sends_nothing(self, app):
+        channel = ResizableChannel()
+        widget = self._shown(app, channel)
+        self._resize(widget, 500)
+        sent = len(channel.sizes)
+
+        self._resize(widget, 501)
+
+        assert len(channel.sizes) == sent
+        widget.shell_channel = None
+        widget.close()
+
+    def test_without_a_session_nothing_is_sent(self, app):
+        widget = self._shown(app, None)
+
+        self._resize(widget, 500)  # no channel to give it to: nothing raised
+
+        widget.close()
+
+    def test_a_resize_the_server_refuses_is_not_raised(self, app):
+        widget = self._shown(app, ResizableChannel(OSError("link down")))
+
+        self._resize(widget, 500)
+
+        assert widget._pty_size != terminal_size(widget.terminal)  # tried again next time
+        widget.shell_channel = None
+        widget.close()
+
+    def test_the_shell_opens_at_the_view_size(self, app):
+        options = {}
+
+        class Client:
+            @staticmethod
+            def get_transport():
+                return None
+
+            @staticmethod
+            def invoke_shell(**given):
+                options.update(given)
+                return paramiko.Channel(0)
+
+        ssh_command_widget.open_shell_channel(Client(), (77, 21))
+
+        assert (options["width"], options["height"]) == (77, 21)
