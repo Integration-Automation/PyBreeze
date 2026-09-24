@@ -30,6 +30,7 @@ from pybreeze.pybreeze_ui.diagram_editor.diagram_property_panel import DiagramPr
 from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene, ImageDownloadThread, ToolMode
 from pybreeze.pybreeze_ui.diagram_editor.diagram_view import DiagramView
 from pybreeze.pybreeze_ui.error_text import error_text
+from pybreeze.pybreeze_ui.fixed_pitch import use_fixed_pitch_font
 from pybreeze.pybreeze_ui.thread_keeper import let_run_out
 from pybreeze.pybreeze_ui.plain_text import as_text
 from pybreeze.utils.file_process.read_capped import read_text_capped
@@ -116,6 +117,7 @@ class MermaidImportDialog(QDialog):
 
         self._editor = QPlainTextEdit()
         self._editor.setPlaceholderText(_MERMAID_PLACEHOLDER)
+        use_fixed_pitch_font(self._editor)
         self._editor.setTabStopDistance(32)
         layout.addWidget(self._editor, 1)
 

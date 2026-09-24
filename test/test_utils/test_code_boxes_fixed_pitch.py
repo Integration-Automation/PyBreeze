@@ -53,6 +53,11 @@ def _cot_code_review():
     return CoTCodeReviewGUI()
 
 
+def _mermaid_import():
+    from pybreeze.pybreeze_ui.diagram_editor.diagram_editor_widget import MermaidImportDialog
+    return MermaidImportDialog()
+
+
 CODE_BOXES = [
     (_diff, "left_edit"), (_diff, "right_edit"), (_diff, "output_edit"),
     (_curl, "input_edit"), (_curl, "output_edit"),
@@ -60,6 +65,7 @@ CODE_BOXES = [
     (_json_format, "input_edit"), (_json_format, "output_edit"),
     (_ai_code_review, "code_input"),
     (_cot_code_review, "code_paste_area"),
+    (_mermaid_import, "_editor"),
 ]
 
 
