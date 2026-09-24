@@ -6,6 +6,7 @@ then turn it back into a URL. Pure logic — no Qt and no network access.
 """
 from __future__ import annotations
 
+import re
 from urllib.parse import SplitResult, urlsplit, urlunsplit
 
 from pybreeze.utils.exception.exception_tags import (
@@ -161,6 +162,8 @@ def build_url(components: dict) -> str:
     """Rebuild a URL from a components dict (the inverse of :func:`parse_url`).
 
     Missing parts default to empty, so a partial object still yields a URL.
+    Controls, spaces and the separators a text box turns into line breaks are
+    percent-encoded wherever they are; anything else is written as given.
 
     :param components: URL parts as produced by :func:`parse_url`
     :return: the assembled URL
@@ -177,8 +180,24 @@ def build_url(components: dict) -> str:
         # urlunsplit writes no empty authority, so the path's first segment
         # became the host: http:////x came back as http://x
         head = f"{scheme}:" if scheme else ""
-        return f"{head}//{path}{urlunsplit(('', '', '', query, fragment))}"
-    return urlunsplit((scheme, netloc, path, query, fragment))
+        return _encode_unwritable(f"{head}//{path}{urlunsplit(('', '', '', query, fragment))}")
+    return _encode_unwritable(urlunsplit((scheme, netloc, path, query, fragment)))
+
+
+# Characters no URL holds as they are: controls, spaces, line and paragraph
+# separators, the noncharacters Qt reads as line breaks, and lone surrogates
+_UNWRITABLE = re.compile("[\x00-\x20\x7f-\x9f  ﷐﷑\ud800-\udfff]")
+
+
+def _encode_unwritable(url: str) -> str:
+    """*url* with :data:`_UNWRITABLE` characters percent-encoded (UTF-8), the rest as it is.
+
+    The query is encoded already; a path, fragment or user name was written as
+    given, so ``#\\r`` came out as a URL with a carriage return in it, which
+    the output box then showed, copied and saved as ``#\\n``.
+    """
+    return _UNWRITABLE.sub(
+        lambda match: "".join(f"%{byte:02X}" for byte in match.group().encode("utf-8", "surrogatepass")), url)
 
 
 def _part(components: dict, name: str) -> str:

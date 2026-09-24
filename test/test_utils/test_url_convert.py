@@ -85,6 +85,20 @@ class TestRoundTrip:
     def test_parse_then_build_is_stable(self, url):
         assert build_url(parse_url(url)) == url
 
+    @pytest.mark.parametrize(("part", "value", "written"), [
+        ("fragment", "\r", "http://h/p#%0D"),
+        ("fragment", "a b", "http://h/p#a%E2%80%A9b"),
+        ("fragment", "﷐", "http://h/p#%EF%B7%90"),
+        ("path", "/a b\n", "http://h/a%20b%0A"),
+        ("fragment", "中文", "http://h/p#中文"),
+        ("fragment", "x%20y", "http://h/p#x%20y"),
+    ])
+    def test_what_a_text_box_would_change_is_percent_encoded(self, part, value, written):
+        # The output box gave "#\r" back as "#\n": Copy and Save wrote another URL
+        components = {"scheme": "http", "host": "h", "path": "/p", part: value}
+
+        assert build_url(components) == written
+
     @pytest.mark.parametrize("url", ["http:////x", "http:////x/y?a=1#f", "////x", "file:////srv/share"])
     def test_a_path_starting_with_two_slashes_does_not_become_the_host(self, url):
         # http:////x came back as http://x: the path's "x" was now the host
