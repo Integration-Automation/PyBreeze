@@ -292,6 +292,7 @@ pybreeze_english_word_dict = {
     "ai_code_review_gui_button_accept_response": "Accept Response",
     "ai_code_review_gui_button_reject_response": "Reject Response",
     "ai_code_review_gui_message_enter_valid_url": "Please enter a valid URL",
+    "ai_code_review_gui_message_paste_code": "Paste the code to review first.",
     "ai_code_review_gui_message_url_already_recorded": "This URL is already recorded, still sending request...",
     "ai_code_review_gui_message_new_url_recorded": "New URL recorded, sending request...",
     "ai_code_review_gui_message_unsupported_http_method": "Unsupported HTTP method",
@@ -368,6 +369,7 @@ pybreeze_english_word_dict = {
     "cot_gui_button_send": "Start Sending",
     "cot_gui_warning_title": "Warning",
     "cot_gui_error_no_url": "Please enter the API URL first!",
+    "cot_gui_error_no_code": "Paste the code to review first.",
     "cot_gui_error_sending": "Error sending:",
     # Skills GUI
     "skills_error_status": "Error: {status_code}\n{text}",

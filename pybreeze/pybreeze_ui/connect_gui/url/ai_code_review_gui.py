@@ -248,7 +248,8 @@ class AICodeReviewClient(QWidget):
             return
         url = self.url_input.text().strip()
         method = self.method_box.currentText()
-        code_content = exact_text(self.code_input).strip()
+        # As pasted: stripped, the first line of a selection lost its indent
+        code_content = exact_text(self.code_input)
 
         if not url:
             self.response_panel.setPlainText(
@@ -257,6 +258,9 @@ class AICodeReviewClient(QWidget):
         if method not in SUPPORTED_METHODS:
             self.response_panel.setPlainText(
                 self.word_dict.get("ai_code_review_gui_message_unsupported_http_method"))
+            return
+        if method in METHODS_WITH_A_BODY and not code_content.strip():
+            self.response_panel.setPlainText(self.word_dict.get("ai_code_review_gui_message_paste_code"))
             return
 
         # 這個 URL 之前送過嗎 / Has this URL been sent before?

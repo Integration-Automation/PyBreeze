@@ -282,6 +282,7 @@ pybreeze_traditional_chinese_word_dict = {
     "ai_code_review_gui_button_accept_response": "接受回應",
     "ai_code_review_gui_button_reject_response": "拒絕回應",
     "ai_code_review_gui_message_enter_valid_url": "請輸入有效的網址",
+    "ai_code_review_gui_message_paste_code": "請先貼上要審查的程式碼。",
     "ai_code_review_gui_message_url_already_recorded": "此網址已被紀錄，仍然送出請求...",
     "ai_code_review_gui_message_new_url_recorded": "新網址已紀錄，正在送出請求...",
     "ai_code_review_gui_message_unsupported_http_method": "不支援的 HTTP 方法",
@@ -358,6 +359,7 @@ pybreeze_traditional_chinese_word_dict = {
     "cot_gui_button_send": "開始傳送",
     "cot_gui_warning_title": "警告",
     "cot_gui_error_no_url": "請先輸入 API URL！",
+    "cot_gui_error_no_code": "請先貼上要審查的程式碼。",
     "cot_gui_error_sending": "傳送失敗：",
     # Skills GUI
     "skills_error_status": "錯誤：{status_code}\n{text}",

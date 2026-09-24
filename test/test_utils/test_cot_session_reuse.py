@@ -263,6 +263,7 @@ def _sending_gui(monkeypatch):
     monkeypatch.setattr(code_review_thread.SenderThread, "start", lambda self: None)
     gui = CoTCodeReviewGUI()
     gui.url_input.setText("https://review.example/api")
+    gui.code_paste_area.setPlainText("print('x')")
     return gui
 
 

@@ -116,6 +116,44 @@ class TestTheRequestItself:
         assert sent == [method]  # sent with the method chosen in the panel
         return answered, failed
 
+    def test_no_code_is_not_sent_in_a_body(self, client, monkeypatch):
+        # An empty code field went out, and the answer was about nothing
+        started: list = []
+        monkeypatch.setattr(ai_code_review_gui, "ReviewRequestThread", lambda *args: started.append(args))
+        client.url_input.setText(_A_URL)
+        client.code_input.setPlainText(" \n")
+
+        client.send_request()
+
+        assert started == []
+        assert client.response_panel.toPlainText() == client.word_dict.get(
+            "ai_code_review_gui_message_paste_code")
+
+    def test_a_method_without_a_body_needs_no_code(self, client, monkeypatch):
+        started: list = []
+        monkeypatch.setattr(ai_code_review_gui, "ReviewRequestThread", lambda *args: started.append(args) or _Silent())
+        monkeypatch.setattr(client, "record_url", lambda url: True)
+        client.url_input.setText(_A_URL)
+        client.method_box.setCurrentText("GET")
+
+        client.send_request()
+
+        assert [args[0] for args in started] == ["GET"]
+        client.request_thread.wait(5000)
+
+    def test_the_code_goes_as_pasted(self, client, monkeypatch):
+        # It was stripped: the first line of a selection from inside a function lost its indent
+        started: list = []
+        monkeypatch.setattr(ai_code_review_gui, "ReviewRequestThread", lambda *args: started.append(args) or _Silent())
+        monkeypatch.setattr(client, "record_url", lambda url: True)
+        client.url_input.setText(_A_URL)
+        client.code_input.setPlainText("    total = 1\n    return total\n")
+
+        client.send_request()
+
+        assert started[0][2] == "    total = 1\n    return total\n"
+        client.request_thread.wait(5000)
+
     def test_a_new_panel_sends_the_code(self, client):
         # It started on GET, which sends no body: the code pasted went nowhere
         assert client.method_box.currentText() in ai_code_review_gui.METHODS_WITH_A_BODY
@@ -270,6 +308,7 @@ class TestSendComesBack:
         monkeypatch.setattr(ai_code_review_gui, "ReviewRequestThread", _Silent)
         monkeypatch.setattr(client, "record_url", lambda url: True)
         client.url_input.setText(_A_URL)
+        client.code_input.setPlainText("print(1)")
 
         client.send_request()
         assert not client.send_button.isEnabled()

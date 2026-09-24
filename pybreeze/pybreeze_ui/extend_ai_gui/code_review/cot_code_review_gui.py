@@ -83,6 +83,12 @@ class CoTCodeReviewGUI(QWidget):
             word = language_wrapper.language_word_dict
             QMessageBox.warning(self, word.get("cot_gui_warning_title"), word.get("cot_gui_error_no_url"))
             return
+        code = exact_text(self.code_paste_area)
+        if not code.strip():
+            # Every step of the chain would have gone out about no code at all
+            word = language_wrapper.language_word_dict
+            QMessageBox.warning(self, word.get("cot_gui_warning_title"), word.get("cot_gui_error_no_code"))
+            return
         # The URL is checked by the worker, which reports a refusal as the
         # "error" answer: checked here too, its DNS lookup froze the IDE.
 
@@ -99,7 +105,7 @@ class CoTCodeReviewGUI(QWidget):
 
         # 啟動傳送 Thread
         self.send_button.setEnabled(False)
-        self.thread = SenderThread(files=self.files, code=exact_text(self.code_paste_area), url=url)
+        self.thread = SenderThread(files=self.files, code=code, url=url)
         self.thread.update_response.connect(self.handle_response)
         self.thread.finished.connect(self._enable_send)
         self.thread.start()

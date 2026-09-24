@@ -139,3 +139,20 @@ class TestCoTWithoutAUrl:
 
         assert shown == [("警告", "請先輸入 API URL！")]
         gui.deleteLater()
+
+
+class TestCoTWithoutCode:
+    def test_nothing_is_sent_and_the_user_is_told(self, qapp, monkeypatch):
+        # The whole chain, eight requests, ran on an empty box
+        from pybreeze.pybreeze_ui.extend_ai_gui.code_review import cot_code_review_gui as cot_mod
+        shown: list = []
+        monkeypatch.setattr(cot_mod.QMessageBox, "warning", lambda *args: shown.append(args[2]))
+        gui = CoTCodeReviewGUI()
+        gui.url_input.setText("https://llm.example.com/api")
+        gui.code_paste_area.setPlainText("  \n\t\n")
+
+        gui.start_sending()
+
+        assert gui.thread is None
+        assert shown == [cot_mod.language_wrapper.language_word_dict.get("cot_gui_error_no_code")]
+        gui.deleteLater()
