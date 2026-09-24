@@ -64,3 +64,41 @@ class TestControlCharacters:
         from pybreeze.utils.terminal_text import strip_terminal_controls
 
         assert strip_terminal_controls(raw) == expected
+
+
+def _backspaced_pair_by_pair(text: str) -> str:
+    """How backspaces were applied before: a character and its backspace removed, pass after pass."""
+    import re
+
+    pair = re.compile("[^\n\x08]\x08")
+    while True:
+        applied = pair.sub("", text)
+        if applied == text:
+            return text
+        text = applied
+
+
+def test_backspaces_are_applied_as_before():
+    from hypothesis import given, settings
+    from hypothesis import strategies as st
+
+    from pybreeze.utils.terminal_text import _apply_backspaces
+
+    @settings(max_examples=500, deadline=None)
+    @given(st.text(alphabet="ab\n\x08", max_size=40))
+    def same(text):
+        assert _apply_backspaces(text) == _backspaced_pair_by_pair(text)
+
+    same()
+
+
+def test_a_long_rub_out_is_quick():
+    # Pair by pair, 10,000 characters and their 10,000 backspaces took 5 s on the UI thread
+    import time
+
+    from pybreeze.utils.terminal_text import strip_terminal_controls
+
+    started = time.perf_counter()
+
+    assert strip_terminal_controls("a" * 10_000 + "\x08" * 10_000 + "done") == "done"
+    assert time.perf_counter() - started < 1

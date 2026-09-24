@@ -22,10 +22,8 @@ ANSI_ESCAPE_PATTERN = re.compile(
 
 # Control characters the view cannot show, once the sequences are gone: BEL
 # and the rest of C0 but tab, newline and carriage return, and DEL.
-# Backspace is applied first (_BACKSPACED)
+# Backspace is applied first (_apply_backspaces)
 _CONTROL_CHARACTER = re.compile('[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]')
-# A character and the backspace that takes it back (not across a line break)
-_BACKSPACED = re.compile('[^\n\x08]\x08')
 
 # The end of a read that stops inside an escape sequence: a lone ESC, a CSI
 # still waiting for its final byte, a control string still waiting for its
@@ -39,12 +37,25 @@ _MAX_PENDING_ESCAPE = 256
 def strip_terminal_controls(text: str) -> str:
     """*text* without escape sequences, with backspaces applied and other controls dropped."""
     text = ANSI_ESCAPE_PATTERN.sub('', text)
-    while True:
-        applied = _BACKSPACED.sub('', text)
-        if applied == text:
-            break
-        text = applied
+    if '\x08' in text:
+        text = _apply_backspaces(text)
     return _CONTROL_CHARACTER.sub('', text)
+
+
+def _apply_backspaces(text: str) -> str:
+    """Let each backspace take back the character before it, never a line break.
+
+    One pass: removing a character and its backspace a pair at a time, again
+    and again, took 5 s on the UI thread for 10,000 characters rubbed out.
+    A backspace with nothing to take back stays, for the caller to drop.
+    """
+    kept: list[str] = []
+    for character in text:
+        if character == '\x08' and kept and kept[-1] not in ('\n', '\x08'):
+            kept.pop()
+        else:
+            kept.append(character)
+    return ''.join(kept)
 
 
 def take_leading_backspaces(text: str) -> tuple[int, str]:
