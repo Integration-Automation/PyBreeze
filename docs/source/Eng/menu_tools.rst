@@ -80,7 +80,8 @@ File operations
    * - **New**
      - Discards the current diagram (with confirmation if non-empty).
    * - **Open**
-     - Loads a previously saved ``.diagram.json`` file.
+     - Loads a previously saved ``.diagram.json`` file, asking first when the diagram
+       has changes that are not saved.
    * - **Save** / **Save As** (``Ctrl+S`` / ``Ctrl+Shift+S``)
      - Saves the diagram as ``.diagram.json``.
    * - **Import Mermaid**

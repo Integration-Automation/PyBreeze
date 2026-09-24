@@ -76,7 +76,7 @@ Diagram Editor Tab / Dock
    * - **New**
      - 清除目前圖形（畫布非空時會跳出確認）。
    * - **Open**
-     - 載入先前儲存的 ``.diagram.json`` 檔案。
+     - 載入先前儲存的 ``.diagram.json`` 檔案；目前的架構圖有沒存的變更時會先詢問。
    * - **Save / Save As** (``Ctrl+S`` / ``Ctrl+Shift+S``)
      - 將圖形儲存為 ``.diagram.json``。
    * - **Import Mermaid**

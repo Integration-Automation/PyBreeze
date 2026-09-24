@@ -238,6 +238,8 @@ pybreeze_english_word_dict = {
         "{filename} has edits that are not saved. Close and lose them?",
     "diagram_editor_close_over_edits":
         "The diagram has changes that are not saved. Close and lose them?",
+    "diagram_editor_open_over_edits":
+        "The diagram has changes that are not saved. Open another and lose them?",
     "unsaved_close_title": "Unsaved changes",
     "prompt_editor_reload_over_edits":
         "{filename} changed on disk. Reload it and lose the edits made here?",

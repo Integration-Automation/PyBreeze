@@ -422,6 +422,11 @@ class DiagramEditorWidget(QWidget):
         self._current_path = None
 
     def _open_diagram(self) -> None:
+        # Opening replaces the canvas and clears the undo history
+        if not self._may_discard_edits(
+                "diagram_editor_open_over_edits",
+                "The diagram has changes that are not saved. Open another and lose them?"):
+            return
         path, _ = QFileDialog.getOpenFileName(
             self,
             _lang("diagram_editor_dialog_open", "Open Diagram"),
