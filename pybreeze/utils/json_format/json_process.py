@@ -55,8 +55,11 @@ class _Numbers:
         return escape_for_view(restored)
 
 
-def _refuse_constant(name: str) -> None:
-    """``NaN`` and ``Infinity`` are Python's extensions, not JSON."""
+def refuse_constant(name: str) -> None:
+    """``NaN`` and ``Infinity`` are Python's extensions, not JSON (``parse_constant``).
+
+    :raises ValueError: always
+    """
     raise ValueError(f"{name} is not JSON")
 
 
@@ -84,7 +87,7 @@ def _parse(json_string: str, numbers: _Numbers) -> object:
     """
     return loads(
         json_string, parse_float=numbers.hold, parse_int=numbers.hold,
-        parse_constant=_refuse_constant, object_pairs_hook=unique_pairs)
+        parse_constant=refuse_constant, object_pairs_hook=unique_pairs)
 
 
 def _load(json_string: str, numbers: _Numbers) -> object:

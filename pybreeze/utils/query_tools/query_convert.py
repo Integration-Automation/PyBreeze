@@ -22,7 +22,7 @@ from pybreeze.utils.exception.exception_tags import (
     unencodable_text_error,
 )
 from pybreeze.utils.exception.exceptions import QueryConvertException
-from pybreeze.utils.json_format.json_process import DuplicateKeyError, unique_pairs
+from pybreeze.utils.json_format.json_process import DuplicateKeyError, refuse_constant, unique_pairs
 from pybreeze.utils.json_format.view_safe import dumps_for_view
 from pybreeze.utils.logging.logger import pybreeze_logger
 
@@ -148,11 +148,6 @@ def encode_pairs(pairs: list[tuple[str, str]]) -> str:
         raise QueryConvertException(unencodable_text_error) from error
 
 
-def _refuse_constant(name: str) -> None:
-    """``NaN`` and ``Infinity`` are Python's extensions, not JSON."""
-    raise ValueError(f"{name} is not JSON")
-
-
 def load_json_verbatim(json_text: str) -> object:
     """Parse *json_text* with every number kept as the text it was written as.
 
@@ -166,5 +161,5 @@ def load_json_verbatim(json_text: str) -> object:
     :raises RecursionError: when it is nested deeper than the parser goes
     """
     return json.loads(
-        json_text, parse_float=str, parse_int=str, parse_constant=_refuse_constant,
+        json_text, parse_float=str, parse_int=str, parse_constant=refuse_constant,
         object_pairs_hook=unique_pairs)
