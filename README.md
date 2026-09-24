@@ -181,7 +181,7 @@ One settings form holds the inference backend (`remote`, `local`, OpenAI-compati
 
 Create and manage the multi-step review chain: first summary → first code review → a judge of that review → linter → code smell detector → step-by-step analysis → total summary → a judge of the summary. Each step quotes the answers it needs from the steps before it. Files are watched, so an external edit shows up immediately.
 
-Run the chain from **Tools → AI → CoT Code Review** (a tab, or a dock from the Dock menu): paste the code, give the endpoint URL, and each step's answer appears in the selector as it arrives.
+Run the chain from **Tools → AI → CoT Code Review** (a tab, or a dock from the Dock menu): paste the code, give the endpoint URL, and each step's answer appears in the selector as it arrives. Each step is a POST of the JSON `{"prompt": "..."}`, and the response body, as text, is that step's answer.
 
 ### Skill Prompt Editor & Skill Send
 
@@ -189,7 +189,7 @@ Run the chain from **Tools → AI → CoT Code Review** (a tab, or a dock from t
 |---|---|
 | ![Skill prompt editor](images/skill_prompt_editor.png) | ![Skill send](images/skills_send.png) |
 
-Define reusable skill prompts (code explanation, code review), then pick one, edit it if needed, and send it to an LLM endpoint from a dedicated tab or dock. *Both shown in the pre-send state — no endpoint was contacted for these screenshots.*
+Define reusable skill prompts (code explanation, code review), then pick one, edit it if needed, and send it to an LLM endpoint from a dedicated tab or dock: a POST of the JSON `{"code": "..."}` holding the prompt, whose response body is shown as it is. *Both shown in the pre-send state — no endpoint was contacted for these screenshots.*
 
 ---
 
