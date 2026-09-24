@@ -72,7 +72,8 @@ class TestLanguageParity:
         # The automation menus said 運行 where the run window said 執行; JEditor's
         # own entries (its Run and plugin menus) are not in this dictionary
         mainland = {"運行": "執行", "字體": "字型", "插件": "外掛", "默認": "預設", "文件夾": "資料夾",
-                    "信息": "訊息", "軟件": "軟體", "數據": "資料", "屏幕": "螢幕", "鼠標": "滑鼠"}
+                    "信息": "訊息", "軟件": "軟體", "數據": "資料", "屏幕": "螢幕", "鼠標": "滑鼠",
+                    "幫助": "說明", "模板": "範本"}
         found = {
             key: [word for word in mainland if word in value]
             for key, value in ZH.items()

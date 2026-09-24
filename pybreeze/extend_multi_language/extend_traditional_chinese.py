@@ -16,7 +16,7 @@ pybreeze_traditional_chinese_word_dict = {
     "install_menu_label": "安裝",
     # Normal label
     "run_label": "執行",
-    "help_label": "幫助",
+    "help_label": "說明",
     "project_label": "專案",
     "create_project_exists": "{path} 已經存在。要用新的範本檔取代，並捨棄你對它們的修改嗎？",
     "create_project_failed": "無法在 {path} 建立專案：{error}",
@@ -113,7 +113,7 @@ pybreeze_traditional_chinese_word_dict = {
     "test_pioneer_label": "TestPioneer",
     "test_pioneer_github_label": "開啟 TestPioneer GitHub",
     "test_pioneer_github_tab_label": "TestPioneer GitHub",
-    "test_pioneer_create_template_label": "建立 TestPioneer Yaml 模板",
+    "test_pioneer_create_template_label": "建立 TestPioneer Yaml 範本",
     "test_pioneer_template_exists": "{path} 已經存在。要用新的範本取代，並捨棄它目前的內容嗎？",
     "test_pioneer_template_failed": "無法在 {path} 建立範本：{error}",
     "test_pioneer_template_created": "已建立範本：{path}",
@@ -222,11 +222,11 @@ pybreeze_traditional_chinese_word_dict = {
     "prompt_editor_not_utf8":
         "{filename} 不是 UTF-8 文字檔。讀不出來的字元已經換掉後顯示；存檔時會改存成 UTF-8。",
     "prompt_editor_switch_over_edits":
-        "{filename} 還有沒存的編輯。要切換模板並捨棄它們嗎？",
+        "{filename} 還有沒存的編輯。要切換範本並捨棄它們嗎？",
     "prompt_editor_reload_button_over_edits":
         "{filename} 還有沒存的編輯。要從磁碟重新載入並捨棄它們嗎？",
     "prompt_editor_create_over_edits":
-        "要用內建模板建立 {filename} 嗎？這裡輸入的內容會被取代。",
+        "要用內建範本建立 {filename} 嗎？這裡輸入的內容會被取代。",
     "prompt_editor_unreadable":
         "{filename} 讀不出來：{error}",
     "prompt_editor_close_over_edits":
