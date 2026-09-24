@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-216 | 2026-09-24 | Send curl's data pieces in command-line order when one is a file | #fix #curl | [2026-09-b](2026-09-b.md) |
 | U-20260923-215 | 2026-09-24 | Send a JSON body raw when the object would not send it back as it was | #fix #curl | [2026-09-b](2026-09-b.md) |
 | U-20260923-214 | 2026-09-24 | Share one refuse_constant between the JSON tools | #refactor | [2026-09-b](2026-09-b.md) |
 | U-20260923-213 | 2026-09-24 | Show one changed line in a long repetitive text as one line | #fix #diff | [2026-09-b](2026-09-b.md) |
@@ -297,4 +298,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | File | Period | Entries |
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
-| [2026-09-b.md](2026-09-b.md) | 2026-09 | 15 |
+| [2026-09-b.md](2026-09-b.md) | 2026-09 | 16 |

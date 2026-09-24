@@ -72,17 +72,47 @@ def data_from_file_expr(request: CurlRequest) -> str:
     returns and newlines. The file was read as UTF-8 text, so a binary one
     raised ``UnicodeDecodeError`` and a ``-d`` file kept its line breaks.
 
+    The pieces keep their order on the command line: ``-d @a.txt -d b=1`` is
+    the file, then ``b=1`` (all inline pieces used to go first).
+
     :param request: the parsed curl request (must have ``data_file_refs``)
     :return: a Python expression, e.g. ``open("body.bin", "rb").read()``
     """
     pieces: list[str] = []
-    if request.data_parts:
-        pieces.append(f"{python_string(request.body)}.encode()")
-    for name in request.data_file_refs:
-        read = f'open({python_string(name)}, "rb").read()'
-        pieces.append(read if name in request.binary_data_files
+    inline: list[str] = []
+    for kind, text in _data_pieces(request):
+        if kind == "text":
+            inline.append(text)
+            continue
+        if inline:
+            pieces.append(f"{python_string('&'.join(inline))}.encode()")
+            inline = []
+        read = f'open({python_string(text)}, "rb").read()'
+        pieces.append(read if text in request.binary_data_files
                       else f'{read}.replace(b"\\r", b"").replace(b"\\n", b"")')
+    if inline:
+        pieces.append(f"{python_string('&'.join(inline))}.encode()")
     return ' + b"&" + '.join(pieces)
+
+
+def _data_pieces(request: CurlRequest) -> list[tuple[str, str]]:
+    """The body's pieces in command-line order: ``("text", part)`` or ``("file", name)``.
+
+    A file with no recorded position (a request built by hand) goes after
+    every inline part.
+    """
+    positions = request.data_file_positions + [len(request.data_parts)] * (
+        len(request.data_file_refs) - len(request.data_file_positions))
+    files = sorted(zip(positions, range(len(positions)), request.data_file_refs))
+    pieces: list[tuple[str, str]] = []
+    next_file = 0
+    for index, part in enumerate([*request.data_parts, None]):
+        while next_file < len(files) and files[next_file][0] <= index:
+            pieces.append(("file", files[next_file][2]))
+            next_file += 1
+        if part is not None:
+            pieces.append(("text", part))
+    return pieces
 
 
 def cookie_file_notes(request: CurlRequest) -> list[str]:

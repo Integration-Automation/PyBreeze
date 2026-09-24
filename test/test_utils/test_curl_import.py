@@ -469,6 +469,23 @@ class TestParseCurlDataFile:
         assert request.data_file_refs == []
         assert request.body == "a=1"
 
+    @pytest.mark.parametrize(("command", "sent"), [
+        ("curl -d @a.txt -d b=1 https://x", b"A&b=1"),
+        ("curl -d b=1 -d @a.txt -d c=2 --data-binary @z.bin https://x", b"b=1&A&c=2&Z\r\n"),
+        ("curl -d x=1 -d y=2 -d @a.txt https://x", b"x=1&y=2&A"),
+    ])
+    def test_the_pieces_are_sent_in_command_line_order(self, tmp_path, monkeypatch, command, sent):
+        # Every inline piece went first: -d @a.txt -d b=1 sent "b=1&A"
+        from pybreeze.utils.curl_import.request_codegen import data_from_file_expr
+
+        (tmp_path / "a.txt").write_bytes(b"A\r\n")
+        (tmp_path / "z.bin").write_bytes(b"Z\r\n")
+        monkeypatch.chdir(tmp_path)
+
+        expression = data_from_file_expr(parse_curl(command))
+
+        assert eval(expression, {"__builtins__": {"open": open}}) == sent  # noqa: S307 — the generator's own output, in a test
+
 
 class TestParseCurlDataUrlencode:
     def test_encodes_value_part(self):

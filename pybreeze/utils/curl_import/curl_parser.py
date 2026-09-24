@@ -79,6 +79,8 @@ class CurlRequest:
     :param form_strings: multipart ``name=value`` fields taken literally, from
         ``--form-string`` or a recorded text field; ``@`` means nothing there
     :param data_file_refs: filenames whose content forms the body (``-d @file``)
+    :param data_file_positions: for each of them, how many ``data_parts`` came
+        before it on the command line, so the body keeps curl's order
     :param binary_data_files: those of them given with ``--data-binary``, sent
         byte for byte; curl drops carriage returns and newlines from the others
     :param cookie_files: files ``-b`` names, which curl reads cookies from
@@ -100,6 +102,7 @@ class CurlRequest:
     form_fields: list[str] = field(default_factory=list)
     form_strings: list[str] = field(default_factory=list)
     data_file_refs: list[str] = field(default_factory=list)
+    data_file_positions: list[int] = field(default_factory=list)
     binary_data_files: set[str] = field(default_factory=set)
     cookie_files: list[str] = field(default_factory=list)
     timeout: str | None = None
@@ -381,6 +384,7 @@ def _apply_data_or_file(request: CurlRequest, value: str) -> None:
     """Record a ``-d`` value as an ``@file`` reference or an inline body part."""
     if value.startswith("@"):
         request.data_file_refs.append(value[1:])
+        request.data_file_positions.append(len(request.data_parts))
     else:
         request.data_parts.append(value)
 
