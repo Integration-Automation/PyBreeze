@@ -16,6 +16,9 @@ _RIGHT_LABEL = "actual"
 _CONTEXT_LINES = 3
 # The "--- left" and "+++ right" lines a non-empty unified diff starts with
 _HEADER_LINES = 2
+# Most lines, both texts together, for which a trimmed match is checked
+# against the plain one (``_closest_match``); matching takes milliseconds there
+_PLAIN_MATCH_MAX_LINES = 2000
 # diff's own note under a last line that has no newline
 _NO_NEWLINE_MARK = "\\ No newline at end of file"
 
@@ -157,11 +160,14 @@ def _closest_match(left_lines: list[str], right_lines: list[str]) -> tuple[diffl
     finds the smaller diff, but not always: in ``b b a b a`` against
     ``b a c b`` the first ``b`` taken as unchanged left a worse match, five
     lines changed where ``difflib`` changes three. When anything was set
-    aside, the plain match is made too and the smaller one kept.
+    aside, the plain match is made too and the smaller one kept -- for texts
+    of up to ``_PLAIN_MATCH_MAX_LINES`` lines between them. On larger ones a
+    second match doubled a wait of seconds (40,000 lines: 6 s became 16 s)
+    for the same diff.
     """
     trimmed = _TrimmedMatcher(left_lines, right_lines)
     best = (trimmed, *_changed_lines(trimmed))
-    if trimmed.trimmed_any():
+    if trimmed.trimmed_any() and len(left_lines) + len(right_lines) <= _PLAIN_MATCH_MAX_LINES:
         plain = difflib.SequenceMatcher(None, left_lines, right_lines)
         added, removed = _changed_lines(plain)
         if added + removed < best[1] + best[2]:
