@@ -232,6 +232,14 @@ class TestTheCommandsAreBuilt:
             backslash_escapes=False,
         ) == ["--output-dir", r"C:\reviews\out", "--marker", r"C:\with space\x"]
 
+    @pytest.mark.parametrize("backslash_escapes", [False, True])
+    def test_a_hash_is_part_of_an_argument_not_a_comment(self, backslash_escapes):
+        # Everything from the first "#" on was dropped without a word
+        assert split_arguments(
+            "--language C# --rules-url https://x/y#sec --focus #security --depth 2",
+            backslash_escapes=backslash_escapes,
+        ) == ["--language", "C#", "--rules-url", "https://x/y#sec", "--focus", "#security", "--depth", "2"]
+
     def test_where_backslash_escapes_it_still_does(self):
         assert split_arguments(r"--marker a\ b", backslash_escapes=True) == ["--marker", "a b"]
 

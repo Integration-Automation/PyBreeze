@@ -289,6 +289,10 @@ def split_arguments(text: str, *, backslash_escapes: bool) -> List[str]:
     """
     lexer = shlex.shlex(text, posix=True)
     lexer.whitespace_split = True
+    # 不把 # 當註解：C#、網址的 #section 都是參數的一部分
+    # "#" starts no comment (shlex.split clears it too): "C#" or a URL's
+    # "#section" cut off every argument after it
+    lexer.commenters = ""
     if not backslash_escapes:
         lexer.escape = ""
     return list(lexer)
