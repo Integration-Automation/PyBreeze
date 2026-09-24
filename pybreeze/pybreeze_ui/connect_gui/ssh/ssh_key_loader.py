@@ -6,6 +6,7 @@ loop here keeps the widgets lean and avoids duplicated fallback logic.
 """
 from __future__ import annotations
 
+import io
 import warnings
 from pathlib import Path
 
@@ -27,9 +28,15 @@ UNSUPPORTED_KEY = "ssh_command_widget_error_message_unsupported_private_key"
 PASSPHRASE_NEEDED = "ssh_key_error_passphrase_needed"
 PASSPHRASE_WRONG = "ssh_key_error_passphrase_wrong"
 
+# PKCS#8, which paramiko does not read (openssl genpkey, ssh-keygen -m PKCS8)
+_PKCS8_PLAIN = b"-----BEGIN PRIVATE KEY-----"
+_PKCS8_ENCRYPTED = b"-----BEGIN ENCRYPTED PRIVATE KEY-----"
+
 
 def load_private_key(key_path: str, password: str, *, context: str = "SSH") -> paramiko.PKey | None:
     """Try each supported key type against *key_path*; return the first that parses.
+
+    A PKCS#8 file, which none of them reads, goes through :func:`_load_pkcs8`.
 
     ``password`` is treated as the passphrase (empty string → no passphrase).
     ``context`` is included in debug logs so SFTP vs shell failures are distinguishable.
@@ -40,6 +47,43 @@ def load_private_key(key_path: str, password: str, *, context: str = "SSH") -> p
             return key_cls.from_private_key_file(key_path, passphrase)
         except (paramiko.SSHException, ValueError, OSError) as error:
             pybreeze_logger.debug("%s key type %s rejected: %s", context, key_cls.__name__, error)
+    return _load_pkcs8(key_path, passphrase, context)
+
+
+def _pkcs8_data(key_path: str) -> bytes | None:
+    """The contents of *key_path* if it is a PKCS#8 key file, else ``None``."""
+    try:
+        data = Path(key_path).read_bytes().lstrip()
+    except OSError:
+        return None
+    return data if data.startswith((_PKCS8_PLAIN, _PKCS8_ENCRYPTED)) else None
+
+
+def _load_pkcs8(key_path: str, passphrase: str | None, context: str) -> paramiko.PKey | None:
+    """A PKCS#8 key file as a paramiko key, or ``None``.
+
+    cryptography reads it and writes it again in OpenSSH's format, in memory
+    only, for paramiko to load. A passphrase is used only for an encrypted
+    file: paramiko ignores one given for a plain key, and so does this.
+    """
+    data = _pkcs8_data(key_path)
+    if data is None:
+        return None
+    password = passphrase.encode("utf-8") if passphrase and data.startswith(_PKCS8_ENCRYPTED) else None
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", CryptographyDeprecationWarning)  # a DSA key
+            key = serialization.load_pem_private_key(data, password)
+            openssh = key.private_bytes(
+                serialization.Encoding.PEM, serialization.PrivateFormat.OpenSSH, serialization.NoEncryption())
+    except (ValueError, TypeError, UnsupportedAlgorithm) as error:
+        pybreeze_logger.debug("%s PKCS#8 key not read: %s", context, type(error).__name__)
+        return None
+    for key_cls in _KEY_CLASSES:
+        try:
+            return key_cls.from_private_key(io.StringIO(openssh.decode("ascii")))
+        except (paramiko.SSHException, ValueError) as error:
+            pybreeze_logger.debug("%s PKCS#8 key type %s rejected: %s", context, key_cls.__name__, error)
     return None
 
 
@@ -51,8 +95,14 @@ def unloadable_key_reason(key_path: str, password: str) -> str:
     unsupported, which is all the message used to say. A passphrase given is
     wrong only when it does not decrypt the file: an encrypted key of a type
     paramiko cannot load (DSA, a FIDO key) asks for one too, and with the
-    right one it is still unsupported.
+    right one it is still unsupported. An encrypted PKCS#8 file says so in
+    its first line, which paramiko does not read.
     """
+    pkcs8 = _pkcs8_data(key_path)
+    if pkcs8 is not None and pkcs8.startswith(_PKCS8_ENCRYPTED):
+        if not password:
+            return PASSPHRASE_NEEDED
+        return UNSUPPORTED_KEY if _decrypts(key_path, password) else PASSPHRASE_WRONG
     for key_cls in _KEY_CLASSES:
         try:
             key_cls.from_private_key_file(key_path, None)
