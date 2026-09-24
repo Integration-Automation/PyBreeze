@@ -12,6 +12,7 @@ import stat
 from collections.abc import Callable
 
 from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLineEdit, QTreeWidget, QTreeWidgetItem,
     QMenu, QFileDialog, QMessageBox, QSplitter, QInputDialog, QStyle
@@ -92,6 +93,10 @@ def folder_item(item: QTreeWidgetItem | None) -> QTreeWidgetItem | None:
     return item.parent()
 
 
+# The keys that rename and delete the entry in focus, by the menu entry they stand for
+_ENTRY_KEYS = {"rename": Qt.Key.Key_F2, "delete": Qt.Key.Key_Delete}
+
+
 class SSHFileTreeManager(QWidget):
     """
     QWidget: connection form + tree + context menu.
@@ -140,6 +145,11 @@ class SSHFileTreeManager(QWidget):
         self.tree.itemExpanded.connect(self.on_item_expanded)
         self.tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.tree.customContextMenuRequested.connect(self.on_context_menu)
+        # F2 and Delete act on the entry in focus while the tree has the focus, as in the project tree
+        for name, act in (("rename", self._rename_current), ("delete", self._delete_current)):
+            shortcut = QShortcut(QKeySequence(_ENTRY_KEYS[name]), self.tree)
+            shortcut.setContext(Qt.ShortcutContext.WidgetShortcut)
+            shortcut.activated.connect(act)
 
         # Layouts
         splitter = QSplitter(Qt.Orientation.Vertical)
@@ -405,7 +415,11 @@ class SSHFileTreeManager(QWidget):
                 ("download", self.action_download),
                 ("upload", self.action_upload),
         ):
-            handlers[menu.addAction(self.word_dict.get(f"ssh_file_viewer_context_menu_action_{name}"))] = handler
+            action = menu.addAction(self.word_dict.get(f"ssh_file_viewer_context_menu_action_{name}"))
+            if name in _ENTRY_KEYS:
+                action.setShortcut(QKeySequence(_ENTRY_KEYS[name]))  # shown beside it: the tree's own keys do it
+                action.setShortcutVisibleInContextMenu(True)
+            handlers[action] = handler
         if self._transfer is not None and self._transfer.isRunning():
             menu.addSeparator()
             cancel = menu.addAction(self.word_dict.get("ssh_file_viewer_context_menu_action_cancel_transfer"))
@@ -416,6 +430,14 @@ class SSHFileTreeManager(QWidget):
         handler = handlers.get(chosen)
         if handler is not None:
             self._act_on(handler, item)
+
+    def _rename_current(self) -> None:
+        """F2: rename the entry in focus."""
+        self._act_on(self.action_rename, self._entry_of(self.tree.currentItem()))
+
+    def _delete_current(self) -> None:
+        """Delete: delete the entry in focus, once the user says so (No is the default)."""
+        self._act_on(self.action_delete, self._entry_of(self.tree.currentItem()))
 
     @staticmethod
     def _entry_of(item: QTreeWidgetItem | None) -> QTreeWidgetItem | None:

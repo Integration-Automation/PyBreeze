@@ -371,3 +371,44 @@ class TestDeletingAFolder:
         _wait_for(lambda: _idle(widget))
 
         assert len(shown) == 1 and "empty" not in shown[0] and "Permission denied" in shown[0]
+
+
+class TestTheKeys:
+    """F2 renames and Delete deletes the entry in focus, as in the project tree (U-20260925-35)."""
+
+    @staticmethod
+    def _shortcut(widget, keys: str):
+        from PySide6.QtCore import Qt
+        from PySide6.QtGui import QKeySequence, QShortcut
+
+        found = [shortcut for shortcut in widget.tree.findChildren(QShortcut) if shortcut.key() == QKeySequence(keys)]
+        assert len(found) == 1, keys
+        assert found[0].context() == Qt.ShortcutContext.WidgetShortcut  # only while the tree has the focus
+        return found[0]
+
+    @pytest.mark.parametrize(("keys", "action"), [("F2", "action_rename"), ("Del", "action_delete")])
+    def test_the_key_acts_on_the_current_entry(self, tree, monkeypatch, keys, action):
+        widget, _client, root, _warnings = tree
+        asked: list = []
+        monkeypatch.setattr(widget, action, asked.append)
+        notes = _child(root, "notes.txt")
+        widget.tree.setCurrentItem(notes)
+
+        self._shortcut(widget, keys).activated.emit()
+
+        assert asked == [notes]
+
+    def test_a_dropped_session_is_reported_not_raised(self, tree, monkeypatch):
+        widget, _client, root, _warnings = tree
+        reported: list = []
+        monkeypatch.setattr(QMessageBox, "critical", lambda *args: reported.append(args[2]))
+
+        def dropped(_item):
+            raise OSError("Socket is closed")
+
+        monkeypatch.setattr(widget, "action_delete", dropped)
+        widget.tree.setCurrentItem(_child(root, "notes.txt"))
+
+        self._shortcut(widget, "Del").activated.emit()
+
+        assert reported and "Socket is closed" in reported[0]
