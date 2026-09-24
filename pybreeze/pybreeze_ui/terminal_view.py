@@ -4,7 +4,20 @@ Shared by the run window and the SSH terminal.
 """
 from __future__ import annotations
 
-from PySide6.QtGui import QTextCharFormat, QTextCursor
+from PySide6.QtGui import QFontDatabase, QTextCharFormat, QTextCursor
+from PySide6.QtWidgets import QPlainTextEdit
+
+
+def use_terminal_font(view: QPlainTextEdit) -> None:
+    """Show *view* in the system's fixed-pitch font, at the size it had.
+
+    Output laid out in columns (``ls -l``, ``df``, a table a script prints)
+    lines up only when every character is as wide as the next; in the
+    interface's proportional font it came out ragged.
+    """
+    font = QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
+    font.setPointSizeF(view.font().pointSizeF())
+    view.setFont(font)
 
 
 def insert_rewinding(cursor: QTextCursor, text: str, text_format: QTextCharFormat) -> bool:

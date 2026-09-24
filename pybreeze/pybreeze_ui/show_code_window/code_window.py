@@ -8,7 +8,7 @@ from PySide6.QtCore import QTimer, Signal
 from PySide6.QtGui import QGuiApplication, QTextCharFormat, QTextCursor
 from PySide6.QtWidgets import QWidget, QGridLayout, QHBoxLayout, QPlainTextEdit, QPushButton, QScrollArea
 
-from pybreeze.pybreeze_ui.terminal_view import insert_rewinding
+from pybreeze.pybreeze_ui.terminal_view import insert_rewinding, use_terminal_font
 from pybreeze.utils.terminal_text import strip_terminal_controls, take_leading_backspaces
 
 if TYPE_CHECKING:
@@ -58,6 +58,7 @@ class CodeWindow(QWidget):
         self.code_result = QPlainTextEdit()
         self.code_result.setLineWrapMode(self.code_result.LineWrapMode.NoWrap)
         self.code_result.setReadOnly(True)
+        use_terminal_font(self.code_result)
         self.code_result.document().setMaximumBlockCount(MAX_OUTPUT_BLOCKS)
         self.code_result_scroll_area = QScrollArea()
         self.code_result_scroll_area.setWidgetResizable(True)

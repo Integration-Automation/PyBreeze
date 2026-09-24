@@ -22,7 +22,7 @@ from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_host_key_policy import (
 )
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_key_loader import load_private_key, unloadable_key_reason
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_login_widget import LoginWidget
-from pybreeze.pybreeze_ui.terminal_view import insert_rewinding
+from pybreeze.pybreeze_ui.terminal_view import insert_rewinding, use_terminal_font
 from pybreeze.pybreeze_ui.thread_keeper import if_alive, let_run_out
 from pybreeze.pybreeze_ui.error_text import error_text
 from pybreeze.utils.logging.logger import pybreeze_logger
@@ -248,6 +248,7 @@ class SSHCommandWidget(QWidget):
     def _setup_ui(self):
         self.terminal.setReadOnly(True)
         self.terminal.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+        use_terminal_font(self.terminal)
         self.command_input_edit.setPlaceholderText(
             self.word_dict.get("ssh_command_widget_input_placeholder_command_line")
         )
