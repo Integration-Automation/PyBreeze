@@ -53,6 +53,21 @@ def _cot_code_review():
     return CoTCodeReviewGUI()
 
 
+def _jwt_decoder():
+    from pybreeze.pybreeze_ui.tools_gui.jwt_decoder_gui import JwtDecoderGUI
+    return JwtDecoderGUI()
+
+
+def _query_json():
+    from pybreeze.pybreeze_ui.tools_gui.query_json_gui import QueryJsonGUI
+    return QueryJsonGUI()
+
+
+def _url_builder():
+    from pybreeze.pybreeze_ui.tools_gui.url_builder_gui import UrlBuilderGUI
+    return UrlBuilderGUI()
+
+
 def _mermaid_import():
     from pybreeze.pybreeze_ui.diagram_editor.diagram_editor_widget import MermaidImportDialog
     return MermaidImportDialog()
@@ -63,6 +78,9 @@ CODE_BOXES = [
     (_curl, "input_edit"), (_curl, "output_edit"),
     (_har, "output_edit"),
     (_json_format, "input_edit"), (_json_format, "output_edit"),
+    (_jwt_decoder, "input_edit"), (_jwt_decoder, "output_edit"),
+    (_query_json, "input_edit"), (_query_json, "output_edit"),
+    (_url_builder, "input_edit"), (_url_builder, "output_edit"),
     (_ai_code_review, "code_input"),
     (_cot_code_review, "code_paste_area"),
     (_mermaid_import, "_editor"),

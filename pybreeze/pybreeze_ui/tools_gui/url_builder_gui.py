@@ -12,6 +12,7 @@ from pybreeze.utils.exception.exceptions import UrlConvertException
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.url_tools.url_convert import json_to_url, url_to_json
 from pybreeze.pybreeze_ui.error_text import error_text
+from pybreeze.pybreeze_ui.fixed_pitch import use_fixed_pitch_font
 
 
 class UrlBuilderGUI(QWidget):
@@ -30,6 +31,7 @@ class UrlBuilderGUI(QWidget):
         self.input_edit = QTextEdit()
         self.input_edit.setPlaceholderText(word.get("url_builder_input_placeholder"))
         self.input_edit.setAcceptRichText(False)
+        use_fixed_pitch_font(self.input_edit)
 
         self.to_json_button = QPushButton(word.get("url_builder_to_json_button"))
         self.to_json_button.clicked.connect(self.convert_to_json)
@@ -43,6 +45,7 @@ class UrlBuilderGUI(QWidget):
         self.output_label = QLabel(word.get("url_builder_output_label"))
         self.output_edit = QTextEdit()
         self.output_edit.setReadOnly(True)
+        use_fixed_pitch_font(self.output_edit)
 
         self.actions = OutputActions(
             self, self.output_edit, main_window=main_window,

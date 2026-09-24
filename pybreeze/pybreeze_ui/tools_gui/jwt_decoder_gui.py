@@ -17,6 +17,7 @@ from pybreeze.utils.jwt_tools.jwt_decoder import (
 )
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.pybreeze_ui.error_text import error_text
+from pybreeze.pybreeze_ui.fixed_pitch import use_fixed_pitch_font
 
 
 def build_decoded_text(decoded: DecodedJwt) -> str:
@@ -57,6 +58,7 @@ class JwtDecoderGUI(QWidget):
         self.input_edit = QTextEdit()
         self.input_edit.setPlaceholderText(word.get("jwt_decoder_input_placeholder"))
         self.input_edit.setAcceptRichText(False)
+        use_fixed_pitch_font(self.input_edit)
 
         self.decode_button = QPushButton(word.get("jwt_decoder_decode_button"))
         self.decode_button.clicked.connect(self.decode)
@@ -64,6 +66,7 @@ class JwtDecoderGUI(QWidget):
         self.output_label = QLabel(word.get("jwt_decoder_output_label"))
         self.output_edit = QTextEdit()
         self.output_edit.setReadOnly(True)
+        use_fixed_pitch_font(self.output_edit)
 
         self.actions = OutputActions(
             self, self.output_edit, main_window=main_window,
