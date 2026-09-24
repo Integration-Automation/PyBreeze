@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260924-300 | 2026-09-24 | Correction to U-20260924-295: the keyword colours are not shown yet | #docs #jeditor | [2026-09-b](2026-09-b.md) |
 | U-20260924-299 | 2026-09-24 | clear and reset wipe the SSH terminal | #fix #ssh | [2026-09-b](2026-09-b.md) |
 | U-20260924-298 | 2026-09-24 | Arrow labels in the README's tool screenshots | #docs | [2026-09-b](2026-09-b.md) |
 | U-20260924-297 | 2026-09-24 | README screenshots of the SSH tab, the run window and the diagram editor redone | #docs | [2026-09-b](2026-09-b.md) |
@@ -381,4 +382,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | File | Period | Entries |
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
-| [2026-09-b.md](2026-09-b.md) | 2026-09 | 97 |
+| [2026-09-b.md](2026-09-b.md) | 2026-09 | 98 |
