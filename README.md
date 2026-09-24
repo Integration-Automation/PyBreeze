@@ -126,7 +126,7 @@ Each is a tab or a dock, each has the same copy / open-in-editor / save-to-file 
 ![JWT decoder, regex tester, HTTP status reference, JSON format](images/tools_montage_a.png)
 
 - **JWT Decoder** — header and payload as pretty JSON, with `exp` / `iat` / `nbf` / `auth_time` as readable UTC. Inspection only: the signature is never verified and the token is never trusted.
-- **Regex Tester** — `IGNORECASE` / `MULTILINE` / `DOTALL` / `VERBOSE`, every match with offsets, numbered groups and named groups. An invalid pattern reports a friendly error instead of crashing.
+- **Regex Tester** — `IGNORECASE` / `MULTILINE` / `DOTALL` / `VERBOSE`, every match with offsets, numbered groups and named groups. Enter in the pattern runs it. An invalid pattern reports a friendly error instead of crashing.
 - **HTTP Status Reference** — search the full status table (sourced from the standard library, so it stays current) by code prefix or keyword.
 - **JSON Format** — pretty-print or minify, with a clear validation error when the input is not JSON.
 

@@ -44,6 +44,18 @@ class TestRegexGUI:
         assert "'1'" in output
         assert "'22'" in output
 
+    def test_enter_in_the_pattern_runs_it(self, widget):
+        # Only the button ran it
+        widget.pattern_edit.setText(r"\d+")
+        widget.text_edit.setPlainText("a1 b22")
+
+        widget.pattern_edit.returnPressed.emit()
+
+        assert widget._match_thread is not None, "Enter started nothing"
+        assert widget._match_thread.wait(30_000), "the pattern did not come back"
+        QApplication.processEvents()
+        assert "'22'" in widget.output_edit.toPlainText()
+
     def test_no_match_message(self, widget):
         widget.pattern_edit.setText(r"z")
         widget.text_edit.setPlainText("abc")

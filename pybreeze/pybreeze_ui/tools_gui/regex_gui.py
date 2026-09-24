@@ -76,6 +76,7 @@ class RegexGUI(QWidget):
         self.pattern_label = QLabel(word.get("regex_pattern_label"))
         self.pattern_edit = QLineEdit()
         self.pattern_edit.setPlaceholderText(word.get("regex_pattern_placeholder"))
+        self.pattern_edit.returnPressed.connect(self.test)
 
         self.flag_checkboxes: dict[str, QCheckBox] = {}
         flags_row = QHBoxLayout()

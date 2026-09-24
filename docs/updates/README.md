@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260924-251 | 2026-09-24 | Enter in the regex pattern runs it | #feature #tools #ui | [2026-09-b](2026-09-b.md) |
 | U-20260924-250 | 2026-09-24 | SSH login: Enter connects, and the key file can be browsed for | #feature #ssh #ui | [2026-09-b](2026-09-b.md) |
 | U-20260924-249 | 2026-09-24 | Say why an SFTP folder was not deleted | #fix #ssh #ui | [2026-09-b](2026-09-b.md) |
 | U-20260924-248 | 2026-09-24 | SFTP Rename starts from the current name | #fix #ssh #ui | [2026-09-b](2026-09-b.md) |
@@ -332,4 +333,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | File | Period | Entries |
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
-| [2026-09-b.md](2026-09-b.md) | 2026-09 | 50 |
+| [2026-09-b.md](2026-09-b.md) | 2026-09 | 51 |
