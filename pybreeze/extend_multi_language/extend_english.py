@@ -14,6 +14,8 @@ _SKILL_PROMPT_EDITOR = "Skill Prompt Editor"
 pybreeze_english_word_dict = {
     # application name
     "application_name": "PyBreeze",
+    # Run window
+    "code_window_stop_button": "Stop",
     # Menubar
     "automation_menu_label": "Automation",
     "install_menu_label": "Install",

@@ -9,6 +9,8 @@ _SKILL_PROMPT_EDITOR = "Skill 提示詞編輯器"
 pybreeze_traditional_chinese_word_dict = {
     # application name
     "application_name": "PyBreeze",
+    # Run window
+    "code_window_stop_button": "停止",
     # Menubar
     "automation_menu_label": "自動化",
     "install_menu_label": "安裝",

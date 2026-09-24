@@ -362,3 +362,62 @@ class TestTerminalCodes:
         window.append_output("10%\r\x1b[32m20%\x1b[0m\r\n")
 
         assert window.code_result.toPlainText() == "20%\n"
+
+
+class TestTheStopButton:
+    """A run could be stopped only by closing the IDE: closing its window lets it go on."""
+
+    def test_is_off_until_a_run_starts_and_after_it_ends(self, qt_app):
+        from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
+
+        window = CodeWindow()
+        assert not window.stop_button.isEnabled()
+
+        window.run_started()
+        assert window.stop_button.isEnabled()
+
+        window.run_ended()
+        assert not window.stop_button.isEnabled()
+
+    def test_stops_the_runner(self, qt_app):
+        from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
+
+        class Runner:
+            stopped = 0
+
+            def stop(self):
+                self.stopped += 1
+
+        window = CodeWindow()
+        window.runner = Runner()
+        window.run_started()
+
+        window.stop_button.click()
+
+        assert window.runner.stopped == 1
+
+    def test_stops_a_script_that_would_run_forever(self, qt_app, tmp_path):
+        import sys
+        import time
+
+        from PySide6.QtWidgets import QApplication
+
+        from pybreeze.extend.process_executor.file_runner_process import FileRunnerProcess
+        from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
+
+        script = tmp_path / "forever.py"
+        script.write_text("import time\nwhile True:\n    time.sleep(0.1)\n", encoding="utf-8")
+        window = CodeWindow()
+        window.runner = FileRunnerProcess(window)
+        window.runner.run_file({"name": "Python", "compiler": sys.executable}, str(script))
+        assert window.stop_button.isEnabled()
+
+        window.stop_button.click()
+        deadline = time.monotonic() + 30
+        while window.stop_button.isEnabled():
+            assert time.monotonic() < deadline, "the run was not stopped"
+            QApplication.processEvents()
+            time.sleep(0.01)
+
+        assert not window.is_running()
+        window.close()

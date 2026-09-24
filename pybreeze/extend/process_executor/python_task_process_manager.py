@@ -217,6 +217,7 @@ class TaskProcessManager:
             return
         self.still_run_program = True
         self._reader_grace.restart()
+        self.main_window.run_started()
         self.read_program_output_from_thread = Thread(
             target=self.read_program_output_from_process,
             daemon=True

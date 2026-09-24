@@ -195,6 +195,7 @@ class FileRunnerProcess:
         self._after_exit = after_exit
         self._deadline = None if time_limit is None else time.monotonic() + time_limit
         self.still_running = True
+        self.main_window.run_started()
         self._reading = Event()
         self._reading.set()
         self._reader_grace.restart()

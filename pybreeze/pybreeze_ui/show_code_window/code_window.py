@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from je_editor import language_wrapper
 from je_editor.pyside_ui.main_ui.save_settings.user_color_setting_file import actually_color_dict
 from PySide6.QtCore import QTimer, Signal
 from PySide6.QtGui import QGuiApplication, QTextCharFormat, QTextCursor
-from PySide6.QtWidgets import QWidget, QGridLayout, QPlainTextEdit, QScrollArea
+from PySide6.QtWidgets import QWidget, QGridLayout, QHBoxLayout, QPlainTextEdit, QPushButton, QScrollArea
 
 from pybreeze.utils.terminal_text import strip_terminal_controls, take_leading_backspaces
 
@@ -65,6 +66,15 @@ class CodeWindow(QWidget):
         # "\r" + "\x1b[K60%" in two pieces left the old bar: "50%60%"
         self._rewind_pending = False
         self.grid_layout = QGridLayout()
+        # Stops the run shown here: closing the window lets it go on, and it
+        # could otherwise be stopped only by closing the IDE
+        self.stop_button = QPushButton(language_wrapper.language_word_dict.get("code_window_stop_button"))
+        self.stop_button.setEnabled(False)
+        self.stop_button.clicked.connect(self.stop_runner)
+        button_row = QHBoxLayout()
+        button_row.addWidget(self.stop_button)
+        button_row.addStretch()
+        self.grid_layout.addLayout(button_row, 0, 0)
         self.code_result = QPlainTextEdit()
         self.code_result.setLineWrapMode(self.code_result.LineWrapMode.NoWrap)
         self.code_result.setReadOnly(True)
@@ -73,7 +83,7 @@ class CodeWindow(QWidget):
         self.code_result_scroll_area.setWidgetResizable(True)
         self.code_result_scroll_area.setViewportMargins(0, 0, 0, 0)
         self.code_result_scroll_area.setWidget(self.code_result)
-        self.grid_layout.addWidget(self.code_result_scroll_area, 0, 0)
+        self.grid_layout.addWidget(self.code_result_scroll_area, 1, 0)
         # Adaptive sizing based on screen
         screen = QGuiApplication.primaryScreen()
         if screen is not None:
@@ -101,6 +111,10 @@ class CodeWindow(QWidget):
             self.finished_and_closed.emit()
         super().closeEvent(event)
 
+    def run_started(self) -> None:
+        """Called by the executor once its child is running: it may be stopped from here."""
+        self.stop_button.setEnabled(True)
+
     def run_ended(self) -> None:
         """Called by the executor once its run is over and its output is in.
 
@@ -108,6 +122,7 @@ class CodeWindow(QWidget):
         after the executor's timer slot returns, not from inside it: the list
         may hold the last reference to this window, and the timer is its child.
         """
+        self.stop_button.setEnabled(False)
         if self._closed_while_running:
             self._closed_while_running = False
             QTimer.singleShot(0, self, self.finished_and_closed.emit)
