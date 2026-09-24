@@ -29,6 +29,7 @@ from pybreeze.pybreeze_ui.diagram_editor.diagram_mermaid_parser import parse_mer
 from pybreeze.pybreeze_ui.diagram_editor.diagram_property_panel import DiagramPropertyPanel
 from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene, ImageDownloadThread, ToolMode
 from pybreeze.pybreeze_ui.diagram_editor.diagram_view import DiagramView
+from pybreeze.pybreeze_ui.error_text import error_text
 from pybreeze.pybreeze_ui.thread_keeper import let_run_out
 from pybreeze.pybreeze_ui.plain_text import as_text
 from pybreeze.utils.file_process.read_capped import read_text_capped
@@ -423,7 +424,7 @@ class DiagramEditorWidget(QWidget):
         # RecursionError JSON nested deeper than the parser goes
         except (OSError, ValueError, TypeError, KeyError, RecursionError, MemoryError) as e:
             pybreeze_logger.error("Open diagram failed: %r", e)
-            reason = e.strerror if isinstance(e, OSError) and e.strerror else str(e) or type(e).__name__
+            reason = e.strerror if isinstance(e, OSError) and e.strerror else error_text(str(e)) or type(e).__name__
             QMessageBox.warning(self, _lang("diagram_editor_error_title", "Error"), as_text(reason))
 
     def _save_diagram(self) -> None:
@@ -470,7 +471,7 @@ class DiagramEditorWidget(QWidget):
             QMessageBox.warning(
                 self,
                 _lang("diagram_editor_import_error", "Parse Error"),
-                as_text(str(e)),
+                as_text(error_text(str(e))),
             )
 
     def may_close(self) -> bool:

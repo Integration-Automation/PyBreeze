@@ -33,7 +33,7 @@ class SenderThread(QThread):
             validate_url(self.url)
         except UnsafeURLError as error:
             pybreeze_logger.error("CoT code review URL rejected: %r", error)
-            self.update_response.emit("error", str(error))
+            self.update_response.emit("error", error_text(str(error)))
             return
         # One session reuses a single TCP/TLS connection across all the
         # sequential per-template POSTs to the same endpoint.

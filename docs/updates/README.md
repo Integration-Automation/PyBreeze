@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260924-268 | 2026-09-24 | A file that is not a diagram, and a refused CoT URL, say why in the IDE language | #fix #i18n #diagram #ai | [2026-09-b](2026-09-b.md) |
 | U-20260924-267 | 2026-09-24 | Refactor: the diagram file checks raise from exception_tags | #refactor #i18n #diagram | [2026-09-b](2026-09-b.md) |
 | U-20260924-266 | 2026-09-24 | A test that no tool tab shows a reason as it was raised | #test #i18n | [2026-09-b](2026-09-b.md) |
 | U-20260924-265 | 2026-09-24 | The SFTP tree says a host key was declined in the IDE language | #done #fix #ssh #i18n | [2026-09-b](2026-09-b.md) |
@@ -349,4 +350,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | File | Period | Entries |
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
-| [2026-09-b.md](2026-09-b.md) | 2026-09 | 67 |
+| [2026-09-b.md](2026-09-b.md) | 2026-09 | 68 |

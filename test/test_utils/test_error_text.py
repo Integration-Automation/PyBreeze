@@ -196,3 +196,22 @@ def test_no_tool_tab_shows_a_reason_as_raised():
     raw = re.compile(r"error\s*=\s*str\(\s*(?:error|err|exc|e)\s*\)")
     offenders = [path.name for path in tabs.glob("*.py") if raw.search(path.read_text(encoding="utf-8"))]
     assert not offenders
+
+
+class TestADiagramFile:
+    def test_that_is_not_a_diagram(self, app, chinese, monkeypatch, tmp_path):
+        from pybreeze.pybreeze_ui.diagram_editor import diagram_editor_widget
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_editor_widget import DiagramEditorWidget
+
+        target = tmp_path / "list.diagram.json"
+        target.write_text("[]", encoding="utf-8")
+        shown: list = []
+        monkeypatch.setattr(diagram_editor_widget.QMessageBox, "warning", lambda *args: shown.append(args[2]))
+        monkeypatch.setattr(diagram_editor_widget.QFileDialog, "getOpenFileName",
+                            staticmethod(lambda *args, **kwargs: (str(target), "")))
+        editor = DiagramEditorWidget()
+
+        editor._open_diagram()
+
+        assert len(shown) == 1 and "架構圖檔案應該是一個物件，而不是 list" in shown[0]
+        editor.deleteLater()
