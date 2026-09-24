@@ -163,6 +163,8 @@ PyBreeze 开箱即用，涵盖自动化测试的完整范围：
 
 ## AI 辅助开发
 
+和工具一样，在 AI 代码审查、CoT 代码审查或 Skill Send 中按 Ctrl+Enter，就等于按下发送按钮。
+
 ### AI 代码审查
 
 ![AI 代码审查客户端](../images/ai_code_review.png)

@@ -163,6 +163,8 @@ Password or private-key authentication (the key file picked with Browse, startin
 
 ## AI-Assisted Development
 
+As in the tools, Ctrl+Enter in AI Code Review, CoT Code Review or Skill Send presses its send button.
+
 ### AI Code Review
 
 ![AI code review client](images/ai_code_review.png)

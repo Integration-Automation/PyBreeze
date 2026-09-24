@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.run_shortcut import press_on_ctrl_enter
 from pybreeze.pybreeze_ui.thread_keeper import let_run_out
 from pybreeze.utils.app_dirs import pybreeze_data_dir
 from pybreeze.utils.file_process.replace_file import replace_text
@@ -168,6 +169,7 @@ class AICodeReviewClient(QWidget):
         self.send_button = QPushButton(
             self.word_dict.get("ai_code_review_gui_button_send_request"))
         self.send_button.clicked.connect(self.send_request)
+        press_on_ctrl_enter(self, self.send_button)
         main_layout.addWidget(self.send_button)
         main_layout.addLayout(self._build_verdict_buttons())
         self.setLayout(main_layout)

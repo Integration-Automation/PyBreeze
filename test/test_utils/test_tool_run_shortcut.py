@@ -86,3 +86,28 @@ def test_the_keys_work_from_the_text_box(app):
     assert "ba7816bf" in tool.output_edit.toPlainText()  # SHA-256 of "abc"
     tool.close()
     tool.deleteLater()
+
+
+# The AI panels have one send button each, and a code or prompt box where Enter is a new line
+AI_PANELS = [
+    ("pybreeze.pybreeze_ui.connect_gui.url.ai_code_review_gui", "AICodeReviewClient"),
+    ("pybreeze.pybreeze_ui.extend_ai_gui.code_review.cot_code_review_gui", "CoTCodeReviewGUI"),
+    ("pybreeze.pybreeze_ui.extend_ai_gui.skills.skills_send_gui", "SkillsSendGUI"),
+]
+
+
+@pytest.mark.parametrize(("module", "name"), AI_PANELS, ids=[panel[1] for panel in AI_PANELS])
+def test_ctrl_enter_sends_from_an_ai_panel(app, module, name):
+    import importlib
+
+    panel = getattr(importlib.import_module(module), name)()
+    pressed: list = []
+    panel.send_button.clicked.disconnect()  # nothing goes out
+    panel.send_button.clicked.connect(lambda: pressed.append(True))
+
+    shortcuts = _run_shortcuts(panel)
+    assert len(shortcuts) == 2
+    shortcuts[0].activated.emit()
+
+    assert pressed == [True]
+    panel.deleteLater()

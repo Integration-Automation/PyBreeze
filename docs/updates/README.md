@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-33 | 2026-09-25 | Ctrl+Enter sends from the AI panels | #feature #ai #readme | [2026-09-c](2026-09-c.md) |
 | U-20260925-32 | 2026-09-25 | Refactor: the Ctrl+Enter helper moves up to pybreeze_ui | #refactor #ui | [2026-09-c](2026-09-c.md) |
 | U-20260925-31 | 2026-09-25 | Ctrl+Enter runs a tool | #feature #tools #readme | [2026-09-c](2026-09-c.md) |
 | U-20260925-30 | 2026-09-25 | The SSH login form's secret field says Passphrase for a key | #fix #ssh #i18n #readme | [2026-09-c](2026-09-c.md) |
@@ -435,4 +436,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
-| [2026-09-c.md](2026-09-c.md) | 2026-09 | 32 |
+| [2026-09-c.md](2026-09-c.md) | 2026-09 | 33 |

@@ -4,6 +4,7 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEd
     QMessageBox
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.run_shortcut import press_on_ctrl_enter
 from pybreeze.pybreeze_ui.extend_ai_gui.ai_gui_global_variable import COT_TEMPLATE_FILES
 from pybreeze.pybreeze_ui.extend_ai_gui.code_review.code_review_thread import SenderThread
 from pybreeze.pybreeze_ui.thread_keeper import let_run_out
@@ -67,6 +68,7 @@ class CoTCodeReviewGUI(QWidget):
         # 綁定事件
         self.response_selector.currentTextChanged.connect(self.show_response)
         self.send_button.clicked.connect(self.start_sending)
+        press_on_ctrl_enter(self, self.send_button)
 
         # 儲存回覆
         self.responses = {}

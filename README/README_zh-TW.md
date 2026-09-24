@@ -163,6 +163,8 @@ PyBreeze 開箱即用，涵蓋自動化測試的完整範疇：
 
 ## AI 輔助開發
 
+和工具一樣，在 AI 程式碼審查、CoT 程式碼審查或 Skill Send 裡按 Ctrl+Enter，就等於按下送出鈕。
+
 ### AI 程式碼審查
 
 ![AI 程式碼審查用戶端](../images/ai_code_review.png)

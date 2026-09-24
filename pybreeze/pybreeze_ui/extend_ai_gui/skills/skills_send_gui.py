@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import QThread, Signal
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.run_shortcut import press_on_ctrl_enter
 from pybreeze.pybreeze_ui.extend_ai_gui.ai_gui_global_variable import (
     SKILLS_TEMPLATE_FILES, SKILLS_TEMPLATE_RELATION
 )
@@ -135,6 +136,7 @@ class SkillsSendGUI(QWidget):
         # 傳送按鈕
         self.send_button = QPushButton(language_wrapper.language_word_dict.get("skills_send_button"))
         self.send_button.clicked.connect(self.send_prompt)
+        press_on_ctrl_enter(self, self.send_button)
         layout.addWidget(self.send_button)
 
         # 回傳結果顯示區域
