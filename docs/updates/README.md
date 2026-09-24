@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260924-240 | 2026-09-24 | A Save As button in the diagram editor | #fix #diagram #ui | [2026-09-b](2026-09-b.md) |
 | U-20260924-239 | 2026-09-24 | Why JupyterLab did not start, in the IDE language | #fix #jupyter #i18n | [2026-09-b](2026-09-b.md) |
 | U-20260924-238 | 2026-09-24 | The SSH shell's connect line in the IDE language, and its status Connected | #fix #ssh #i18n | [2026-09-b](2026-09-b.md) |
 | U-20260924-237 | 2026-09-24 | SFTP tree speaks the IDE language, and an entry named ... is not its placeholder | #fix #ssh #i18n | [2026-09-b](2026-09-b.md) |
@@ -321,4 +322,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | File | Period | Entries |
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
-| [2026-09-b.md](2026-09-b.md) | 2026-09 | 39 |
+| [2026-09-b.md](2026-09-b.md) | 2026-09 | 40 |

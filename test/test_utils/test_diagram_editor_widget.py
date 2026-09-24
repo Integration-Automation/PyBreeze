@@ -65,6 +65,28 @@ class TestSaving:
         stored = json.loads(target.read_text(encoding="utf-8"))
         assert [node["text"] for node in stored["nodes"]] == ["A"]
 
+    def test_save_as_has_a_button(self, editor, tmp_path, monkeypatch):
+        # Only Ctrl+Shift+S reached it: once saved, a diagram had no way to a
+        # new file from the toolbar
+        from PySide6.QtWidgets import QPushButton
+
+        from pybreeze.pybreeze_ui.diagram_editor import diagram_editor_widget
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_editor_widget import _lang
+
+        first, second = tmp_path / "first.diagram.json", tmp_path / "second.diagram.json"
+        editor._scene.load_from_dict(_A_DIAGRAM)
+        editor._current_path = first
+        monkeypatch.setattr(
+            diagram_editor_widget.QFileDialog, "getSaveFileName",
+            staticmethod(lambda *args, **kwargs: (str(second), "")))
+        button = next(button for button in editor.findChildren(QPushButton)
+                      if button.text() == _lang("diagram_editor_action_save_as"))
+
+        button.click()
+
+        assert second.is_file() and not first.exists()
+        assert editor._current_path == second
+
 
 class TestOpening:
     def test_a_file_that_is_not_a_diagram_leaves_the_canvas_alone(

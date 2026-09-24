@@ -230,6 +230,7 @@ class DiagramEditorWidget(QWidget):
             ("diagram_editor_action_new", self._new_diagram),
             ("diagram_editor_action_open", self._open_diagram),
             ("diagram_editor_action_save", self._save_diagram),
+            ("diagram_editor_action_save_as", self._save_as_diagram),
             ("diagram_editor_action_import", self._import_mermaid),
         ]:
             btn = _make_action_btn(_lang(lang_key))
