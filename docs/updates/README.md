@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-225 | 2026-09-24 | Draw the canvas where it is when the diagram is exported | #fix #diagram | [2026-09-b](2026-09-b.md) |
 | U-20260923-224 | 2026-09-24 | Hand -b cookies to the header analyzer as the Cookie header curl sends | #fix #curl | [2026-09-b](2026-09-b.md) |
 | U-20260923-223 | 2026-09-24 | Percent-encode what a text box would change when the URL Builder builds a URL | #fix #url | [2026-09-b](2026-09-b.md) |
 | U-20260923-222 | 2026-09-24 | Show a plugin's suffixes in the Run with box as text, and check every box by what it is assigned to | #fix #qt #plugin | [2026-09-b](2026-09-b.md) |
@@ -306,4 +307,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | File | Period | Entries |
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
-| [2026-09-b.md](2026-09-b.md) | 2026-09 | 24 |
+| [2026-09-b.md](2026-09-b.md) | 2026-09 | 25 |

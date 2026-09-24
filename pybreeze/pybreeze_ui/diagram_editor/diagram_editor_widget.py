@@ -558,10 +558,10 @@ class DiagramEditorWidget(QWidget):
             image.fill(Qt.GlobalColor.white)
             painter = QPainter(image)
             painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-            painter.scale(scale, scale)
-            painter.translate(-rect.topLeft())
             self._scene.clearSelection()
-            self._scene.render(painter, QRectF(), rect)
+            # render() maps the scene's rect onto the target itself: a painter
+            # scaled and moved as well put the drawing off to one side, shrunk
+            self._scene.render(painter, QRectF(0, 0, image.width(), image.height()), rect)
             painter.end()
             # Written beside the file and moved into place: a save that failed
             # part-way used to leave the previous export cut short
@@ -595,8 +595,9 @@ class DiagramEditorWidget(QWidget):
         if not painter.isActive():
             raise OSError("could not open SVG for writing")
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.translate(-rect.topLeft())
-        self._scene.render(painter, QRectF(), rect)
+        # Onto the view box as it is: with the painter moved as well, the
+        # drawing sat outside it
+        self._scene.render(painter, QRectF(0, 0, rect.width(), rect.height()), rect)
         if not painter.end():
             raise OSError("could not finish writing the SVG")
 

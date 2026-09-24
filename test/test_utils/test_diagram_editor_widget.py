@@ -139,6 +139,57 @@ class TestExporting:
         assert "<svg" in target.read_text(encoding="utf-8")
         assert list(tmp_path.iterdir()) == [target]
 
+    def test_a_png_export_draws_the_canvas_where_it_is(self, editor, tmp_path, monkeypatch):
+        # The painter was scaled and moved, then rendered to the device's whole
+        # rect: the scene came out shifted and shrunk, a node away from the
+        # origin only a corner of red
+        from PySide6.QtGui import QColor, QImage
+
+        from pybreeze.pybreeze_ui.diagram_editor import diagram_editor_widget
+
+        target = tmp_path / "diagram.png"
+        monkeypatch.setattr(diagram_editor_widget.QFileDialog, "getSaveFileName",
+                            staticmethod(lambda *args, **kwargs: (str(target), "")))
+        editor._scene.load_from_dict({"nodes": [{
+            "id": 0, "x": 500, "y": 300, "w": 200, "h": 100, "text": "",
+            "shape": "RECTANGLE", "fill_color": "#ff0000", "border_color": "#ff0000"}]})
+
+        editor._export_png()
+
+        image = QImage(str(target))
+        red = [QColor(image.pixel(x, y)).red() > 200 and QColor(image.pixel(x, y)).green() < 60
+               for x, y in ((image.width() // 2, image.height() // 2),
+                            (image.width() // 4, image.height() // 2),
+                            (image.width() * 3 // 4, image.height() // 2))]
+        assert red == [True, True, True]
+        assert QColor(image.pixel(5, 5)).name() == "#ffffff"
+
+    def test_an_svg_export_views_the_canvas_where_it_is(self, editor, tmp_path, monkeypatch):
+        # Rendered the same way, the node sat outside the SVG's view box
+        from PySide6.QtCore import QRectF
+        from PySide6.QtGui import QColor, QImage, QPainter
+        from PySide6.QtSvg import QSvgRenderer
+
+        from pybreeze.pybreeze_ui.diagram_editor import diagram_editor_widget
+
+        target = tmp_path / "diagram.svg"
+        monkeypatch.setattr(diagram_editor_widget.QFileDialog, "getSaveFileName",
+                            staticmethod(lambda *args, **kwargs: (str(target), "")))
+        editor._scene.load_from_dict({"nodes": [{
+            "id": 0, "x": 500, "y": 300, "w": 200, "h": 100, "text": "",
+            "shape": "RECTANGLE", "fill_color": "#ff0000", "border_color": "#ff0000"}]})
+
+        editor._export_svg()
+
+        renderer = QSvgRenderer(str(target))
+        image = QImage(renderer.defaultSize(), QImage.Format.Format_ARGB32)
+        image.fill(0xFFFFFFFF)
+        painter = QPainter(image)
+        renderer.render(painter, QRectF(0, 0, image.width(), image.height()))
+        painter.end()
+        middle = QColor(image.pixel(image.width() // 2, image.height() // 2))
+        assert middle.red() > 200 and middle.green() < 60
+
     @pytest.mark.parametrize("kind", ["png", "svg"])
     def test_an_export_that_fails_leaves_the_previous_one(self, editor, tmp_path, monkeypatch, kind):
         # It was written in place: a failure part-way left the last export cut short
