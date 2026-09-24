@@ -273,6 +273,26 @@ class TestCurlImportOpenHeadersInAnalyzer:
         assert "Accept: application/json" in output
         assert "X-Trace: 1" in output
 
+    def test_cookies_from_b_go_as_the_cookie_header_they_are_sent_as(self, widget_with_window):
+        # They were left out: the analyzer never saw the Cookie header curl sends
+        gui, window = widget_with_window
+        gui.input_edit.setPlainText("curl https://x -b 'c=3; d=4'")
+        gui.convert()
+
+        assert gui.open_headers_button.isEnabled()
+        gui.open_headers_in_analyzer()
+        assert "Cookie: c=3; d=4" in window.tab_widget.added[0][0].output_edit.toPlainText()
+
+    def test_a_cookie_header_given_is_what_is_sent_and_shown(self, widget_with_window):
+        # curl (and requests) sends -b's cookies only when no Cookie header is given
+        gui, window = widget_with_window
+        gui.input_edit.setPlainText("curl https://x -H 'Cookie: a=1' -b 'c=3'")
+        gui.convert()
+        gui.open_headers_in_analyzer()
+
+        output = window.tab_widget.added[0][0].output_edit.toPlainText()
+        assert "Cookie: a=1" in output and "c=3" not in output
+
     def test_open_headers_before_convert_is_noop(self, widget_with_window):
         gui, window = widget_with_window
         assert gui.open_headers_in_analyzer() is None
