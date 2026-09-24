@@ -262,11 +262,14 @@ class TestTheMenu:
     def _open(self, widget, monkeypatch, item, choose: int | None = None) -> list[str]:
         shown: list[str] = []
 
-        def run(menu, _pos):
-            shown.extend(action.text() for action in menu.actions())
-            return None if choose is None else menu.actions()[choose]
+        class AnsweringMenu(tree_mod.QMenu):
+            """Answers at once. PySide6 does not look up ``exec`` patched onto QMenu itself."""
 
-        monkeypatch.setattr(tree_mod.QMenu, "exec_", run)
+            def exec(self, _pos):
+                shown.extend(action.text() for action in self.actions())
+                return None if choose is None else self.actions()[choose]
+
+        monkeypatch.setattr(tree_mod, "QMenu", AnsweringMenu)
         monkeypatch.setattr(widget.tree, "itemAt", lambda _pos: item)
         widget.on_context_menu(widget.tree.rect().center())
         return shown

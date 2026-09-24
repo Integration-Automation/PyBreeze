@@ -407,7 +407,7 @@ class SSHFileTreeManager(QWidget):
         download_act = action("download")
         upload_act = action("upload")
 
-        action = menu.exec_(self.tree.viewport().mapToGlobal(pos))
+        action = menu.exec(self.tree.viewport().mapToGlobal(pos))
         if action is None:
             return
 
