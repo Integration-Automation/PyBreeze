@@ -112,8 +112,10 @@ def _parse_one_response(lines: list[str]) -> tuple[_Status | None, dict[str, str
             _continue_value(headers, last_name, line.strip())
         elif (pseudo := _PSEUDO_HEADER_RE.match(line)) is not None:
             # It ended the headers, and the rest was read as the body
-            if pseudo.group(1) == "status" and status is None and pseudo.group(2).strip().isdigit():
-                status = (int(pseudo.group(2).strip()), "")
+            code = pseudo.group(2).strip()
+            # ASCII digits only: "²".isdigit() holds, and int() then raised out of the tab
+            if pseudo.group(1) == "status" and status is None and code.isascii() and code.isdigit():
+                status = (int(code), "")
         elif (match := HEADER_LINE_RE.match(line)) is not None:
             last_name = _same_name(headers, match.group(1))
             add_repeated_value(headers, last_name, match.group(2).strip())

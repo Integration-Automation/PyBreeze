@@ -184,6 +184,14 @@ class TestHeadersAsHttpDefinesThem:
         assert analysis.headers == {"content-type": "application/json"}
         assert analysis.is_json_body
 
+    @pytest.mark.parametrize("code", ["²", "٤٠٤", "4 0 4"])
+    def test_a_status_that_is_not_ascii_digits_is_no_status(self, code):
+        # "²".isdigit() holds, and int() raised ValueError out of the tab
+        analysis = analyze_response(f":status: {code}\ncontent-type: text/plain\n\nbody")
+
+        assert analysis.status is None
+        assert analysis.headers == {"content-type": "text/plain"}
+
 
 class TestCurlShowsEveryResponse:
     """curl -i prints interim and earlier responses before the final one."""
