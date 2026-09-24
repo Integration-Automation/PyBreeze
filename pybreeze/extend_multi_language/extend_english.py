@@ -239,7 +239,6 @@ pybreeze_english_word_dict = {
     "ssh_file_viewer_dialog_title_select_local_file": "Select local file to upload",
     "ssh_file_viewer_dialog_title_uploaded": "Uploaded",
     "ssh_file_viewer_dialog_message_uploaded_to": "Uploaded to",
-    "ssh_file_viewer_dialog_button_ok": "OK",
     "ssh_file_viewer_window_title_file_tree_manager": "SSH File TreeView Manager",
     "ssh_file_viewer_tree_header_name": "Name",
     "ssh_file_viewer_tree_header_type": "Type",

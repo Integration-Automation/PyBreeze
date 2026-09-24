@@ -11,9 +11,9 @@ import re
 import stat
 from collections.abc import Callable
 
-from PySide6.QtCore import Qt, QEvent, QThread, Signal
+from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QLineEdit, QPushButton, QTreeWidget, QTreeWidgetItem,
+    QWidget, QVBoxLayout, QTreeWidget, QTreeWidgetItem,
     QMenu, QFileDialog, QMessageBox, QSplitter, QInputDialog, QStyle
 )
 from je_editor import language_wrapper
@@ -682,22 +682,8 @@ class SSHFileTreeManager(QWidget):
 
     def get_text(self, title: str, label: str):
         """
-        Simple input dialog using QMessageBox alternative.
-        簡易文字輸入對話框（基於 QLineEdit）。
+        Ask for one line of text; ``(text, ok)`` as ``QInputDialog.getText`` gives it.
+        詢問一行文字。
         """
         text, ok = QInputDialog.getText(self, title, label)
         return text, ok
-
-    def eventFilter(self, obj, event):
-        """
-        Allow Enter to trigger OK in our improvised input dialog.
-        允許在自製輸入框中使用 Enter 觸發確定。
-        """
-        if isinstance(obj, QLineEdit) and event.type() == QEvent.Type.KeyPress:
-            if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
-                w = obj.window()
-                for b in w.findChildren(QPushButton):
-                    if b.text().lower() in (self.word_dict.get("ssh_file_viewer_dialog_button_ok"),):
-                        b.click()
-                        return True
-        return super().eventFilter(obj, event)

@@ -238,7 +238,6 @@ pybreeze_traditional_chinese_word_dict = {
     "ssh_file_viewer_dialog_title_select_local_file": "選擇要上傳的本地檔案",
     "ssh_file_viewer_dialog_title_uploaded": "已上傳",
     "ssh_file_viewer_dialog_message_uploaded_to": "已上傳至",
-    "ssh_file_viewer_dialog_button_ok": "確定",
     "ssh_file_viewer_window_title_file_tree_manager": "SSH 檔案樹狀管理器",
     "ssh_file_viewer_tree_header_name": "名稱",
     "ssh_file_viewer_tree_header_type": "類型",
