@@ -114,6 +114,17 @@ class TestTheShapesPyBreezeCalls:
             "actually_color_dict")
         assert {"normal_output_color", "error_output_color"} <= set(colours)
 
+    def test_a_keyword_colour_can_be_a_theme_colour_key(self):
+        # syntax_extend registers keys, not colours, so keywords follow the theme
+        from je_editor.pyside_ui.code.syntax.python_syntax import PythonHighlighter
+        from je_editor.utils.theme.theme_colors import DARK_COLORS, LIGHT_COLORS
+
+        from pybreeze.pybreeze_ui.syntax.syntax_extend import JSON_KEYWORD_COLOUR, YAML_KEYWORD_COLOUR
+
+        assert "actually_color_dict.get(color)" in inspect.getsource(PythonHighlighter._make_format)
+        for key in (JSON_KEYWORD_COLOUR, YAML_KEYWORD_COLOUR):
+            assert key in DARK_COLORS and key in LIGHT_COLORS, key
+
     def test_the_widgets_build_without_arguments(self):
         from PySide6.QtWidgets import QDockWidget, QWidget
 
