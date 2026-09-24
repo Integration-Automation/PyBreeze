@@ -44,3 +44,24 @@ def test_no_executor_writes_an_english_notice_of_its_own():
     literal = re.compile(r'f?"\[(?:Error|Run|Compile|Compile failed|Stopped|Mail)\]')
     offenders = [path.name for path in executors.rglob("*.py") if literal.search(path.read_text(encoding="utf-8"))]
     assert not offenders
+
+
+def test_why_a_report_mail_was_not_sent_in_chinese(monkeypatch):
+    # "[郵件] 沒有寄出測試報告：no mail user is set"
+    import os
+
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtWidgets import QApplication
+
+    from pybreeze.extend.process_executor.process_executor_utils import _MailNotice
+    from pybreeze.utils.exception.exception_tags import mail_no_user_error
+
+    QApplication.instance() or QApplication([])
+    monkeypatch.setattr(run_notice_mod.language_wrapper, "language_word_dict", CHINESE)
+    notice = _MailNotice()
+    told: list = []
+    notice.told.connect(lambda text, is_error: told.append((text, is_error)))
+
+    notice.tell(mail_no_user_error)
+
+    assert told == [("[郵件] 沒有寄出測試報告：沒有設定郵件使用者\n", True)]

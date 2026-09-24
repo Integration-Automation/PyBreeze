@@ -16,6 +16,7 @@ from pybreeze.extend.process_executor.python_task_process_manager import TaskPro
 from pybreeze.utils.file_process.get_dir_file_list import get_dir_files_as_list
 from pybreeze.extend.process_executor.run_notice import run_notice
 from pybreeze.utils.logging.logger import pybreeze_logger
+from pybreeze.pybreeze_ui.error_text import error_text
 from pybreeze.pybreeze_ui.plain_text import as_text
 
 if TYPE_CHECKING:
@@ -207,7 +208,7 @@ class _MailNotice(QObject):
         if reason is None:
             self.told.emit(run_notice("mail_sent"), False)
         else:
-            self.told.emit(run_notice("mail_not_sent", reason=reason), True)
+            self.told.emit(run_notice("mail_not_sent", reason=error_text(reason)), True)
 
 
 def report_mail_hook(code_window: CodeWindow) -> Callable[[], None]:

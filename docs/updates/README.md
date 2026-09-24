@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260924-273 | 2026-09-24 | Why a report mail was not sent, in the IDE language | #fix #i18n #mail | [2026-09-b](2026-09-b.md) |
 | U-20260924-272 | 2026-09-24 | Refactor: the reasons a report mail was not sent come from exception_tags | #refactor #i18n #mail | [2026-09-b](2026-09-b.md) |
 | U-20260924-271 | 2026-09-24 | A run window's own notices in the IDE language | #fix #i18n #run-window | [2026-09-b](2026-09-b.md) |
 | U-20260924-270 | 2026-09-24 | Report a deeply nested regex instead of crashing on CPython 3.10 | #fix #regex | [2026-09-b](2026-09-b.md) |
@@ -354,4 +355,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | File | Period | Entries |
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
-| [2026-09-b.md](2026-09-b.md) | 2026-09 | 70 |
+| [2026-09-b.md](2026-09-b.md) | 2026-09 | 71 |
