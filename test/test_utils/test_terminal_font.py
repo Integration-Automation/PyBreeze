@@ -12,7 +12,8 @@ from PySide6.QtWidgets import QApplication, QPlainTextEdit, QWidget
 from pybreeze.extend_multi_language.update_language_dict import update_language_dict
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_command_widget import SSHCommandWidget
 from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
-from pybreeze.pybreeze_ui.fixed_pitch import use_fixed_pitch_font
+from pybreeze.pybreeze_ui import fixed_pitch
+from pybreeze.pybreeze_ui.fixed_pitch import fixed_pitch_font, use_fixed_pitch_font
 from pybreeze.pybreeze_ui.terminal_view import MIN_COLUMNS, MIN_ROWS, terminal_size
 
 
@@ -24,7 +25,7 @@ def app():
 
 
 def _fixed_family() -> str:
-    return QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont).family()
+    return fixed_pitch_font().family()
 
 
 def test_the_view_gets_the_fixed_pitch_font_at_its_own_size(app):
@@ -95,3 +96,16 @@ def test_a_squeezed_view_still_gives_a_usable_size(app):
         assert terminal_size(view) == (MIN_COLUMNS, MIN_ROWS)
     finally:
         view.close()
+
+
+class TestTheFamilyChosen:
+    def test_consolas_comes_before_the_system_font_when_it_is_installed(self, app, monkeypatch):
+        # The system's fixed-pitch font on Windows is Courier New
+        monkeypatch.setattr(fixed_pitch.QFontDatabase, "hasFamily", staticmethod(lambda family: family == "Consolas"))
+
+        assert fixed_pitch_font().family() == "Consolas"
+
+    def test_without_it_the_system_font_is_used(self, app, monkeypatch):
+        monkeypatch.setattr(fixed_pitch.QFontDatabase, "hasFamily", staticmethod(lambda family: False))
+
+        assert fixed_pitch_font().family() == QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont).family()

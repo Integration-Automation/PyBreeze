@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260924-313 | 2026-09-24 | Consolas before Courier New for terminal output | #fix #ui | [2026-09-b](2026-09-b.md) |
 | U-20260924-312 | 2026-09-24 | Move the fixed-pitch font helper out of terminal_view | #refactor #ui | [2026-09-b](2026-09-b.md) |
 | U-20260924-311 | 2026-09-24 | Remove the images nothing shows | #docs #cleanup | [2026-09-b](2026-09-b.md) |
 | U-20260924-310 | 2026-09-24 | Redo the README's main window and correct its caption | #docs #readme | [2026-09-b](2026-09-b.md) |
@@ -394,4 +395,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | File | Period | Entries |
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
-| [2026-09-b.md](2026-09-b.md) | 2026-09 | 110 |
+| [2026-09-b.md](2026-09-b.md) | 2026-09 | 111 |
