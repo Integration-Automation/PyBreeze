@@ -402,6 +402,15 @@ class TestParseCurlCookies:
         assert "Cookie" not in request.headers
         assert request.cookie_files == ["cookies.txt"]
 
+    def test_an_empty_cookie_file_reads_nothing(self):
+        # curl -b '' only switches on the cookie engine; it reads no file. It
+        # was a file named "", which the scripts noted and the APITestka
+        # action refused to generate.
+        request = parse_curl("curl -b '' https://x")
+        assert request.cookie_files == []
+        assert request.cookies == {}
+        assert "curl read cookies" not in to_requests_code(request)
+
     def test_no_cookies_by_default(self):
         assert parse_curl("curl https://x").cookies == {}
 
