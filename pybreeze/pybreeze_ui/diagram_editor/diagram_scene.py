@@ -31,13 +31,13 @@ from pybreeze.utils.exception.exception_tags import (
 )
 from pybreeze.utils.logging.logger import pybreeze_logger
 
-# Allowlist of image extensions that a saved diagram may reference on disk.
-# Defined once at module scope because it is a security boundary (only these
-# local files are read back when reloading a ``.diagram.json``).
 # How far a pasted copy sits from the original, so it is visible as a copy
 _PASTE_OFFSET = 30
 
-_VALID_IMAGE_SUFFIXES = frozenset(
+# Allowlist of image extensions that a saved diagram may reference on disk.
+# Defined once at module scope because it is a security boundary (only these
+# local files are read back when reloading a ``.diagram.json``).
+IMAGE_SUFFIXES = frozenset(
     {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".svg", ".webp", ".ico"}
 )
 
@@ -837,7 +837,7 @@ class DiagramScene(QGraphicsScene):
         # to that host, so a diagram from someone else could collect the user's
         # credentials, and an unreachable host would block the UI thread until
         # SMB gives up.
-        if (path.suffix.lower() in _VALID_IMAGE_SUFFIXES
+        if (path.suffix.lower() in IMAGE_SUFFIXES
                 and _is_on_this_machine(source) and path.is_file()):
             pix = QPixmap(str(path))
             if not pix.isNull():
