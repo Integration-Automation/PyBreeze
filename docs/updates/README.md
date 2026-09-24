@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-231 | 2026-09-24 | Generate the HAR script again when going back from a target that could not carry it | #fix #har | [2026-09-b](2026-09-b.md) |
 | U-20260923-230 | 2026-09-24 | Keep difflib's junk heuristic on for what is left after trimming, so a repetitive diff stays quick | #fix #diff #perf | [2026-09-b](2026-09-b.md) |
 | U-20260923-229 | 2026-09-24 | Run with the IDE's own interpreter when no venv is found, not whatever python3 is on PATH | #fix #executor | [2026-09-b](2026-09-b.md) |
 | U-20260923-228 | 2026-09-24 | Give pip the prthinker source folder as a path, not a name | #fix #prthinker | [2026-09-b](2026-09-b.md) |
@@ -312,4 +313,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | File | Period | Entries |
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
-| [2026-09-b.md](2026-09-b.md) | 2026-09 | 30 |
+| [2026-09-b.md](2026-09-b.md) | 2026-09 | 31 |

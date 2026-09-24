@@ -194,8 +194,12 @@ class HarImportGUI(QWidget):
         return [self._shown[row] for row in rows if 0 <= row < len(self._shown)]
 
     def _regenerate(self) -> None:
-        """Generate the output again for the target now chosen, if there is output."""
-        if self._generated_code is not None:
+        """Generate the output again for the target now chosen, if something was generated.
+
+        Also after a target that could not carry the requests: going back to
+        one that can left its error in the output.
+        """
+        if self._generated_from:
             self._generate(self._generated_from, "har_import_empty_hint")
 
     def _generate(self, entries: list[HarEntry], empty_hint_key: str) -> None:

@@ -257,3 +257,22 @@ class TestWhatTheOutputBelongsTo:
         loaded.target_select.setCurrentIndex(loaded.target_select.findData("pytest"))
 
         assert loaded.output_edit.toPlainText() == ""
+
+    def test_going_back_from_a_target_that_failed_generates_again(self, widget):
+        # A recorded upload: the APITestka action list cannot carry it
+        upload = json.dumps({"log": {"entries": [{
+            "request": {"method": "POST", "url": "https://api.example.com/up", "headers": [],
+                        "postData": {"mimeType": "multipart/form-data",
+                                     "params": [{"name": "f", "fileName": "a.txt"}]}},
+            "response": {"status": 200, "content": {"mimeType": "application/json"}}}]}})
+        widget.load_text(upload)
+        widget.api_only_check.setChecked(False)
+        widget.generate_all()
+        requests_script = widget.output_edit.toPlainText()
+
+        widget.target_select.setCurrentIndex(widget.target_select.findData("apitestka_action"))
+        assert not widget.actions._has_output()
+        widget.target_select.setCurrentIndex(widget.target_select.findData("requests"))
+
+        assert widget.output_edit.toPlainText() == requests_script
+        assert widget.actions._has_output()
