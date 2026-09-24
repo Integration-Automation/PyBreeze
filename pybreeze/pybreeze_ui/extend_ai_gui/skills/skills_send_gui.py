@@ -15,6 +15,13 @@ from pybreeze.pybreeze_ui.extend_ai_gui.ai_gui_global_variable import (
 )
 from pybreeze.pybreeze_ui.extend_ai_gui.prompt_store import load_prompt
 from pybreeze.pybreeze_ui.thread_keeper import let_run_out
+from pybreeze.utils.exception.exception_tags import (
+    authorization_failed_error,
+    redirect_not_followed_error,
+    redirect_nowhere_error,
+    redirect_same_server_error,
+    server_error_error,
+)
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.network.http_client import (
     DEFAULT_MAX_READ_SECONDS, ResponseTooLargeError, read_capped_text, CONNECT_TIMEOUT,
@@ -65,8 +72,8 @@ class RequestThread(QThread):
             self.error.emit(language_wrapper.language_word_dict.get("skills_exception").format(error=describe_request_error(e)))
 
 
-def _where(location: str) -> str:
-    """The scheme and host a redirect names, and nothing else.
+def _redirect_text(location: str) -> str:
+    """Say that a redirect was not followed, naming its scheme and host and nothing else.
 
     A redirect usually repeats the request's path and query (a trailing-slash
     redirect of ``?key=...``), and the whole URL used to be shown with the
@@ -74,12 +81,12 @@ def _where(location: str) -> str:
     """
     parts = urlsplit(location)
     if not parts.scheme or not parts.hostname:
-        return "another path on this server" if location else "an unnamed place"
+        return redirect_same_server_error if location else redirect_nowhere_error
     try:
         port = f":{parts.port}" if parts.port else ""
     except ValueError:  # not a port number
         port = ""
-    return f"{parts.scheme}://{parts.hostname}{port}"
+    return redirect_not_followed_error.format(where=f"{parts.scheme}://{parts.hostname}{port}")
 
 
 def describe_failed_status(response, body: str) -> tuple[bool, str]:
@@ -89,11 +96,11 @@ def describe_failed_status(response, body: str) -> tuple[bool, str]:
     answer; a refused request and a server error are errors.
     """
     if response.is_redirect:
-        return False, f"Redirect (not followed) to {_where(response.headers.get('Location', ''))}"
+        return False, _redirect_text(response.headers.get("Location", ""))
     if response.status_code in (401, 403):
-        return True, "Authentication/Authorization failed"
+        return True, authorization_failed_error
     if response.status_code >= 500:
-        return True, f"Server error: {truncate_for_display(body)}"
+        return True, server_error_error.format(body=truncate_for_display(body))
     return False, truncate_for_display(body)
 
 

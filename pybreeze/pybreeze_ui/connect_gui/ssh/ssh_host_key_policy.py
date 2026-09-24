@@ -24,6 +24,7 @@ from PySide6.QtCore import QObject, Qt, QThread, Signal, Slot
 from PySide6.QtWidgets import QMessageBox
 
 from pybreeze.utils.app_dirs import pybreeze_data_dir
+from pybreeze.utils.exception.exception_tags import host_key_rejected_error
 from pybreeze.utils.file_process.replace_file import replace_written
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.pybreeze_ui.plain_text import as_text
@@ -185,9 +186,7 @@ class InteractiveHostKeyPolicy(paramiko.MissingHostKeyPolicy):
                 pybreeze_logger.warning(
                     "SSH host key for %s rejected by user (%s)", hostname, fingerprint
                 )
-                raise paramiko.SSHException(
-                    f"Host key for {hostname} rejected by user."
-                )
+                raise paramiko.SSHException(host_key_rejected_error.format(hostname=hostname))
             client.get_host_keys().add(hostname, key_type, key)
             _store(hostname, key)
         pybreeze_logger.info(

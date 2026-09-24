@@ -67,3 +67,36 @@ regex_timeout_error: str = (
     "the pattern was still running after {seconds} s and was stopped; nested "
     "repetition such as (a+)+ can take exponentially long on text that almost matches")
 regex_worker_error: str = "the pattern could not be run: {detail}"
+
+# URL checks (utils/network): they name no path or query, which may hold a token
+url_unsafe_characters_error: str = "URL contains a backslash, whitespace or a control character."
+url_unparsable_error: str = "URL cannot be parsed."
+url_ambiguous_host_error: str = "URL names its host ambiguously."
+url_scheme_not_allowed_error: str = "Scheme '{scheme}' is not allowed. Use http or https."
+url_no_hostname_error: str = "URL has no hostname."
+hostname_unresolved_error: str = "Cannot resolve hostname '{hostname}': {detail}"
+hostname_without_address_error: str = "Cannot resolve hostname '{hostname}'."
+address_not_public_error: str = "Access to non-public address {address} is blocked."
+response_too_large_error: str = "Response body exceeds the {limit}-byte limit."
+
+# What went wrong with a request (http_client.describe_request_error)
+request_timed_out_error: str = "the request timed out"
+request_tls_failed_error: str = "the secure connection could not be made"
+request_no_connection_error: str = "could not connect to the server"
+request_too_many_redirects_error: str = "too many redirects"
+request_invalid_url_error: str = "the URL is not valid"
+
+# Image download (diagram editor)
+image_is_text_error: str = "Expected an image but the server returned '{content_type}'."
+image_declared_too_large_error: str = "Image too large ({size} bytes, max {limit})."
+image_too_large_error: str = "Image exceeds {megabytes} MB limit."
+
+# SSH
+host_key_rejected_error: str = "Host key for {hostname} rejected by user."
+
+# An answer the Skills panel got that is not 2xx
+redirect_not_followed_error: str = "Redirect (not followed) to {where}"
+redirect_same_server_error: str = "Redirect (not followed) to another path on this server"
+redirect_nowhere_error: str = "Redirect (not followed) to an unnamed place"
+authorization_failed_error: str = "Authentication/Authorization failed"
+server_error_error: str = "Server error: {body}"

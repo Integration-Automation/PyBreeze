@@ -15,7 +15,7 @@ from pybreeze.extend_multi_language.update_language_dict import update_language_
 from pybreeze.pybreeze_ui import error_text as error_text_mod
 from pybreeze.pybreeze_ui.error_text import error_text
 from pybreeze.utils.exception import exception_tags
-from pybreeze.utils.exception.error_templates import ERROR_TEXT_KEY_PREFIX, error_templates
+from pybreeze.utils.exception.error_templates import ERROR_TEXT_KEY_PREFIX, TEMPLATE_FIELD, error_templates
 
 
 @pytest.fixture(scope="module")
@@ -31,7 +31,7 @@ def chinese(monkeypatch):
 
 
 def _sample(template: str) -> dict[str, str]:
-    return {name: f"<{name}>" for name in ("key", "detail", "seconds") if "{" + name + "}" in template}
+    return {field.group(1): f"<{field.group(1)}>" for field in TEMPLATE_FIELD.finditer(template)}
 
 
 class TestEveryConstant:

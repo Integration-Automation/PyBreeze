@@ -7,6 +7,17 @@ from urllib.parse import urlparse
 from urllib3.exceptions import LocationParseError
 from urllib3.util import parse_url
 
+from pybreeze.utils.exception.exception_tags import (
+    address_not_public_error,
+    hostname_unresolved_error,
+    hostname_without_address_error,
+    url_ambiguous_host_error,
+    url_no_hostname_error,
+    url_scheme_not_allowed_error,
+    url_unparsable_error,
+    url_unsafe_characters_error,
+)
+
 _ALLOWED_SCHEMES = frozenset({"http", "https"})
 
 # RFC 6598 shared address space (Carrier-Grade NAT). Not covered by
@@ -75,18 +86,18 @@ def _check_one_reading(url: str) -> None:
     """
     if any(character == "\\" or character.isspace() or ord(character) < 0x20 or ord(character) == 0x7F
            for character in url):
-        raise UnsafeURLError("URL contains a backslash, whitespace or a control character.")
+        raise UnsafeURLError(url_unsafe_characters_error)
     # Not the parsers' messages: they quote the whole URL, which may hold a token
     try:
         connected_host = (parse_url(url).host or "").strip("[]").lower()
     except LocationParseError:
-        raise UnsafeURLError("URL cannot be parsed.") from None
+        raise UnsafeURLError(url_unparsable_error) from None
     try:
         checked_host = (urlparse(url).hostname or "").lower()
     except ValueError:
-        raise UnsafeURLError("URL cannot be parsed.") from None
+        raise UnsafeURLError(url_unparsable_error) from None
     if _as_ascii(connected_host) != _as_ascii(checked_host):
-        raise UnsafeURLError("URL names its host ambiguously.")
+        raise UnsafeURLError(url_ambiguous_host_error)
 
 
 def _as_ascii(host: str) -> str:
@@ -130,13 +141,11 @@ def validate_url(url: str) -> str:
     parsed = urlparse(url)
 
     if parsed.scheme.lower() not in _ALLOWED_SCHEMES:
-        raise UnsafeURLError(
-            f"Scheme '{parsed.scheme}' is not allowed. Use http or https."
-        )
+        raise UnsafeURLError(url_scheme_not_allowed_error.format(scheme=parsed.scheme))
 
     hostname = parsed.hostname
     if not hostname:
-        raise UnsafeURLError("URL has no hostname.")
+        raise UnsafeURLError(url_no_hostname_error)
 
     # The name urllib3 will look up, not Python's reading of a Unicode one
     public_address(_as_ascii(hostname))
@@ -170,17 +179,15 @@ def public_addresses(hostname: str) -> list[str]:
         # UnicodeError: the name cannot even be encoded for a lookup (a label
         # over 63 characters, or an empty one). Callers catch UnsafeURLError, so
         # anything else here would escape into a Qt slot.
-        raise UnsafeURLError(f"Cannot resolve hostname '{hostname}': {exc}") from exc
+        raise UnsafeURLError(hostname_unresolved_error.format(hostname=hostname, detail=exc)) from exc
     if not infos:
-        raise UnsafeURLError(f"Cannot resolve hostname '{hostname}'.")
+        raise UnsafeURLError(hostname_without_address_error.format(hostname=hostname))
 
     addresses: list[str] = []
     for *_unused, sockaddr in infos:
         ip = ipaddress.ip_address(sockaddr[0])
         if _is_blocked_ip(ip):
-            raise UnsafeURLError(
-                f"Access to non-public address {ip} is blocked."
-            )
+            raise UnsafeURLError(address_not_public_error.format(address=ip))
         if sockaddr[0] not in addresses:
             addresses.append(sockaddr[0])
     return addresses

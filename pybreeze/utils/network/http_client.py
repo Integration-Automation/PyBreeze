@@ -14,6 +14,14 @@ from email.message import Message
 
 import requests
 
+from pybreeze.utils.exception.exception_tags import (
+    request_invalid_url_error,
+    request_no_connection_error,
+    request_timed_out_error,
+    request_tls_failed_error,
+    request_too_many_redirects_error,
+    response_too_large_error,
+)
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.network.url_validation import UnsafeURLError
 
@@ -69,9 +77,7 @@ def read_capped_text(
                 continue
             total += len(chunk)
             if total > max_bytes:
-                raise ResponseTooLargeError(
-                    f"Response body exceeds the {max_bytes}-byte limit."
-                )
+                raise ResponseTooLargeError(response_too_large_error.format(limit=max_bytes))
             chunks.append(chunk)
     # What a read cut off by the watchdog raises depends on where it was
     except (requests.exceptions.RequestException, OSError, ValueError, AttributeError):
@@ -140,13 +146,13 @@ def named_charset(response: requests.Response) -> str | None:
 # What a failed request is called for the user, most specific first: a connect
 # timeout is both a Timeout and a ConnectionError
 _REQUEST_FAILURES: tuple[tuple[type[Exception], str], ...] = (
-    (requests.Timeout, "the request timed out"),
-    (requests.exceptions.SSLError, "the secure connection could not be made"),
-    (requests.ConnectionError, "could not connect to the server"),
-    (requests.TooManyRedirects, "too many redirects"),
-    (requests.exceptions.InvalidURL, "the URL is not valid"),
-    (requests.exceptions.MissingSchema, "the URL is not valid"),
-    (requests.exceptions.InvalidSchema, "the URL is not valid"),
+    (requests.Timeout, request_timed_out_error),
+    (requests.exceptions.SSLError, request_tls_failed_error),
+    (requests.ConnectionError, request_no_connection_error),
+    (requests.TooManyRedirects, request_too_many_redirects_error),
+    (requests.exceptions.InvalidURL, request_invalid_url_error),
+    (requests.exceptions.MissingSchema, request_invalid_url_error),
+    (requests.exceptions.InvalidSchema, request_invalid_url_error),
 )
 
 

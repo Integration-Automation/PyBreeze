@@ -11,6 +11,11 @@ from __future__ import annotations
 
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
+from pybreeze.utils.exception.exception_tags import (
+    image_declared_too_large_error,
+    image_is_text_error,
+    image_too_large_error,
+)
 from pybreeze.utils.network.public_http import PublicHTTPHandler, PublicHTTPSHandler, overall_deadline
 from pybreeze.utils.network.url_validation import UnsafeURLError, validate_url
 
@@ -97,21 +102,16 @@ def safe_download_image(url: str) -> bytes:
     with overall_deadline(DOWNLOAD_DEADLINE_SECONDS), _OPENER.open(req, timeout=TIMEOUT_SECONDS) as resp:
         content_type = resp.headers.get("Content-Type", "")
         if _is_text_content_type(content_type):
-            raise ImageDownloadError(
-                f"Expected an image but the server returned '{content_type.strip()}'."
-            )
+            raise ImageDownloadError(image_is_text_error.format(content_type=content_type.strip()))
         declared_length = _parse_content_length(resp.headers.get("Content-Length"))
         if declared_length is not None and declared_length > MAX_DOWNLOAD_BYTES:
             raise ImageDownloadError(
-                f"Image too large ({declared_length} bytes, max {MAX_DOWNLOAD_BYTES})."
-            )
+                image_declared_too_large_error.format(size=declared_length, limit=MAX_DOWNLOAD_BYTES))
         # Read one byte past the cap so an undersized/absent header can't smuggle
         # an oversized body past the check.
         data = resp.read(MAX_DOWNLOAD_BYTES + 1)
 
     if len(data) > MAX_DOWNLOAD_BYTES:
-        raise ImageDownloadError(
-            f"Image exceeds {MAX_DOWNLOAD_BYTES // (1024 * 1024)} MB limit."
-        )
+        raise ImageDownloadError(image_too_large_error.format(megabytes=MAX_DOWNLOAD_BYTES // (1024 * 1024)))
 
     return data
