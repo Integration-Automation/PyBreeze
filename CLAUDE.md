@@ -24,6 +24,7 @@ pybreeze/
 │   ├── gui_thread_gc.py         # Garbage collected on a GUI-thread timer, never on a worker
 │   ├── plain_text.py            # as_text: server/file text shown in message boxes as text, not markup
 │   ├── exact_text.py            # exact_text: a text box read as typed (toPlainText changes U+00A0, U+2028)
+│   ├── terminal_view.py         # insert_rewinding: terminal output into a text view, a lone \r rewinding the line
 │   ├── error_text.py            # error_text: a tool's English error (exception_tags) in the IDE language
 │   ├── closing.py               # may_close / AskingDock: tabs and docks with unsaved work are asked first
 │   ├── dialog/                  # prthinker settings dialog
