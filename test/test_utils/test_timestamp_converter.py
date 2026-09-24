@@ -163,3 +163,37 @@ class TestFormsToolsWrite:
 
         with pytest.raises(TimestampParseException):
             convert_timestamp("2024-13-01T00:00:00Z")
+
+    def test_an_offset_past_59_minutes_is_refused(self):
+        # +05:99 was taken as +06:39
+        from pybreeze.utils.exception.exceptions import TimestampParseException
+        from pybreeze.utils.timestamp_tools.timestamp_converter import convert_timestamp
+
+        with pytest.raises(TimestampParseException):
+            convert_timestamp("2024-01-01T00:00+05:99")
+        assert convert_timestamp("2024-01-01T00:00+05:59").iso_utc == "2023-12-31T18:01:00+00:00"
+
+
+class TestADecimalEpochRoundsTowardThePast:
+    """As a whole number does, and as the result's fields say: a float was rounded to the nearest."""
+
+    @pytest.mark.parametrize(("text", "iso"), [
+        ("0.0000009", "1970-01-01T00:00:00+00:00"),
+        ("-0.0000001", "1969-12-31T23:59:59.999999+00:00"),
+        ("1700000000.9999999", "2023-11-14T22:13:20.999999+00:00"),
+        ("1700000000123.4567", "2023-11-14T22:13:20.123456+00:00"),
+        ("-1e-999999999", "1969-12-31T23:59:59.999999+00:00"),
+        ("0e999999999", "1970-01-01T00:00:00+00:00"),
+    ])
+    def test_it_is_cut_to_the_microsecond(self, text, iso):
+        from pybreeze.utils.timestamp_tools.timestamp_converter import convert_timestamp
+
+        assert convert_timestamp(text).iso_utc == iso
+
+    @pytest.mark.parametrize("text", ["1e999999999", "Infinity", "-inf", "nan", "sNaN", "9" * 40])
+    def test_one_no_date_can_be_is_refused(self, text):
+        from pybreeze.utils.exception.exceptions import TimestampParseException
+        from pybreeze.utils.timestamp_tools.timestamp_converter import convert_timestamp
+
+        with pytest.raises(TimestampParseException):
+            convert_timestamp(text)

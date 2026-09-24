@@ -9,9 +9,11 @@ which keeps the conversions deterministic and testable.
 """
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from decimal import MAX_EMAX, MIN_EMIN, Decimal, InvalidOperation, localcontext
 
 from pybreeze.utils.exception.exception_tags import (
     empty_timestamp_error,
@@ -34,6 +36,15 @@ _PER_SECOND = {"s": 1, "ms": 1000, "us": 10 ** 6, "ns": 10 ** 9}
 _MS_PER_SECOND = 1000
 # The Unix epoch, in UTC
 _EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
+# Past this many digits before the point, an epoch is outside the years
+# datetime can hold in any unit; a longer decimal is refused before any
+# arithmetic, which would overflow (1e999999999) or build a huge integer
+_MAX_EPOCH_DIGITS = 30
+# Digits a decimal epoch is worked out to: enough for the largest one taken,
+# in microseconds, with its fraction
+_DECIMAL_PRECISION = 60
+# Minutes in an hour, the most a zone offset's minutes may be
+_MINUTES_PER_HOUR = 60
 
 
 @dataclass(frozen=True)
@@ -76,17 +87,36 @@ def utc_from_epoch_seconds(seconds: float) -> datetime:
     return _EPOCH + timedelta(seconds=seconds)
 
 
-def _from_epoch(value: int | float) -> datetime:
+def _decimal_microseconds(value: Decimal) -> int:
+    """Whole microseconds in the decimal epoch *value*, rounded toward the past.
+
+    :raises OverflowError: infinite or NaN, or too long to be a date
+    """
+    if not value.is_finite():
+        raise OverflowError("not a finite epoch")
+    if value and value.adjusted() >= _MAX_EPOCH_DIGITS:
+        raise OverflowError("epoch out of range")
+    with localcontext() as context:
+        context.prec = _DECIMAL_PRECISION
+        # A tiny fraction (1e-999999999) is not rounded away to zero
+        context.Emax, context.Emin = MAX_EMAX, MIN_EMIN
+        return math.floor(value * 10 ** 6 / _PER_SECOND[detect_epoch_unit(value)])
+
+
+def _from_epoch(value: int | Decimal) -> datetime:
     """Build a UTC datetime from an epoch number, auto-detecting its unit.
 
-    A whole number is divided exactly (to the microsecond, rounding toward the
-    past): as a float, a nanosecond epoch has lost its last digits already.
+    The number is divided exactly, to the microsecond, rounding toward the
+    past: as a float, a nanosecond epoch has lost its last digits already, and
+    ``timedelta`` rounds a float's fraction to the nearest microsecond, so
+    ``0.0000009`` came out a microsecond after the epoch.
     """
-    per_second = _PER_SECOND[detect_epoch_unit(value)]
     try:
         if isinstance(value, int):
-            return _EPOCH + timedelta(microseconds=value * 10 ** 6 // per_second)
-        return utc_from_epoch_seconds(value / per_second)
+            microseconds = value * 10 ** 6 // _PER_SECOND[detect_epoch_unit(value)]
+        else:
+            microseconds = _decimal_microseconds(value)
+        return _EPOCH + timedelta(microseconds=microseconds)
     except (OverflowError, ValueError) as error:
         pybreeze_logger.error(unrecognized_timestamp_error)
         raise TimestampParseException(unrecognized_timestamp_error) from error
@@ -110,8 +140,11 @@ def _zone(text: str | None) -> timezone:
         return timezone.utc
     sign = -1 if text[0] == "-" else 1
     digits = text[1:].replace(":", "")
-    offset = timedelta(hours=int(digits[:2]), minutes=int(digits[2:4] or 0))
-    return timezone(sign * offset)
+    minutes = int(digits[2:4] or 0)
+    if minutes >= _MINUTES_PER_HOUR:
+        # +05:99 used to be taken as +06:39
+        raise ValueError(f"zone offset minutes out of range: {text}")
+    return timezone(sign * timedelta(hours=int(digits[:2]), minutes=minutes))
 
 
 def _iso_match(text: str) -> datetime | None:
@@ -172,10 +205,10 @@ def _parse(text: str) -> datetime:
     date = _eight_digit_date(stripped)
     if date is not None:
         return date
-    for number_type in (int, float):
+    for number_type in (int, Decimal):
         try:
             number = number_type(stripped)
-        except ValueError:
+        except (ValueError, InvalidOperation):
             continue
         return _from_epoch(number)
     # Not a plain number; fall through to ISO parsing.
