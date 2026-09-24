@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-60 | 2026-09-25 | architecture.md's recipe for a new tool follows today's conventions | #docs | [2026-09-c](2026-09-c.md) |
 | U-20260925-59 | 2026-09-25 | The Sphinx docs show today's main window | #docs | [2026-09-c](2026-09-c.md) |
 | U-20260925-58 | 2026-09-25 | The Sphinx docs name the menu entries as they now read | #docs #i18n | [2026-09-c](2026-09-c.md) |
 | U-20260925-57 | 2026-09-25 | 外掛, not 插件, in the plugin guide | #docs #i18n | [2026-09-c](2026-09-c.md) |
@@ -462,4 +463,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
-| [2026-09-c.md](2026-09-c.md) | 2026-09 | 59 |
+| [2026-09-c.md](2026-09-c.md) | 2026-09 | 60 |

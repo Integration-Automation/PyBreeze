@@ -120,9 +120,12 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
   - add keywords in `pybreeze_ui/syntax/syntax_keyword.py`.
 - **New tool tab or dock**: a widget in `pybreeze_ui/tools_gui/`, its logic in `pybreeze/utils/`, and
   rows in `_WIDGET_FACTORIES` / `_TAB_ACTIONS` / `_DOCK_ACTIONS` / `_DOCK_TITLES`
-  (`pybreeze_ui/menu/tools/tools_menu.py`).
+  (`pybreeze_ui/menu/tools/tools_menu.py`). Like the other tools, a box that holds code calls
+  `fixed_pitch.use_fixed_pitch_font()`, and the main button gets Ctrl+Enter through
+  `run_shortcut.press_on_ctrl_enter()` (`act_on_ctrl_enter()` when the input decides the action).
 - **UI strings**: add keys to both `extend_multi_language/extend_english.py` and
-  `extend_traditional_chinese.py`. `test/test_utils/test_language_parity.py` enforces parity.
+  `extend_traditional_chinese.py`. `test/test_utils/test_language_parity.py` enforces parity, and the
+  key count in the READMEs and `architecture_explore.md` must follow (`test_the_readmes_count_the_keys_there_are`).
 
 ## 6. Cross-project boundaries
 
