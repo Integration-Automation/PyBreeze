@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-25 | 2026-09-25 | The diagram editor's file dialogs in the IDE's language, offering every image it keeps | #fix #diagram #i18n | [2026-09-c](2026-09-c.md) |
 | U-20260925-24 | 2026-09-25 | Refactor: the diagram image suffix allowlist public, its comment back on it | #refactor #diagram | [2026-09-c](2026-09-c.md) |
 | U-20260925-23 | 2026-09-25 | Deleting and discarding ask with No as the default | #fix #ui #ssh #diagram | [2026-09-c](2026-09-c.md) |
 | U-20260925-22 | 2026-09-25 | Install FileAutomation, as the menu and the README call it | #fix #menu #i18n | [2026-09-c](2026-09-c.md) |
@@ -427,4 +428,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
-| [2026-09-c.md](2026-09-c.md) | 2026-09 | 24 |
+| [2026-09-c.md](2026-09-c.md) | 2026-09 | 25 |

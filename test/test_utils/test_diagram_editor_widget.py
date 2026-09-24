@@ -272,3 +272,47 @@ class TestMermaidImport:
         for _ in range(3):
             editor._import_mermaid()
         assert self._dialogs_left(editor) == 0
+
+
+class TestFileDialogFilters:
+    """The dialogs' filters were English literals in every language."""
+
+    @staticmethod
+    def _filters(editor, monkeypatch) -> dict[str, str]:
+        from pybreeze.pybreeze_ui.diagram_editor import diagram_editor_widget
+
+        asked: list[str] = []
+
+        def dialog(_parent, _title, _start, file_filter):
+            asked.append(file_filter)
+            return "", ""  # cancelled
+
+        for name in ("getOpenFileName", "getSaveFileName"):
+            monkeypatch.setattr(diagram_editor_widget.QFileDialog, name, staticmethod(dialog))
+        seen: dict[str, str] = {}
+        for name, action in (("open", editor._open_diagram), ("save", editor._save_as_diagram),
+                             ("png", editor._export_png), ("svg", editor._export_svg),
+                             ("image", editor._add_image_from_file)):
+            action()
+            seen[name] = asked.pop()
+        return seen
+
+    def test_they_speak_the_ide_language(self, editor, monkeypatch):
+        from je_editor import language_wrapper
+
+        from pybreeze.extend_multi_language.extend_traditional_chinese import (
+            pybreeze_traditional_chinese_word_dict,
+        )
+        monkeypatch.setattr(language_wrapper, "language_word_dict", pybreeze_traditional_chinese_word_dict)
+        filters = self._filters(editor, monkeypatch)
+
+        assert "所有檔案 (*)" in filters["open"] and "所有檔案 (*)" in filters["image"]
+        assert filters["open"] == filters["save"]
+        assert all("Image" not in text and "Files" not in text for text in filters.values()), filters
+
+    def test_the_image_filter_offers_every_suffix_a_diagram_keeps(self, editor, monkeypatch):
+        # .ico was allowed in a saved diagram but not offered by Add Image
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import IMAGE_SUFFIXES
+
+        image_filter = self._filters(editor, monkeypatch)["image"]
+        assert all(f"*{suffix}" in image_filter for suffix in IMAGE_SUFFIXES)

@@ -27,7 +27,9 @@ from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.diagram_editor.diagram_mermaid_parser import parse_mermaid
 from pybreeze.pybreeze_ui.diagram_editor.diagram_property_panel import DiagramPropertyPanel
-from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene, ImageDownloadThread, ToolMode
+from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import (
+    IMAGE_SUFFIXES, DiagramScene, ImageDownloadThread, ToolMode,
+)
 from pybreeze.pybreeze_ui.diagram_editor.diagram_view import DiagramView
 from pybreeze.pybreeze_ui.error_text import error_text
 from pybreeze.pybreeze_ui.fixed_pitch import use_fixed_pitch_font
@@ -41,6 +43,17 @@ from pybreeze.pybreeze_ui.exact_text import exact_text
 
 def _lang(key: str, fallback: str = "") -> str:
     return language_wrapper.language_word_dict.get(key, fallback or key)
+
+
+def _diagram_filter() -> str:
+    """The Open and Save dialogs' filter: diagrams, then any file."""
+    return f"{_lang('diagram_editor_filter_diagram')};;{_lang('diagram_editor_filter_all')}"
+
+
+def _image_filter() -> str:
+    """Add Image's filter: every suffix a saved diagram may keep (``IMAGE_SUFFIXES``), then any file."""
+    patterns = " ".join(f"*{suffix}" for suffix in sorted(IMAGE_SUFFIXES))
+    return f"{_lang('diagram_editor_filter_images').format(patterns=patterns)};;{_lang('diagram_editor_filter_all')}"
 
 
 _STATUS_HINTS: dict[ToolMode, str] = {
@@ -413,7 +426,7 @@ class DiagramEditorWidget(QWidget):
             self,
             _lang("diagram_editor_dialog_open", "Open Diagram"),
             "",
-            "Diagram JSON (*.diagram.json);;All Files (*)",
+            _diagram_filter(),
         )
         if not path:
             return
@@ -441,7 +454,7 @@ class DiagramEditorWidget(QWidget):
             self,
             _lang("diagram_editor_dialog_save", "Save Diagram"),
             "untitled.diagram.json",
-            "Diagram JSON (*.diagram.json);;All Files (*)",
+            _diagram_filter(),
         )
         if not path:
             return
@@ -541,7 +554,7 @@ class DiagramEditorWidget(QWidget):
     def _export_png(self) -> None:
         path, _ = QFileDialog.getSaveFileName(
             self, _lang("diagram_editor_dialog_export_png", "Export PNG"),
-            "diagram.png", "PNG Image (*.png)",
+            "diagram.png", _lang("diagram_editor_filter_png"),
         )
         if not path:
             return
@@ -577,7 +590,7 @@ class DiagramEditorWidget(QWidget):
     def _export_svg(self) -> None:
         path, _ = QFileDialog.getSaveFileName(
             self, _lang("diagram_editor_dialog_export_svg", "Export SVG"),
-            "diagram.svg", "SVG Image (*.svg)",
+            "diagram.svg", _lang("diagram_editor_filter_svg"),
         )
         if not path:
             return
@@ -615,7 +628,7 @@ class DiagramEditorWidget(QWidget):
             self,
             _lang("diagram_editor_dialog_image_file", "Open Image"),
             "",
-            "Images (*.png *.jpg *.jpeg *.bmp *.gif *.svg *.webp);;All Files (*)",
+            _image_filter(),
         )
         if not path:
             return

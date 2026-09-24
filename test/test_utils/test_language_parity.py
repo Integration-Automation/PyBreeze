@@ -92,11 +92,12 @@ class TestLanguageParity:
 
     def test_traditional_chinese_uses_full_width_punctuation(self):
         # Forty-two labels ended in "：" and a few in ":"; the SSH placeholder read
-        # "主機 (例如: ...)". A file dialog's filter keeps "(*.txt)": Qt reads it
+        # "主機 (例如: ...)". A file dialog's filter keeps "(*.txt)", or "({patterns})"
+        # filled in with them: Qt reads it
         cjk = "[一-鿿]"
         half_width = {
             key: value for key, value in ZH.items()
-            if re.search(rf"{cjk}\s?(:|\((?!\*))|:(\s*$|\s+\{{)|\((?!\*)[^)]*{cjk}", value)
+            if re.search(rf"{cjk}\s?(:|\((?![*{{]))|:(\s*$|\s+\{{)|\((?![*{{])[^)]*{cjk}", value)
         }
         assert half_width == {}
 
