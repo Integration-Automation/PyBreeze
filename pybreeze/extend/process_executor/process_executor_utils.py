@@ -254,7 +254,9 @@ def build_task_process(
     The run window carries the interpreter chosen in the IDE (the Python
     environment menu, or the saved setting), so the child runs with that
     interpreter; only when none was chosen does the manager fall back to a
-    ``venv`` / ``.venv`` in the working directory, then to ``PATH``. The run
+    ``venv`` / ``.venv`` in the working directory, then to the IDE's own
+    interpreter (``default_interpreter``; only a packaged build looks on
+    ``PATH``). The run
     window holds the manager (``CodeWindow.runner``), so a caller may drop it.
     """
     code_window = open_run_window(main_window)

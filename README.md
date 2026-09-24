@@ -77,7 +77,7 @@ Each module gets the same menu shape: **Run** (single script, batch directory, w
 - **Script execution** — single or batch, each run in a window of its own with a Stop button; action files are passed by path, and a script from the tab in front that is too long for a Windows command line (~32 KB) goes through a temporary file
 - **Report generation** — HTML / JSON / XML after a run, with optional email delivery
 - **Integrated JupyterLab** — launches as a tab, installing JupyterLab into the project venv if it is missing
-- **Virtual environment awareness** — `venv/` and `.venv/` are detected and used automatically; without one, scripts run on the interpreter the IDE runs on
+- **Virtual environment awareness** — a run uses the interpreter chosen under **Python Env**; with none chosen, a `venv/` or `.venv/` in the working folder is detected and used, and without one, the interpreter the IDE runs on
 
 ---
 
