@@ -7,7 +7,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest
 from PySide6.QtGui import QFontDatabase
-from PySide6.QtWidgets import QApplication, QPlainTextEdit
+from PySide6.QtWidgets import QApplication, QPlainTextEdit, QWidget
 
 from pybreeze.extend_multi_language.update_language_dict import update_language_dict
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_command_widget import SSHCommandWidget
@@ -36,6 +36,20 @@ def test_the_view_gets_the_fixed_pitch_font_at_its_own_size(app):
 
     assert view.font().family() == _fixed_family()
     assert view.font().pointSizeF() == 13.5
+
+
+def test_a_theme_style_sheet_does_not_take_the_font_back(app):
+    # qt_material names a font for every widget ("* { font-family: Roboto }"),
+    # and a style sheet's font overrides setFont: the IDE showed Roboto
+    theme = QWidget()
+    theme.setStyleSheet('* { font-family: "Arial"; }')
+    view = QPlainTextEdit(theme)
+    use_terminal_font(view)
+
+    view.ensurePolished()
+
+    assert view.font().family() == _fixed_family()
+    theme.close()
 
 
 def test_the_ssh_terminal_shows_a_fixed_pitch_font(app):
