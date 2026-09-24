@@ -266,7 +266,7 @@ extend_ai_gui/
 ├── code_review/
 │   ├── cot_chain.py              接線表（純邏輯，無 Qt）：哪步引用哪步
 │   ├── code_review_thread.py     SenderThread(QThread)：跑八步審查鏈
-│   └── cot_code_review_gui.py    UI（工具 → AI 的分頁與 dock）；URL 只由 worker 驗證，UI 執行緒不查 DNS；每次送出先清掉上一輪的回覆；關閉時請審查停在目前這一步，交給 let_run_out()，不等
+│   └── cot_code_review_gui.py    UI（工具 → AI 的分頁與 dock）；URL 只由 worker 驗證，UI 執行緒不查 DNS；沒貼程式碼就不送（整條鏈八個請求都會白跑）；每次送出先清掉上一輪的回覆；關閉時請審查停在目前這一步，交給 let_run_out()，不等
 ├── prompt_edit_gui/
 │   ├── prompt_editor_widget.py         共用編輯器（QFileSystemWatcher 熱更新，watcher 以編輯器為 parent、關閉時停止監看；有未存編輯時，外部改動、「重新載入」和切換模板都先問；還沒有檔案的模板只用 placeholder 說明，存檔不會把說明寫進去）
 │   ├── cot_prompt_editor_widget.py     8 個 CoT 模板的檔案清單＋語言鍵
@@ -313,6 +313,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 - 請求走 `ReviewRequestThread(QThread)`，只有 `answered` / `failed` 兩個 signal 碰 UI（和 `SkillsSendGUI` 同一套）；送出中再按不會重送；`closeEvent` 不等它，交給 `thread_keeper.let_run_out()`：斷開它和面板的連線、留著參考直到它結束（等它會讓 IDE 凍住最長一個讀取逾時）
 - `urls.txt` 只存 URL 的 SHA-256 指紋（`url_fingerprint()`）：API URL 可能帶權杖，依 CLAUDE.md 要當憑證看待；舊版留下的明文檔會在下次送出時改寫成指紋
+- 方法預設 POST（`DEFAULT_METHOD`）；POST／PUT（`METHODS_WITH_A_BODY`）把程式碼照貼上的樣子放進本文的表單欄位 `code`，程式碼是空的就不送、在面板說明；GET／DELETE 只送 URL
 - 非 2xx（含不跟隨的轉址）走 `failed`，狀態碼寫進面板，不會只留空白
 - 接受/拒絕只在收到回答（`answered`）後可按，每個回答只能評一次；Send 按鈕由執行緒的 `finished` 恢復，請求不論怎麼結束都回得來
 
