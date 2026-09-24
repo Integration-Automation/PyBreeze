@@ -281,7 +281,9 @@ class DiagramScene(QGraphicsScene):
 
     def _add_shape_node(self, pos: QPointF, shape: NodeShape) -> None:
         with self.undo_scope("Add Node"):
-            self.addItem(DiagramNode(x=pos.x() - 70, y=pos.y() - 30, shape=shape))
+            self.addItem(DiagramNode(
+                x=pos.x() - 70, y=pos.y() - 30, shape=shape,
+                text=language_wrapper.language_word_dict.get("diagram_editor_new_node_text", "Node")))
         self.item_count_changed.emit()
         self.mode = ToolMode.SELECT
 
@@ -289,7 +291,7 @@ class DiagramScene(QGraphicsScene):
         with self.undo_scope("Add Text"):
             self.addItem(DiagramNode(
                 x=pos.x() - 70, y=pos.y() - 20,
-                w=140, h=40, text="Text",
+                w=140, h=40, text=language_wrapper.language_word_dict.get("diagram_editor_new_text_text", "Text"),
                 shape=NodeShape.RECTANGLE,
             ))
         self.item_count_changed.emit()

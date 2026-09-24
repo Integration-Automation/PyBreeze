@@ -633,6 +633,8 @@ pybreeze_traditional_chinese_word_dict = {
     "diagram_editor_tool_diamond": "菱形",
     "diagram_editor_tool_connection": "連線",
     "diagram_editor_tool_text": "文字",
+    "diagram_editor_new_node_text": "節點",
+    "diagram_editor_new_text_text": "文字",
     # Diagram Editor — 動作
     "diagram_editor_action_new": "新增",
     "diagram_editor_action_open": "開啟",

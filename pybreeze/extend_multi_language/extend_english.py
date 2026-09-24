@@ -667,6 +667,8 @@ pybreeze_english_word_dict = {
     "diagram_editor_tool_diamond": "Diamond",
     "diagram_editor_tool_connection": "Connect",
     "diagram_editor_tool_text": "Text",
+    "diagram_editor_new_node_text": "Node",
+    "diagram_editor_new_text_text": "Text",
     # Diagram Editor — Actions
     "diagram_editor_action_new": "New",
     "diagram_editor_action_open": "Open",

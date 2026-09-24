@@ -295,3 +295,24 @@ class TestZooming:
         assert view.transform().m11() < 8
         assert diagram_view._MAX_SCALE < 8
 
+
+
+class TestANewNodesText:
+    """A node the Rectangle or Text tool adds said "Node" or "Text" whatever the IDE spoke."""
+
+    @pytest.mark.parametrize(("add", "expected"), [("shape", "節點"), ("text", "文字")])
+    def test_is_in_the_ide_language(self, app, monkeypatch, add, expected):
+        from pybreeze.extend_multi_language.extend_traditional_chinese import (
+            pybreeze_traditional_chinese_word_dict,
+        )
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_items import NodeShape
+
+        monkeypatch.setattr(scene_module.language_wrapper, "language_word_dict", pybreeze_traditional_chinese_word_dict)
+        scene = DiagramScene()
+        if add == "shape":
+            scene._add_shape_node(QPointF(0, 0), NodeShape.RECTANGLE)
+        else:
+            scene._add_text_node(QPointF(0, 0))
+
+        (node,) = [item for item in scene.items() if isinstance(item, DiagramNode)]
+        assert node.text() == expected

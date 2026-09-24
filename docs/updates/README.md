@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260924-279 | 2026-09-24 | A new diagram node's text in the IDE language | #fix #i18n #diagram | [2026-09-b](2026-09-b.md) |
 | U-20260924-278 | 2026-09-24 | Tests for the property panel on a connection and an image | #test #diagram | [2026-09-b](2026-09-b.md) |
 | U-20260924-277 | 2026-09-24 | Tests for the diagram editor's align and distribute | #test #diagram | [2026-09-b](2026-09-b.md) |
 | U-20260924-276 | 2026-09-24 | Check the trimmed diff against the plain one only on small texts | #fix #diff #perf | [2026-09-b](2026-09-b.md) |
@@ -360,4 +361,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | File | Period | Entries |
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
-| [2026-09-b.md](2026-09-b.md) | 2026-09 | 76 |
+| [2026-09-b.md](2026-09-b.md) | 2026-09 | 77 |
