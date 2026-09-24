@@ -59,3 +59,18 @@ def split_incomplete_escape(text: str) -> tuple[str, str]:
     if tail is not None and len(text) - tail.start() <= _MAX_PENDING_ESCAPE:
         return text[:tail.start()], text[tail.start():]
     return text, ""
+
+
+def split_unfinished_end(text: str) -> tuple[str, str]:
+    """*text* as what can be shown now and what must wait for the next read.
+
+    That is an unfinished escape sequence (:func:`split_incomplete_escape`)
+    and a carriage return just before it or at the very end: the ``\\n`` that
+    makes it a line ending, or the text a lone one rewinds over, is still to
+    come. Shown alone, a split ``\\r\\n`` made a blank line, and a ``\\r``
+    before a cut ``\\x1b[K`` was dropped, so a progress bar was not rewound.
+    """
+    shown, held = split_incomplete_escape(text)
+    if shown.endswith("\r"):
+        return shown[:-1], "\r" + held
+    return shown, held

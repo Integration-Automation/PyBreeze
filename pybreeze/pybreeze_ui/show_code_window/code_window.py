@@ -22,22 +22,25 @@ if TYPE_CHECKING:
 MAX_OUTPUT_BLOCKS = 10000
 
 
-def _insert_rewinding(cursor: QTextCursor, text: str, text_format: QTextCharFormat) -> None:
+def _insert_rewinding(cursor: QTextCursor, text: str, text_format: QTextCharFormat) -> bool:
     """Insert *text* at *cursor*, a lone ``\\r`` going back to the start of the line.
 
     As a terminal does: a progress bar that rewinds with ``\\r`` redraws its
     line instead of adding one per step. ``\\r\\n`` and ``\\n`` are line breaks.
+
+    :return: whether *text* ended on a ``\\r`` still to be applied: it waits
+        for what comes next, since rewound now, a finished progress bar's last
+        line would be erased with nothing to replace it
     """
     pieces = text.replace("\r\n", "\n").split("\r")
     cursor.insertText(pieces[0], text_format)
     for index, piece in enumerate(pieces[1:], start=1):
         if not piece and index == len(pieces) - 1:
-            # A trailing \r waits for what comes next: rewound now, a finished
-            # progress bar's last line would be erased with nothing to replace it
-            break
+            return True
         cursor.movePosition(QTextCursor.MoveOperation.StartOfBlock, QTextCursor.MoveMode.KeepAnchor)
         cursor.removeSelectedText()
         cursor.insertText(piece, text_format)
+    return False
 
 
 class CodeWindow(QWidget):
@@ -57,6 +60,10 @@ class CodeWindow(QWidget):
         # end, and the rest of the output and the exit line never arrive.
         self.runner: TaskProcessManager | FileRunnerProcess | None = None
         self._closed_while_running = False
+        # The last output ended on a lone \r, which the next applies: a line
+        # break before "\n", a rewind before anything else. Dropped instead,
+        # "\r" + "\x1b[K60%" in two pieces left the old bar: "50%60%"
+        self._rewind_pending = False
         self.grid_layout = QGridLayout()
         self.code_result = QPlainTextEdit()
         self.code_result.setLineWrapMode(self.code_result.LineWrapMode.NoWrap)
@@ -138,6 +145,9 @@ class CodeWindow(QWidget):
         text_format = QTextCharFormat()
         color_key = "error_output_color" if is_error else "normal_output_color"
         text_format.setForeground(actually_color_dict.get(color_key))
-        _insert_rewinding(cursor, strip_terminal_controls(text), text_format)
+        text = strip_terminal_controls(text)
+        if self._rewind_pending:
+            text = "\r" + text
+        self._rewind_pending = _insert_rewinding(cursor, text, text_format)
         if follow_output:
             scroll_bar.setValue(scroll_bar.maximum())

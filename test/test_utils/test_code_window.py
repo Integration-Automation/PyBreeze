@@ -109,6 +109,25 @@ class TestAppendOutput:
 
         assert window.code_result.toPlainText() == "one\ndone\n"
 
+    @pytest.mark.parametrize("buffer_size", range(1, 16))
+    def test_a_rewind_and_clear_cut_anywhere_still_rewinds(self, qt_app, buffer_size):
+        # A read ending on "\r\x1b[" sent the "\r" on its own, the window
+        # dropped it as the end of a piece, and "50%" stayed: "50%60%"
+        import io
+        from queue import Queue
+
+        from pybreeze.extend.process_executor.queue_pump import read_stream_into_queue
+        from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
+
+        pieces: Queue = Queue()
+        read_stream_into_queue(io.BytesIO(b"50%\r\x1b[K60%\n"), pieces, buffer_size=buffer_size,
+                               encoding="utf-8", keep_reading=lambda: True)
+        window = CodeWindow()
+        while not pieces.empty():
+            window.append_output(pieces.get())
+
+        assert window.code_result.toPlainText() == "60%\n"
+
     def test_a_bar_that_ends_on_a_carriage_return_stays_shown(self, qt_app):
         from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
 

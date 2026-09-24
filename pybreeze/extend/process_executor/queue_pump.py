@@ -17,7 +17,7 @@ from queue import Queue
 from typing import IO
 
 from pybreeze.utils.logging.logger import pybreeze_logger
-from pybreeze.utils.terminal_text import split_incomplete_escape
+from pybreeze.utils.terminal_text import split_unfinished_end
 
 # Drain up to this many messages per timer tick. Draining one line per ~100 ms
 # tick caps throughput at ~10 lines/s and makes chatty scripts crawl; batching
@@ -105,9 +105,7 @@ def read_stream_into_queue(
             line = decoder.decode(line)
         # An escape sequence cut off at the end waits for the rest: stripped
         # in two pieces, "\x1b[3" + "2m" showed "[32m" in the window
-        line, held = split_incomplete_escape(held + line)
-        if not held and line.endswith("\r"):
-            line, held = line[:-1], "\r"
+        line, held = split_unfinished_end(held + line)
         if line and not _put(target_queue, line, keep_reading):
             return
     rest = held + decoder.decode(b"", final=True)

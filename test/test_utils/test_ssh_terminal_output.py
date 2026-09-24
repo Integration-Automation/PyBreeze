@@ -84,6 +84,17 @@ class TestTheTerminal:
         assert widget.terminal.toPlainText() == "abcd\nef"
         widget.close()
 
+    def test_a_line_ending_cut_between_reads_is_one_line_break(self, app):
+        # "\r" at the end of one read and "\n" at the start of the next were
+        # two paragraph breaks: a blank line in long output
+        widget = self._widget()
+
+        for chunk in (b"line1\r", b"\nline2\r\n"):
+            widget._on_data(chunk)
+
+        assert widget.terminal.toPlainText() == "line1\nline2\n"
+        widget.close()
+
     def test_a_notice_starts_on_a_line_of_its_own(self, app):
         widget = self._widget()
         widget._on_data(b"$ ")

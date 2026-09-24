@@ -24,7 +24,7 @@ from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_key_loader import load_private_key
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_login_widget import LoginWidget
 from pybreeze.pybreeze_ui.thread_keeper import if_alive, let_run_out
 from pybreeze.utils.logging.logger import pybreeze_logger
-from pybreeze.utils.terminal_text import split_incomplete_escape, strip_terminal_controls
+from pybreeze.utils.terminal_text import split_unfinished_end, strip_terminal_controls
 
 # What closing a channel or a client can raise on a connection already broken
 CLOSE_ERRORS = (OSError, EOFError, paramiko.SSHException)
@@ -50,7 +50,7 @@ class TerminalDecoder:
 
     def feed(self, data: bytes) -> str:
         """Return the text *data* completes, escape sequences removed."""
-        text, self._pending = split_incomplete_escape(self._pending + self._decoder.decode(data))
+        text, self._pending = split_unfinished_end(self._pending + self._decoder.decode(data))
         return strip_terminal_controls(text)
 
 
