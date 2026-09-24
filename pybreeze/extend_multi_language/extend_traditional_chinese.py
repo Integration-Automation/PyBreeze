@@ -205,6 +205,7 @@ pybreeze_traditional_chinese_word_dict = {
     "ssh_file_viewer_dialog_label_new_name_for_item": "新名稱",
     "ssh_file_viewer_dialog_title_confirm_delete": "確認刪除",
     "ssh_file_viewer_dialog_message_confirm_delete": "是否刪除",
+    "ssh_file_viewer_message_folder_not_removed": "資料夾沒有刪除。SFTP 只能刪除空的資料夾，請先清空。伺服器回覆：{error}",
     "ssh_file_viewer_dialog_title_invalid_selection": "選取無效",
     "ssh_file_viewer_dialog_message_select_file_to_download": "請選擇要下載的檔案。",
     "ssh_file_viewer_dialog_title_save_as": "另存新檔",

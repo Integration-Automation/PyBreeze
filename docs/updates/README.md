@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260924-249 | 2026-09-24 | Say why an SFTP folder was not deleted | #fix #ssh #ui | [2026-09-b](2026-09-b.md) |
 | U-20260924-248 | 2026-09-24 | SFTP Rename starts from the current name | #fix #ssh #ui | [2026-09-b](2026-09-b.md) |
 | U-20260924-247 | 2026-09-24 | The SFTP tree's Type column in the IDE language | #fix #ssh #i18n | [2026-09-b](2026-09-b.md) |
 | U-20260924-246 | 2026-09-24 | The SFTP tree tells folders from files by item data, not by its Type column | #refactor #ssh | [2026-09-b](2026-09-b.md) |
@@ -330,4 +331,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | File | Period | Entries |
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
-| [2026-09-b.md](2026-09-b.md) | 2026-09 | 48 |
+| [2026-09-b.md](2026-09-b.md) | 2026-09 | 49 |

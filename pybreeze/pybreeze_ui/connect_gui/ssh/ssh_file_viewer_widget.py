@@ -561,8 +561,20 @@ class SSHFileTreeManager(QWidget):
         )
         if reply != QMessageBox.StandardButton.Yes:
             return
-        remove = self.client.remove_dir if is_folder(item) else self.client.remove_file
+        remove = self._remove_folder if is_folder(item) else self.client.remove_file
         self._in_background(lambda: remove(path), lambda: self._removed(item))
+
+    def _remove_folder(self, path: str) -> None:
+        """Remove the folder at *path*, saying why when it cannot be. Worker thread.
+
+        SFTP removes only an empty folder, and OpenSSH refuses any other with
+        a bare "Failure", which was all the message said.
+        """
+        try:
+            self.client.remove_dir(path)
+        except OSError as error:
+            raise OSError(self.word_dict.get(
+                "ssh_file_viewer_message_folder_not_removed").format(error=error)) from error
 
     def _removed(self, item: QTreeWidgetItem) -> None:
         """Take *item* out of the tree once the server has removed it. UI thread."""

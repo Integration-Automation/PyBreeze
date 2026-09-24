@@ -332,3 +332,39 @@ class TestRenaming:
 
         assert widget.get_text("t", "l", "start") == ("x", True)
         assert given[0][-1] == "start"
+
+
+class TestDeletingAFolder:
+    def test_a_refusal_says_only_an_empty_folder_goes(self, app, tree, monkeypatch):
+        # OpenSSH refuses a folder with something in it with a bare "Failure"
+        widget, client, root, _warnings = tree
+        shown: list = []
+        monkeypatch.setattr(QMessageBox, "critical", lambda *args: shown.append(args[2]))
+        monkeypatch.setattr(QMessageBox, "question", lambda *_args: QMessageBox.StandardButton.Yes)
+
+        def refuse(_path: str) -> None:
+            raise OSError("Failure")
+
+        client.remove_dir = refuse
+        widget.action_delete(_child(root, "src"))
+        _wait_for(lambda: _idle(widget))
+
+        word = tree_mod.language_wrapper.language_word_dict
+        expected = word.get("ssh_file_viewer_message_folder_not_removed").format(error="Failure")
+        assert len(shown) == 1 and expected in shown[0]
+        assert _child(root, "src").text(3) == "/src"
+
+    def test_a_file_refusal_is_shown_as_it_is(self, app, tree, monkeypatch):
+        widget, client, root, _warnings = tree
+        shown: list = []
+        monkeypatch.setattr(QMessageBox, "critical", lambda *args: shown.append(args[2]))
+        monkeypatch.setattr(QMessageBox, "question", lambda *_args: QMessageBox.StandardButton.Yes)
+
+        def refuse(_path: str) -> None:
+            raise OSError("Permission denied")
+
+        client.remove_file = refuse
+        widget.action_delete(_child(root, "notes.txt"))
+        _wait_for(lambda: _idle(widget))
+
+        assert len(shown) == 1 and "empty" not in shown[0] and "Permission denied" in shown[0]

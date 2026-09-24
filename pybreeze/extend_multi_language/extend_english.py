@@ -205,6 +205,8 @@ pybreeze_english_word_dict = {
     "ssh_file_viewer_dialog_label_new_name_for_item": "New name for",
     "ssh_file_viewer_dialog_title_confirm_delete": "Confirm delete",
     "ssh_file_viewer_dialog_message_confirm_delete": "Delete",
+    "ssh_file_viewer_message_folder_not_removed":
+        "The folder was not deleted. SFTP deletes only an empty folder: empty it first. The server said: {error}",
     "ssh_file_viewer_dialog_title_invalid_selection": "Invalid selection",
     "ssh_file_viewer_dialog_message_select_file_to_download": "Select a file to download.",
     "ssh_file_viewer_dialog_title_save_as": "Save as",
