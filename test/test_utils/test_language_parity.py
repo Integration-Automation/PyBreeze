@@ -58,6 +58,16 @@ class TestLanguageParity:
         }
         assert not mismatched, f"Placeholder mismatches between languages: {mismatched}"
 
+    def test_no_word_is_written_twice(self):
+        # Four Chinese menu entries read "運行 Multi WebRunner 腳本 腳本並寄信"
+        doubled = {
+            key: value
+            for words in (EN, ZH)
+            for key, value in words.items()
+            if re.search(r"(?<!\S)(\S{2,}) \1(?!\S)|(?<!\S)(\S{2,}) \2(?=[一-鿿])", str(value))
+        }
+        assert not doubled, f"A word written twice: {doubled}"
+
 
 class TestCodeKeysAreDefined:
     def test_every_get_key_exists_in_dict(self):
