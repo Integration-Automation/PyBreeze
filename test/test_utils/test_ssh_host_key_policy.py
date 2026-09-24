@@ -223,3 +223,51 @@ def test_a_file_that_cannot_be_read_is_not_written_over(asked, keys, tmp_path, m
     monkeypatch.setattr(Path, "read_bytes", real_read)
 
     assert known.read_bytes() == b"trusted.example ssh-ed25519 AAAA\n"
+
+
+def test_a_file_without_a_last_newline_keeps_its_last_host(asked, keys):
+    # Written straight after it, the new key would join the last line and spoil both
+    _meet("first.example", keys[0])
+    path = policy_mod._known_hosts_path()
+    path.write_bytes(path.read_bytes().rstrip(b"\n"))
+
+    _meet("second.example", keys[1])
+
+    known = policy_mod._read_known_hosts()
+    assert known.lookup("first.example")["ssh-rsa"] == keys[0]
+    assert known.lookup("second.example")["ssh-rsa"] == keys[1]
+
+
+class TestThePanelThatAsked:
+    def test_its_question_carries_the_panel(self, asked, keys, monkeypatch):
+        from PySide6.QtWidgets import QWidget
+
+        parents: list = []
+
+        class Asker:
+            def ask(self, parent, _title, _message) -> bool:
+                parents.append(parent)
+                return False
+
+        monkeypatch.setattr(policy_mod, "host_key_asker", Asker)
+        panel = QWidget()
+        with pytest.raises(paramiko.SSHException):  # the answer was No
+            policy_mod.InteractiveHostKeyPolicy(panel).missing_host_key(
+                paramiko.SSHClient(), "host.example", keys[0])
+
+        assert parents == [panel]
+        panel.deleteLater()
+
+    def test_a_panel_closed_before_the_question_is_a_no(self, asked, keys):
+        import gc
+
+        from PySide6.QtWidgets import QWidget
+
+        panel = QWidget()
+        policy = policy_mod.InteractiveHostKeyPolicy(panel)
+        del panel
+        gc.collect()
+
+        with pytest.raises(paramiko.SSHException):
+            policy.missing_host_key(paramiko.SSHClient(), "host.example", keys[0])
+        assert asked["count"] == 0  # nobody was asked on its behalf
