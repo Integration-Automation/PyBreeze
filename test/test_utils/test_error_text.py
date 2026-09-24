@@ -183,3 +183,16 @@ class TestTheNetworkReasons:
         assert len(shown) == 1 and "已拒絕 example.org 的主機金鑰。" in shown[0]
         tree.close()
         tree.deleteLater()
+
+
+def test_no_tool_tab_shows_a_reason_as_raised():
+    # The HAR tab's load error was missed once: its format( call ran over two lines
+    import pathlib
+    import re
+
+    import pybreeze
+
+    tabs = pathlib.Path(pybreeze.__file__).parent / "pybreeze_ui" / "tools_gui"
+    raw = re.compile(r"error\s*=\s*str\(\s*(?:error|err|exc|e)\s*\)")
+    offenders = [path.name for path in tabs.glob("*.py") if raw.search(path.read_text(encoding="utf-8"))]
+    assert not offenders
