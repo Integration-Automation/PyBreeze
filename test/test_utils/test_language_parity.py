@@ -99,6 +99,13 @@ class TestLabelsAreTold:
             assert EN[dock] == EN[tab]
             assert ZH[dock] == ZH[tab]
 
+    def test_no_label_is_in_capitals(self):
+        # Every automation menu's Help submenu read "HELP", beside JEditor's "Help" menu
+        acronyms = {"HTTP", "JSON", "MIME", "SFTP"}
+        shouted = {key: text for key, text in EN.items() if key.endswith("_label")
+                   for word in re.findall(r"\b[A-Z]{4,}\b", text) if word not in acronyms}
+        assert shouted == {}
+
 
 class TestCodeKeysAreDefined:
     def test_every_get_key_exists_in_dict(self):

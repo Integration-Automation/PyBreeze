@@ -21,7 +21,7 @@ pybreeze_english_word_dict = {
     "install_menu_label": "Install",
     # Normal label
     "run_label": "Run",
-    "help_label": "HELP",
+    "help_label": "Help",
     "project_label": "Project",
     "create_project_exists": "{path} already exists. Replace its template files and lose your changes to them?",
     "create_project_failed": "The project could not be created at {path}: {error}",
