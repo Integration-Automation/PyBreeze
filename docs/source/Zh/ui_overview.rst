@@ -119,7 +119,7 @@ SSH、AI 工具、外掛等選單。
 PyBreeze 使用 `qt_material <https://github.com/UN-GCPDS/qt-material>`_ 進行主題設定。
 可用主題包括：
 
-- ``dark_amber.xml``（預設）
+- ``dark_amber.xml``\ （預設）
 - ``dark_teal.xml``
 - ``dark_blue.xml``
 - ``dark_cyan.xml``
@@ -148,7 +148,7 @@ PyBreeze 使用 `qt_material <https://github.com/UN-GCPDS/qt-material>`_ 進行�
 
 PyBreeze 支援多種 UI 語言：
 
-- **English**（預設）
+- **English**\ （預設）
 - **繁體中文**
 - 可透過外掛新增其他語言
 

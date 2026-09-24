@@ -42,7 +42,7 @@ PyBreeze 支援使用 ``EDITOR_EXTEND_TAB`` 字典擴充 UI 自訂分頁。
 --------
 
 1. 從 ``pybreeze`` 匯入 ``EDITOR_EXTEND_TAB``。
-2. 建立繼承 ``QWidget``（或任何 QWidget 子類別）的類別。
+2. 建立繼承 ``QWidget``\ （或任何 QWidget 子類別）的類別。
 3. 將您的元件類別加入 ``EDITOR_EXTEND_TAB`` 字典，以顯示名稱作為鍵值。
 4. 呼叫 ``start_editor()`` -- 您的分頁將與預設分頁一起顯示。
 
