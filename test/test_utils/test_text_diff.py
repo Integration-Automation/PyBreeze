@@ -186,6 +186,17 @@ def test_the_diff_turns_the_left_into_the_right_and_is_no_longer_than_difflibs(l
     assert changed <= sum(line[:1] in ("+", "-") for line in written)
 
 
+def test_a_head_set_aside_does_not_make_the_diff_longer():
+    # The first "b" taken as unchanged left a worse match: five lines changed
+    # where difflib changes three (-b, +c, -a)
+    from pybreeze.utils.diff_tools.text_diff import compare_texts
+
+    comparison = compare_texts("b\nb\na\nb\na", "b\na\nc\nb")
+
+    assert (comparison.summary.added, comparison.summary.removed) == (1, 2)
+    assert _applied(comparison.diff, ["b", "b", "a", "b", "a"]) == ["b", "a", "c", "b"]
+
+
 @pytest.mark.parametrize(("left", "right"), [
     ("\n".join(["{", "  a", "}"] * 100), "\n".join(["{", "  a", "}"] * 100).replace("  a", "  b", 1)),
     ("x\n" * 300, "y\n" + "x\n" * 299),

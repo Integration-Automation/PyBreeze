@@ -88,7 +88,8 @@ class _TrimmedMatcher(difflib.SequenceMatcher):
     text grows with the square of its lines (1,996 lines took 55 s).
 
     Only the opcodes cover both texts whole; ``ratio()`` and
-    ``get_matching_blocks()`` describe what is left to match.
+    ``get_matching_blocks()`` describe what is left to match. It can change
+    more lines than the plain match does, so ``_closest_match`` compares them.
     """
 
     def __init__(self, left_lines: list[str], right_lines: list[str]) -> None:
@@ -105,6 +106,10 @@ class _TrimmedMatcher(difflib.SequenceMatcher):
         middle_left = left_lines[head:len(left_lines) - tail]
         middle_right = right_lines[head:len(right_lines) - tail]
         super().__init__(None, middle_left, middle_right)
+
+    def trimmed_any(self) -> bool:
+        """Whether an unchanged head or tail was set aside."""
+        return bool(self._head or self._tail)
 
     def get_opcodes(self) -> list[tuple[str, int, int, int, int]]:
         """The opcodes over the whole two texts, the head and tail as equal blocks."""
@@ -133,8 +138,39 @@ def _unified_range(start: int, stop: int) -> str:
     return f"{start if length == 0 else start + 1},{length}"
 
 
+def _changed_lines(matcher: difflib.SequenceMatcher) -> tuple[int, int]:
+    """How many lines *matcher*'s match adds and removes."""
+    added = 0
+    removed = 0
+    for tag, left_start, left_end, right_start, right_end in matcher.get_opcodes():
+        if tag in ("replace", "delete"):
+            removed += left_end - left_start
+        if tag in ("replace", "insert"):
+            added += right_end - right_start
+    return added, removed
+
+
+def _closest_match(left_lines: list[str], right_lines: list[str]) -> tuple[difflib.SequenceMatcher, int, int]:
+    """The match that changes fewer lines, with its added and removed counts.
+
+    Setting the unchanged head and tail aside (``_TrimmedMatcher``) usually
+    finds the smaller diff, but not always: in ``b b a b a`` against
+    ``b a c b`` the first ``b`` taken as unchanged left a worse match, five
+    lines changed where ``difflib`` changes three. When anything was set
+    aside, the plain match is made too and the smaller one kept.
+    """
+    trimmed = _TrimmedMatcher(left_lines, right_lines)
+    best = (trimmed, *_changed_lines(trimmed))
+    if trimmed.trimmed_any():
+        plain = difflib.SequenceMatcher(None, left_lines, right_lines)
+        added, removed = _changed_lines(plain)
+        if added + removed < best[1] + best[2]:
+            best = (plain, added, removed)
+    return best
+
+
 def _unified_lines(
-        matcher: _TrimmedMatcher, left_lines: list[str], right_lines: list[str],
+        matcher: difflib.SequenceMatcher, left_lines: list[str], right_lines: list[str],
         labels: tuple[str, str]) -> list[str]:
     """The unified diff lines of *matcher*'s match, as ``difflib.unified_diff`` writes them."""
     lines: list[str] = []
@@ -169,14 +205,7 @@ def compare_texts(
     :return: the counts and the diff
     """
     left_lines, right_lines = _line_lists(left, right)
-    matcher = _TrimmedMatcher(left_lines, right_lines)
-    added = 0
-    removed = 0
-    for tag, left_start, left_end, right_start, right_end in matcher.get_opcodes():
-        if tag in ("replace", "delete"):
-            removed += left_end - left_start
-        if tag in ("replace", "insert"):
-            added += right_end - right_start
+    matcher, added, removed = _closest_match(left_lines, right_lines)
     lines = _unified_lines(matcher, left_lines, right_lines, (left_label, right_label))
     # The two header lines are shown as they are: told apart by position, not
     # by their "---"/"+++", which a removed "--x" or an added "++x" also has
