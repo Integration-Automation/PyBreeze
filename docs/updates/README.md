@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-41 | 2026-09-25 | Record cryptography with the undeclared direct imports in progress #53 | #docs #deps #security | [2026-09-c](2026-09-c.md) |
 | U-20260925-40 | 2026-09-25 | Tests that reach every branch of the pinned connections and capped reads | #test #security #network | [2026-09-c](2026-09-c.md) |
 | U-20260925-39 | 2026-09-25 | Tests that reach every branch of the SSRF check | #test #security #network | [2026-09-c](2026-09-c.md) |
 | U-20260925-38 | 2026-09-25 | The project tree deletes to the trash | #feature #ui #readme | [2026-09-c](2026-09-c.md) |
@@ -443,4 +444,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
-| [2026-09-c.md](2026-09-c.md) | 2026-09 | 40 |
+| [2026-09-c.md](2026-09-c.md) | 2026-09 | 41 |
