@@ -369,7 +369,8 @@ pybreeze_english_word_dict = {
     "jupyterlab_init": "Initializing...",
     "jupyterlab_downloading": "Downloading...",
     "jupyterlab_loading": "Loading...",
-    "jupyterlab_timeout": "JupyterLab Timeout",
+    "jupyterlab_timeout": "JupyterLab did not start in time",
+    "jupyterlab_exited_early": "JupyterLab exited early (code {code}): {output}",
     "jupyterlab_init_failed": "JupyterLab init failed",
     # Plugin Menu
     "plugin_menu_label": "Plugins",

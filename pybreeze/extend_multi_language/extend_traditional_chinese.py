@@ -369,6 +369,7 @@ pybreeze_traditional_chinese_word_dict = {
     "jupyterlab_downloading": "下載中...",
     "jupyterlab_loading": "載入中...",
     "jupyterlab_timeout": "JupyterLab 啟動超時",
+    "jupyterlab_exited_early": "JupyterLab 提早結束（結束代碼 {code}）：{output}",
     "jupyterlab_init_failed": "JupyterLab 啟動失敗",
     # Diagram Editor — 選單
     "extend_tools_menu_diagram_editor_tab_action": "架構圖編輯器分頁",

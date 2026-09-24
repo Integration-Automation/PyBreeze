@@ -197,19 +197,18 @@ class JupyterLauncherThread(QThread):
         process = self.process
         if process is None:
             raise RuntimeError("JupyterLab process was not started")
+        word = language_wrapper.language_word_dict
         start_time = time.time()
         while True:
             elapsed = time.time() - start_time
             if elapsed > self.startup_timeout:
-                raise TimeoutError(
-                    f"JupyterLab startup timeout ({self.startup_timeout}s)")
+                raise TimeoutError(f"{word.get('jupyterlab_timeout')} ({self.startup_timeout}s)")
 
             # Fail fast if the server died (port conflict, bad install, ...)
             # instead of polling a dead port until the full timeout elapses.
             if process.poll() is not None:
-                raise RuntimeError(
-                    f"JupyterLab exited early (code {process.returncode}): "
-                    f"{self._output_tail()}")
+                raise RuntimeError(word.get("jupyterlab_exited_early").format(
+                    code=process.returncode, output=self._output_tail()))
 
             self.status_update.emit(
                 f"{language_wrapper.language_word_dict.get('jupyterlab_loading')} "

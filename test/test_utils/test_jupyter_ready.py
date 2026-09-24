@@ -16,6 +16,8 @@ def qt_app():
             app = QApplication([])
         except Exception as exc:  # pragma: no cover - no usable Qt platform
             pytest.skip(f"Cannot start QApplication: {exc}")
+    from pybreeze.extend_multi_language.update_language_dict import update_language_dict
+    update_language_dict()
     return app
 
 
@@ -70,6 +72,42 @@ class TestWaitUntilReady:
         monkeypatch.setattr(thread, "_port_open", lambda port: True)
         # Should return without raising and without sleeping.
         assert thread._wait_until_ready(59999) is None
+
+
+class TestTheReasonIsInTheIdeLanguage:
+    """A start that timed out or a server that exited read in English whatever the IDE spoke."""
+
+    @pytest.fixture()
+    def chinese(self, monkeypatch):
+        from pybreeze.extend_multi_language.extend_traditional_chinese import (
+            pybreeze_traditional_chinese_word_dict as word,
+        )
+        from pybreeze.pybreeze_ui.jupyter_lab_gui import jupyter_lab_thread as mod
+        monkeypatch.setattr(mod.language_wrapper, "language_word_dict", word)
+
+    def test_a_timeout(self, qt_app, chinese, monkeypatch):
+        thread = _thread(qt_app)
+        thread.startup_timeout = 0
+        thread.process = _AliveProcess()
+        monkeypatch.setattr(thread, "_port_open", lambda port: False)
+
+        with pytest.raises(TimeoutError, match=r"^JupyterLab 啟動超時 \(0s\)$"):
+            thread._wait_until_ready(59999)
+
+    def test_an_early_exit(self, qt_app, chinese):
+        import tempfile
+
+        thread = _thread(qt_app)
+        thread.process = _DeadProcess()
+        with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as output:
+            thread._output = output
+            output.write("port in use {0}\n")
+
+            with pytest.raises(RuntimeError) as exc:
+                thread._wait_until_ready(59999)
+
+        assert str(exc.value).startswith("JupyterLab 提早結束（結束代碼 1）：")
+        assert "port in use {0}" in str(exc.value)
 
 
 class TestRunCleansUpOnFailure:
