@@ -430,7 +430,7 @@ pybreeze_english_word_dict = {
     # cURL Import — Widget
     "curl_import_input_label": "Paste a curl command:",
     "curl_import_input_placeholder": "curl 'https://api.example.com/v1/items' -H 'Accept: application/json'",
-    "curl_import_convert_button": "Convert to Python requests",
+    "curl_import_convert_button": "Generate {target}",
     "curl_import_output_label": "Generated code:",
     "curl_import_error": "Could not parse the curl command: {error}",
     "curl_import_empty_hint": "Paste a curl command above, then click convert.",

@@ -32,6 +32,12 @@ def widget(app):
 
 
 class TestCurlImportGUI:
+    def test_the_button_names_the_chosen_target(self, widget):
+        # It said "Convert to Python requests" whichever target was chosen
+        for index in range(widget.target_select.count()):
+            widget.target_select.setCurrentIndex(index)
+            assert widget.target_select.itemText(index) in widget.convert_button.text()
+
     def test_convert_produces_code(self, widget):
         widget.input_edit.setPlainText("curl https://example.com/api")
         widget.convert()

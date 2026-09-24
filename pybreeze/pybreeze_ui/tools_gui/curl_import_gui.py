@@ -57,7 +57,8 @@ class CurlImportGUI(QWidget):
             self.target_select.addItem(word.get(label_key), target_key)
         self.target_select.currentIndexChanged.connect(self._on_target_changed)
 
-        self.convert_button = QPushButton(word.get("curl_import_convert_button"))
+        self.convert_button = QPushButton()
+        self._name_convert_button()
         self.convert_button.clicked.connect(self.convert)
 
         self.output_label = QLabel(word.get("curl_import_output_label"))
@@ -100,8 +101,15 @@ class CurlImportGUI(QWidget):
         """Return the template key of the currently selected target."""
         return self.target_select.currentData()
 
+    def _name_convert_button(self) -> None:
+        """Name the chosen target on the button that generates it."""
+        self.convert_button.setText(
+            language_wrapper.language_word_dict.get("curl_import_convert_button").format(
+                target=self.target_select.currentText()))
+
     def _on_target_changed(self, _index: int) -> None:
-        """Regenerate when the target changes, if there is already input."""
+        """Rename the button, and regenerate if there is already input."""
+        self._name_convert_button()
         if exact_text(self.input_edit).strip():
             self.convert()
 

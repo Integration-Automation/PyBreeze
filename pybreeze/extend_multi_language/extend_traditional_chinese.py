@@ -394,7 +394,7 @@ pybreeze_traditional_chinese_word_dict = {
     # cURL 匯入 — 介面
     "curl_import_input_label": "貼上 curl 指令：",
     "curl_import_input_placeholder": "curl 'https://api.example.com/v1/items' -H 'Accept: application/json'",
-    "curl_import_convert_button": "轉換為 Python requests",
+    "curl_import_convert_button": "產生 {target}",
     "curl_import_output_label": "產生的程式碼：",
     "curl_import_error": "無法解析 curl 指令：{error}",
     "curl_import_empty_hint": "請先在上方貼上 curl 指令，再按轉換。",
