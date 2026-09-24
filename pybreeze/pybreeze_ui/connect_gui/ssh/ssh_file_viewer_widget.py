@@ -396,34 +396,23 @@ class SSHFileTreeManager(QWidget):
             # The "..." or loading row: no entry of its own, so the folder it is in
             item = item.parent()
         menu = QMenu(self)
+        handlers = {}
+        for name, handler in (
+                ("refresh", self.action_refresh),
+                ("create_folder", self.action_create_folder),
+                ("rename", self.action_rename),
+                ("delete", self.action_delete),
+                ("download", self.action_download),
+                ("upload", self.action_upload),
+        ):
+            handlers[menu.addAction(self.word_dict.get(f"ssh_file_viewer_context_menu_action_{name}"))] = handler
 
-        def action(name: str):
-            return menu.addAction(self.word_dict.get(f"ssh_file_viewer_context_menu_action_{name}"))
-
-        refresh_act = action("refresh")
-        create_act = action("create_folder")
-        rename_act = action("rename")
-        delete_act = action("delete")
-        download_act = action("download")
-        upload_act = action("upload")
-
-        action = menu.exec(self.tree.viewport().mapToGlobal(pos))
-        if action is None:
+        chosen = menu.exec(self.tree.viewport().mapToGlobal(pos))
+        handler = handlers.get(chosen)
+        if handler is None:
             return
-
         try:
-            if action == refresh_act:
-                self.action_refresh(item)
-            elif action == create_act:
-                self.action_create_folder(item)
-            elif action == rename_act:
-                self.action_rename(item)
-            elif action == delete_act:
-                self.action_delete(item)
-            elif action == download_act:
-                self.action_download(item)
-            elif action == upload_act:
-                self.action_upload(item)
+            handler(item)
         # what an SFTP operation raises, a closed session's RuntimeError included
         except CONNECT_ERRORS as e:
             self._operation_failed(str(e))
