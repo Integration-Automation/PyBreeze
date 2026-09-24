@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260924-265 | 2026-09-24 | The SFTP tree says a host key was declined in the IDE language | #done #fix #ssh #i18n | [2026-09-b](2026-09-b.md) |
 | U-20260924-264 | 2026-09-24 | A diff never changes more lines than difflib's own | #fix #diff | [2026-09-b](2026-09-b.md) |
 | U-20260924-263 | 2026-09-24 | An SFTP transfer can be cancelled | #feature #ssh #ui | [2026-09-b](2026-09-b.md) |
 | U-20260924-262 | 2026-09-24 | The SFTP context menu dispatches from a table | #refactor #ssh | [2026-09-b](2026-09-b.md) |
@@ -346,4 +347,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | File | Period | Entries |
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
-| [2026-09-b.md](2026-09-b.md) | 2026-09 | 64 |
+| [2026-09-b.md](2026-09-b.md) | 2026-09 | 65 |

@@ -170,3 +170,16 @@ class TestTheNetworkReasons:
         assert "已拒絕 example.org 的主機金鑰。" in widget.terminal.toPlainText()
         widget.ssh_client = None
         widget.close()
+
+    def test_a_host_key_the_user_declined_in_the_file_tree(self, app, chinese, monkeypatch):
+        from pybreeze.pybreeze_ui.connect_gui.ssh import ssh_file_viewer_widget as tree_mod
+
+        shown: list = []
+        monkeypatch.setattr(tree_mod.QMessageBox, "critical", lambda *args: shown.append(args[2]))
+        tree = tree_mod.SSHFileTreeManager()
+
+        tree._on_connect_failed(exception_tags.host_key_rejected_error.format(hostname="example.org"))
+
+        assert len(shown) == 1 and "已拒絕 example.org 的主機金鑰。" in shown[0]
+        tree.close()
+        tree.deleteLater()

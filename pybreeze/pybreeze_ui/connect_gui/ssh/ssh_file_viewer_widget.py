@@ -25,6 +25,7 @@ from pybreeze.pybreeze_ui.connect_gui.ssh.sftp_session import (
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_connect_thread import CONNECT_ERRORS, SshConnectThread
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_host_key_policy import host_key_asker
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_login_widget import LoginWidget
+from pybreeze.pybreeze_ui.error_text import error_text
 from pybreeze.pybreeze_ui.plain_text import as_text
 from pybreeze.pybreeze_ui.thread_keeper import let_run_out
 
@@ -206,8 +207,10 @@ class SSHFileTreeManager(QWidget):
         QMessageBox.critical(
             self,
             self.word_dict.get("ssh_file_viewer_dialog_title_connection_failed"),
-            # The server's text (paramiko quotes its first line): shown as text
-            as_text(f"{self.word_dict.get('ssh_file_viewer_dialog_message_connection_failed')}: {message}"))
+            # The server's text (paramiko quotes its first line): shown as text;
+            # a host key the user declined, in the IDE language
+            as_text(f"{self.word_dict.get('ssh_file_viewer_dialog_message_connection_failed')}: "
+                    f"{error_text(message)}"))
         self.state_changed.emit()
 
     def closeEvent(self, event) -> None:
