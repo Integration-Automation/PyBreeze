@@ -496,12 +496,15 @@ class DiagramEditorWidget(QWidget):
         Asked by the main window before it closes this tab or the IDE: an
         unsaved diagram was lost on close without a word.
         """
+        return self._may_discard_edits(
+            "diagram_editor_close_over_edits", "The diagram has changes that are not saved. Close and lose them?")
+
+    def _may_discard_edits(self, question_key: str, fallback: str) -> bool:
+        """True when the diagram is as last saved or opened, or the user answers Yes to *question_key*."""
         if self._scene.undo_stack.isClean():
             return True
         reply = QMessageBox.question(
-            self, _lang("unsaved_close_title", "Unsaved changes"),
-            _lang("diagram_editor_close_over_edits",
-                  "The diagram has changes that are not saved. Close and lose them?"),
+            self, _lang("unsaved_close_title", "Unsaved changes"), _lang(question_key, fallback),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
         return reply == QMessageBox.StandardButton.Yes
 
