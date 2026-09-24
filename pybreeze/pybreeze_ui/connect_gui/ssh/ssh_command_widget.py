@@ -6,7 +6,7 @@ import weakref
 
 import paramiko
 from PySide6.QtCore import QEvent, QThread, Qt, Signal
-from PySide6.QtGui import QTextCursor
+from PySide6.QtGui import QTextCharFormat, QTextCursor
 from PySide6.QtWidgets import (
     QWidget, QLineEdit, QPushButton,
     QPlainTextEdit, QHBoxLayout, QVBoxLayout,
@@ -22,6 +22,7 @@ from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_host_key_policy import (
 )
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_key_loader import load_private_key, unloadable_key_reason
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_login_widget import LoginWidget
+from pybreeze.pybreeze_ui.terminal_view import insert_rewinding
 from pybreeze.pybreeze_ui.thread_keeper import if_alive, let_run_out
 from pybreeze.pybreeze_ui.error_text import error_text
 from pybreeze.utils.logging.logger import pybreeze_logger
@@ -329,7 +330,9 @@ class SSHCommandWidget(QWidget):
             end.movePosition(QTextCursor.MoveOperation.Left, QTextCursor.MoveMode.KeepAnchor,
                              min(backspaces, end.positionInBlock()))
             end.removeSelectedText()
-        end.insertText(text)
+        # A lone \r redraws the line (a progress bar); the decoder holds one
+        # that ends a read until the next shows whether "\n" follows
+        insert_rewinding(end, text, QTextCharFormat())
         if following:
             scroll_bar.setValue(scroll_bar.maximum())
 

@@ -109,6 +109,24 @@ class TestTheTerminal:
         assert widget.terminal.toPlainText() == "line1\nline2\n"
         widget.close()
 
+    def test_a_progress_bar_redraws_its_line(self, app):
+        # Each "\r" was a line break: one line per step of pip's or wget's bar
+        widget = self._widget()
+
+        for chunk in (b"start\r\n", b" 10%\r", b" 20%\r", b"100%\r\n", b"done\r\n"):
+            widget._on_data(chunk)
+
+        assert widget.terminal.toPlainText() == "start\n100%\ndone\n"
+        widget.close()
+
+    def test_a_rewind_and_its_text_in_one_read_redraw_the_line(self, app):
+        widget = self._widget()
+
+        widget._on_data(b"a 10%\r a 20%\r\x1b[Ka100%\r\ndone\r\n")
+
+        assert widget.terminal.toPlainText() == "a100%\ndone\n"
+        widget.close()
+
     def test_a_notice_starts_on_a_line_of_its_own(self, app):
         widget = self._widget()
         widget._on_data(b"$ ")
