@@ -178,6 +178,8 @@ pybreeze_english_word_dict = {
     "ssh_command_widget_error_message_unsupported_private_key": "Unsupported or invalid private key.",
     "ssh_key_error_passphrase_needed": "The private key is protected by a passphrase: enter it in the password field.",
     "ssh_key_error_passphrase_wrong": "The passphrase for the private key is wrong.",
+    "ssh_key_error_putty_key": "This is a PuTTY key (.ppk), which cannot be used here: load it in PuTTYgen, "
+                               "choose Conversions > Export OpenSSH key, and pick the exported file.",
     "ssh_command_widget_error_message_key_auth_failed": "Key auth failed",
     "ssh_command_widget_status_label_connected": "Connected",
     "ssh_command_widget_status_label_disconnected": "Disconnected",
@@ -273,7 +275,7 @@ pybreeze_english_word_dict = {
     "ssh_login_widget_placeholder_host": "Host (e.g., 192.168.0.10)",
     "ssh_login_widget_placeholder_username": "Username",
     "ssh_login_widget_placeholder_password": "Password",
-    "ssh_login_widget_placeholder_private_key": "Private key path (.pem/.ppk)",
+    "ssh_login_widget_placeholder_private_key": "Private key path (OpenSSH or PEM)",
     "ssh_login_widget_button_use_key_auth": "Use key auth",
     "ssh_login_widget_button_connect": "Connect",
     "ssh_login_widget_button_disconnect": "Disconnect",

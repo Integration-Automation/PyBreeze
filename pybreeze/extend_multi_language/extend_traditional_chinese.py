@@ -171,6 +171,8 @@ pybreeze_traditional_chinese_word_dict = {
     "ssh_command_widget_error_message_unsupported_private_key": "不支援或無效的私鑰。",
     "ssh_key_error_passphrase_needed": "這把私鑰有密語保護：請在密碼欄輸入密語。",
     "ssh_key_error_passphrase_wrong": "私鑰的密語不對。",
+    "ssh_key_error_putty_key": "這是 PuTTY 金鑰（.ppk），這裡無法使用：請在 PuTTYgen 載入它，"
+                               "選 Conversions > Export OpenSSH key 匯出，再選擇匯出的檔案。",
     "ssh_command_widget_error_message_key_auth_failed": "金鑰驗證失敗",
     "ssh_command_widget_status_label_connected": "已連線",
     "ssh_command_widget_status_label_disconnected": "已斷線",
@@ -263,7 +265,7 @@ pybreeze_traditional_chinese_word_dict = {
     "ssh_login_widget_placeholder_host": "主機（例如：192.168.0.10）",
     "ssh_login_widget_placeholder_username": "使用者名稱",
     "ssh_login_widget_placeholder_password": "密碼",
-    "ssh_login_widget_placeholder_private_key": "私鑰路徑（.pem/.ppk）",
+    "ssh_login_widget_placeholder_private_key": "私鑰路徑（OpenSSH 或 PEM）",
     "ssh_login_widget_button_use_key_auth": "使用金鑰驗證",
     "ssh_login_widget_button_connect": "連線",
     "ssh_login_widget_button_disconnect": "斷線",

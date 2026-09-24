@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-08 | 2026-09-25 | Say what to do with a PuTTY key instead of offering it | #fix #ssh #i18n #readme | [2026-09-c](2026-09-c.md) |
 | U-20260925-07 | 2026-09-25 | SSH and SFTP log in with a PKCS#8 private key | #feature #ssh | [2026-09-c](2026-09-c.md) |
 | U-20260925-06 | 2026-09-25 | The Mermaid paste box in the fixed-pitch font | #fix #diagram #ui | [2026-09-c](2026-09-c.md) |
 | U-20260925-05 | 2026-09-25 | Free the diagram editor's Mermaid import dialog | #fix #diagram | [2026-09-c](2026-09-c.md) |
@@ -410,4 +411,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
-| [2026-09-c.md](2026-09-c.md) | 2026-09 | 7 |
+| [2026-09-c.md](2026-09-c.md) | 2026-09 | 8 |

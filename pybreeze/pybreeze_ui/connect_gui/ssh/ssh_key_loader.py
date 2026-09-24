@@ -27,6 +27,10 @@ _KEY_CLASSES: tuple[type[paramiko.PKey], ...] = (
 UNSUPPORTED_KEY = "ssh_command_widget_error_message_unsupported_private_key"
 PASSPHRASE_NEEDED = "ssh_key_error_passphrase_needed"
 PASSPHRASE_WRONG = "ssh_key_error_passphrase_wrong"
+PUTTY_KEY = "ssh_key_error_putty_key"
+
+# A PuTTY key file (.ppk), which neither paramiko nor cryptography reads
+_PUTTY_HEADER = b"PuTTY-User-Key-File-"
 
 # PKCS#8, which paramiko does not read (openssl genpkey, ssh-keygen -m PKCS8)
 _PKCS8_PLAIN = b"-----BEGIN PRIVATE KEY-----"
@@ -50,13 +54,13 @@ def load_private_key(key_path: str, password: str, *, context: str = "SSH") -> p
     return _load_pkcs8(key_path, passphrase, context)
 
 
-def _pkcs8_data(key_path: str) -> bytes | None:
-    """The contents of *key_path* if it is a PKCS#8 key file, else ``None``."""
+def _key_file_data(key_path: str, *headers: bytes) -> bytes | None:
+    """The contents of *key_path* if it starts with one of *headers*, else ``None``."""
     try:
         data = Path(key_path).read_bytes().lstrip()
     except OSError:
         return None
-    return data if data.startswith((_PKCS8_PLAIN, _PKCS8_ENCRYPTED)) else None
+    return data if data.startswith(headers) else None
 
 
 def _load_pkcs8(key_path: str, passphrase: str | None, context: str) -> paramiko.PKey | None:
@@ -66,7 +70,7 @@ def _load_pkcs8(key_path: str, passphrase: str | None, context: str) -> paramiko
     only, for paramiko to load. A passphrase is used only for an encrypted
     file: paramiko ignores one given for a plain key, and so does this.
     """
-    data = _pkcs8_data(key_path)
+    data = _key_file_data(key_path, _PKCS8_PLAIN, _PKCS8_ENCRYPTED)
     if data is None:
         return None
     password = passphrase.encode("utf-8") if passphrase and data.startswith(_PKCS8_ENCRYPTED) else None
@@ -96,10 +100,12 @@ def unloadable_key_reason(key_path: str, password: str) -> str:
     wrong only when it does not decrypt the file: an encrypted key of a type
     paramiko cannot load (DSA, a FIDO key) asks for one too, and with the
     right one it is still unsupported. An encrypted PKCS#8 file says so in
-    its first line, which paramiko does not read.
+    its first line, which paramiko does not read. A PuTTY key is to be
+    exported as an OpenSSH one.
     """
-    pkcs8 = _pkcs8_data(key_path)
-    if pkcs8 is not None and pkcs8.startswith(_PKCS8_ENCRYPTED):
+    if _key_file_data(key_path, _PUTTY_HEADER) is not None:
+        return PUTTY_KEY
+    if _key_file_data(key_path, _PKCS8_ENCRYPTED) is not None:
         if not password:
             return PASSPHRASE_NEEDED
         return UNSUPPORTED_KEY if _decrypts(key_path, password) else PASSPHRASE_WRONG
