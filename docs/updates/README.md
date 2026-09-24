@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-210 | 2026-09-24 | Keep a quoted Mermaid edge label that holds a bar | #fix #diagram | [2026-09-b](2026-09-b.md) |
 | U-20260923-209 | 2026-09-24 | Skip a diagram image entry that is not an object instead of failing Open | #fix #diagram | [2026-09-b](2026-09-b.md) |
 | U-20260923-208 | 2026-09-24 | Keep the prthinker extra arguments after a # | #fix #prthinker | [2026-09-b](2026-09-b.md) |
 | U-20260923-207 | 2026-09-24 | Round a decimal epoch toward the past and refuse an offset past 59 minutes | #fix #timestamp | [2026-09-b](2026-09-b.md) |
@@ -291,4 +292,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | File | Period | Entries |
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
-| [2026-09-b.md](2026-09-b.md) | 2026-09 | 9 |
+| [2026-09-b.md](2026-09-b.md) | 2026-09 | 10 |

@@ -91,6 +91,13 @@ class TestArrowsAndLabels:
         r = parse_mermaid("graph TD\nA-->|yes|B")
         assert r["connections"][0]["label"] == "yes"
 
+    @pytest.mark.parametrize("line", ['A-->|"a|b"|B', 'A-->| "a|b" |B'])
+    def test_a_quoted_pipe_label_keeps_its_bar(self, line):
+        # The label stopped at the "|" inside the quotes: '"a'
+        r = parse_mermaid(f"graph TD\n{line}")
+        assert [c["label"] for c in r["connections"]] == ["a|b"]
+        assert len(r["nodes"]) == 2
+
     def test_inline_label(self):
         r = parse_mermaid("graph TD\nA -- maybe --> B")
         assert r["connections"][0]["label"] == "maybe"

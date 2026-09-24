@@ -253,7 +253,8 @@ def _parse_node_group(raw: str, nodes: dict[str, _NodeInfo]) -> list[str]:
 def _parse_arrow(token: str) -> tuple[str, ConnectionStyle, float]:
     """Return ``(label, style, line_width)`` from an arrow token."""
     label = ""
-    lm = re.search(r"\|([^|]*)\|", token)
+    # A quoted label is taken whole: '|"a|b"|' stopped at the "|" inside it
+    lm = re.search(r'\|\s*("[^"]*"|[^|]*)\s*\|', token)
     if lm:
         label = _unquote(lm.group(1).strip())
 
