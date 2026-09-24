@@ -117,7 +117,7 @@ Reports names sent more than once, `Set-Cookie` entries missing `Secure` / `Http
 
 ![Text Diff](images/tool_diff.png)
 
-Compare two payloads — an expected vs. actual API response, say — and get a unified diff plus a one-line added/removed summary.
+Compare two payloads — an expected vs. actual API response, say — and get a unified diff, its added and removed lines in the theme's colours, plus a one-line added/removed summary.
 
 ### The everyday utilities
 

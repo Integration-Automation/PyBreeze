@@ -43,7 +43,7 @@ INTERNAL = [
     ("je_editor.utils.encodings.text_codec", "LINE_ENDING_LF",
      "menu/plugin_menu/build_run_with_menu.py"),
     ("je_editor.pyside_ui.main_ui.save_settings.user_color_setting_file", "actually_color_dict",
-     "show_code_window/code_window.py, auto_control_menu/build_autocontrol_menu.py"),
+     "show_code_window/code_window.py, auto_control_menu/build_autocontrol_menu.py, tools_gui/diff_gui.py"),
 ]
 
 # Names PyBreeze imports from je_editor's top level, i.e. from its __all__.
@@ -113,6 +113,9 @@ class TestTheShapesPyBreezeCalls:
             "je_editor.pyside_ui.main_ui.save_settings.user_color_setting_file",
             "actually_color_dict")
         assert {"normal_output_color", "error_output_color"} <= set(colours)
+        # The diff tool's line colours
+        assert {"diff_added_marker_color", "diff_removed_marker_color", "syntax_keyword_color",
+                "blame_annotation_color"} <= set(colours)
 
     def test_a_keyword_colour_can_be_a_theme_colour_key(self):
         # syntax_extend registers keys, not colours, so keywords follow the theme

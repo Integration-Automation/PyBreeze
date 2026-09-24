@@ -2,15 +2,51 @@
 from __future__ import annotations
 
 from PySide6.QtCore import QThread, Signal
+from PySide6.QtGui import QSyntaxHighlighter, QTextCharFormat
 from PySide6.QtWidgets import (
     QHBoxLayout, QLabel, QPushButton, QTextEdit, QVBoxLayout, QWidget
 )
 from je_editor import language_wrapper
+from je_editor.pyside_ui.main_ui.save_settings.user_color_setting_file import actually_color_dict
 
 from pybreeze.pybreeze_ui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.pybreeze_ui.thread_keeper import let_run_out
 from pybreeze.utils.diff_tools.text_diff import Comparison, DiffSummary, compare_texts
+
+# A unified diff line's first characters -> JEditor theme colour (a dark and a
+# light set, which the Style menu switches between); the first match counts
+_LINE_COLOURS = (
+    ("@@", "syntax_keyword_color"),
+    ("+", "diff_added_marker_color"),
+    ("-", "diff_removed_marker_color"),
+    ("\\", "blame_annotation_color"),  # "\ No newline at end of file"
+)
+# The "--- expected" and "+++ actual" lines a diff starts with
+_HEADER_LINES = 2
+
+
+def diff_line_colour(line: str, line_number: int) -> str | None:
+    """The theme colour key *line* of a unified diff is shown in, or ``None`` for the view's own.
+
+    Only the first two lines are the header: a removed line reading ``--x``
+    also starts with ``---``.
+    """
+    if line_number < _HEADER_LINES and line.startswith(("--- ", "+++ ")):
+        return None
+    return next((key for prefix, key in _LINE_COLOURS if line.startswith(prefix)), None)
+
+
+class UnifiedDiffHighlighter(QSyntaxHighlighter):
+    """Colours a unified diff's added, removed and hunk lines, in the theme's colours."""
+
+    def highlightBlock(self, text: str) -> None:
+        key = diff_line_colour(text, self.currentBlock().blockNumber())
+        colour = actually_color_dict.get(key) if key is not None else None
+        if colour is not None:
+            text_format = QTextCharFormat()
+            text_format.setForeground(colour)
+            self.setFormat(0, len(text), text_format)
 
 
 def build_summary_line(summary: DiffSummary) -> str:
@@ -72,6 +108,7 @@ class DiffGUI(QWidget):
         self.summary_label = QLabel("")
         self.output_edit = QTextEdit()
         self.output_edit.setReadOnly(True)
+        self._highlighter = UnifiedDiffHighlighter(self.output_edit.document())
 
         self.actions = OutputActions(
             self, self.output_edit, main_window=main_window,

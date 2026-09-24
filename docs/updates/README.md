@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260924-296 | 2026-09-24 | The diff tool shows its diff in colour | #feature #ui | [2026-09-b](2026-09-b.md) |
 | U-20260924-295 | 2026-09-24 | Automation keywords readable on a light theme | #fix #ui #jeditor | [2026-09-b](2026-09-b.md) |
 | U-20260924-294 | 2026-09-24 | The terminal font holds under the IDE's theme | #fix #ssh #ui | [2026-09-b](2026-09-b.md) |
 | U-20260924-293 | 2026-09-24 | Terminal colours readable on a dark and on a light theme | #fix #ssh #ui | [2026-09-b](2026-09-b.md) |
@@ -377,4 +378,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | File | Period | Entries |
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
-| [2026-09-b.md](2026-09-b.md) | 2026-09 | 93 |
+| [2026-09-b.md](2026-09-b.md) | 2026-09 | 94 |
