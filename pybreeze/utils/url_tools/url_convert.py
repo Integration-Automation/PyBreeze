@@ -173,6 +173,11 @@ def build_url(components: dict) -> str:
     path = _part(components, "path")
     query = _build_query(components.get("query"))
     fragment = _part(components, "fragment")
+    if not netloc and path.startswith("//"):
+        # urlunsplit writes no empty authority, so the path's first segment
+        # became the host: http:////x came back as http://x
+        head = f"{scheme}:" if scheme else ""
+        return f"{head}//{path}{urlunsplit(('', '', '', query, fragment))}"
     return urlunsplit((scheme, netloc, path, query, fragment))
 
 

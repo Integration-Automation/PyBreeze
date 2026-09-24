@@ -85,6 +85,11 @@ class TestRoundTrip:
     def test_parse_then_build_is_stable(self, url):
         assert build_url(parse_url(url)) == url
 
+    @pytest.mark.parametrize("url", ["http:////x", "http:////x/y?a=1#f", "////x", "file:////srv/share"])
+    def test_a_path_starting_with_two_slashes_does_not_become_the_host(self, url):
+        # http:////x came back as http://x: the path's "x" was now the host
+        assert build_url(parse_url(url)) == url
+
 
 class TestJsonToUrl:
     def test_builds_from_json(self):
