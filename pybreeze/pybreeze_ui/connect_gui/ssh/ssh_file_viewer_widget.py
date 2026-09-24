@@ -394,10 +394,7 @@ class SSHFileTreeManager(QWidget):
         Show context menu for file operations.
         顯示右鍵選單以進行檔案操作。
         """
-        item = self.tree.itemAt(pos)
-        if item is not None and not item.text(3):
-            # The "..." or loading row: no entry of its own, so the folder it is in
-            item = item.parent()
+        item = self._entry_of(self.tree.itemAt(pos))
         menu = QMenu(self)
         handlers = {}
         for name, handler in (
@@ -417,8 +414,18 @@ class SSHFileTreeManager(QWidget):
         chosen = menu.exec(self.tree.viewport().mapToGlobal(pos))
         menu.deleteLater()  # a child of this widget: kept for good otherwise, one per right-click
         handler = handlers.get(chosen)
-        if handler is None:
-            return
+        if handler is not None:
+            self._act_on(handler, item)
+
+    @staticmethod
+    def _entry_of(item: QTreeWidgetItem | None) -> QTreeWidgetItem | None:
+        """The entry *item* stands for: the "..." or loading row has none of its own, so its folder."""
+        if item is not None and not item.text(3):
+            return item.parent()
+        return item
+
+    def _act_on(self, handler: Callable[[QTreeWidgetItem | None], None], item: QTreeWidgetItem | None) -> None:
+        """Run a tree action on *item*; a failed SFTP request is reported, not raised."""
         try:
             handler(item)
         # what an SFTP operation raises, a closed session's RuntimeError included

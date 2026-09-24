@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-36 | 2026-09-25 | Refactor: the SFTP tree's menu action runner and entry lookup | #refactor #ssh | [2026-09-c](2026-09-c.md) |
 | U-20260925-35 | 2026-09-25 | F2 and Delete in the project tree | #feature #ui #readme | [2026-09-c](2026-09-c.md) |
 | U-20260925-34 | 2026-09-25 | The Regex tab's Traditional Chinese title | #fix #tools #i18n | [2026-09-c](2026-09-c.md) |
 | U-20260925-33 | 2026-09-25 | Ctrl+Enter sends from the AI panels | #feature #ai #readme | [2026-09-c](2026-09-c.md) |
@@ -438,4 +439,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
-| [2026-09-c.md](2026-09-c.md) | 2026-09 | 35 |
+| [2026-09-c.md](2026-09-c.md) | 2026-09 | 36 |
