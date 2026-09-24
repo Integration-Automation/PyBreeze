@@ -426,9 +426,9 @@ pybreeze_traditional_chinese_word_dict = {
     "har_import_generate_error": "無法產生腳本：{error}",
     "har_import_not_utf8": "不是 UTF-8 文字檔",
     "har_import_read_error": "無法開啟檔案：{error}",
-    # 共用輸出動作（複製 / 開成分頁 / 存檔）
+    # 共用輸出動作（複製 / 在編輯器分頁開啟 / 存檔）
     "output_actions_copy": "複製",
-    "output_actions_open_editor": "開成編輯器分頁",
+    "output_actions_open_editor": "在編輯器分頁開啟",
     "output_actions_save": "存成檔案...",
     "output_actions_editor_tab_label": "產生內容",
     "output_actions_save_failed_title": "沒有存檔",
