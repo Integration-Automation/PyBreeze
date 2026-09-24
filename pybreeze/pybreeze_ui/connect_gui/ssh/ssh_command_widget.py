@@ -24,7 +24,7 @@ from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_key_loader import load_private_key
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_login_widget import LoginWidget
 from pybreeze.pybreeze_ui.thread_keeper import if_alive, let_run_out
 from pybreeze.utils.logging.logger import pybreeze_logger
-from pybreeze.utils.terminal_text import split_unfinished_end, strip_terminal_controls
+from pybreeze.utils.terminal_text import split_unfinished_end, strip_terminal_controls, take_leading_backspaces
 
 # What closing a channel or a client can raise on a connection already broken
 CLOSE_ERRORS = (OSError, EOFError, paramiko.SSHException)
@@ -49,9 +49,14 @@ class TerminalDecoder:
         self._pending = ""
 
     def feed(self, data: bytes) -> str:
-        """Return the text *data* completes, escape sequences removed."""
+        """Return the text *data* completes, escape sequences removed.
+
+        Backspaces it starts with are kept, for the view to take back what an
+        earlier read showed; any others are applied here.
+        """
         text, self._pending = split_unfinished_end(self._pending + self._decoder.decode(data))
-        return strip_terminal_controls(text)
+        backspaces, text = take_leading_backspaces(text)
+        return "\x08" * backspaces + strip_terminal_controls(text)
 
 
 # Bound the terminal scrollback so an endless stream (``tail -f``, ``yes``)
@@ -235,6 +240,12 @@ class SSHCommandWidget(QWidget):
         following = scroll_bar.value() == scroll_bar.maximum()
         end = QTextCursor(self.terminal.document())
         end.movePosition(QTextCursor.MoveOperation.End)
+        backspaces, text = take_leading_backspaces(text)
+        if backspaces:
+            # They take back what an earlier read showed, never past the line's start
+            end.movePosition(QTextCursor.MoveOperation.Left, QTextCursor.MoveMode.KeepAnchor,
+                             min(backspaces, end.positionInBlock()))
+            end.removeSelectedText()
         end.insertText(text)
         if following:
             scroll_bar.setValue(scroll_bar.maximum())

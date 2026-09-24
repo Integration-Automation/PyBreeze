@@ -47,6 +47,18 @@ def strip_terminal_controls(text: str) -> str:
     return _CONTROL_CHARACTER.sub('', text)
 
 
+def take_leading_backspaces(text: str) -> tuple[int, str]:
+    """How many backspaces *text* starts with, and the rest of it.
+
+    Those take back characters an earlier read already showed, which only the
+    view can do: :func:`strip_terminal_controls` applies a backspace inside
+    one piece and dropped these, so a spinner writing ``|``, ``\\b/``, ``\\b-``
+    in separate writes showed ``|/-``.
+    """
+    rest = text.lstrip("\x08")
+    return len(text) - len(rest), rest
+
+
 def split_incomplete_escape(text: str) -> tuple[str, str]:
     """*text* as what can be shown now and the unfinished escape sequence at its end.
 

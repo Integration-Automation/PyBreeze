@@ -7,7 +7,7 @@ from PySide6.QtCore import QTimer, Signal
 from PySide6.QtGui import QGuiApplication, QTextCharFormat, QTextCursor
 from PySide6.QtWidgets import QWidget, QGridLayout, QPlainTextEdit, QScrollArea
 
-from pybreeze.utils.terminal_text import strip_terminal_controls
+from pybreeze.utils.terminal_text import strip_terminal_controls, take_leading_backspaces
 
 if TYPE_CHECKING:
     from pybreeze.extend.process_executor.file_runner_process import FileRunnerProcess
@@ -145,9 +145,15 @@ class CodeWindow(QWidget):
         text_format = QTextCharFormat()
         color_key = "error_output_color" if is_error else "normal_output_color"
         text_format.setForeground(actually_color_dict.get(color_key))
+        backspaces, text = take_leading_backspaces(text)
         text = strip_terminal_controls(text)
         if self._rewind_pending:
             text = "\r" + text
+        elif backspaces:
+            # They take back what an earlier piece showed, never past the line's start
+            cursor.movePosition(QTextCursor.MoveOperation.Left, QTextCursor.MoveMode.KeepAnchor,
+                                min(backspaces, cursor.positionInBlock()))
+            cursor.removeSelectedText()
         self._rewind_pending = _insert_rewinding(cursor, text, text_format)
         if follow_output:
             scroll_bar.setValue(scroll_bar.maximum())

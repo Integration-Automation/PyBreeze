@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-220 | 2026-09-24 | Let a backspace take back what an earlier read showed | #fix #output #done | [2026-09-b](2026-09-b.md) |
 | U-20260923-219 | 2026-09-24 | Keep a carriage return split from what follows it in the run window and the SSH terminal | #fix #output | [2026-09-b](2026-09-b.md) |
 | U-20260923-218 | 2026-09-24 | Skip a bad known_hosts line instead of failing the SSH connect | #fix #ssh | [2026-09-b](2026-09-b.md) |
 | U-20260923-217 | 2026-09-24 | Say when an SSH key's passphrase is missing or wrong | #fix #ssh | [2026-09-b](2026-09-b.md) |
@@ -301,4 +302,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | File | Period | Entries |
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
-| [2026-09-b.md](2026-09-b.md) | 2026-09 | 19 |
+| [2026-09-b.md](2026-09-b.md) | 2026-09 | 20 |

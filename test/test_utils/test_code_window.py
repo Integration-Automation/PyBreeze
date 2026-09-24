@@ -128,6 +128,17 @@ class TestAppendOutput:
 
         assert window.code_result.toPlainText() == "60%\n"
 
+    def test_a_backspace_takes_back_what_an_earlier_piece_showed(self, qt_app):
+        # A spinner writing each frame separately showed "|/-done"
+        from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
+
+        window = CodeWindow()
+        for piece in ["line\n", "|", "\b/", "\b-", "\b\b\b\bdone\n"]:
+            window.append_output(piece)
+
+        # Never past the start of the line: "line" stays
+        assert window.code_result.toPlainText() == "line\ndone\n"
+
     def test_a_bar_that_ends_on_a_carriage_return_stays_shown(self, qt_app):
         from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
 

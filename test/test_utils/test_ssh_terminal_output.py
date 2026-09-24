@@ -84,6 +84,16 @@ class TestTheTerminal:
         assert widget.terminal.toPlainText() == "abcd\nef"
         widget.close()
 
+    def test_a_backspace_takes_back_what_an_earlier_read_showed(self, app):
+        # A spinner's frames in separate reads showed "|/-done"
+        widget = self._widget()
+
+        for chunk in (b"line\r\n", b"|", b"\x08/", b"\x08\x1b[1m-", b"\x08\x08\x08done\r\n"):
+            widget._on_data(chunk)
+
+        assert widget.terminal.toPlainText() == "line\ndone\n"
+        widget.close()
+
     def test_a_line_ending_cut_between_reads_is_one_line_break(self, app):
         # "\r" at the end of one read and "\n" at the start of the next were
         # two paragraph breaks: a blank line in long output
