@@ -20,7 +20,7 @@ from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_connect_thread import (
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_host_key_policy import (
     apply_host_key_policy, host_key_asker
 )
-from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_key_loader import load_private_key
+from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_key_loader import load_private_key, unloadable_key_reason
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_login_widget import LoginWidget
 from pybreeze.pybreeze_ui.thread_keeper import if_alive, let_run_out
 from pybreeze.utils.logging.logger import pybreeze_logger
@@ -303,10 +303,7 @@ class SSHCommandWidget(QWidget):
         try:
             pkey = load_private_key(key_path, password, context="SSH")
             if pkey is None:
-                raise ValueError(
-                    self.word_dict.get(
-                        "ssh_command_widget_error_message_unsupported_private_key"
-                    ))
+                raise ValueError(self.word_dict.get(unloadable_key_reason(key_path, password)))
             client.connect(hostname=host, port=port, username=user, pkey=pkey, timeout=10,
                            disabled_algorithms=SHA1_ALGORITHMS)
         except CONNECT_ERRORS as e:

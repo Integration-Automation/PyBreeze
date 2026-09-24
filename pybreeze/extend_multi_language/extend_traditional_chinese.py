@@ -168,6 +168,8 @@ pybreeze_traditional_chinese_word_dict = {
     "ssh_command_widget_dialog_title_key_error": "金鑰錯誤",
     "ssh_command_widget_dialog_message_key_file_not_exist": "金鑰檔案不存在。",
     "ssh_command_widget_error_message_unsupported_private_key": "不支援或無效的私鑰。",
+    "ssh_key_error_passphrase_needed": "這把私鑰有密語保護：請在密碼欄輸入密語。",
+    "ssh_key_error_passphrase_wrong": "私鑰的密語不對。",
     "ssh_command_widget_error_message_key_auth_failed": "金鑰驗證失敗",
     "ssh_command_widget_status_label_connected": "已連線",
     "ssh_command_widget_status_label_disconnected": "已斷線",
