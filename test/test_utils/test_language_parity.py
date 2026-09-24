@@ -83,6 +83,16 @@ class TestLanguageParity:
         # 終端 on its own is 終端機
         assert not {key: value for key, value in ZH.items() if re.search("終端(?!機)", value)}
 
+    def test_traditional_chinese_uses_full_width_punctuation(self):
+        # Forty-two labels ended in "：" and a few in ":"; the SSH placeholder read
+        # "主機 (例如: ...)". A file dialog's filter keeps "(*.txt)": Qt reads it
+        cjk = "[一-鿿]"
+        half_width = {
+            key: value for key, value in ZH.items()
+            if re.search(rf"{cjk}\s?(:|\((?!\*))|:(\s*$|\s+\{{)|\((?!\*)[^)]*{cjk}", value)
+        }
+        assert half_width == {}
+
 
 class TestLabelsAreTold:
     def test_side_by_side_controls_are_named_apart(self):
