@@ -10,6 +10,7 @@ import pytest
 from PySide6.QtWidgets import QApplication
 
 from pybreeze.extend_multi_language.update_language_dict import update_language_dict
+from pybreeze.pybreeze_ui.connect_gui.ssh import ssh_command_widget
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_command_widget import (
     SSHCommandWidget,
     SSHReaderThread,
@@ -192,6 +193,29 @@ class TestSendingACommand:
         assert channel.timeouts == [5, 0.0]
         assert widget.command_input_edit.text() == ""
         widget.shell_channel = None
+        widget.close()
+
+    def test_an_empty_line_sends_enter(self, app):
+        # It sent nothing, so a prompt's default ("[Y/n]", "Press Enter to
+        # continue") could not be taken
+        widget = SSHCommandWidget()
+        channel = PartialSendChannel()
+        widget.shell_channel = channel
+
+        widget.send_command()
+
+        assert channel.sent == [b"\n"]
+        widget.shell_channel = None
+        widget.close()
+
+    def test_an_empty_line_without_a_session_asks_nothing(self, app, monkeypatch):
+        widget = SSHCommandWidget()
+        asked: list = []
+        monkeypatch.setattr(ssh_command_widget.QMessageBox, "information", lambda *args: asked.append(args))
+
+        widget.send_command()
+
+        assert asked == []
         widget.close()
 
 

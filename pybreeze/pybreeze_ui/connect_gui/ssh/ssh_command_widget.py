@@ -377,16 +377,20 @@ class SSHCommandWidget(QWidget):
         self.state_changed.emit()
 
     def send_command(self):
+        """Send the typed line and a newline to the shell.
+
+        An empty line is sent too, as Enter alone: a prompt's default
+        (``[Y/n]``, "Press Enter to continue") is taken that way. Without a
+        session it only asks to connect when something was typed.
+        """
         cmd = self.command_input_edit.text()
-        if not cmd:
-            return
         if self.shell_channel and not self.shell_channel.closed:
             try:
                 send_all(self.shell_channel, (cmd + "\n").encode("utf-8"))
                 self.command_input_edit.clear()
             except (OSError, paramiko.SSHException) as e:
                 self.append_text(f"{self.word_dict.get('ssh_command_widget_error_message_send_failed')} {e}\n")
-        else:
+        elif cmd:
             QMessageBox.information(
                 self,
                 self.word_dict.get('ssh_command_widget_dialog_title_not_connected'),
