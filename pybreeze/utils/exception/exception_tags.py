@@ -104,3 +104,13 @@ server_error_error: str = "Server error: {body}"
 # A diagram file (.diagram.json) that is not one
 diagram_not_an_object_error: str = "a diagram file holds an object, not a {kind}"
 diagram_section_not_a_list_error: str = "a diagram's '{section}' is a list, not a {kind}"
+
+# Why a run's report mail was not sent (mail_thunder_extend.send_after_test)
+mail_not_installed_error: str = "je_mail_thunder is not installed"
+mail_settings_unreadable_error: str = "the mail settings file (mail_thunder_content.json) could not be read"
+mail_no_user_error: str = "no mail user is set"
+mail_login_failed_error: str = "the mail server login failed"
+mail_send_failed_error: str = "sending failed ({kind})"
+report_missing_error: str = "the run wrote no {name}"
+report_not_a_file_error: str = "{name} is not a file"
+report_stale_error: str = "the run wrote no new {name}; the one there is from an earlier run"
