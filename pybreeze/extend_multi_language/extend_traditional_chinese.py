@@ -757,7 +757,8 @@ pybreeze_traditional_chinese_word_dict = {
     "file_tree_ctx_already_exists": "'{name}' 已存在。",
     "file_tree_ctx_bad_name": "「{name}」不是這個資料夾裡的名稱：不能有磁碟代號、不能以斜線開頭，也不能含有「..」或「:」。",
     "file_tree_ctx_confirm_delete": "確認刪除",
-    "file_tree_ctx_confirm_delete_message": "確定要刪除 '{name}' 嗎？",
+    "file_tree_ctx_confirm_delete_message": "要把 '{name}' 移到回收筒嗎？",
+    "file_tree_ctx_no_trash": "'{name}' 在這裡無法移到回收筒。要永久刪除嗎？",
     # Plugin Menu
     "plugin_menu_label": "外掛",
     "plugin_menu_about": "關於",

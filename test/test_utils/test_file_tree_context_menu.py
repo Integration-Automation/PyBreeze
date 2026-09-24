@@ -61,6 +61,27 @@ def confirm(monkeypatch, yes: bool) -> None:
         ctx.QMessageBox, "question", staticmethod(lambda *a, **k: button))
 
 
+# Before the stand-in below replaces it in every test
+_REAL_MOVE_TO_TRASH = ctx._move_to_trash
+
+
+@pytest.fixture(autouse=True)
+def trash(tmp_path_factory, monkeypatch):
+    """A trash of the test's own: a delete must not fill the machine's Recycle Bin."""
+    import shutil
+
+    bin_folder = tmp_path_factory.mktemp("trash")
+    trashed: list[Path] = []
+
+    def move_to_trash(path: Path) -> bool:
+        trashed.append(path)
+        shutil.move(str(path), str(bin_folder / f"{len(trashed)}_{path.name}"))
+        return True
+
+    monkeypatch.setattr(ctx, "_move_to_trash", move_to_trash)
+    return trashed
+
+
 @pytest.fixture()
 def warnings(monkeypatch):
     """Collect the warning dialogs an action raises instead of showing them."""
@@ -348,7 +369,9 @@ class TestDeleting:
 
     def test_a_delete_that_fails_keeps_the_tab_open(self, tree, tmp_path, monkeypatch):
         # The tabs used to close before the delete ran, so a locked file stayed
-        # on disk while its tab, and any unsaved edits in it, were gone.
+        # on disk while its tab, and any unsaved edits in it, were gone. Where
+        # there is no trash, the file is deleted for good, and that can fail.
+        monkeypatch.setattr(ctx, "_move_to_trash", lambda _path: False)
         target = tmp_path / "locked.py"
         target.touch()
         window = FakeWindow()
@@ -373,6 +396,58 @@ class TestDeleting:
         assert window.tab_widget.count() == 1
         # Its auto-save, stopped for the delete, runs again.
         assert restarted == [str(target)]
+
+
+class TestDeletingToTheTrash:
+    """A delete from the tree was for good: it goes to the trash, as a file manager does."""
+
+    def test_a_file_goes_to_the_trash(self, tree, tmp_path, monkeypatch, trash):
+        target = tmp_path / "notes.py"
+        target.write_text("keep a copy", encoding="utf-8")
+        confirm(monkeypatch, yes=True)
+
+        _action_delete(tree, FakeWindow(), target)
+
+        assert trash == [target]
+        assert not target.exists()
+
+    def test_a_folder_goes_to_the_trash_whole(self, tree, tmp_path, monkeypatch, trash):
+        folder = tmp_path / "pkg"
+        folder.mkdir()
+        (folder / "inner.py").touch()
+        confirm(monkeypatch, yes=True)
+
+        _action_delete(tree, FakeWindow(), folder)
+
+        assert trash == [folder]
+
+    @pytest.mark.parametrize("delete_for_good", [True, False])
+    def test_without_a_trash_it_asks_before_deleting_for_good(self, tree, tmp_path, monkeypatch, delete_for_good):
+        monkeypatch.setattr(ctx, "_move_to_trash", lambda _path: False)
+        target = tmp_path / "notes.py"
+        target.touch()
+        asked: list = []
+
+        def question(_parent, _title, text, _buttons, default):
+            asked.append((text, default))
+            answer_now = delete_for_good or len(asked) == 1  # yes to the first question, then the choice
+            return QMessageBox.StandardButton.Yes if answer_now else QMessageBox.StandardButton.No
+
+        monkeypatch.setattr(ctx.QMessageBox, "question", staticmethod(question))
+
+        _action_delete(tree, FakeWindow(), target)
+
+        assert len(asked) == 2
+        assert asked[1][1] == QMessageBox.StandardButton.No  # for good is not the default
+        assert target.exists() is not delete_for_good
+
+    def test_the_trash_is_the_systems(self, tmp_path, monkeypatch):
+        # The stand-in replaces _move_to_trash; the real one asks Qt for the system's trash
+        called: list = []
+        monkeypatch.setattr(ctx.QFile, "moveToTrash", staticmethod(lambda name: called.append(name) or True))
+
+        assert _REAL_MOVE_TO_TRASH(tmp_path / "x.py") is True
+        assert called == [str(tmp_path / "x.py")]
 
 
 class TestCopyingThePath:

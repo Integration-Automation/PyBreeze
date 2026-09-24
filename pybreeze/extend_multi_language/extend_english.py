@@ -419,7 +419,8 @@ pybreeze_english_word_dict = {
     "file_tree_ctx_already_exists": "'{name}' already exists.",
     "file_tree_ctx_bad_name": "'{name}' is not a name inside this folder: it may not have a drive, start with a slash, or contain '..' or ':'.",
     "file_tree_ctx_confirm_delete": "Confirm Delete",
-    "file_tree_ctx_confirm_delete_message": "Are you sure you want to delete '{name}'?",
+    "file_tree_ctx_confirm_delete_message": "Move '{name}' to the trash?",
+    "file_tree_ctx_no_trash": "'{name}' cannot be moved to the trash here. Delete it for good?",
     # Diagram Editor — Menu
     "extend_tools_menu_diagram_editor_tab_action": "Diagram Editor Tab",
     "extend_tools_menu_diagram_editor_tab_label": "Diagram Editor",

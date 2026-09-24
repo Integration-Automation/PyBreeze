@@ -8,7 +8,7 @@ import sys
 from collections.abc import Callable
 from pathlib import Path, PureWindowsPath
 
-from PySide6.QtCore import Qt, QModelIndex
+from PySide6.QtCore import QFile, Qt, QModelIndex
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QTreeView, QMenu, QFileSystemModel, QInputDialog,
@@ -399,15 +399,7 @@ def _action_delete(tree_view: QTreeView, main_window, path: Path | None) -> None
     for editor, _file in open_tabs:
         _stop_auto_save(editor)
 
-    def _delete() -> None:
-        if _is_link(path):
-            _remove_link(path)
-        elif path.is_dir():
-            remove_folder(path)
-        else:
-            path.unlink()
-
-    _perform_file_op(tree_view, _delete)
+    _remove(tree_view, path)
     # Only a tab whose file is gone closes. The delete can fail -- a locked or
     # read-only file -- or remove only part of a folder, and closing the tabs
     # beforehand lost a file's tab and its unsaved edits while the file stayed.
@@ -419,6 +411,34 @@ def _action_delete(tree_view: QTreeView, main_window, path: Path | None) -> None
         editor.close()
         if index >= 0:
             main_window.tab_widget.removeTab(index)
+
+
+def _move_to_trash(path: Path) -> bool:
+    """Move *path* to the system's trash (the Recycle Bin on Windows); ``False`` where there is none."""
+    return QFile.moveToTrash(str(path))
+
+
+def _remove(tree_view: QTreeView, path: Path) -> None:
+    """Move *path* to the trash; where there is none, delete it for good if the user says so.
+
+    A link (a symbolic link, a junction) is removed itself, never moved: what
+    it points to stays where it is.
+    """
+    if _is_link(path):
+        _perform_file_op(tree_view, lambda: _remove_link(path))
+        return
+    if _move_to_trash(path):
+        return
+    word = language_wrapper.language_word_dict
+    reply = QMessageBox.question(
+        tree_view,
+        word.get("file_tree_ctx_confirm_delete"),
+        as_text(word.get("file_tree_ctx_no_trash").format(name=str(path))),
+        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        QMessageBox.StandardButton.No,
+    )
+    if reply == QMessageBox.StandardButton.Yes:
+        _perform_file_op(tree_view, lambda: remove_folder(path) if path.is_dir() else path.unlink())
 
 
 def _action_copy_path(tree_view: QTreeView, path: Path | None, relative: bool = False) -> None:

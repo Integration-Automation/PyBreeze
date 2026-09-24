@@ -155,7 +155,7 @@ Password or private-key authentication (the key file picked with Browse, startin
 
 ### And also
 
-- **File Tree Context Menu** — right-click to create, rename, delete, copy absolute or relative paths, or reveal the item in your platform file manager (a file shown selected in Explorer and Finder). F2 renames and Delete deletes the item in focus while the tree has the focus; Delete asks first, with No as the default. Renaming or deleting a file open in an editor tab keeps the tab in sync.
+- **File Tree Context Menu** — right-click to create, rename, delete, copy absolute or relative paths, or reveal the item in your platform file manager (a file shown selected in Explorer and Finder). F2 renames and Delete deletes the item in focus while the tree has the focus. A delete asks first, with No as the default, and moves the item to the trash (the Recycle Bin on Windows); where there is none, as on some network drives, it asks again before deleting for good. Renaming or deleting a file open in an editor tab keeps the tab in sync.
 - **Package Manager** — install automation modules and build tools from the menu, output in a run window.
 - **Integrated Documentation** — each module's docs and GitHub page open as in-IDE browser tabs (TestPioneer's documentation is its GitHub README).
 
@@ -215,7 +215,7 @@ Loaded plugins appear under their own **Plugins** menu with an About entry and o
 - **English** (default)
 - **Traditional Chinese** (繁體中文)
 
-Menus, dialogs, the reasons a tool refuses its input and the run window's own notices (`[Error] …`, `[Run] …`) all follow the chosen language. Both dictionaries carry the same 755 keys, and a test enforces that parity so a new string can never land in one language only. Further languages can be added via translation plugins.
+Menus, dialogs, the reasons a tool refuses its input and the run window's own notices (`[Error] …`, `[Run] …`) all follow the chosen language. Both dictionaries carry the same 756 keys, and a test enforces that parity so a new string can never land in one language only. Further languages can be added via translation plugins.
 
 ---
 
