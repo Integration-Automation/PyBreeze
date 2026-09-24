@@ -43,7 +43,12 @@ class _ValidatingRedirectHandler(HTTPRedirectHandler):
 
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         _validate_url(newurl)
-        return super().redirect_request(req, fp, code, msg, headers, newurl)
+        new = super().redirect_request(req, fp, code, msg, headers, newurl)
+        if new is not None:
+            # Closed unread: http_error_302 reads the redirect's whole body
+            # before following it, past MAX_DOWNLOAD_BYTES
+            fp.close()
+        return new
 
 
 # The HTTP handlers connect only to the address they check as they connect,

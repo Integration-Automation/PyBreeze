@@ -185,9 +185,28 @@ class PublicAddressAdapter(HTTPAdapter):
         }
 
 
+class _NoRedirectSession(requests.Session):
+    """A session that never looks at a redirect: its 3xx response comes back as it is.
+
+    With ``allow_redirects=False`` ``Session.send`` still prepares the next
+    request for ``Response.next``, and doing so read the redirect's whole body
+    (past every size cap) and parsed its ``Location``, which raised
+    ``ValueError`` out of the panels for ``http://[bad``. Nothing here follows
+    a redirect anyway (Network rule 4).
+    """
+
+    def resolve_redirects(self, *args: Any, **kwargs: Any) -> Iterator[Any]:
+        """No redirect is followed or prepared."""
+        return iter(())
+
+
 def public_session() -> requests.Session:
-    """A ``requests.Session`` for user-supplied URLs; still pass each URL through ``validate_url``."""
-    session = requests.Session()
+    """A ``requests.Session`` for user-supplied URLs; still pass each URL through ``validate_url``.
+
+    It follows no redirect, whatever ``allow_redirects`` says: a 3xx response
+    is returned unread.
+    """
+    session = _NoRedirectSession()
     adapter = PublicAddressAdapter()
     session.mount("http://", adapter)
     session.mount("https://", adapter)

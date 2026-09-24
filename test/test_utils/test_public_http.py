@@ -357,3 +357,41 @@ class TestTheOverallDeadline:
             stop.set()
             server.close()
             thread.join(5)
+
+
+class TestARedirectIsNotLookedInto:
+    """Nothing follows a redirect through these; its body and Location stay unread."""
+
+    @pytest.mark.parametrize("location", ["http://[bad/x", "http://elsewhere.test/"])
+    def test_the_session_hands_the_redirect_back_unread(self, dns, loopback_allowed, location):
+        # Session.send prepared Response.next even with allow_redirects=False:
+        # it read the whole body and parsed Location, raising ValueError for [bad
+        server = _Listener(
+            f"HTTP/1.1 302 Found\r\nLocation: {location}\r\nContent-Length: 1000000000\r\n"
+            f"Connection: close\r\n\r\npartial".encode())
+        try:
+            with _session() as session:
+                response = session.get(f"http://service.test:{server.port}/", timeout=(3, 3),
+                                       allow_redirects=False, stream=True)
+
+            assert response.status_code == 302
+            assert response.next is None
+            assert not response._content_consumed
+            response.close()
+        finally:
+            server.close()
+
+    def test_the_image_opener_does_not_read_the_redirect_body(self, dns, loopback_allowed):
+        # http_error_302 read the redirect's whole body before following it
+        image = _Listener(b"HTTP/1.1 200 OK\r\nContent-Type: image/png\r\nContent-Length: 3\r\n"
+                          b"Connection: close\r\n\r\nPNG")
+        redirect = _Listener(
+            f"HTTP/1.1 302 Found\r\nLocation: http://service.test:{image.port}/i.png\r\n"
+            f"Content-Length: 1000000000\r\nConnection: close\r\n\r\npartial".encode())
+        try:
+            data = diagram_net_utils.safe_download_image(f"http://service.test:{redirect.port}/")
+
+            assert data == b"PNG"
+        finally:
+            redirect.close()
+            image.close()

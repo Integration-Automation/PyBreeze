@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-227 | 2026-09-24 | Leave a redirect's body and Location unread in the AI panels and the image download | #fix #network #security | [2026-09-b](2026-09-b.md) |
 | U-20260923-226 | 2026-09-24 | Scale a diagram image from the image as loaded, so resizing does not blur it | #fix #diagram | [2026-09-b](2026-09-b.md) |
 | U-20260923-225 | 2026-09-24 | Draw the canvas where it is when the diagram is exported | #fix #diagram | [2026-09-b](2026-09-b.md) |
 | U-20260923-224 | 2026-09-24 | Hand -b cookies to the header analyzer as the Cookie header curl sends | #fix #curl | [2026-09-b](2026-09-b.md) |
@@ -308,4 +309,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | File | Period | Entries |
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
-| [2026-09-b.md](2026-09-b.md) | 2026-09 | 26 |
+| [2026-09-b.md](2026-09-b.md) | 2026-09 | 27 |
