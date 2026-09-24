@@ -25,6 +25,10 @@ from pybreeze.pybreeze_ui.diagram_editor.diagram_net_utils import (
 )
 from pybreeze.pybreeze_ui.thread_keeper import let_run_out
 from pybreeze.pybreeze_ui.error_text import error_text
+from pybreeze.utils.exception.exception_tags import (
+    diagram_not_an_object_error,
+    diagram_section_not_a_list_error,
+)
 from pybreeze.utils.logging.logger import pybreeze_logger
 
 # Allowlist of image extensions that a saved diagram may reference on disk.
@@ -227,11 +231,11 @@ class DiagramScene(QGraphicsScene):
     def _check_is_a_diagram(data: dict) -> None:
         """Raise ``ValueError`` unless *data* has the shape of a diagram."""
         if not isinstance(data, dict):
-            raise ValueError("a diagram file holds an object, not a %s" % type(data).__name__)
+            raise ValueError(diagram_not_an_object_error.format(kind=type(data).__name__))
         for section in ("nodes", "connections", "images"):
             value = data.get(section, [])
             if not isinstance(value, list):
-                raise ValueError(f"a diagram's '{section}' is a list, not a {type(value).__name__}")
+                raise ValueError(diagram_section_not_a_list_error.format(section=section, kind=type(value).__name__))
 
     def _restore_from_dict(self, data: dict) -> None:
         """Rebuild scene from serialised data (used by undo/redo)."""

@@ -100,3 +100,7 @@ redirect_same_server_error: str = "Redirect (not followed) to another path on th
 redirect_nowhere_error: str = "Redirect (not followed) to an unnamed place"
 authorization_failed_error: str = "Authentication/Authorization failed"
 server_error_error: str = "Server error: {body}"
+
+# A diagram file (.diagram.json) that is not one
+diagram_not_an_object_error: str = "a diagram file holds an object, not a {kind}"
+diagram_section_not_a_list_error: str = "a diagram's '{section}' is a list, not a {kind}"

@@ -825,6 +825,8 @@ pybreeze_traditional_chinese_word_dict = {
     "error_text_redirect_nowhere_error": "重新導向（未跟隨），但沒有指出目的地",
     "error_text_authorization_failed_error": "驗證或授權失敗",
     "error_text_server_error_error": "伺服器錯誤：{body}",
+    "error_text_diagram_not_an_object_error": "架構圖檔案應該是一個物件，而不是 {kind}",
+    "error_text_diagram_section_not_a_list_error": "架構圖的 '{section}' 應該是清單，而不是 {kind}",
 }
 
 
