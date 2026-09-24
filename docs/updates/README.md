@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-20 | 2026-09-25 | One AI submenu in the Dock menu | #fix #menu #jeditor | [2026-09-c](2026-09-c.md) |
 | U-20260925-19 | 2026-09-25 | One space after the SSH terminal's [Error] | #fix #ssh #i18n | [2026-09-c](2026-09-c.md) |
 | U-20260925-18 | 2026-09-25 | Regex and timestamp results worded in the IDE's language | #fix #tools #i18n | [2026-09-c](2026-09-c.md) |
 | U-20260925-17 | 2026-09-25 | HTTP status classes in the IDE's language | #fix #tools #i18n | [2026-09-c](2026-09-c.md) |
@@ -422,4 +423,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
-| [2026-09-c.md](2026-09-c.md) | 2026-09 | 19 |
+| [2026-09-c.md](2026-09-c.md) | 2026-09 | 20 |

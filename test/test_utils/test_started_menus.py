@@ -73,3 +73,27 @@ def test_a_broken_extend_tab_costs_only_itself(tmp_path):
 
     assert "fine" in tabs
     assert "broken" not in tabs
+
+
+_REPORT_REPEATED_ENTRIES = """
+def repeated(menu, path):
+    found = []
+    texts = [action.text() for action in menu.actions() if not action.isSeparator()]
+    found.extend(" > ".join(path + [text]) for text in sorted(set(texts)) if texts.count(text) > 1)
+    for action in menu.actions():
+        if action.menu() is not None:
+            found.extend(repeated(action.menu(), path + [action.text()]))
+    return found
+
+result = [
+    entry
+    for top in window.menuBar().actions() if top.menu() is not None
+    for entry in repeated(top.menu(), [top.text()])
+]
+"""
+
+
+def test_no_menu_has_two_entries_of_the_same_name(tmp_path):
+    # Dock had two "AI" submenus side by side: JEditor's (Chat UI) and PyBreeze's
+    # (the review docks)
+    assert run_started_window(tmp_path, _REPORT_REPEATED_ENTRIES) == []

@@ -253,9 +253,12 @@ def extend_dock_menu(ui_we_want_to_set: PyBreezeMainWindow):
     ui_we_want_to_set.dock_ssh_menu = ui_we_want_to_set.dock_menu.addMenu(
         language_wrapper.language_word_dict.get("extend_tools_menu_dock_ssh_menu")
     )
-    ui_we_want_to_set.dock_ai_menu = ui_we_want_to_set.dock_menu.addMenu(
-        language_wrapper.language_word_dict.get("extend_tools_menu_dock_ai_menu")
-    )
+    # JEditor's Dock menu has an AI submenu of its own (Chat UI): the review docks
+    # join it. A second one beside it showed two "AI" entries
+    if getattr(ui_we_want_to_set, "dock_ai_menu", None) is None:
+        ui_we_want_to_set.dock_ai_menu = ui_we_want_to_set.dock_menu.addMenu(
+            language_wrapper.language_word_dict.get("extend_tools_menu_dock_ai_menu")
+        )
 
     for widget_key, attribute, menu_attribute, action_key in _DOCK_ACTIONS:
         _register_action(

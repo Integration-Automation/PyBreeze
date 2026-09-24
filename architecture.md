@@ -151,7 +151,9 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
   `_ignore_next_change`, `_is_modified` and `_on_text_changed()` (a rename puts the unsaved mark
   back after `rename_self_tab()` clears it), on `EditorMain.close_tab(index)` (overridden to ask a
   tab's `may_close()` first, and to delete a closed tool tab, which its `removeTab` keeps) and on `CodeEditor`'s `reset_highlighter()`, `load_git_baseline()` and
-  `start_language_server()` (a rename moves the tab the way `open_an_file` does), on the syntax highlighter
+  `start_language_server()` (a rename moves the tab the way `open_an_file` does), on `EditorMain`'s
+  `dock_menu` and its AI submenu `dock_ai_menu` (PyBreeze's AI docks join it; without one they get an
+  AI submenu of their own, `menu/tools/tools_menu.py`), on the syntax highlighter
   taking a theme colour key (`warning_output_color`, `diff_modified_marker_color`, in both JEditor's dark and light
   sets) for a registered keyword's colour (`syntax/syntax_extend.py`), and on `language_wrapper`'s
   `choose_language_dict` serving English and Traditional Chinese from the exported dict objects
