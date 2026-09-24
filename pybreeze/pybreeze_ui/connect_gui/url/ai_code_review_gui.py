@@ -185,7 +185,7 @@ class AICodeReviewClient(QWidget):
         method_layout = QHBoxLayout()
         method_layout.addWidget(QLabel(self.word_dict.get("ai_code_review_gui_label_method")))
         self.method_box = QComboBox()
-        self.method_box.addItems(["GET", "POST", "PUT", "DELETE"])
+        self.method_box.addItems(list(SUPPORTED_METHODS))
         method_layout.addWidget(self.method_box)
         top_layout.addLayout(method_layout)
         return top_layout

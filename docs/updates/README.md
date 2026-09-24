@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260924-253 | 2026-09-24 | The AI review panel lists its methods from one place | #refactor #ai | [2026-09-b](2026-09-b.md) |
 | U-20260924-252 | 2026-09-24 | Reveal in file explorer shows a file selected, and says when it cannot | #fix #editor #ui | [2026-09-b](2026-09-b.md) |
 | U-20260924-251 | 2026-09-24 | Enter in the regex pattern runs it | #feature #tools #ui | [2026-09-b](2026-09-b.md) |
 | U-20260924-250 | 2026-09-24 | SSH login: Enter connects, and the key file can be browsed for | #feature #ssh #ui | [2026-09-b](2026-09-b.md) |
@@ -334,4 +335,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | File | Period | Entries |
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
-| [2026-09-b.md](2026-09-b.md) | 2026-09 | 52 |
+| [2026-09-b.md](2026-09-b.md) | 2026-09 | 53 |
