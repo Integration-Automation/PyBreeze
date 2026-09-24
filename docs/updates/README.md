@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-69 | 2026-09-25 | The Sphinx Tools pages told right | #docs #diagram | [2026-09-c](2026-09-c.md) |
 | U-20260925-68 | 2026-09-25 | Opening another diagram asks before unsaved changes go | #fix #diagram | [2026-09-c](2026-09-c.md) |
 | U-20260925-67 | 2026-09-25 | The diagram editor's unsaved-edits question in one place | #refactor #diagram | [2026-09-c](2026-09-c.md) |
 | U-20260925-66 | 2026-09-25 | The Sphinx Automation pages told right | #docs #menu | [2026-09-c](2026-09-c.md) |
@@ -471,4 +472,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
-| [2026-09-c.md](2026-09-c.md) | 2026-09 | 68 |
+| [2026-09-c.md](2026-09-c.md) | 2026-09 | 69 |

@@ -1,112 +1,193 @@
 Tools Menu
 ==========
 
-The **Tools** menu provides access to the SSH client, AI-powered development
-tools, and the built-in WYSIWYG architecture-diagram editor. Each tool can be
-opened either as a **Tab** (in the main tab widget) or as a **Dock** (a
-floating/dockable panel).
+The **Tools** menu opens the SSH client, the AI tools, the built-in WYSIWYG
+architecture-diagram editor and the HTTP / API utilities, each as a **Tab** in the
+main tab widget. Each of them also opens as a **Dock** (a floating or dockable
+panel) from the **Dock** menu:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 40 35
+
+   * - Tool
+     - Tab
+     - Dock
+   * - SSH client
+     - **Tools > SSH > SSH Client Tab**
+     - **Dock > SSH > SSH Client Dock**
+   * - AI tools
+     - **Tools > AI >** *<tool>* **Tab**
+     - **Dock > AI >** *<tool>* **Dock**
+   * - Diagram editor
+     - **Tools > Diagram Editor Tab**
+     - **Dock > Diagram Editor Dock**
+   * - HTTP / API utilities
+     - **Tools >** *<tool>* **Tab**
+     - **Dock >** *<tool>* **Dock**
 
 SSH
 ---
 
-SSH Client Tab
-^^^^^^^^^^^^^^
-
-Opens an SSH client interface as a new tab. See :doc:`ssh_client` for full details.
-
-SSH Client Dock
-^^^^^^^^^^^^^^^
-
-Opens the same SSH client as a dockable widget that can be positioned
-around the edges of the main window.
+**SSH Client Tab** opens an SSH client (a terminal and an SFTP file tree) as a new tab;
+**SSH Client Dock** opens the same client as a dockable panel. See :doc:`ssh_client`
+for full details.
 
 AI Tools
 --------
 
-AI Code Review Tab / Dock
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+The **AI** submenus of **Tools** and **Dock** hold five tools. See :doc:`ai_tools` for full
+details.
 
-Opens the AI Code Review client, which allows you to send code to an AI API
-endpoint for automated code review. See :doc:`ai_tools` for full details.
+.. list-table::
+   :header-rows: 1
+   :widths: 35 65
 
-CoT Prompt Editor Tab / Dock
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   * - Tool
+     - Description
+   * - **AI Code Review**
+     - Sends code to an LLM endpoint for review, then accept or reject the suggestion.
+   * - **CoT Prompt Editor**
+     - Edits the Chain-of-Thought (CoT) review prompt templates.
+   * - **CoT Code Review**
+     - Runs the CoT review: each step's prompt goes to the endpoint in turn.
+   * - **Skill Prompt Editor**
+     - Edits the task-specific (skill) prompt templates, such as code review or code
+       explanation.
+   * - **Skill Send**
+     - Sends a skill prompt, with your code, to an LLM endpoint and shows the answer.
 
-Opens the Chain-of-Thought (CoT) Prompt Editor for creating and managing
-structured prompt templates. See :doc:`ai_tools` for full details.
+HTTP and API Utilities
+----------------------
 
-Skill Prompt Editor Tab / Dock
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Thirteen tools, each opened from **Tools** as a tab or from **Dock** as a dock. None of
+them sends a request: they parse, convert and generate text. In a tool with one main
+button, **Ctrl+Enter** anywhere in it presses that button (its text boxes take Enter as a
+new line); in Query / JSON and the URL parser / builder, which convert both ways, it goes
+the way the input reads: from JSON when the input is a JSON object.
 
-Opens the Skill-based Prompt Editor for creating task-specific prompt templates
-(e.g., code review prompts, code explanation prompts). See :doc:`ai_tools` for full details.
+.. list-table::
+   :header-rows: 1
+   :widths: 30 70
 
-Skill Send Tab / Dock
-^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Opens the Skill Prompt Sender interface for sending prompts to an LLM API
-and viewing responses. See :doc:`ai_tools` for full details.
+   * - Tool
+     - Description
+   * - **cURL Import**
+     - Turns a ``curl`` command copied from a browser's dev tools into a Python
+       ``requests`` script, a pytest test, APITestka (Python or a JSON action list) or a
+       LoadDensity Locust load test.
+   * - **HAR Import**
+     - Lists the requests in a browser's HAR export and turns the ones selected into one
+       test script, with the same targets as cURL Import.
+   * - **JWT Decoder**
+     - Shows a token's header and payload, with its time claims in UTC. The signature is
+       never verified.
+   * - **Timestamp Converter**
+     - Takes a Unix epoch (seconds to nanoseconds) or an ISO-8601 date-time and gives
+       every representation in UTC.
+   * - **Hash Generator**
+     - SHA-256, SHA-512, SHA-1 and MD5 of the text at once.
+   * - **Query / JSON**
+     - ``application/x-www-form-urlencoded`` to JSON and back.
+   * - **URL Parser / Builder**
+     - A URL as an editable JSON object of its parts, and back again.
+   * - **Regex Tester**
+     - Every match with its offsets and groups, with the ``IGNORECASE``, ``MULTILINE``,
+       ``DOTALL`` and ``VERBOSE`` flags.
+   * - **HTTP Status Reference**
+     - The status code table, searched by code or keyword.
+   * - **Text Diff**
+     - A unified diff of two texts, with an added / removed summary.
+   * - **JSON Format**
+     - Pretty-prints or minifies JSON.
+   * - **HTTP Header Analyzer**
+     - Reports repeated headers, cookie flags, CORS, HSTS and CSP weaknesses, and missing
+       security headers. Headers carrying credentials are reported by name only.
+   * - **Response Inspector**
+     - Reads a pasted HTTP response: status, headers, a JSON body and any JWT in it, each
+       one a click away from its own tool.
 
 Diagram Editor
 --------------
 
-Diagram Editor Tab / Dock
-^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Opens the built-in WYSIWYG architecture-diagram editor. Use it to sketch
-flowcharts and architecture diagrams directly inside PyBreeze without
-switching to an external tool.
+**Diagram Editor Tab** / **Diagram Editor Dock** open the built-in WYSIWYG
+architecture-diagram editor. Use it to sketch flowcharts and architecture diagrams
+directly inside PyBreeze without switching to an external tool. Its keyboard shortcuts
+apply only while it has the focus, so as a dock it leaves the code editor's own alone.
 
 Drawing tools
 """""""""""""
 
-- **Select** -- pick, move, multi-select with rubber-band
-- **Rectangle / Rounded Rectangle / Ellipse / Diamond** -- node shapes
-- **Connection** -- connect two nodes with a labelled line
-- **Text** -- free-floating text annotation
-- **Image (file)** -- insert a local image file
-- **Image (URL)** -- download and insert an image from a URL (validated
-  against private/loopback IP ranges and capped at 20 MB to prevent SSRF)
+The toolbar's first row:
+
+- **Select** -- click to select, drag to move, drag on the empty canvas to select with a
+  rubber band
+- **Rect** / **Rounded** / **Ellipse** / **Diamond** -- click the canvas to place a node
+  of that shape; the tool then goes back to **Select**
+- **Connect** -- click the source node, then the target node; a click on the empty canvas
+  or **Esc** cancels
+- **Text** -- click the canvas to place a text node
+- **Image** -- insert a local image file
+- **URL Image** -- download and insert an image from an ``http`` / ``https`` URL. The
+  address is checked (private, loopback and other non-public addresses are refused), the
+  connection goes only to the address checked, and the download is capped at 20 MB and
+  120 seconds; it runs in the background, so a slow host does not hold the IDE.
+
+Double-click a node to edit its text; the edit is one undo step.
 
 File operations
 """""""""""""""
+
+The second row starts with the file buttons:
 
 .. list-table::
    :header-rows: 1
    :widths: 25 75
 
-   * - Action
+   * - Button
      - Description
    * - **New**
-     - Discards the current diagram (with confirmation if non-empty).
+     - Clears the canvas, asking first when anything is on it.
    * - **Open**
      - Loads a previously saved ``.diagram.json`` file, asking first when the diagram
-       has changes that are not saved.
-   * - **Save** / **Save As** (``Ctrl+S`` / ``Ctrl+Shift+S``)
-     - Saves the diagram as ``.diagram.json``.
-   * - **Import Mermaid**
-     - Pastes Mermaid ``flowchart`` / ``graph`` source and converts it to
-       editable nodes and edges.
-   * - **Export PNG / SVG**
-     - Renders the canvas to a raster (PNG) or vector (SVG) image.
+       has changes that are not saved. A file that is not a diagram changes nothing.
+   * - **Save** (``Ctrl+S``)
+     - Saves to the file last opened or saved; the first time, it asks where, as
+       **Save As** does.
+   * - **Save As** (``Ctrl+Shift+S``)
+     - Saves the diagram as a new ``.diagram.json`` file.
+   * - **Import**
+     - Pastes Mermaid ``flowchart`` / ``graph`` source and converts it to editable,
+       automatically laid out nodes and connections. It replaces the canvas as one undo
+       step.
+   * - **PNG** / **SVG**
+     - Exports the canvas to a raster (PNG) or vector (SVG) image.
+
+Images in a saved diagram come back from where they were: a local path only if it is an
+image file on this machine, and a URL through the same checks as **URL Image**.
+
+Closing the tab, the dock or the IDE with unsaved changes asks first as well.
 
 Editing helpers
 """""""""""""""
 
-- **Undo / Redo** (``Ctrl+Z`` / ``Ctrl+Y``) -- full undo stack with named
-  commands (Add, Move, Delete, Import, etc.)
-- **Copy / Paste / Duplicate / Select All** -- standard shortcuts plus
-  ``Ctrl+D`` to duplicate selected items
-- **Align** -- align selection by left, right, top, bottom, horizontal
-  centre, or vertical centre
-- **Distribute** -- distribute three or more selected items evenly
-  horizontally or vertically
-- **Grid** -- toggle background grid rendering
-- **Snap** -- snap node positions to grid while dragging
-- **Property Panel** (right side) -- edit text, colours, line width,
-  shape, and connection style of the selected item
-- **Zoom** -- zoom in/out (``Ctrl+=`` / ``Ctrl+-``), reset to 100%
-  (``Ctrl+0``), or fit-to-content
+- **Undo** / **Redo** (``Ctrl+Z`` / ``Ctrl+Y``) -- every change is one step
+- **Delete** (or **Backspace**) removes the selection; ``Ctrl+C`` / ``Ctrl+V`` copy and
+  paste it, ``Ctrl+D`` duplicates it and ``Ctrl+A`` selects everything
+- **Right-click** an item for **Delete**, **Duplicate** (nodes), **Bring to Front** and
+  **Send to Back**; the empty canvas for **Paste** (once something is copied) and
+  **Select All**
+- **Align** -- **Align Left**, **Align Right**, **Align Top**, **Align Bottom**,
+  **Center Horizontal** and **Center Vertical** for the selected nodes, and
+  **Distribute Horizontal** / **Distribute Vertical** for three or more
+- **Grid** -- shows the background grid
+- **Snap** -- snaps nodes to the grid while dragging
+- **Properties** panel (right side) -- the selected node's text, width, height, shape,
+  fill, border and font size; a connection's label, style (solid, dashed, dotted),
+  colour and width; an image's caption, width and height, and its source (read only)
+- **Zoom** -- the mouse wheel, the **-** and **+** buttons or ``Ctrl+-`` / ``Ctrl+=``;
+  ``Ctrl+0`` resets to 100% and **Fit** shows the whole diagram. Drag with the right or
+  middle mouse button to pan.
 
 Tab vs. Dock
 ------------
