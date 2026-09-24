@@ -16,8 +16,14 @@ from urllib.parse import parse_qsl, urlencode
 from pybreeze.utils.exception.exception_tags import (
     invalid_json_for_query_error,
     invalid_json_object_error,
+    json_duplicate_key_error,
+    nested_query_value_error,
+    query_not_utf8_error,
+    unencodable_text_error,
 )
 from pybreeze.utils.exception.exceptions import QueryConvertException
+from pybreeze.utils.json_format.json_process import DuplicateKeyError, refuse_constant, unique_pairs
+from pybreeze.utils.json_format.view_safe import dumps_for_view
 from pybreeze.utils.logging.logger import pybreeze_logger
 
 
@@ -29,9 +35,11 @@ def query_to_dict(query: str) -> dict[str, str | list[str]]:
 
     :param query: a query string such as ``a=1&b=2`` (a leading ``?`` is ignored)
     :return: the parsed mapping
+    :raises UnicodeDecodeError: when a percent-escape is not UTF-8 (``%B0``):
+        decoded, it became U+FFFD and the byte was lost without a word
     """
     stripped = query.strip().lstrip("?")
-    pairs = parse_qsl(stripped, keep_blank_values=True)
+    pairs = parse_qsl(stripped, keep_blank_values=True, errors="strict")
     result: dict[str, str | list[str]] = {}
     for key, value in pairs:
         if key in result:
@@ -45,19 +53,50 @@ def query_to_dict(query: str) -> dict[str, str | list[str]]:
     return result
 
 
+def query_round_trips(query: str) -> bool:
+    """Whether decoding *query* into pairs and encoding them again gives it back.
+
+    The cURL and HAR import split only such a query into ``params``, and the
+    URL Builder shows only such a query as a dict; any other stays the text it
+    was, which ``requests`` sends as it is. Split and encoded again,
+    ``?flag&q=%B0&r=/x`` went out as ``?flag=&q=%EF%BF%BD&r=%2Fx``: a
+    valueless key gained ``=``, a byte that is not UTF-8 became U+FFFD, and
+    ``/`` was escaped, which breaks a signed URL.
+    """
+    return urlencode(parse_qsl(query, keep_blank_values=True)) == query
+
+
 def query_to_json(query: str) -> str:
     """Convert a URL query string into pretty-printed JSON.
 
     :param query: the query string to convert
     :return: a formatted JSON object string
+    :raises QueryConvertException: when a percent-escape is not UTF-8 text
     """
-    return json.dumps(query_to_dict(query), indent=4, ensure_ascii=False, sort_keys=True)
+    try:
+        as_dict = query_to_dict(query)
+    except UnicodeDecodeError as error:
+        pybreeze_logger.error(query_not_utf8_error)
+        raise QueryConvertException(query_not_utf8_error) from error
+    return dumps_for_view(as_dict, indent=4, sort_keys=True)
 
 
-def _coerce_scalar(value: object) -> str:
-    """Render a scalar JSON value as the string a query string would carry."""
+def coerce_scalar(value: object) -> str:
+    """Render a scalar JSON value as the string a query string would carry.
+
+    ``null`` is an empty value (``a=``), not Python's ``None``; an object or a
+    list inside a list has no query form and is refused rather than sent as
+    its Python repr.
+
+    :raises QueryConvertException: for an object, or a list nested in a list
+    """
+    if value is None:
+        return ""
     if isinstance(value, bool):
         return "true" if value else "false"
+    if isinstance(value, (dict, list)):
+        pybreeze_logger.error(nested_query_value_error)
+        raise QueryConvertException(nested_query_value_error)
     return str(value)
 
 
@@ -68,12 +107,18 @@ def json_to_query(json_text: str) -> str:
 
     :param json_text: a JSON object of key/value (or key/list) pairs
     :return: the URL-encoded query string
-    :raises QueryConvertException: when the input is not valid JSON or not an object
+    :raises QueryConvertException: when the input is not valid JSON or not an
+        object, or repeats a key (a repeated key is written as a list)
     """
     try:
-        parsed = json.loads(json_text)
-    # json.JSONDecodeError derives from ValueError.
-    except ValueError as error:
+        parsed = load_json_verbatim(json_text)
+    except DuplicateKeyError as error:
+        message = json_duplicate_key_error.format(key=error.args[0])
+        pybreeze_logger.error(message)
+        raise QueryConvertException(message) from error
+    # json.JSONDecodeError derives from ValueError; RecursionError is JSON
+    # nested deeper than the parser goes, which escaped the tab's slot
+    except (ValueError, RecursionError) as error:
         pybreeze_logger.error(invalid_json_for_query_error)
         raise QueryConvertException(invalid_json_for_query_error) from error
     if not isinstance(parsed, dict):
@@ -83,7 +128,38 @@ def json_to_query(json_text: str) -> str:
     pairs: list[tuple[str, str]] = []
     for key, value in parsed.items():
         if isinstance(value, list):
-            pairs.extend((key, _coerce_scalar(item)) for item in value)
+            pairs.extend((key, coerce_scalar(item)) for item in value)
         else:
-            pairs.append((key, _coerce_scalar(value)))
-    return urlencode(pairs)
+            pairs.append((key, coerce_scalar(value)))
+    return encode_pairs(pairs)
+
+
+def encode_pairs(pairs: list[tuple[str, str]]) -> str:
+    """``urlencode`` *pairs*, refusing text a URL cannot carry.
+
+    :raises QueryConvertException: for a lone surrogate (``"\\ud83d"`` in the
+        JSON), which UTF-8 cannot encode: the ``UnicodeEncodeError`` escaped the
+        tab's slot, and the previous output stayed on screen, savable
+    """
+    try:
+        return urlencode(pairs)
+    except UnicodeEncodeError as error:
+        pybreeze_logger.error(unencodable_text_error)
+        raise QueryConvertException(unencodable_text_error) from error
+
+
+def load_json_verbatim(json_text: str) -> object:
+    """Parse *json_text* with every number kept as the text it was written as.
+
+    Through ``float`` a query value changed: ``1E3`` became ``1000.0``, a long
+    integer written with a fraction lost its digits, ``1e400`` became ``inf``,
+    and ``NaN`` was accepted. ``NaN`` and ``Infinity`` are refused, and so is
+    a key repeated in one object, which kept only its last value.
+
+    :raises DuplicateKeyError: when one object repeats a key
+    :raises ValueError: when it is not JSON
+    :raises RecursionError: when it is nested deeper than the parser goes
+    """
+    return json.loads(
+        json_text, parse_float=str, parse_int=str, parse_constant=refuse_constant,
+        object_pairs_hook=unique_pairs)

@@ -2,22 +2,30 @@
 
 Automation-first Python IDE built on PySide6 + JEditor, integrating Web/API/GUI/Load testing into a single environment.
 
-**This file is the only home for project rules.** Anything that constrains how work is done here — conventions, security requirements, quality gates, commit policy — belongs in this file. Do not start a `progress.md`, a scratch notes file, or any other side document to hold rules: a rule kept somewhere else is a rule nobody reads. Reference material that is not a rule (the architecture map, the plugin API) lives in its own file and is linked from here.
+**This file is the only home for project rules.** Anything that constrains how work is done here — conventions, security requirements, quality gates, commit policy — belongs in this file. Do not put rules in `progress.md` (it holds outstanding work only), a scratch notes file, or any other side document: a rule kept somewhere else is a rule nobody reads. Reference material that is not a rule (the architecture map, the plugin API) lives in its own file and is linked from here.
 
 ## Architecture
 
 ```
 pybreeze/
 ├── __init__.py                  # Facade: start_editor, PyBreezeMainWindow, EDITOR_EXTEND_TAB
+├── __main__.py                  # python -m pybreeze
 ├── pybreeze_ui/                 # Presentation layer (PySide6)
 │   ├── editor_main/             # Main window (extends JEditor) + file tree context menu
-│   ├── menu/                    # Menu builders: automation / install / tools / plugin / dock
+│   ├── menu/                    # Menu builders: automation / install / tools (tabs and docks) / plugin,
+│   │                            #   menu_utils, extend_jeditor_tab_menu (the JupyterLab tab entry)
 │   ├── tools_gui/               # Tool tabs: cURL, HAR, JWT, diff, regex, headers, …
 │   ├── diagram_editor/          # WYSIWYG diagram editor (QGraphicsScene, Mermaid import)
 │   ├── extend_ai_gui/           # CoT code review, prompt editors, skill send
 │   ├── connect_gui/             # ssh/ (terminal + SFTP tree), url/ (AI review client)
 │   ├── jupyter_lab_gui/         # JupyterLab tab (QWebEngineView)
 │   ├── show_code_window/        # CodeWindow — subprocess output display
+│   ├── thread_keeper.py         # let_run_out: a worker QThread outlives its closed widget; if_alive: weak slots
+│   ├── gui_thread_gc.py         # Garbage collected on a GUI-thread timer, never on a worker
+│   ├── plain_text.py            # as_text: server/file text shown in message boxes as text, not markup
+│   ├── exact_text.py            # exact_text: a text box read as typed (toPlainText changes U+00A0, U+2028)
+│   ├── error_text.py            # error_text: a tool's English error (exception_tags) in the IDE language
+│   ├── closing.py               # may_close / AskingDock: tabs and docks with unsaved work are asked first
 │   ├── dialog/                  # prthinker settings dialog
 │   └── syntax/                  # Automation keyword highlighting definitions
 ├── extend/
@@ -25,10 +33,10 @@ pybreeze/
 │   │   ├── python_task_process_manager.py  # TaskProcessManager (subprocess + threads + QTimer)
 │   │   ├── process_executor_utils.py       # build_process / start_process / run_dir_files_*
 │   │   ├── file_runner_process.py          # FileRunnerProcess — plugin run configs (any language)
-│   │   ├── queue_pump.py                   # Shared per-tick queue drain
+│   │   ├── queue_pump.py                   # Shared pipe reader + per-tick queue drain
 │   │   ├── api_testka/ auto_control/ web_runner/ load_density/
 │   │   ├── file_automation/ mail_thunder/  # Each delegates to build_process with its package name
-│   │   ├── test_pioneer/        # TestPioneerProcess (custom variant)
+│   │   ├── test_pioneer/        # python -m test_pioneer -e <yaml> via start_module_process
 │   │   └── prthinker/           # Code review via start_module_process (secrets via env)
 │   ├── mail_thunder_extend/     # Post-test email report hook
 │   └── prthinker_extend/        # prthinker settings + argument assembly (pure logic, no Qt)
@@ -38,9 +46,10 @@ pybreeze/
     ├── header_tools/ jwt_tools/ hash_tools/ timestamp_tools/
     ├── regex_tools/ query_tools/ url_tools/ diff_tools/
     ├── http_reference/ json_format/ response_inspector/
-    ├── network/                 # url_validation (SSRF), http_client (capped reads)
+    ├── network/                 # url_validation (SSRF), public_http (pinned connections), http_client (capped reads)
     ├── exception/               # ITEException hierarchy
     ├── logging/ file_process/ app_dirs.py / subprocess_util.py
+    ├── terminal_text.py         # Escape sequences and controls stripped from terminal output (SSH, run window)
     └── manager/package_manager/ # PackageManager — holds syntax_check_list
 ```
 
@@ -58,8 +67,9 @@ pybreeze/
 
 ## Branching & CI
 
-- `main`: stable, publishes `pybreeze` · `dev`: development, publishes `pybreeze_dev`
-- Version config: `pyproject.toml` (stable), `dev.toml` (dev) — keep both in sync when bumping
+- `main`: stable. On every push to `main`, the `publish` job in `stable.yml` bumps the patch version in `pyproject.toml`, uploads `pybreeze` to PyPI, then commits and tags the bump. `dev`: development. `dev.yml` runs the tests and SonarCloud and publishes nothing
+- Never edit a version by hand: CI owns `pyproject.toml`'s, and `dev` is always behind `origin/main`
+- `dev.toml` describes a `pybreeze_dev` package that no workflow builds; PyPI's `pybreeze_dev` stopped at the 1.0.14 it names. Whether CI should publish it or `dev.toml` should be deleted is undecided (workspace X-13). Until then, keep its `dependencies` identical to `pyproject.toml`'s
 - `unit-tests` job: GitHub Actions on Windows, Python 3.10–3.14 — install deps → pytest `test/test_utils/` → `start_automation_test` → `extend_automation_test`
 - `sonarcloud` job: CI-based SonarQube Cloud analysis (`sonar-project.properties`), `needs: unit-tests` so it can consume the `coverage-xml` artifact that leg uploads. Automatic Analysis is off and must stay off — the two modes are mutually exclusive and the scanner refuses to run alongside it
 - SonarCloud's plan for this organization exposes results for `main` and for pull requests only. An analysis pushed for another branch succeeds but its results read back 403, so `dev.yml` scans on pull requests only; `stable.yml` also scans pushes to `main`. Do not "fix" this by scanning every `dev` push — the numbers are not readable
@@ -81,9 +91,11 @@ ruff check pybreeze/                              # before committing non-trivia
 
 - Python 3.10+: `X | Y` unions, `from __future__ import annotations`, `TYPE_CHECKING` guard for hint-only imports
 - **Never update UI from a worker thread** — Queue + QTimer (see `TaskProcessManager`) or Qt Signal/Slot
+- A slot on a thread (or any object) the widget keeps must not hold the widget: connect a bound method, or `thread_keeper.if_alive(weakref.ref(self), ...)`. A lambda capturing `self` there is a cycle through Qt that Python's collector cannot see, and the closed widget is never freed
+- Automatic garbage collection is off in the IDE: `start_editor()` collects on a GUI-thread timer (`gui_thread_gc.py`), because a collection on a worker destroys Qt objects there. Never call `gc.enable()`
 - Custom exceptions inherit from `ITEException`; log via `pybreeze_logger` (lazy `%s` formatting, never `print()`)
 - Plugin API: `register_programming_language()` / `register_natural_language()` from `je_editor.plugins`
-- A QAction built for a menu must be stored on the main window — Qt holds no reference and a GC'd action silently stops responding
+- A QAction built for a menu must be kept alive: store it on the main window or give it the menu as its parent. A menu does not own the actions added to it, so one held only by a local variable is deleted when the builder returns and its entry disappears
 - Delete unused code immediately — no dead imports, unreachable branches, commented-out blocks, or `_old_` prefixes
 - Follow PEP 8 and standard Pythonic practice; `ruff` is the arbiter
 
@@ -97,22 +109,23 @@ ruff check pybreeze/                              # before committing non-trivia
 **Network (SSRF)** — every outbound request to a user-supplied URL must first pass validation:
 1. `http://` / `https://` only — block `file://`, `ftp://`, `data:`, `gopher://`
 2. Resolve the hostname and reject private / loopback / link-local / reserved IPs
-3. Enforce timeouts (15 s downloads, 30 s API calls) and response size caps (20 MB binary)
-4. `allow_redirects=False`, or re-validate every redirect target
+3. Enforce timeouts (15 s downloads, 30 s API calls) and response size caps (20 MB binary). A read timeout restarts with every byte, so a request that may run long also gets an overall bound: `public_http.overall_deadline()` around the request (image downloads: 120 s) and `read_capped_text`'s `max_seconds`
+4. `allow_redirects=False`, or re-validate every redirect target. `public_session()` follows no redirect and leaves a 3xx unread whatever `allow_redirects` says (`requests` otherwise reads its whole body and parses its `Location` to prepare `Response.next`)
+5. Connect only to the address checked: send through `public_session()` (requests) or `PublicHTTPHandler` / `PublicHTTPSHandler` (urllib) from `utils/network/public_http.py`, which check again as they connect and connect only to the addresses checked (each in turn), so a name that resolves differently after validation (DNS rebinding) gets nowhere private. `test_http_goes_through_public_connections.py` fails on a direct `requests.*` or `urlopen` call
 
-Reference implementations: `utils/network/url_validation.py` (`validate_url`), `utils/network/http_client.py` (`read_capped_text`), `diagram_editor/diagram_net_utils.py` (`safe_download_image`). Never pass a user URL to `urlopen()` / `requests.*` unvalidated, and never set `verify=False`.
+Reference implementations: `utils/network/url_validation.py` (`validate_url`), `utils/network/public_http.py` (`public_session`), `utils/network/http_client.py` (`read_capped_text`), `diagram_editor/diagram_net_utils.py` (`safe_download_image`). Never pass a user URL to `urlopen()` / `requests.*` unvalidated, and never set `verify=False`.
 
-**SSH** — never `paramiko.AutoAddPolicy()` or `WarningPolicy()`. Use `apply_host_key_policy(client, parent_widget)` from `connect_gui/ssh/ssh_host_key_policy.py`: it shows the SHA256 fingerprint for confirmation on first connect and persists to `~/.pybreeze/ssh_known_hosts`.
+**SSH** — never `paramiko.AutoAddPolicy()` or `WarningPolicy()`. Use `apply_host_key_policy(client, parent)` from `connect_gui/ssh/ssh_host_key_policy.py`: it shows the SHA256 fingerprint for confirmation on first connect and persists to `~/.pybreeze/ssh_known_hosts`. Every `connect()` passes `disabled_algorithms=SHA1_ALGORITHMS` (`connect_gui/ssh/ssh_connect_thread.py`): `requirements.txt` does not pin paramiko, and paramiko 4 still offers SHA-1 signatures and key exchanges (CVE-2026-44405).
 
 **Subprocess** — always argument lists, explicit `shell=False`, `timeout` on every `subprocess.run()`. Never interpolate user input into a command string. Secrets travel as `env`, never argv (see `prthinker_setting.environment_for`). The IDE intentionally runs user-authored scripts — this hardening guards against accidental shell injection, not against malicious local files.
 
-**JupyterLab** — the embedded server is localhost-only; the empty `--ServerApp.token`/`password` and `--ServerApp.disable_check_xsrf=True` are safe *only* because of that. Never change `--ServerApp.ip` to an externally reachable address.
+**JupyterLab** — the embedded server is localhost-only; the empty `--ServerApp.token`/`password` and `--ServerApp.disable_check_xsrf=True` are safe *only* because of that. Never change `--ServerApp.ip` to an externally reachable address, and never set `--ServerApp.allow_origin`: a loopback bind does not stop a browser, and with the origin open any page the user visits can drive a tokenless server. The view loads from the same origin and needs nothing relaxed. The server outlives its launcher thread, so its tab stops it on close whatever the thread's state.
 
-**File I/O** — dialog-chosen paths are trusted; paths loaded from saved data (`.diagram.json`) are not: check `is_file()` and an extension allowlist, or run URLs through SSRF validation. Use `pathlib`, never string concatenation. Write to `~/.pybreeze/` via `app_dirs.pybreeze_data_dir()` with `encoding="utf-8"`. Resolve symlinks with `Path.resolve(strict=True)` and verify the result stays in bounds.
+**File I/O** — dialog-chosen paths are trusted; paths loaded from saved data (`.diagram.json`) are not: check `is_file()` and an extension allowlist, or run URLs through SSRF validation. Use `pathlib`, never string concatenation. Write to `~/.pybreeze/` via `app_dirs.pybreeze_data_dir()` with `encoding="utf-8"`; read through `pybreeze_data_path()`, which creates nothing. Replace a file the user would lose through `utils/file_process/replace_file.replace_text` (written beside it, then moved into place), never an in-place `write_text`; a file something else writes (an image, an SVG export) goes through `replace_written`. Resolve symlinks with `Path.resolve(strict=True)` and verify the result stays in bounds.
 
-**Qt** — `QGraphicsTextItem` text interaction must not be on by default (double-click to edit). Plugin loading takes only `.py` files, skipping `_`/`.` prefixes. `QWebEngineView.setUrl()` only for localhost or user-confirmed URLs; never `setHtml()` with unsanitised content.
+**Qt** — `QGraphicsTextItem` text interaction must not be on by default (double-click to edit). Text from a server or a file (a remote path, an error message, a host name, a file name) never reaches a `QMessageBox` or `QLabel` as it is: Qt reads markup in it (`Qt::AutoText`) and loads an `<img>`. Pass it through `pybreeze_ui/plain_text.as_text()`, or give the label `Qt.TextFormat.PlainText`; `test_message_boxes_show_text.py` fails on a `QMessageBox` text that is neither a literal, a word-dict entry as it is, nor `as_text(...)`. JSON (or a generated Python string) a tool shows in a text box is written with `utils/json_format/view_safe.dumps_for_view()` / `escape_for_view()`: Qt gives U+2029, U+FDD0 and U+FDD1 back as newlines and drops a lone surrogate, so Copy and Save wrote something else. Plugin loading takes only `.py` files, skipping `_`/`.` prefixes. `QWebEngineView.setUrl()` only for localhost or user-confirmed URLs; never `setHtml()` with unsanitised content.
 
-**Secrets** — SSH passwords and passphrases stay in memory for the session only. Password fields use `QLineEdit.EchoMode.Password`.
+**Secrets** — SSH passwords and passphrases stay in memory for the session only. A secret that must persist (the prthinker keys and token) is written with `replace_text(..., private=True)` under the `0700` data folder. Password fields use `QLineEdit.EchoMode.Password`.
 
 **Dependencies** — pin exact versions in `requirements.txt` / `dev_requirements.txt`. Review any new dependency's maintenance and CVE history; prefer stdlib over a single-function package.
 
@@ -127,6 +140,18 @@ Per function: cyclomatic and cognitive complexity ≤ 15 (hard cap 20) · ≤ 75
 - No hardcoded IPs or hostnames outside documented loopback
 - No `TODO` / `FIXME` without an issue reference (`# TODO(#123): ...`)
 - Justify each `# noqa: RULE` with a short reason — never blanket-disable
+
+## Stage commits, `progress.md`, `docs/updates/` and `architecture.md`
+
+Workspace rule shared by every repository under `D:\Codes` (full text: `D:\Codes\CLAUDE.md`).
+
+- **Commit at every stage.** A stage is the smallest piece of work that leaves the repository consistent and passes this project's checks (definition of done, tests, lint): one finished `progress.md` item, or one self-contained step of a larger one. Commit it before starting the next stage, before switching to another repository, and before the session ends. Do not leave work uncommitted across sessions; if a stage cannot be finished, commit the consistent part and record the rest in `progress.md`.
+  - Stage only the files that stage touched (`git add <path>`, never `git add -A`), follow this file's commit-message rules, and never add AI attribution.
+  - Committing is not pushing: push or open a PR only as this project's branch flow says or when asked.
+- **`progress.md`** (repository root, tracked) holds outstanding work only: no finished items, no history, no rules.
+- **`docs/updates/`** records finished work: one batch file per month (`YYYY-MM.md`), one entry per piece of work headed `## U-YYYYMMDD-NN · date · title · #tags`, and an index with query commands in `docs/updates/README.md`. When a `progress.md` item is done, delete it and add a `#done` entry plus its index row in the same commit.
+- **`architecture.md`** (repository root) is the short architecture overview: layers, entry points, main flows, extension points, cross-project boundaries. Update it in the same commit whenever a change alters any of those. `architecture_explore.md` stays the detailed per-module map under its own rule in this file.
+- **Cross-project contracts** are listed in `architecture.md` §6: what other repositories rely on here (CLI flags, import paths, constructor arguments, file layouts) and what this repository relies on elsewhere. No test here protects them, so never rename or remove one without changing its consumers in the same round, and update §6 whenever a contract is added or changes.
 
 ## Commit & PR rules
 

@@ -24,7 +24,8 @@ AI 程式碼審查用戶端
 ^^^^
 
 - 追蹤 AI 回應的接受/拒絕統計
-- 將 URL 歷史儲存到 ``.pybreeze/urls.txt``
+- 在 ``.pybreeze/urls.txt`` 記錄用過哪些端點，存的是指紋：API URL 可能帶著權杖，
+  所以不會把 URL 本身寫進磁碟
 - 將回應統計儲存到 ``.pybreeze/response_stats.txt``
 
 使用方式

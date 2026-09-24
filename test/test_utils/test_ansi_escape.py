@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_command_widget import ANSI_ESCAPE_PATTERN
+from pybreeze.utils.terminal_text import ANSI_ESCAPE_PATTERN
 
 
 def _strip(text: str) -> str:
@@ -36,3 +36,69 @@ class TestAnsiEscapeStripping:
     def test_osc_sequences_are_stripped(self, raw, expected):
         # Regression: OSC bodies (e.g. "0;title") used to leak through as garbage.
         assert _strip(raw) == expected
+
+    @pytest.mark.parametrize("raw,expected", [
+        # tput sgr0 in many coloured prompts: a character-set escape, then SGR
+        ("\x1b(B\x1b[mhello", "hello"),
+        ("\x1b#8x", "x"),                                    # nF with another intermediate
+        ("a\x1b7b\x1b8c", "abc"),                            # save / restore cursor
+        ("\x1b=\x1b>keypad", "keypad"),                      # keypad modes
+        ("\x1bcreset", "reset"),                             # full reset (Fs)
+        ("\x1bP1$r0m\x1b\\after", "after"),                 # DCS answer, ST terminated
+        ("\x1b_app\x1b\\x", "x"),                            # APC
+    ])
+    def test_other_escapes_leave_no_text(self, raw, expected):
+        # They showed as "(B", "7", "=", or the DCS body
+        assert _strip(raw) == expected
+
+
+class TestControlCharacters:
+    @pytest.mark.parametrize("raw,expected", [
+        ("bell\x07", "bell"),
+        ("abc\x08\x08d", "ad"),                              # backspace takes the character back
+        ("line\n\x08next", "line\nnext"),                    # never across a line break
+        ("tab\there\r\n", "tab\there\r\n"),                  # tab and line ends stay
+        ("x\x00y\x7fz", "xyz"),
+    ])
+    def test_controls_are_applied_or_dropped(self, raw, expected):
+        from pybreeze.utils.terminal_text import strip_terminal_controls
+
+        assert strip_terminal_controls(raw) == expected
+
+
+def _backspaced_pair_by_pair(text: str) -> str:
+    """How backspaces were applied before: a character and its backspace removed, pass after pass."""
+    import re
+
+    pair = re.compile("[^\n\x08]\x08")
+    while True:
+        applied = pair.sub("", text)
+        if applied == text:
+            return text
+        text = applied
+
+
+def test_backspaces_are_applied_as_before():
+    from hypothesis import given, settings
+    from hypothesis import strategies as st
+
+    from pybreeze.utils.terminal_text import _apply_backspaces
+
+    @settings(max_examples=500, deadline=None)
+    @given(st.text(alphabet="ab\n\x08", max_size=40))
+    def same(text):
+        assert _apply_backspaces(text) == _backspaced_pair_by_pair(text)
+
+    same()
+
+
+def test_a_long_rub_out_is_quick():
+    # Pair by pair, 10,000 characters and their 10,000 backspaces took 5 s on the UI thread
+    import time
+
+    from pybreeze.utils.terminal_text import strip_terminal_controls
+
+    started = time.perf_counter()
+
+    assert strip_terminal_controls("a" * 10_000 + "\x08" * 10_000 + "done") == "done"
+    assert time.perf_counter() - started < 1

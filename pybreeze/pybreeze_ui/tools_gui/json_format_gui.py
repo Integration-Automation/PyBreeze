@@ -6,10 +6,12 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.utils.exception.exceptions import ITEJsonException
 from pybreeze.utils.json_format.json_process import minify_json, reformat_json
 from pybreeze.utils.logging.logger import pybreeze_logger
+from pybreeze.pybreeze_ui.error_text import error_text
 
 
 class JsonFormatGUI(QWidget):
@@ -64,7 +66,7 @@ class JsonFormatGUI(QWidget):
     def _run(self, transform) -> None:
         """Apply a JSON transform, showing the result or a friendly error."""
         word = language_wrapper.language_word_dict
-        text = self.input_edit.toPlainText().strip()
+        text = exact_text(self.input_edit).strip()
         if not text:
             self._valid_output = False
             self.output_edit.setPlainText(word.get("json_format_empty_hint"))
@@ -74,7 +76,7 @@ class JsonFormatGUI(QWidget):
         except ITEJsonException as error:
             pybreeze_logger.info("json_format_gui.py transform failed: %r", error)
             self._valid_output = False
-            self.output_edit.setPlainText(word.get("json_format_error").format(error=str(error)))
+            self.output_edit.setPlainText(word.get("json_format_error").format(error=error_text(str(error))))
             return
         self._valid_output = True
         self.output_edit.setPlainText(result)

@@ -5,10 +5,6 @@ from os import walk
 from os.path import abspath
 from os.path import join
 
-from PySide6.QtWidgets import QFileDialog, QMainWindow
-
-from pybreeze.utils.logging.logger import pybreeze_logger
-
 
 def get_dir_files_as_list(dir_path: str | None = None, default_search_file_extension: str = ".json") -> list:
     """
@@ -28,13 +24,3 @@ def get_dir_files_as_list(dir_path: str | None = None, default_search_file_exten
         if file.lower().endswith(extension)
     ]
 
-
-def ask_and_get_dir_files_as_list(
-        main_window: QMainWindow, default_search_file_extension: str = ".json"
-) -> list | None:
-    choose_dir = QFileDialog(parent=main_window).getExistingDirectory()
-    if choose_dir is not None and choose_dir != "":
-        return get_dir_files_as_list(choose_dir, default_search_file_extension)
-    else:
-        pybreeze_logger.warning("Not select any dir")
-        return None

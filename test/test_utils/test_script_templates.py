@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from pybreeze.utils.curl_import.curl_parser import parse_curl
 from pybreeze.utils.curl_import.request_body import body_kind, form_parts
 from pybreeze.utils.curl_import.request_codegen import to_requests_code
@@ -36,6 +38,28 @@ class TestBodyKind:
         request = parse_curl("curl -H 'Content-Type: application/json' -d 'not json' https://x")
         assert body_kind(request) == ("data", "not json")
 
+    @pytest.mark.parametrize("body", [
+        '{"a": 1, "a": 2}',                  # the object kept only the last
+        '{"p": 0.10000000000000000001}',     # the float wrote back 0.1
+        '{"x": 1e400}',                      # inf
+        '[NaN]',                             # not JSON
+        "[" * 5000 + "]" * 5000,             # RecursionError out of the tab
+        "[" * 102 + "]" * 102,               # too deep to write as a literal
+    ], ids=["repeated-key", "long-float", "inf", "nan", "past-the-parser", "past-a-literal"])
+    def test_a_body_the_object_would_not_send_back_as_it_was_goes_raw(self, body):
+        request = parse_curl(f"curl -H 'Content-Type: application/json' -d '{body}' https://x")
+
+        assert body_kind(request) == ("data", body)
+        for target, _label in TEMPLATE_TARGETS:
+            generate_template(target, request)
+        compile(to_requests_code(request), "generated", "exec")
+
+    def test_numbers_a_float_holds_still_go_as_json(self):
+        request = parse_curl(
+            "curl -H 'Content-Type: application/json' -d '{\"p\": 0.1, \"q\": 1E3, \"n\": 12345678901234567890}' https://x")
+
+        assert body_kind(request) == ("json", {"p": 0.1, "q": 1000.0, "n": 12345678901234567890})
+
 
 class TestFormParts:
     def test_plain_field(self):
@@ -59,10 +83,12 @@ class TestFormParts:
 
 
 class TestRequestsCodeForm:
-    def test_form_uses_data_and_files(self):
+    def test_every_form_field_goes_in_files(self):
+        # data= made requests send a text-only form URL-encoded; curl sends multipart
         code = to_requests_code(parse_curl("curl -F 'name=x' -F 'photo=@a.jpg' https://up"))
-        assert "data=data" in code
+        assert "data=data" not in code
         assert "files=files" in code
+        assert '"name": (None, "x"),' in code
         assert 'open("a.jpg", "rb")' in code
 
     def test_form_code_is_valid_python(self):
@@ -81,8 +107,9 @@ class TestRequestsCodeJsonFlagAndDataFile:
         assert "json_body = {" in code
 
     def test_data_file_reads_file(self):
+        # As curl does for -d: the bytes, without carriage returns and newlines
         code = to_requests_code(parse_curl("curl -d @body.json https://x"))
-        assert 'data = open("body.json", encoding="utf-8").read()' in code
+        assert 'data = open("body.json", "rb").read().replace(b"\\r", b"").replace(b"\\n", b"")' in code
         assert "data=data" in code
 
     def test_data_file_code_is_valid_python(self):
@@ -90,7 +117,7 @@ class TestRequestsCodeJsonFlagAndDataFile:
 
     def test_apitestka_python_data_file(self):
         code = to_apitestka_python(parse_curl("curl -d @body.json https://x"))
-        assert 'open("body.json", encoding="utf-8").read()' in code
+        assert 'open("body.json", "rb").read()' in code
         compile(code, "<g>", "exec")
 
 
@@ -137,10 +164,10 @@ class TestApitestkaPython:
         )
         compile(to_apitestka_python(parse_curl(command)), "<generated>", "exec")
 
-    def test_form_data_and_files(self):
+    def test_form_fields_and_files_go_in_files(self):
         code = to_apitestka_python(parse_curl("curl -F 'name=x' -F 'photo=@a.jpg' https://up"))
-        assert "data=" in code
-        assert "files=" in code
+        assert "data=" not in code
+        assert '"name": (None, "x")' in code
         assert 'open("a.jpg", "rb")' in code
         compile(code, "<generated>", "exec")
 
@@ -178,11 +205,22 @@ class TestApitestkaActionJson:
         action = json.loads(to_apitestka_action_json(parse_curl("curl -G https://x -d 'a=1'")))
         assert action[0][1]["params"] == {"a": "1"}
 
-    def test_form_data_fields_included(self):
-        action = json.loads(
-            to_apitestka_action_json(parse_curl("curl -F 'name=x' -F 'photo=@a.jpg' https://up")))
-        # Plain form fields go under "data"; file uploads are omitted (no file handles in JSON).
-        assert action[0][1]["data"] == {"name": "x"}
+    def test_form_text_fields_are_sent_as_multipart(self):
+        action = json.loads(to_apitestka_action_json(parse_curl("curl -F 'name=x' -F 'a=b' https://up")))
+        # [null, text] is requests' (None, text): a multipart field, as curl sends it
+        assert action[0][1]["files"] == {"name": [None, "x"], "a": [None, "b"]}
+        assert "data" not in action[0][1]
+
+    @pytest.mark.parametrize("command", [
+        "curl -F 'name=x' -F 'photo=@a.jpg' https://up",
+        "curl -d @body.json -H 'Content-Type: application/json' https://up",
+    ])
+    def test_a_file_it_cannot_open_is_refused_not_left_out(self, command):
+        # The upload, or the body read from a file, was left out without a word
+        from pybreeze.utils.exception.exceptions import CurlParseException
+
+        with pytest.raises(CurlParseException):
+            to_apitestka_action_json(parse_curl(command))
 
 
 class TestLoadDensityPython:
@@ -288,3 +326,98 @@ class TestGenerateTemplate:
     def test_unknown_target_falls_back_to_requests(self):
         code = generate_template("nope", parse_curl("curl https://x"))
         assert "import requests" in code
+
+
+class TestMethodsInGeneratedCode:
+    def test_a_method_that_is_not_a_token_is_refused(self):
+        import pytest
+
+        from pybreeze.utils.exception.exceptions import CurlParseException
+
+        with pytest.raises(CurlParseException, match="not an HTTP method"):
+            parse_curl("curl -X 'GET():\n    import os\ndef t' https://x/a")
+
+    def test_a_method_with_a_hyphen_makes_a_valid_test_name(self):
+        import ast
+
+        from pybreeze.utils.curl_import.script_templates import to_pytest_test
+
+        code = to_pytest_test(parse_curl("curl -X M-SEARCH https://x/a"))
+
+        assert "def test_m_search_a():" in code
+        ast.parse(code)
+
+
+class TestJsonBodiesInGeneratedPython:
+    """A JSON body is written as Python: true/false/null would be undefined names."""
+
+    _COMMAND = (
+        "curl https://x/api -H 'Content-Type: application/json' "
+        "-d '{\"a\": true, \"b\": null, \"c\": [1.5, {\"d\": false}], \"e\": \"x\"}'"
+    )
+
+    def test_every_python_target_is_free_of_json_names(self):
+        import ast
+
+        from pybreeze.utils.curl_import.script_templates import generate_template
+
+        request = parse_curl(self._COMMAND)
+        for target in ("requests", "pytest", "apitestka_python"):
+            tree = ast.parse(generate_template(target, request))
+            names = {node.id for node in ast.walk(tree) if isinstance(node, ast.Name)}
+            assert not names & {"true", "false", "null"}, target
+
+    def test_the_body_evaluates_to_what_was_sent(self):
+        import ast
+
+        code = to_requests_code(parse_curl(self._COMMAND))
+        assignment = next(
+            node for node in ast.parse(code).body
+            if isinstance(node, ast.Assign) and node.targets[0].id == "json_body")
+
+        assert ast.literal_eval(assignment.value) == {
+            "a": True, "b": None, "c": [1.5, {"d": False}], "e": "x"}
+
+
+def test_python_literal_round_trips_any_json_value():
+    import ast
+
+    from hypothesis import given, settings
+    from hypothesis import strategies as st
+
+    from pybreeze.utils.curl_import.request_codegen import python_literal
+
+    scalars = st.none() | st.booleans() | st.integers() | st.floats(allow_nan=False, allow_infinity=False) | st.text()
+    values = st.recursive(
+        scalars,
+        lambda children: st.lists(children, max_size=4)
+        | st.dictionaries(st.text(), children, max_size=4),
+        max_leaves=20)
+
+    @settings(max_examples=200, deadline=None)
+    @given(values, st.booleans())
+    def round_trip(value, inline):
+        assert ast.literal_eval(python_literal(value, inline=inline)) == value
+
+    round_trip()
+
+
+def test_a_float_json_allows_but_python_cannot_write_is_spelled_out():
+    from pybreeze.utils.curl_import.request_codegen import python_literal
+
+    assert python_literal(float("inf")) == 'float("inf")'
+    assert python_literal([float("-inf")], inline=True) == '[float("-inf")]'
+    assert python_literal(float("nan")) == 'float("nan")'
+
+
+def test_a_character_outside_the_bmp_stays_one_character():
+    import ast
+
+    from pybreeze.utils.curl_import.request_codegen import python_string
+
+    text = "h\u00e9llo \U0001F600 \U00020000"
+    assert ast.literal_eval(python_string(text)) == text
+    assert "\\ud83d" not in python_string("\U0001F600")
+    lone = "lone \ud800"
+    assert ast.literal_eval(python_string(lone)) == lone
+

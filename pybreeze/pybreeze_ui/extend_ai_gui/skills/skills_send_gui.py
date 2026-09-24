@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from urllib.parse import urlsplit
+
 import requests
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLineEdit,
-    QTextEdit, QPushButton, QLabel, QComboBox
+    QTextEdit, QPushButton, QLabel, QComboBox, QMessageBox
 )
 from PySide6.QtCore import QThread, Signal
 from je_editor import language_wrapper
@@ -12,15 +14,35 @@ from pybreeze.pybreeze_ui.extend_ai_gui.ai_gui_global_variable import (
     SKILLS_TEMPLATE_FILES, SKILLS_TEMPLATE_RELATION
 )
 from pybreeze.pybreeze_ui.extend_ai_gui.prompt_store import load_prompt
+from pybreeze.pybreeze_ui.thread_keeper import let_run_out
+from pybreeze.utils.exception.exception_tags import (
+    authorization_failed_error,
+    redirect_not_followed_error,
+    redirect_nowhere_error,
+    redirect_same_server_error,
+    server_error_error,
+)
+from pybreeze.pybreeze_ui.error_text import error_text
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.network.http_client import (
-    ResponseTooLargeError, read_capped_text, CONNECT_TIMEOUT, truncate_for_display,
+    DEFAULT_MAX_READ_SECONDS, ResponseTooLargeError, read_capped_text, CONNECT_TIMEOUT,
+    describe_request_error, succeeded,
+    truncate_for_display,
 )
+from pybreeze.utils.network.public_http import overall_deadline, public_session
 from pybreeze.utils.network.url_validation import UnsafeURLError, validate_url
+from pybreeze.pybreeze_ui.plain_text import as_text
+from pybreeze.pybreeze_ui.exact_text import exact_text
+
+
+# Where a skill template wants the code; the user puts it there before sending
+CODE_PLACEHOLDER = "{code_diff}"
 
 
 class RequestThread(QThread):
-    finished = Signal(str)   # 成功或錯誤訊息
+    # Not "finished": that is QThread's own end-of-thread signal, and hiding it
+    # left nothing to re-enable the send button when run() ended some other way.
+    answered = Signal(str)   # 成功或錯誤訊息 / the answer, or a status to show
     error = Signal(str)
 
     def __init__(self, api_url, code_text):
@@ -31,39 +53,56 @@ class RequestThread(QThread):
     def run(self):
         try:
             validate_url(self.api_url)
-            response = requests.post(
-                self.api_url, json={"code": self.code_text},
-                timeout=(CONNECT_TIMEOUT, 30), allow_redirects=False, stream=True,
-            )
-            body = read_capped_text(response)
-            if response.ok:
-                self.finished.emit(body)
-            elif response.is_redirect:
-                self.finished.emit(
-                    language_wrapper.language_word_dict.get(
-                        "skills_error_status").format(
-                        status_code=response.status_code,
-                        text=f"Redirect to {response.headers.get('Location', 'unknown')}"))
-            elif response.status_code in (401, 403):
-                self.error.emit(
-                    language_wrapper.language_word_dict.get(
-                        "skills_error_status").format(
-                        status_code=response.status_code,
-                        text="Authentication/Authorization failed"))
-            elif response.status_code >= 500:
-                self.error.emit(
-                    language_wrapper.language_word_dict.get(
-                        "skills_error_status").format(
-                        status_code=response.status_code,
-                        text=f"Server error: {truncate_for_display(body)}"))
-            else:
-                self.finished.emit(
-                    language_wrapper.language_word_dict.get(
-                        "skills_error_status").format(
-                        status_code=response.status_code, text=truncate_for_display(body)))
+            # The whole request, headers included: a read timeout restarts with every byte
+            with overall_deadline(DEFAULT_MAX_READ_SECONDS), public_session() as session:
+                response = session.post(
+                    self.api_url, json={"code": self.code_text},
+                    timeout=(CONNECT_TIMEOUT, 30), allow_redirects=False, stream=True,
+                )
+                body = read_capped_text(response)
+            if succeeded(response):
+                self.answered.emit(body)
+                return
+            is_error, text = describe_failed_status(response, body)
+            message = language_wrapper.language_word_dict.get("skills_error_status").format(
+                status_code=response.status_code, text=text)
+            (self.error if is_error else self.answered).emit(message)
         except (requests.RequestException, ResponseTooLargeError, UnsafeURLError) as e:
-            pybreeze_logger.error("Skills send request failed: %r", e)
-            self.error.emit(language_wrapper.language_word_dict.get("skills_exception").format(error=str(e)))
+            # Not %r: a requests error carries the whole URL, which may hold a token.
+            pybreeze_logger.error("Skills send request failed: %s", type(e).__name__)
+            self.error.emit(language_wrapper.language_word_dict.get("skills_exception").format(error=error_text(describe_request_error(e))))
+
+
+def _redirect_text(location: str) -> str:
+    """Say that a redirect was not followed, naming its scheme and host and nothing else.
+
+    A redirect usually repeats the request's path and query (a trailing-slash
+    redirect of ``?key=...``), and the whole URL used to be shown with the
+    token in it.
+    """
+    parts = urlsplit(location)
+    if not parts.scheme or not parts.hostname:
+        return redirect_same_server_error if location else redirect_nowhere_error
+    try:
+        port = f":{parts.port}" if parts.port else ""
+    except ValueError:  # not a port number
+        port = ""
+    return redirect_not_followed_error.format(where=f"{parts.scheme}://{parts.hostname}{port}")
+
+
+def describe_failed_status(response, body: str) -> tuple[bool, str]:
+    """Say what a non-2xx answer means: whether it is an error, and in what words.
+
+    A redirect (not followed) and an ordinary client error are shown as the
+    answer; a refused request and a server error are errors.
+    """
+    if response.is_redirect:
+        return False, error_text(_redirect_text(response.headers.get("Location", "")))
+    if response.status_code in (401, 403):
+        return True, error_text(authorization_failed_error)
+    if response.status_code >= 500:
+        return True, error_text(server_error_error.format(body=truncate_for_display(body)))
+    return False, truncate_for_display(body)
 
 
 class SkillsSendGUI(QWidget):
@@ -108,6 +147,9 @@ class SkillsSendGUI(QWidget):
         self.setLayout(layout)
 
         self.thread = None  # 保存執行緒
+        # 編輯區裡是哪個模板：換模板被拒時選單要回到這裡
+        # The template in the edit area: where the selector goes back to when a switch is refused
+        self._shown_template = self.prompt_select.currentText()
         # 開啟時就把選到的那個模板載進來，選單才不是擺著好看
         # Load the selected template on open, so the selector does something
         self.load_selected_prompt(self.prompt_select.currentText())
@@ -126,7 +168,29 @@ class SkillsSendGUI(QWidget):
         built_in = SKILLS_TEMPLATE_RELATION.get(name)
         if built_in is None:
             return
+        if self.prompt_input.document().isModified() and not self._may_replace_edits(name):
+            # 選單回到編輯區裡的模板，不再觸發一次
+            # Put the selector back on the template being edited, without coming here again
+            self.prompt_select.blockSignals(True)
+            self.prompt_select.setCurrentText(self._shown_template)
+            self.prompt_select.blockSignals(False)
+            return
         self.prompt_input.setPlainText(load_prompt(name, built_in))
+        self.prompt_input.document().setModified(False)
+        self._shown_template = name
+
+    def _may_replace_edits(self, name: str) -> bool:
+        """
+        編輯區有修改時，問使用者能不能換掉；以前一換模板，貼上的程式碼就沒了
+        Ask whether the edited prompt may be replaced: switching templates used
+        to throw away the code the user had pasted into it.
+        """
+        reply = QMessageBox.question(
+            self, language_wrapper.language_word_dict.get("skills_prompt_select_label"),
+            as_text(language_wrapper.language_word_dict.get("skills_switch_over_edits").format(name=name)),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No)
+        return reply == QMessageBox.StandardButton.Yes
 
     def send_prompt(self):
         # Ignore re-submits while a request is in flight: reassigning self.thread
@@ -136,10 +200,15 @@ class SkillsSendGUI(QWidget):
             return
 
         api_url = self.api_url_input.text().strip()
-        prompt_text = self.prompt_input.toPlainText().strip()
+        prompt_text = exact_text(self.prompt_input).strip()
 
         if not api_url or not prompt_text:
             self.response_output.setPlainText(language_wrapper.language_word_dict.get("skills_missing_input"))
+            return
+        if CODE_PLACEHOLDER in prompt_text:
+            # 模板原封不動送出，端點收到的是一份沒有程式碼的審查請求
+            # Sent as it is, the template asked for a review of no code at all
+            self.response_output.setPlainText(language_wrapper.language_word_dict.get("skills_code_missing"))
             return
 
         # 顯示「產生中」
@@ -148,9 +217,21 @@ class SkillsSendGUI(QWidget):
         # 啟動 QThread
         self.send_button.setEnabled(False)
         self.thread = RequestThread(api_url, prompt_text)
-        self.thread.finished.connect(self.on_finished)
+        self.thread.answered.connect(self.on_finished)
         self.thread.error.connect(self.on_error)
+        # However run() ends -- including an exception outside its handler --
+        # the button comes back.
+        self.thread.finished.connect(self._enable_send)
         self.thread.start()
+
+    def _enable_send(self) -> None:
+        """Let the next request be sent, however this one ended.
+
+        A bound method, not a lambda: the thread's connection holding a lambda
+        that held the panel kept both alive after the panel was closed and
+        deleted, a cycle through Qt that Python's collector cannot see.
+        """
+        self.send_button.setEnabled(True)
 
     def on_finished(self, result):
         self.response_output.setPlainText(result)
@@ -161,10 +242,14 @@ class SkillsSendGUI(QWidget):
         self.send_button.setEnabled(True)
 
     def closeEvent(self, event):
+        """Let a request still in flight finish on its own, without this panel.
+
+        Its answers are cut off from the panel, and the thread is kept
+        referenced until it ends, so it is never destroyed while running. The
+        panel does not wait for it: the request can take the whole read timeout,
+        and waiting froze the IDE for that long.
+        """
         thread = self.thread
         if thread is not None and thread.isRunning():
-            # Block slots so a late finished/error emit can't hit the dying
-            # widget, then wait so the QThread is never destroyed while running.
-            thread.blockSignals(True)
-            thread.wait()
+            let_run_out(thread, thread.answered, thread.error)
         event.accept()

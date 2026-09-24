@@ -84,3 +84,17 @@ class TestUrlBuilderInitialUrl:
 
     def test_without_initial_url_the_output_stays_empty(self, widget):
         assert widget.output_edit.toPlainText() == ""
+
+
+class TestAUrlThatCannotBeRead:
+    def test_it_is_reported_in_the_output_not_raised(self, app):
+        from pybreeze.pybreeze_ui.tools_gui.url_builder_gui import UrlBuilderGUI
+
+        gui = UrlBuilderGUI()
+        gui.input_edit.setPlainText("http://[::1")
+
+        gui.convert_to_json()
+
+        assert gui.output_edit.toPlainText()
+        assert gui._valid_output is False
+        gui.deleteLater()

@@ -11,7 +11,12 @@ from pybreeze.extend_multi_language.extend_traditional_chinese import (
     pybreeze_traditional_chinese_word_dict as ZH,
 )
 
-_GET_KEY_RE = re.compile(r'language_word_dict\.get\(\s*["\']([A-Za-z0-9_]+)["\']')
+# language_word_dict.get("key"), the same through a local alias
+# (word = language_wrapper.language_word_dict; word.get("key")), and the
+# diagram editor's _lang("key", fallback), whose English fallback hid a key
+# missing from both dicts
+_GET_KEY_RE = re.compile(
+    r'(?:\b(?:language_word_dict|word_dict|word)\.get|\b_lang)\(\s*["\']([A-Za-z0-9_]+)["\']')
 
 
 def _placeholders(text: str) -> set[str]:
@@ -19,7 +24,7 @@ def _placeholders(text: str) -> set[str]:
 
 
 def _code_used_keys() -> dict[str, str]:
-    """Map every literal ``language_word_dict.get("key")`` key to a source file."""
+    """Map every literal key the code looks up (see ``_GET_KEY_RE``) to a source file."""
     root = pathlib.Path(pybreeze.__file__).parent
     used: dict[str, str] = {}
     for path in root.rglob("*.py"):
@@ -53,6 +58,16 @@ class TestLanguageParity:
         }
         assert not mismatched, f"Placeholder mismatches between languages: {mismatched}"
 
+    def test_no_word_is_written_twice(self):
+        # Four Chinese menu entries read "運行 Multi WebRunner 腳本 腳本並寄信"
+        doubled = {
+            key: value
+            for words in (EN, ZH)
+            for key, value in words.items()
+            if re.search(r"(?<!\S)(\S{2,}) \1(?!\S)|(?<!\S)(\S{2,}) \2(?=[一-鿿])", str(value))
+        }
+        assert not doubled, f"A word written twice: {doubled}"
+
 
 class TestCodeKeysAreDefined:
     def test_every_get_key_exists_in_dict(self):
@@ -82,3 +97,60 @@ class TestCodeKeysAreDefined:
             if key not in EN
         ]
         assert not missing, f"Prompt editor label keys missing from the dict: {missing}"
+
+    def test_every_header_finding_and_level_has_a_message(self):
+        # The header analyzer's GUI builds these keys with an f-string, which
+        # the regex above cannot see; a missing one shows the bare code
+        from pybreeze.utils.header_tools import header_analyzer
+
+        source = pathlib.Path(header_analyzer.__file__).read_text(encoding="utf-8")
+        codes = set(re.findall(r'HeaderFinding\(\s*"([a-z0-9_]+)"', source))
+        codes |= {code for _name, _canonical, code in header_analyzer._RESPONSE_SECURITY_HEADERS}
+        levels = {header_analyzer.LEVEL_WARNING, header_analyzer.LEVEL_INFO}
+
+        assert len(codes) > 10
+        missing = sorted(f"header_finding_{code}" for code in codes if f"header_finding_{code}" not in EN)
+        missing += sorted(f"header_analyzer_level_{level}" for level in levels
+                          if f"header_analyzer_level_{level}" not in EN)
+        assert not missing, f"Header analyzer keys missing from the dict: {missing}"
+
+
+class TestEveryLanguageServesPyBreezeStrings:
+    def test_each_registered_language_resolves_every_key(self):
+        # JEditor serves each language but English from a merged copy of its dict
+        # and English's. Once PyBreeze's strings are in, every language, even one
+        # PyBreeze does not translate, must resolve every key the code asks for.
+        from je_editor import language_wrapper
+
+        from pybreeze.extend_multi_language.update_language_dict import update_language_dict
+
+        update_language_dict()
+        used = _code_used_keys()
+        original = language_wrapper.language
+        missing = {}
+        try:
+            for language in language_wrapper.available_languages():
+                language_wrapper.reset_language(language)
+                blank = sorted(
+                    key for key in used if not language_wrapper.language_word_dict.get(key))
+                if blank:
+                    missing[language] = blank
+        finally:
+            language_wrapper.reset_language(original)
+        assert not missing, f"Keys a language cannot resolve: {missing}"
+
+    def test_the_window_is_called_pybreeze_in_every_language(self):
+        from je_editor import language_wrapper
+
+        from pybreeze.extend_multi_language.update_language_dict import update_language_dict
+
+        update_language_dict()
+        original = language_wrapper.language
+        names = {}
+        try:
+            for language in language_wrapper.available_languages():
+                language_wrapper.reset_language(language)
+                names[language] = language_wrapper.language_word_dict["application_name"]
+        finally:
+            language_wrapper.reset_language(original)
+        assert set(names.values()) == {"PyBreeze"}, names

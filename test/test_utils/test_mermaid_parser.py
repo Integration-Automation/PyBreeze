@@ -91,6 +91,13 @@ class TestArrowsAndLabels:
         r = parse_mermaid("graph TD\nA-->|yes|B")
         assert r["connections"][0]["label"] == "yes"
 
+    @pytest.mark.parametrize("line", ['A-->|"a|b"|B', 'A-->| "a|b" |B'])
+    def test_a_quoted_pipe_label_keeps_its_bar(self, line):
+        # The label stopped at the "|" inside the quotes: '"a'
+        r = parse_mermaid(f"graph TD\n{line}")
+        assert [c["label"] for c in r["connections"]] == ["a|b"]
+        assert len(r["nodes"]) == 2
+
     def test_inline_label(self):
         r = parse_mermaid("graph TD\nA -- maybe --> B")
         assert r["connections"][0]["label"] == "maybe"
@@ -284,3 +291,93 @@ class TestCrossingReduction:
     def test_tree_has_no_crossings(self):
         r = parse_mermaid("graph TD\nR-->A\nR-->B\nA-->X\nA-->Y\nB-->Z")
         assert _count_crossings(r) == 0
+
+
+def _node_texts(result) -> list:
+    return [node["text"] for node in result["nodes"]]
+
+
+def _edges(result):
+    texts = [node["text"] for node in result["nodes"]]
+    return [(texts[c["source"]], texts[c["target"]], c["label"]) for c in result["connections"]]
+
+
+class TestTextThatLooksLikeSyntax:
+    @pytest.mark.parametrize("label", ["a --> b", "a;b", "x -- y --> z", "p ~~~ q"])
+    def test_an_arrow_or_semicolon_inside_a_quoted_label_is_label(self, label):
+        result = parse_mermaid(f'graph TD\nA["{label}"]-->B')
+
+        assert _node_texts(result) == [label, "B"]
+        assert _edges(result) == [(label, "B", "")]
+
+    def test_a_bracket_inside_quotes_does_not_end_the_label(self):
+        result = parse_mermaid('graph TD\nA["list[0]; done"] --> B')
+
+        assert _node_texts(result) == ["list[0]; done", "B"]
+
+
+class TestHeadersAndDirectives:
+    @pytest.mark.parametrize("header", ["graph", "flowchart", "Flowchart"])
+    def test_a_header_without_a_direction_is_not_a_node(self, header):
+        result = parse_mermaid(f"{header}\nA-->B")
+
+        assert _node_texts(result) == ["A", "B"]
+
+    def test_direction_inside_a_subgraph_is_not_a_node(self):
+        result = parse_mermaid("graph LR\nsubgraph S\ndirection TB\nA-->B\nend")
+
+        assert _node_texts(result) == ["A", "B"]
+
+    def test_a_node_whose_name_starts_like_a_keyword_is_still_a_node(self):
+        assert "graphics" in _node_texts(parse_mermaid("graph TD\ngraphics-->directions"))
+
+
+class TestMoreLinks:
+    @pytest.mark.parametrize("link", ["-- text ---", "-- text --o", "-- text --x", "-- text -->"])
+    def test_text_on_any_normal_link_is_its_label(self, link):
+        result = parse_mermaid(f"graph TD\nA {link} B")
+
+        assert _node_texts(result) == ["A", "B"]
+        assert _edges(result) == [("A", "B", "text")]
+
+    def test_an_invisible_link_keeps_both_nodes_and_draws_nothing(self):
+        result = parse_mermaid("graph TD\nA ~~~ B")
+
+        assert _node_texts(result) == ["A", "B"]
+        assert result["connections"] == []
+
+
+class TestWhatTheReviewFound:
+    def test_capitalised_keywords_are_nodes(self):
+        # "End", "Click", "Style" were taken for keywords and their lines skipped
+        result = parse_mermaid("graph TD\nStart --> End\nEnd((Finish))\nEnd --> C\nStyle[Style guide] --> Click")
+
+        assert _node_texts(result) == ["Start", "Finish", "C", "Style guide", "Click"]
+        assert ("Start", "Finish", "") in _edges(result)
+        assert ("Finish", "C", "") in _edges(result)
+
+    def test_lower_case_keywords_are_still_skipped(self):
+        result = parse_mermaid("graph TD\nsubgraph one\nA --> B\nend\nstyle A fill:#f9f\nclick A callback")
+
+        assert _node_texts(result) == ["A", "B"]
+
+    def test_a_class_suffix_keeps_the_label(self):
+        # "A[Label]:::hot" became a node labelled "A"
+        assert _node_texts(parse_mermaid("graph TD\nA[Label]:::hot --> B")) == ["Label", "B"]
+        assert _node_texts(parse_mermaid("graph TD\nA[Label] --> B\nA:::hot")) == ["Label", "B"]
+
+    def test_a_chain_of_open_links_keeps_its_middle_node(self):
+        # The last two dashes of "---" were read as the start of an edge label
+        result = parse_mermaid("graph TD\nA --- B --- C")
+
+        assert _node_texts(result) == ["A", "B", "C"]
+        assert _edges(result) == [("A", "B", ""), ("B", "C", "")]
+
+    def test_percent_signs_in_a_label_are_not_a_comment(self):
+        result = parse_mermaid('graph TD\nA["100%% done"] --> B %% a real comment\n%% a whole-line comment')
+
+        assert _node_texts(result) == ["100%% done", "B"]
+        assert _edges(result) == [("100%% done", "B", "")]
+
+    def test_a_quoted_edge_label_loses_its_quotes(self):
+        assert _edges(parse_mermaid('graph TD\nA -->|"quoted label"| B')) == [("A", "B", "quoted label")]

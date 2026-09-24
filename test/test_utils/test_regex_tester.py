@@ -90,5 +90,119 @@ class TestFindMatches:
     def test_match_cap(self):
         from pybreeze.utils.regex_tools import regex_tester
         # More potential matches than the cap; result is capped, not unbounded.
-        text = "a" * (regex_tester._MAX_MATCHES + 50)
-        assert len(find_matches("a", text)) == regex_tester._MAX_MATCHES
+        text = "a" * (regex_tester.MAX_MATCHES + 50)
+        assert len(find_matches("a", text)) == regex_tester.MAX_MATCHES
+
+
+class TestABoundedRun:
+    """find_matches_bounded runs the pattern in a process it can stop."""
+
+    def test_it_finds_what_find_matches_finds(self):
+        from pybreeze.utils.regex_tools.regex_tester import find_matches, find_matches_bounded
+
+        assert find_matches_bounded(r"\d+", "a1 b22") == find_matches(r"\d+", "a1 b22")
+
+    def test_a_malformed_pattern_is_reported_before_any_process(self, monkeypatch):
+        from pybreeze.utils.exception.exceptions import RegexTesterException
+        from pybreeze.utils.regex_tools import regex_tester
+
+        monkeypatch.setattr(
+            regex_tester.subprocess, "Popen",
+            lambda *_a, **_k: pytest.fail("a process was started for a pattern that cannot compile"))
+
+        with pytest.raises(RegexTesterException):
+            regex_tester.find_matches_bounded("(", "abc")
+
+    def test_catastrophic_backtracking_is_stopped(self):
+        import time
+
+        from pybreeze.utils.exception.exceptions import RegexTesterException
+        from pybreeze.utils.regex_tools.regex_tester import find_matches_bounded
+
+        started = time.monotonic()
+        with pytest.raises(RegexTesterException, match="still running"):
+            find_matches_bounded("(a+)+$", "a" * 40 + "b", timeout_seconds=2.0)
+
+        assert time.monotonic() - started < 10
+
+
+class TestPatternsTheCompilerCannotTake:
+    """They escaped the worker, and the tab stayed on "Running the pattern..."."""
+
+    def test_a_repeat_count_too_large_is_reported(self):
+        from pybreeze.utils.exception.exceptions import RegexTesterException
+        from pybreeze.utils.regex_tools.regex_tester import compile_pattern
+
+        with pytest.raises(RegexTesterException):
+            compile_pattern("a{4294967296}")
+
+    def test_groups_nested_too_deep_are_reported(self):
+        from pybreeze.utils.exception.exceptions import RegexTesterException
+        from pybreeze.utils.regex_tools.regex_tester import compile_pattern
+
+        with pytest.raises(RegexTesterException):
+            compile_pattern("(" * 5000 + "a" + ")" * 5000)
+
+
+class TestTheWorkerProcess:
+    def test_an_unguarded_launch_script_runs_once(self, tmp_path):
+        # A spawn child re-imported it: the README's start_editor() script
+        # opened a second IDE for every pattern, which then "timed out"
+        import subprocess
+        import sys
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parents[2]
+        script = tmp_path / "launch.py"
+        script.write_text(
+            "import sys\n"
+            f"sys.path.insert(0, {str(root)!r})\n"
+            "print('STARTED', flush=True)\n"
+            "from pybreeze.utils.regex_tools.regex_tester import find_matches_bounded\n"
+            "print('FOUND', len(find_matches_bounded(r'\\d', 'a1 b2')), flush=True)\n",
+            encoding="utf-8")
+
+        result = subprocess.run([sys.executable, str(script)], capture_output=True, text=True,
+                                timeout=60, check=False)
+
+        assert result.stdout.count("STARTED") == 1, result.stderr
+        assert "FOUND 2" in result.stdout
+
+    def test_a_running_pattern_can_be_stopped(self):
+        # Closing the IDE ends with os._exit, which left the worker running
+        import threading
+        import time
+
+        from pybreeze.utils.exception.exceptions import RegexTesterException
+        from pybreeze.utils.regex_tools import regex_tester
+
+        failures: list = []
+
+        def run() -> None:
+            try:
+                regex_tester.find_matches_bounded("(a+)+$", "a" * 60 + "b", timeout_seconds=60)
+            except RegexTesterException as error:
+                failures.append(error)
+
+        worker = threading.Thread(target=run)
+        worker.start()
+        deadline = time.monotonic() + 20
+        while not regex_tester._RUNNING and time.monotonic() < deadline:
+            time.sleep(0.05)
+        started = time.monotonic()
+        regex_tester.stop_running_workers()
+        worker.join(20)
+
+        assert failures and time.monotonic() - started < 10
+        assert not regex_tester._RUNNING
+
+    def test_the_packaged_builds_spawned_worker_finds_matches(self):
+        # A packaged build has no interpreter to run a script with; it keeps the
+        # spawn child. (Setting sys.frozen here would make multiprocessing hand
+        # this interpreter the frozen app's arguments.)
+        from pybreeze.utils.regex_tools import regex_tester
+
+        found = regex_tester._find_in_spawned_process(r"\d+", "a1 b22", [], 30)
+
+        assert found == regex_tester.find_matches(r"\d+", "a1 b22")
+        assert not regex_tester._RUNNING

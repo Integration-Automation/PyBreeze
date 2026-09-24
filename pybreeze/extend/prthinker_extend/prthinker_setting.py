@@ -17,11 +17,14 @@ Pure logic, with no Qt: what it builds can be tested on its own.
 from __future__ import annotations
 
 import json
+import os
+import re
 import shlex
 from pathlib import Path
 from typing import Dict, List
 
-from pybreeze.utils.app_dirs import pybreeze_data_dir
+from pybreeze.utils.app_dirs import DATA_DIR_MODE, pybreeze_data_path
+from pybreeze.utils.file_process.replace_file import replace_text
 from pybreeze.utils.logging.logger import pybreeze_logger
 
 # 設定檔名 / The settings file's name
@@ -40,10 +43,42 @@ BACKENDS = (
 # 可選的程式碼託管平台 / The forges on offer
 PLATFORMS = ("github", "gitlab", "gitea")
 
-# 每個設定項對應的環境變數 / The environment variable each setting is given through
+# 規則檢索（RAG）的做法：關掉，或交給伺服器的 /rag。prthinker 的本機索引只跟著它的
+# 原始碼庫，不在安裝的套件裡，所以這裡裝的 prthinker 沒辦法在本機檢索。
+# How rules are retrieved (RAG): not at all, or through the server's /rag.
+# prthinker's local index ships with its repository and not with its package, so
+# the prthinker installed from here cannot retrieve locally.
+RAG_MODES = ("off", "remote")
+
+# 每種做法交給子行程的環境變數；認不得的值一律當作關掉。兩個變數都一定送出：
+# 子行程繼承 IDE 的環境，只送一個的話，使用者原本設的另一個會留下來作數。
+# The variables each way is given through; an unknown value counts as off.
+# Both are always sent: the child inherits the IDE's environment, so leaving
+# one out would let whatever the user has exported decide it.
+RAG_ENVIRONMENT = {
+    "off": {"PRTHINKER_RAG_ENABLED": "false", "PRTHINKER_REMOTE_RAG": "false"},
+    "remote": {"PRTHINKER_RAG_ENABLED": "true", "PRTHINKER_REMOTE_RAG": "true"},
+}
+
+# 每個後端讀模型名稱的環境變數：prthinker 各後端各讀各的
+# The variable each backend reads its model from: each prthinker backend has its own
+MODEL_ENVIRONMENT = {
+    "remote": "PRTHINKER_MODEL_NAME",
+    "local": "PRTHINKER_MODEL_NAME",
+    "openai": "PRTHINKER_OPENAI_MODEL",
+    "anthropic": "PRTHINKER_ANTHROPIC_MODEL",
+    "gemini": "PRTHINKER_GEMINI_MODEL",
+    "cohere": "PRTHINKER_COHERE_MODEL",
+    "mistral": "PRTHINKER_MISTRAL_MODEL",
+    "claude-cli": "PRTHINKER_CLAUDE_CLI_MODEL",
+    "codex-cli": "PRTHINKER_CODEX_CLI_MODEL",
+}
+
+# 其餘每個設定項對應的環境變數；模型名稱依後端而定，見 MODEL_ENVIRONMENT
+# The variable every other setting is given through; the model name's depends on
+# the backend (MODEL_ENVIRONMENT)
 SETTING_ENVIRONMENT = {
     "backend": "PRTHINKER_BACKEND",
-    "model_name": "PRTHINKER_MODEL_NAME",
     "remote_url": "PRTHINKER_REMOTE_URL",
     "remote_api_key": "PRTHINKER_REMOTE_API_KEY",
     "openai_api_key": "PRTHINKER_OPENAI_API_KEY",
@@ -72,6 +107,7 @@ DEFAULT_SETTING: Dict[str, str] = {
     "platform_base_url": "",
     "repository": "",
     "platform_token": "",
+    "rag": "off",
     "extra_arguments": "",
     "source_path": "",
 }
@@ -80,6 +116,9 @@ DEFAULT_SETTING: Dict[str, str] = {
 # The extras to install with: ``runner`` is the set that reviews without
 # pulling in a model
 INSTALL_EXTRAS = "runner"
+# The project name line of prthinker's pyproject.toml; parsed by hand, since the
+# stdlib's tomllib arrived in 3.11 and this runs on 3.10
+_PRTHINKER_PROJECT_NAME = re.compile(r'^name\s*=\s*["\']prthinker["\']\s*$', re.MULTILINE)
 
 
 def setting_path() -> Path:
@@ -95,7 +134,7 @@ def setting_path() -> Path:
 
     :return: 設定檔路徑 / the settings file's path
     """
-    return pybreeze_data_dir() / SETTING_FILE_NAME
+    return pybreeze_data_path() / SETTING_FILE_NAME
 
 
 def load_setting() -> Dict[str, str]:
@@ -111,16 +150,27 @@ def load_setting() -> Dict[str, str]:
     """
     setting = dict(DEFAULT_SETTING)
     path = setting_path()
-    if not path.is_file():
-        return setting
     try:
+        # Reading creates nothing: a data folder that could not be made (a
+        # file in its place) raised out of every prthinker menu entry
+        if not path.is_file():
+            return setting
         stored = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as error:
         pybreeze_logger.error("prthinker settings could not be read: %r", error)
         return setting
-    if isinstance(stored, dict):
-        setting.update(
-            {key: str(value) for key, value in stored.items() if key in DEFAULT_SETTING})
+    if not isinstance(stored, dict):
+        return setting
+    for key, value in stored.items():
+        if key not in DEFAULT_SETTING:
+            continue
+        # Every setting is text. str() made a hand-edited null the text "None",
+        # which then went out as the API key, the repository and the model,
+        # and a list became broken arguments; anything else keeps its default.
+        if isinstance(value, str):
+            setting[key] = value
+        else:
+            pybreeze_logger.debug("prthinker setting %s is not text; using the default", key)
     return setting
 
 
@@ -134,9 +184,14 @@ def save_setting(setting: Dict[str, str]) -> bool:
     """
     to_store = {key: setting.get(key, "") for key in DEFAULT_SETTING}
     try:
-        setting_path().write_text(
-            json.dumps(to_store, indent=4, ensure_ascii=False), encoding="utf-8")
-    except OSError as error:
+        path = setting_path()
+        path.parent.mkdir(mode=DATA_DIR_MODE, parents=True, exist_ok=True)
+        # Replaced in one step, readable by its owner only: written in place, a
+        # failure part-way emptied the file and every key and token in it
+        replace_text(path, json.dumps(to_store, indent=4, ensure_ascii=False), private=True)
+    # A lone surrogate, loaded from a hand-edited "\ud800", cannot be written
+    # as UTF-8: it raised out of the install menu's slot
+    except (OSError, UnicodeEncodeError) as error:
         pybreeze_logger.error("prthinker settings could not be saved: %r", error)
         return False
     return True
@@ -147,17 +202,37 @@ def environment_for(setting: Dict[str, str]) -> Dict[str, str]:
     把設定變成 prthinker 認得的環境變數
     Turn the settings into the environment variables prthinker reads.
 
-    空白的項目不放進去，prthinker 才用得到它自己的預設值。
-    A blank setting is left out, so prthinker keeps its own default for it.
+    空白的項目不放進去，prthinker 才用得到它自己的預設值。模型名稱交給所選後端自己的
+    變數。規則檢索例外：prthinker 預設在本機檢索，而這裡裝的 prthinker 做不到，所以
+    一定會明講要關掉或交給伺服器。
+    A blank setting is left out, so prthinker keeps its own default for it. The
+    model name goes to the chosen backend's own variable. Rule retrieval is the
+    exception: prthinker's default is to retrieve locally, which the prthinker
+    installed from here cannot do, so it is always told to go without or to ask
+    the server.
 
     :param setting: 目前的設定 / the settings in use
     :return: 要加進子行程環境的變數 / the variables to add to the child's environment
     """
-    return {
+    environment = {
         name: setting[key].strip()
         for key, name in SETTING_ENVIRONMENT.items()
         if setting.get(key, "").strip()
     }
+    model = setting.get("model_name", "").strip()
+    backend = setting.get("backend", "").strip()
+    model_variable = MODEL_ENVIRONMENT.get(backend)
+    if model and model_variable:
+        environment[model_variable] = model
+    elif model:
+        # Each backend reads its own variable, so without a backend there is
+        # nowhere to put the model; say so rather than drop it quietly.
+        pybreeze_logger.error(
+            "prthinker model %r not sent: %r is not a backend PyBreeze offers",
+            model, backend)
+    rag_mode = setting.get("rag", "")
+    environment.update(RAG_ENVIRONMENT.get(rag_mode, RAG_ENVIRONMENT["off"]))
+    return environment
 
 
 def extra_arguments(setting: Dict[str, str]) -> List[str]:
@@ -174,14 +249,53 @@ def extra_arguments(setting: Dict[str, str]) -> List[str]:
     :param setting: 目前的設定 / the settings in use
     :return: 參數 / the arguments
     """
-    text = setting.get("extra_arguments", "").strip()
-    if not text:
-        return []
     try:
-        return shlex.split(text)
+        return read_extra_arguments(setting.get("extra_arguments", ""))
     except ValueError as error:
         pybreeze_logger.error("prthinker extra arguments could not be read: %r", error)
         return []
+
+
+def read_extra_arguments(text: str) -> List[str]:
+    """
+    把「額外參數」欄位斷成參數，斷不了就丟 ValueError；設定視窗存檔前用它先檢查
+    Split the extra-arguments field into arguments, raising ValueError when it
+    cannot be; the settings dialog checks with it before saving.
+
+    :param text: 欄位內容 / what the field holds
+    :return: 參數 / the arguments
+    :raises ValueError: 引號沒有關上時 / when a quote is left open
+    """
+    text = text.strip()
+    if not text:
+        return []
+    return split_arguments(text, backslash_escapes=os.sep != "\\")
+
+
+def split_arguments(text: str, *, backslash_escapes: bool) -> List[str]:
+    """
+    以命令列的規則斷詞
+    Split *text* into arguments the way a command line is split.
+
+    Windows 的路徑用反斜線分隔，那裡的反斜線不能當跳脫字元，否則 ``C:\\reviews`` 會變成
+    ``C:reviews``。
+    Where a backslash separates path parts (Windows), it must not escape the
+    next character, or ``C:\\reviews`` would come out as ``C:reviews``.
+
+    :param text: 要斷詞的文字 / the text to split
+    :param backslash_escapes: 反斜線是否為跳脫字元 / whether a backslash escapes
+    :return: 參數 / the arguments
+    :raises ValueError: 引號沒有關上時 / when a quote is left open
+    """
+    lexer = shlex.shlex(text, posix=True)
+    lexer.whitespace_split = True
+    # 不把 # 當註解：C#、網址的 #section 都是參數的一部分
+    # "#" starts no comment (shlex.split clears it too): "C#" or a URL's
+    # "#section" cut off every argument after it
+    lexer.commenters = ""
+    if not backslash_escapes:
+        lexer.escape = ""
+    return list(lexer)
 
 
 def review_file_arguments(file_path: str, setting: Dict[str, str]) -> List[str]:
@@ -224,14 +338,33 @@ def install_target(source_path: str) -> str:
     prthinker is installed from source rather than from PyPI, so what is given
     is a folder and not a package name.
 
+    資料夾要是 prthinker 自己的原始碼（``pyproject.toml`` 的專案名稱是 prthinker），
+    選錯資料夾才不會被記下來，之後每次都拿去跑一個一定失敗的 pip。
+    The folder has to be prthinker's own source (its ``pyproject.toml`` names the
+    project prthinker): a wrong one used to be saved and handed to a pip that
+    could only fail, every time, until it was cleared in the settings.
+
     :param source_path: 框架原始碼的資料夾 / the framework's source folder
-    :return: pip 的安裝目標，路徑不存在時為空字串 / the target for pip, or an
-        empty string when the path is not a folder
+    :return: pip 的安裝目標，不是 prthinker 原始碼時為空字串 / the target for
+        pip, or an empty string when the path is not prthinker's source folder
     """
     path = Path(source_path.strip()) if source_path.strip() else None
-    if path is None or not path.is_dir():
+    if path is None or not _is_prthinker_source(path):
         return ""
-    return f"{path}[{INSTALL_EXTRAS}]"
+    # 絕對路徑：pip 把沒有路徑分隔字元的 prthinker[runner] 當成 PyPI 上的套件名
+    # Absolute: pip takes "prthinker[runner]", with no separator in it, for a
+    # package name on PyPI and installs that instead of the folder
+    return f"{path.absolute()}[{INSTALL_EXTRAS}]"
+
+
+def _is_prthinker_source(folder: Path) -> bool:
+    """Whether *folder* holds a ``pyproject.toml`` whose project is prthinker."""
+    try:
+        text = (folder / "pyproject.toml").read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as error:
+        pybreeze_logger.debug("Not a prthinker source folder %s: %r", folder, error)
+        return False
+    return _PRTHINKER_PROJECT_NAME.search(text) is not None
 
 
 def loggable(setting: Dict[str, str]) -> Dict[str, str]:

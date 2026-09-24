@@ -1,22 +1,81 @@
 from __future__ import annotations
 
-from PySide6.QtGui import QGuiApplication
-from PySide6.QtWidgets import QWidget, QGridLayout, QTextEdit, QScrollArea
+from typing import TYPE_CHECKING
+
+from je_editor import language_wrapper
+from je_editor.pyside_ui.main_ui.save_settings.user_color_setting_file import actually_color_dict
+from PySide6.QtCore import QTimer, Signal
+from PySide6.QtGui import QGuiApplication, QTextCharFormat, QTextCursor
+from PySide6.QtWidgets import QWidget, QGridLayout, QHBoxLayout, QPlainTextEdit, QPushButton, QScrollArea
+
+from pybreeze.utils.terminal_text import strip_terminal_controls, take_leading_backspaces
+
+if TYPE_CHECKING:
+    from pybreeze.extend.process_executor.file_runner_process import FileRunnerProcess
+    from pybreeze.extend.process_executor.python_task_process_manager import TaskProcessManager
 
 # Cap the output scrollback so a runaway script (e.g. an infinite print loop)
 # cannot grow the document without bound and exhaust memory; the oldest lines
 # are dropped once the limit is reached, like a terminal's scrollback buffer.
+# The output is a QPlainTextEdit, which is built for this: in a QTextEdit
+# every line written past the cap cost about 15 ms to drop the oldest one, and
+# a chatty run froze the IDE for seconds a tick.
 MAX_OUTPUT_BLOCKS = 10000
 
 
+def _insert_rewinding(cursor: QTextCursor, text: str, text_format: QTextCharFormat) -> bool:
+    """Insert *text* at *cursor*, a lone ``\\r`` going back to the start of the line.
+
+    As a terminal does: a progress bar that rewinds with ``\\r`` redraws its
+    line instead of adding one per step. ``\\r\\n`` and ``\\n`` are line breaks.
+
+    :return: whether *text* ended on a ``\\r`` still to be applied: it waits
+        for what comes next, since rewound now, a finished progress bar's last
+        line would be erased with nothing to replace it
+    """
+    pieces = text.replace("\r\n", "\n").split("\r")
+    cursor.insertText(pieces[0], text_format)
+    for index, piece in enumerate(pieces[1:], start=1):
+        if not piece and index == len(pieces) - 1:
+            return True
+        cursor.movePosition(QTextCursor.MoveOperation.StartOfBlock, QTextCursor.MoveMode.KeepAnchor)
+        cursor.removeSelectedText()
+        cursor.insertText(piece, text_format)
+    return False
+
+
 class CodeWindow(QWidget):
+
+    # Emitted when a window closes with nothing left running in it, so the
+    # main window can let go of it: run windows are kept in a list that only
+    # ever grew, one per run, each holding its executor, queues and timer.
+    finished_and_closed = Signal()
 
     def __init__(self):
         # UI used to show run code or shell command result.
         super().__init__()
         self.python_compiler = None
+        # The executor writing to this window. Holding it here keeps it alive as
+        # long as the window: its timer's connection to its pump does not, so
+        # an executor nobody else holds is collected once its reader threads
+        # end, and the rest of the output and the exit line never arrive.
+        self.runner: TaskProcessManager | FileRunnerProcess | None = None
+        self._closed_while_running = False
+        # The last output ended on a lone \r, which the next applies: a line
+        # break before "\n", a rewind before anything else. Dropped instead,
+        # "\r" + "\x1b[K60%" in two pieces left the old bar: "50%60%"
+        self._rewind_pending = False
         self.grid_layout = QGridLayout()
-        self.code_result = QTextEdit()
+        # Stops the run shown here: closing the window lets it go on, and it
+        # could otherwise be stopped only by closing the IDE
+        self.stop_button = QPushButton(language_wrapper.language_word_dict.get("code_window_stop_button"))
+        self.stop_button.setEnabled(False)
+        self.stop_button.clicked.connect(self.stop_runner)
+        button_row = QHBoxLayout()
+        button_row.addWidget(self.stop_button)
+        button_row.addStretch()
+        self.grid_layout.addLayout(button_row, 0, 0)
+        self.code_result = QPlainTextEdit()
         self.code_result.setLineWrapMode(self.code_result.LineWrapMode.NoWrap)
         self.code_result.setReadOnly(True)
         self.code_result.document().setMaximumBlockCount(MAX_OUTPUT_BLOCKS)
@@ -24,7 +83,7 @@ class CodeWindow(QWidget):
         self.code_result_scroll_area.setWidgetResizable(True)
         self.code_result_scroll_area.setViewportMargins(0, 0, 0, 0)
         self.code_result_scroll_area.setWidget(self.code_result)
-        self.grid_layout.addWidget(self.code_result_scroll_area, 0, 0)
+        self.grid_layout.addWidget(self.code_result_scroll_area, 1, 0)
         # Adaptive sizing based on screen
         screen = QGuiApplication.primaryScreen()
         if screen is not None:
@@ -37,3 +96,79 @@ class CodeWindow(QWidget):
             self.resize(500, 500)
         self.setLayout(self.grid_layout)
         self.setFocus()
+
+    def closeEvent(self, event) -> None:
+        """Let the main window forget this one, unless its run is still going.
+
+        A run that is still going keeps its window in the list: it is where
+        the rest of the output goes, and closing the IDE stops it from there.
+        It is let go of when the run ends (``run_ended``); it used to stay for
+        the rest of the session.
+        """
+        if self.is_running():
+            self._closed_while_running = True
+        else:
+            self.finished_and_closed.emit()
+        super().closeEvent(event)
+
+    def run_started(self) -> None:
+        """Called by the executor once its child is running: it may be stopped from here."""
+        self.stop_button.setEnabled(True)
+
+    def run_ended(self) -> None:
+        """Called by the executor once its run is over and its output is in.
+
+        A window the user closed while the run went on can go now. Emitted
+        after the executor's timer slot returns, not from inside it: the list
+        may hold the last reference to this window, and the timer is its child.
+        """
+        self.stop_button.setEnabled(False)
+        if self._closed_while_running:
+            self._closed_while_running = False
+            QTimer.singleShot(0, self, self.finished_and_closed.emit)
+
+    def is_running(self) -> bool:
+        """Whether the executor writing here still has a child running."""
+        runner = self.runner
+        process = getattr(runner, "process", None) if runner is not None else None
+        return process is not None and process.poll() is None
+
+    def stop_runner(self) -> None:
+        """Stop the child this window shows, if one is still running."""
+        if self.runner is not None:
+            self.runner.stop()
+
+    def append_output(self, text: str, is_error: bool = False, *, own_line: bool = False) -> None:
+        """Append *text* to the end of the output, in the normal or the error colour.
+
+        The text goes in as written: a line break is wherever *text* has one.
+        *own_line* is for the window's own status messages, which should not
+        continue a line the program left unfinished. The text always lands at
+        the end, because the widget's own cursor follows the user's clicks and
+        selections, and writing there would splice output into the middle or
+        overwrite whatever the user had selected.
+
+        The view follows the output while it is scrolled to the bottom, like a
+        terminal; once the user scrolls up to read, it stays where they left it.
+        """
+        scroll_bar = self.code_result.verticalScrollBar()
+        follow_output = scroll_bar.value() >= scroll_bar.maximum()
+        cursor = QTextCursor(self.code_result.document())
+        cursor.movePosition(QTextCursor.MoveOperation.End)
+        if own_line and cursor.positionInBlock() > 0:
+            text = "\n" + text
+        text_format = QTextCharFormat()
+        color_key = "error_output_color" if is_error else "normal_output_color"
+        text_format.setForeground(actually_color_dict.get(color_key))
+        backspaces, text = take_leading_backspaces(text)
+        text = strip_terminal_controls(text)
+        if self._rewind_pending:
+            text = "\r" + text
+        elif backspaces:
+            # They take back what an earlier piece showed, never past the line's start
+            cursor.movePosition(QTextCursor.MoveOperation.Left, QTextCursor.MoveMode.KeepAnchor,
+                                min(backspaces, cursor.positionInBlock()))
+            cursor.removeSelectedText()
+        self._rewind_pending = _insert_rewinding(cursor, text, text_format)
+        if follow_output:
+            scroll_bar.setValue(scroll_bar.maximum())

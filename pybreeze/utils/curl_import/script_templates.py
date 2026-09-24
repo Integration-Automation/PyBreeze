@@ -12,14 +12,18 @@ Everything here is pure text generation; nothing is executed or sent.
 """
 from __future__ import annotations
 
-import json
 import re
 from urllib.parse import urlparse
 
 from pybreeze.utils.curl_import.curl_parser import CurlRequest
-from pybreeze.utils.curl_import.request_body import body_kind, form_parts
+from pybreeze.utils.curl_import.request_body import body_kind, form_entries, sent_headers
+from pybreeze.utils.exception.exception_tags import action_cannot_read_files_error
+from pybreeze.utils.exception.exceptions import CurlParseException
+from pybreeze.utils.json_format.view_safe import dumps_for_view
+from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.curl_import.request_codegen import (
-    REQUESTS_IMPORT, data_from_file_expr, request_statements, to_requests_code
+    REQUESTS_IMPORT, cookie_file_notes, data_from_file_expr, form_has_repeats, form_value_expr, python_literal,
+    python_string, request_statements, to_requests_code,
 )
 
 # APITestka action command that performs an HTTP request
@@ -35,26 +39,30 @@ _TEST_INDENT = "    "
 
 def _inline_json(value: object) -> str:
     """Render *value* as a compact one-line JSON literal for inline code."""
-    return json.dumps(value, ensure_ascii=False)
+    return dumps_for_view(value)
+
+
+def _inline_form(request: CurlRequest) -> str:
+    """The ``files`` value, one line, every form field in it: a dict, or pairs when a field repeats."""
+    entries = form_entries(request)
+    values = [(python_string(entry[0]), form_value_expr(entry)) for entry in entries]
+    if form_has_repeats(entries):
+        return "[" + ", ".join(f"({name}, {value})" for name, value in values) + "]"
+    return "{" + ", ".join(f"{name}: {value}" for name, value in values) + "}"
 
 
 def _apitestka_payload_lines(request: CurlRequest) -> list[str]:
     """Return the inline ``data=`` / ``files=`` / ``json=`` kwargs for the payload."""
-    if request.form_fields:
-        data_fields, file_fields = form_parts(request)
-        lines = []
-        if data_fields:
-            lines.append(f"    data={_inline_json(data_fields)},")
-        if file_fields:
-            uploads = ", ".join(
-                f"{_inline_json(field)}: open({_inline_json(name)}, \"rb\")"
-                for field, name in file_fields.items())
-            lines.append(f"    files={{{uploads}}},")
-        return lines
+    if request.has_form:
+        # Every field in files=, so the form is sent as multipart, as curl sends it
+        return [f"    files={_inline_form(request)},"] if form_entries(request) else []
     if request.data_file_refs:
         return [f"    data={data_from_file_expr(request)},"]
     kind = body_kind(request)
-    return [f"    {kind[0]}={_inline_json(kind[1])},"] if kind is not None else []
+    if kind is None:
+        return []
+    value = python_literal(kind[1], inline=True) if kind[0] == "json" else _inline_json(kind[1])
+    return [f"    {kind[0]}={value},"]
 
 
 def apitestka_call_block(request: CurlRequest) -> str:
@@ -66,13 +74,13 @@ def apitestka_call_block(request: CurlRequest) -> str:
     :param request: the parsed request
     :return: the call statement, as one block
     """
-    lines = [
+    lines = cookie_file_notes(request) + [
         "response = test_api_method_requests(",
         f"    {_inline_json(request.method)},",
         f"    test_url={_inline_json(request.url)},",
     ]
-    if request.headers:
-        lines.append(f"    headers={_inline_json(request.headers)},")
+    if sent_headers(request):
+        lines.append(f"    headers={_inline_json(sent_headers(request))},")
     if request.params:
         lines.append(f"    params={_inline_json(request.params)},")
     if request.cookies:
@@ -143,8 +151,8 @@ def to_loaddensity_python(request: CurlRequest) -> str:
 def _apitestka_action_params(request: CurlRequest) -> dict:
     """Build the parameter dict for an ``AT_test_api_method`` action."""
     params: dict = {"http_method": request.method, "test_url": request.url}
-    if request.headers:
-        params["headers"] = request.headers
+    if sent_headers(request):
+        params["headers"] = sent_headers(request)
     if request.params:
         params["params"] = request.params
     if request.cookies:
@@ -158,14 +166,27 @@ def _apitestka_action_params(request: CurlRequest) -> dict:
 def _apply_action_payload(request: CurlRequest, params: dict) -> None:
     """Add the body / form payload to an action's parameter dict.
 
-    JSON cannot carry file handles, so multipart file uploads are not represented
-    here; only the plain form fields are. Use a Python target for file uploads.
+    A form's text fields go in ``files`` as ``[null, text]``, which ``requests``
+    reads as ``(None, text)``, so the form is sent as multipart, as curl sends
+    it (``data`` sent it URL-encoded).
+
+    :raises CurlParseException: for a file upload or a body read from a file.
+        JSON cannot open a file, and the action was generated without them, as
+        if the request had none.
     """
-    if request.form_fields:
-        data_fields, _file_fields = form_parts(request)
-        if data_fields:
-            params["data"] = data_fields
+    if request.has_form:
+        entries = form_entries(request)
+        if any(is_file for _name, is_file, _value in entries):
+            pybreeze_logger.error(action_cannot_read_files_error)
+            raise CurlParseException(action_cannot_read_files_error)
+        if form_has_repeats(entries):
+            params["files"] = [[name, [None, value]] for name, _is_file, value in entries]
+        elif entries:
+            params["files"] = {name: [None, value] for name, _is_file, value in entries}
         return
+    if request.data_file_refs or request.cookie_files:
+        pybreeze_logger.error(action_cannot_read_files_error)
+        raise CurlParseException(action_cannot_read_files_error)
     kind = body_kind(request)
     if kind is not None:
         params[kind[0]] = kind[1]
@@ -191,7 +212,7 @@ def to_apitestka_action_json(request: CurlRequest) -> str:
     :param request: the parsed curl request
     :return: a formatted JSON action list
     """
-    return json.dumps([to_apitestka_action(request)], indent=4, ensure_ascii=False) + "\n"
+    return dumps_for_view([to_apitestka_action(request)], indent=4) + "\n"
 
 
 def test_function_name(request: CurlRequest) -> str:
@@ -204,7 +225,8 @@ def test_function_name(request: CurlRequest) -> str:
     segments = [segment for segment in parsed.path.split("/") if segment]
     slug_source = "_".join(segments) if segments else (parsed.hostname or "request")
     slug = re.sub(r"[^0-9A-Za-z]+", "_", slug_source).strip("_").lower()
-    name = f"test_{request.method.lower()}_{slug}".rstrip("_")
+    method = re.sub(r"[^0-9A-Za-z]+", "_", request.method).strip("_").lower()
+    name = re.sub(r"_+", "_", f"test_{method}_{slug}").rstrip("_")
     return name or "test_request"
 
 

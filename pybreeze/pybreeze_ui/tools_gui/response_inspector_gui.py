@@ -5,20 +5,21 @@ together the HTTP status, JSON format and JWT decoder tools.
 """
 from __future__ import annotations
 
-import json
 
 from PySide6.QtWidgets import (
     QHBoxLayout, QLabel, QPushButton, QTextEdit, QVBoxLayout, QWidget
 )
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.header_analyzer_gui import HeaderAnalyzerGUI
 from pybreeze.pybreeze_ui.tools_gui.http_status_gui import HttpStatusGUI
 from pybreeze.pybreeze_ui.tools_gui.json_format_gui import JsonFormatGUI
 from pybreeze.pybreeze_ui.tools_gui.jwt_decoder_gui import JwtDecoderGUI
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.pybreeze_ui.tools_gui.tool_tabs import open_tool_tab
-from pybreeze.utils.jwt_tools.jwt_decoder import humanized_timestamp_claims
+from pybreeze.utils.jwt_tools.jwt_decoder import humanized_timestamp_claims, shown_json
+from pybreeze.utils.json_format.view_safe import dumps_for_view
 from pybreeze.utils.response_inspector.response_analyzer import (
     ResponseAnalysis, analyze_response
 )
@@ -44,8 +45,8 @@ def _jwt_section(analysis: ResponseAnalysis) -> list[str]:
     word = language_wrapper.language_word_dict
     lines = [word.get("response_jwt_label")]
     for finding in analysis.jwt_findings:
-        lines.append(json.dumps(finding.decoded.header, ensure_ascii=False))
-        lines.append(json.dumps(finding.decoded.payload, indent=4, ensure_ascii=False))
+        lines.append(dumps_for_view(finding.decoded.header))
+        lines.append(shown_json(finding.decoded.payload_json, finding.decoded.payload, sort_keys=False))
         for claim, value in humanized_timestamp_claims(finding.decoded.payload).items():
             lines.append(f"    {claim}: {value}")
     lines.append("")
@@ -63,7 +64,9 @@ def build_report_text(analysis: ResponseAnalysis) -> str:
     lines.extend(_status_section(analysis))
     if analysis.headers:
         lines.append(word.get("response_headers_label"))
-        lines.extend(f"{name}: {value}" for name, value in analysis.headers.items())
+        for name, value in analysis.headers.items():
+            values = value if isinstance(value, list) else [value]
+            lines.extend(f"{name}: {one}" for one in values)
         lines.append("")
     lines.extend(_jwt_section(analysis))
     lines.append(word.get("response_body_label"))
@@ -82,6 +85,8 @@ class ResponseInspectorGUI(QWidget):
         super().__init__()
         self._main_window = main_window
         self._analysis: ResponseAnalysis | None = None
+        # The text that analysis is of: the input may have changed since
+        self._analysed_text = ""
         word = language_wrapper.language_word_dict
 
         self.input_label = QLabel(word.get("response_input_label"))
@@ -135,13 +140,14 @@ class ResponseInspectorGUI(QWidget):
     def analyze(self) -> None:
         """Analyse the pasted response, show the report, and enable cross-tool actions."""
         word = language_wrapper.language_word_dict
-        text = self.input_edit.toPlainText().strip()
+        text = exact_text(self.input_edit).strip()
         if not text:
             self._analysis = None
             self._set_cross_tool_enabled(jwt=False, status=False, headers=False, body=False)
             self.output_edit.setPlainText(word.get("response_empty_hint"))
             return
         self._analysis = analyze_response(text)
+        self._analysed_text = exact_text(self.input_edit)
         self.output_edit.setPlainText(build_report_text(self._analysis))
         self._set_cross_tool_enabled(
             jwt=bool(self._analysis.jwt_findings),
@@ -190,7 +196,9 @@ class ResponseInspectorGUI(QWidget):
             self._main_window,
             HeaderAnalyzerGUI(
                 main_window=self._main_window,
-                initial_headers=self.input_edit.toPlainText()),
+                # What was analysed, as the other hand-offs use: the input box
+                # may hold another response by now
+                initial_headers=self._analysed_text),
             "extend_tools_menu_header_analyzer_tab_label")
 
     def open_body_in_json_format(self) -> QWidget | None:

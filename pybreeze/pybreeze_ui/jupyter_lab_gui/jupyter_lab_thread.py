@@ -4,6 +4,8 @@ import os
 import socket
 import subprocess
 import sys
+import tempfile
+import threading
 import time
 import traceback
 
@@ -14,13 +16,19 @@ from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.subprocess_util import no_window_creationflags
 
 JUPYTER_STARTUP_TIMEOUT = 60
+# How much of a failure's reason the tab shows: pip's stderr can run long
+_SHOWN_REASON_CHARACTERS = 2000
+# Run by the chosen interpreter: exits 0 when it can import jupyterlab
+_HAS_JUPYTERLAB = "import importlib.util, sys; sys.exit(0 if importlib.util.find_spec('jupyterlab') else 1)"
+# The server listens on localhost; the port is checked, and polled, on IPv4 loopback
+_LOOPBACK = "127.0.0.1"
 
 
 def find_free_port() -> int:
     # Bind to loopback only: this socket exists purely to have the kernel pick an
     # unused port, which the JupyterLab server (also localhost-only) will reuse.
     with socket.socket() as s:
-        s.bind(("127.0.0.1", 0))
+        s.bind((_LOOPBACK, 0))
         return s.getsockname()[1]
 
 
@@ -48,11 +56,30 @@ def get_venv_python() -> str:
     raise RuntimeError("Cannot find venv python executable")
 
 
+def choose_python(chosen: str | None) -> str:
+    """The interpreter the lab runs in: the one chosen in the IDE, else a venv's, else the IDE's own.
+
+    It took the IDE's own or a ``venv``/``.venv`` in the working directory and
+    never the one chosen in the IDE, so kernels ran in the wrong environment,
+    and an IDE installed outside a venv could not start the lab at all.
+    """
+    if chosen:
+        return chosen
+    try:
+        return get_venv_python()
+    except RuntimeError:
+        return sys.executable
+
+
 def is_jupyter_installed(python_exe: str) -> bool:
-    # Query local venv for jupyterlab. python_exe is resolved via get_venv_python()
-    # from a fixed allowlist of venv paths; shell=False. nosec B603.
+    """Whether *python_exe* can import jupyterlab.
+
+    Asked of the interpreter, not of pip: a venv made without pip (``uv venv``)
+    failed ``pip show`` with jupyterlab installed, and the install that
+    followed failed with "No module named pip". shell=False. nosec B603.
+    """
     result = subprocess.run(  # nosec B603  # nosemgrep  # noqa: S603
-        [python_exe, "-m", "pip", "show", "jupyterlab"],
+        [python_exe, "-c", _HAS_JUPYTERLAB],
         capture_output=True,
         timeout=30,
         check=False,
@@ -66,14 +93,24 @@ class JupyterLauncherThread(QThread):
     status_update = Signal(str)
     error_occurred = Signal(str)
 
-    def __init__(self, parent=None, startup_timeout: int = JUPYTER_STARTUP_TIMEOUT):
+    def __init__(self, parent=None, startup_timeout: int = JUPYTER_STARTUP_TIMEOUT,
+                 python_exe: str | None = None):
         super().__init__(parent)
+        # The interpreter chosen in the IDE, if any (choose_python)
+        self._chosen_python = python_exe
         self.process = None
+        # Set by stop(). Checked, under the lock, before the server is started:
+        # a tab closed during the install would otherwise get a server started
+        # after it had gone, with nothing left to stop it.
+        self._stopped = threading.Event()
+        self._process_lock = threading.Lock()
+        # The server's output, kept in a file rather than a pipe
+        self._output = None
         self.startup_timeout = startup_timeout
 
     def run(self):
         try:
-            python_exe = get_venv_python()
+            python_exe = choose_python(self._chosen_python)
 
             if not is_jupyter_installed(python_exe):
                 self.status_update.emit(language_wrapper.language_word_dict.get("jupyterlab_downloading"))
@@ -97,41 +134,60 @@ class JupyterLauncherThread(QThread):
 
             port = find_free_port()
 
-            # Launch embedded JupyterLab. Server binds to localhost only (see
-            # CLAUDE.md JupyterLab integration notes); shell=False. nosec B603.
-            # The bind address is pinned explicitly: with token/password empty,
-            # XSRF disabled and a wildcard origin, the loopback-only binding is
-            # the sole barrier, so we never rely on the jupyter default staying
-            # localhost.
-            self.process = subprocess.Popen([  # nosec B603  # nosemgrep  # noqa: S603
-                python_exe,
-                "-m",
-                "jupyterlab",
-                "--no-browser",
-                "--ServerApp.ip=localhost",
-                f"--ServerApp.port={port}",
-                "--ServerApp.token=",
-                "--ServerApp.password=",
-                "--ServerApp.allow_origin=*",
-                "--ServerApp.disable_check_xsrf=True",
-            ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-                creationflags=no_window_creationflags())
+            with self._process_lock:
+                if self._stopped.is_set():
+                    return
+                self._output = tempfile.TemporaryFile(mode="w+", encoding="utf-8", errors="replace")
+                self.process = self._start_server(python_exe, port)
 
             self._wait_until_ready(port)
             self.server_ready.emit(f"http://localhost:{port}/lab")
 
-        except Exception:
-            err = traceback.format_exc()
+        # OSError includes the TimeoutError of a server that never came up
+        except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
+            if self._stopped.is_set():
+                # The tab closed: stop() ended the server, and the wait saw it
+                # exit. Not a failure, and it used to be logged as one.
+                pybreeze_logger.debug("JupyterLab launch stopped with its tab: %r", error)
+                return
             # Tear down a half-started server so a startup timeout doesn't leave an
             # orphaned JupyterLab process running and holding the port.
             self.stop()
-            self.error_occurred.emit(err)
-            pybreeze_logger.error(f"JupyterLab launch failed: {err}")
+            pybreeze_logger.error("JupyterLab launch failed: %s", traceback.format_exc())
+            # The reason, not the traceback: the tab shows it.
+            self.error_occurred.emit(str(error)[-_SHOWN_REASON_CHARACTERS:])
+
+    def _start_server(self, python_exe: str, port: int) -> subprocess.Popen:
+        """Start the server on *port*, its output going to ``self._output``.
+
+        It binds to localhost only (CLAUDE.md, Security > JupyterLab); shell=False.
+        The bind address is pinned explicitly: with token and password empty,
+        the loopback-only binding is the sole barrier, so this never relies on
+        jupyter's default staying localhost. No wildcard origin: a loopback bind
+        does not stop a browser, and with the origin open any page the user
+        visits could drive this server's API and kernel sockets. The view this
+        serves loads from the same origin, so it needs nothing relaxed.
+        """
+        return subprocess.Popen([  # nosec B603  # nosemgrep  # noqa: S603
+            python_exe,
+            "-m",
+            "jupyterlab",
+            "--no-browser",
+            "--ServerApp.ip=localhost",
+            f"--ServerApp.port={port}",
+            # A port taken since it was found fails at once: the server moved
+            # to the next free one, and the tab waited on (or loaded) this one
+            "--ServerApp.port_retries=0",
+            "--ServerApp.token=",
+            "--ServerApp.password=",
+            "--ServerApp.disable_check_xsrf=True",
+        ], stdout=self._output, stderr=subprocess.STDOUT, text=True,
+            creationflags=no_window_creationflags())
 
     @staticmethod
     def _port_open(port: int) -> bool:
         try:
-            with socket.create_connection(("localhost", port), timeout=0.5):
+            with socket.create_connection((_LOOPBACK, port), timeout=0.5):
                 return True
         except OSError:
             return False
@@ -141,23 +197,18 @@ class JupyterLauncherThread(QThread):
         process = self.process
         if process is None:
             raise RuntimeError("JupyterLab process was not started")
+        word = language_wrapper.language_word_dict
         start_time = time.time()
         while True:
             elapsed = time.time() - start_time
             if elapsed > self.startup_timeout:
-                raise TimeoutError(
-                    f"JupyterLab startup timeout ({self.startup_timeout}s)")
+                raise TimeoutError(f"{word.get('jupyterlab_timeout')} ({self.startup_timeout}s)")
 
             # Fail fast if the server died (port conflict, bad install, ...)
             # instead of polling a dead port until the full timeout elapses.
             if process.poll() is not None:
-                stderr_tail = ""
-                if process.stderr is not None:
-                    # Bounded read: the process has exited so the pipe holds at
-                    # most its buffer; cap explicitly and keep the tail message.
-                    stderr_tail = process.stderr.read(65536)[-500:]
-                raise RuntimeError(
-                    f"JupyterLab exited early (code {process.returncode}): {stderr_tail}")
+                raise RuntimeError(word.get("jupyterlab_exited_early").format(
+                    code=process.returncode, output=self._output_tail()))
 
             self.status_update.emit(
                 f"{language_wrapper.language_word_dict.get('jupyterlab_loading')} "
@@ -167,9 +218,37 @@ class JupyterLauncherThread(QThread):
                 return
             time.sleep(0.2)
 
+    def _output_tail(self, characters: int = 500) -> str:
+        """The end of what the server wrote, for an error message.
+
+        Its output goes to a temporary file rather than a pipe: nothing reads a
+        pipe once the server is up, and a server that keeps logging would block
+        in ``write()`` when the pipe buffer filled, freezing the lab with
+        nothing to show for it.
+        """
+        if self._output is None:
+            return ""
+        try:
+            self._output.seek(0)
+            return self._output.read()[-characters:]
+        except (OSError, ValueError) as error:
+            pybreeze_logger.debug("JupyterLab output could not be read: %r", error)
+            return ""
+
     def stop(self):
-        if self.process is not None:
+        """Stop the server, and any server not started yet, and let go of its output.
+
+        Safe to call twice, and from any thread. Once it has been called the
+        launcher starts no server, even one it is still installing.
+        """
+        with self._process_lock:
+            self._stopped.set()
+            process, self.process = self.process, None
+            output, self._output = self._output, None
+        if process is not None:
             try:
-                self.process.terminate()
+                process.terminate()
             except OSError as error:
                 pybreeze_logger.debug("JupyterLab terminate failed: %r", error)
+        if output is not None:
+            output.close()

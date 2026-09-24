@@ -13,17 +13,20 @@ from pathlib import Path
 from typing import Callable
 
 from PySide6.QtWidgets import (
-    QApplication, QFileDialog, QHBoxLayout, QPushButton, QTextEdit, QWidget
+    QApplication, QFileDialog, QHBoxLayout, QMessageBox, QPushButton, QTextEdit, QWidget
 )
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.exact_text import exact_text
+from pybreeze.utils.file_process.replace_file import replace_text
 from pybreeze.utils.logging.logger import pybreeze_logger
+from pybreeze.pybreeze_ui.plain_text import as_text
 
 # A value that is either fixed or computed on demand (e.g. depends on a selector)
-StrOrCallable = "str | Callable[[], str]"
+StrOrCallable = str | Callable[[], str]
 
 
-def _resolve(value) -> str:
+def _resolve(value: StrOrCallable) -> str:
     """Return *value*, calling it first if it is a callable."""
     return value() if callable(value) else value
 
@@ -34,8 +37,8 @@ class OutputActions:
     def __init__(
             self, parent: QWidget, output_edit: QTextEdit, *,
             main_window=None,
-            basename="output",
-            extension="txt",
+            basename: StrOrCallable = "output",
+            extension: StrOrCallable = "txt",
             is_valid: Callable[[], bool] | None = None) -> None:
         """
         :param parent: the tool widget the file dialog is parented to
@@ -71,13 +74,13 @@ class OutputActions:
 
     def _has_output(self) -> bool:
         """Whether the output has real content the actions should act on."""
-        if not self._output.toPlainText().strip():
+        if not exact_text(self._output).strip():
             return False
         return self._is_valid() if self._is_valid is not None else True
 
     def copy(self) -> None:
         """Copy the output to the clipboard, if there is any."""
-        text = self._output.toPlainText()
+        text = exact_text(self._output)
         clipboard = QApplication.clipboard()
         if text and clipboard is not None:
             clipboard.setText(text)
@@ -90,9 +93,9 @@ class OutputActions:
         if tab_widget is None:
             pybreeze_logger.info("output_actions.py no tab_widget to open editor in")
             return None
-        from je_editor.pyside_ui.main_ui.editor.editor_widget import EditorWidget
+        from je_editor import EditorWidget
         editor = EditorWidget(self._main_window)
-        editor.code_edit.setPlainText(self._output.toPlainText())
+        editor.code_edit.setPlainText(exact_text(self._output))
         tab_widget.addTab(
             editor, language_wrapper.language_word_dict.get("output_actions_editor_tab_label"))
         tab_widget.setCurrentWidget(editor)
@@ -124,8 +127,16 @@ class OutputActions:
         if not path:
             return None
         try:
-            Path(path).write_text(self._output.toPlainText(), encoding="utf-8")
+            # Replaced in one step: write_text emptied the file first, so a
+            # failure part-way lost the file the user chose to replace
+            replace_text(Path(path), exact_text(self._output))
         except OSError as error:
             pybreeze_logger.error("output_actions.py save failed: %r", error)
+            # It used to go to the log only, and the user took it as saved.
+            word = language_wrapper.language_word_dict
+            QMessageBox.warning(
+                self._parent, word.get("output_actions_save_failed_title"),
+                as_text(word.get("output_actions_save_failed_message").format(
+                    file=Path(path).name, error=error.strerror or error)))
             return None
         return path

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
 from enum import Enum, auto
 
 from PySide6.QtCore import QPointF, QRectF, Qt
@@ -105,6 +106,31 @@ _DEFAULT_NODE_W = 140.0
 _DEFAULT_NODE_H = 60.0
 _MIN_NODE_W = 40.0
 _MIN_NODE_H = 20.0
+# A ceiling for any item's width or height. A size read from a file is not
+# trusted: scaling a pixmap to 40,000 x 40,000 asks for a 6 GB allocation on the
+# UI thread, and a pen or a bounding rect of 1e12 drives the view's fit-to-
+# contents transform to a scale nothing can be drawn at.
+MAX_ITEM_SIZE = 10000.0
+_MIN_IMAGE_SIDE = 40.0
+# The label sizes the property panel offers; a file may say anything
+MIN_FONT_SIZE = 6
+MAX_FONT_SIZE = 48
+
+
+def _clamped_font_size(size: int) -> int:
+    """*size* as a whole point size within what the panel offers.
+
+    A file may say anything: ``1e999`` loads as infinity, which ``int()``
+    refuses with ``OverflowError`` -- not the ``ValueError`` Open reports, so
+    the open failed with no message. Anything that is not a finite number
+    gets the default size.
+    """
+    try:
+        return max(MIN_FONT_SIZE, min(int(size), MAX_FONT_SIZE))
+    except (OverflowError, TypeError, ValueError):
+        return _LABEL_FONT_SIZE
+
+
 _NODE_PEN_COLOR = "#455a64"
 _NODE_BRUSH_COLOR = "#e3f2fd"
 _NODE_SELECTED_COLOR = "#1565c0"
@@ -115,12 +141,55 @@ def _safe_color(value: str | None, fallback: str) -> QColor:
 
     A corrupted/hand-edited diagram can carry an unparseable colour string;
     ``QColor`` would silently produce an invalid (black) colour, so validate it.
+    Anything that is not a string falls back too: ``QColor(5)`` is a valid
+    near-black colour and ``QColor([])`` raises.
     """
-    if value:
+    if isinstance(value, str) and value:
         color = QColor(value)
         if color.isValid():
             return color
     return QColor(fallback)
+
+
+_MIN_LINE_WIDTH = 0.5
+_MAX_LINE_WIDTH = 10.0
+
+
+def _number(value: object, fallback: float) -> float:
+    """Return *value* as a float, or *fallback* when it is not a finite number."""
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return fallback
+    return number if math.isfinite(number) else fallback
+
+
+# How far from the origin a saved item may be placed. A file is anyone's to
+# edit: NaN (which json.loads accepts) made an item invisible and the scene's
+# bounding rect NaN, so every export failed; 1e308 overflowed the export size.
+MAX_COORDINATE = 1_000_000.0
+
+
+def _coordinate(value: object) -> float:
+    """*value* as a position within ``MAX_COORDINATE`` of the origin.
+
+    :raises ValueError: when it is not a finite number, so the entry is skipped
+    :raises TypeError: when it is not a number at all
+    """
+    number = float(value)
+    if not math.isfinite(number):
+        raise ValueError(f"not a finite coordinate: {value!r}")
+    return min(max(-MAX_COORDINATE, number), MAX_COORDINATE)
+
+
+def _clamped_line_width(width: float) -> float:
+    """Return *width* within the pen widths a connection may be drawn with."""
+    try:
+        return min(max(_MIN_LINE_WIDTH, float(width)), _MAX_LINE_WIDTH)
+    except (TypeError, ValueError):
+        return _CONNECTION_WIDTH
+
+
 _LABEL_FONT_FAMILY = "Segoe UI"
 _LABEL_FONT_SIZE = 10
 _CONNECTION_COLOR = "#37474f"
@@ -129,12 +198,28 @@ _ARROW_SIZE = 10.0
 _HANDLE_SIZE = 8.0
 
 
+@dataclass(frozen=True)
+class NodeStyle:
+    """How a node is drawn. ``None`` colours mean the defaults; unparseable ones fall back too."""
+    fill_color: str | None = None
+    border_color: str | None = None
+    font_size: int = _LABEL_FONT_SIZE
+
+
 # ---------------------------------------------------------------------------
 # Editable label — only enters edit mode on double-click
 # ---------------------------------------------------------------------------
 
 class _EditableLabel(QGraphicsTextItem):
-    """Label that is read-only by default; double-click to edit, focus-out to commit."""
+    """Label that is read-only by default; double-click to edit, focus-out to commit.
+
+    The edit is one undo step, from the double-click to the focus leaving. It
+    used to be none: undo restores whole-scene snapshots, so the next undo or
+    redo brought the old text back and what was typed could not be recovered.
+    """
+
+    # The scene as it was when editing began, until the edit is committed
+    _before_edit: dict | None = None
 
     def focusOutEvent(self, event) -> None:
         self.setTextInteractionFlags(Qt.TextInteractionFlag.NoTextInteraction)
@@ -144,9 +229,20 @@ class _EditableLabel(QGraphicsTextItem):
         parent = self.parentItem()
         if parent is not None and hasattr(parent, "_center_label"):
             parent._center_label()
+        self._record_edit()
         super().focusOutEvent(event)
 
+    def _record_edit(self) -> None:
+        """Record the text typed since the double-click as one undo step."""
+        before, self._before_edit = self._before_edit, None
+        scene = self.scene()
+        if before is not None and hasattr(scene, "record_change"):
+            scene.record_change("Edit Text", before)
+
     def mouseDoubleClickEvent(self, event) -> None:
+        scene = self.scene()
+        if self._before_edit is None and hasattr(scene, "record_change"):
+            self._before_edit = scene.to_dict()
         self.setTextInteractionFlags(Qt.TextInteractionFlag.TextEditorInteraction)
         self.setFocus(Qt.FocusReason.MouseFocusReason)
         super().mouseDoubleClickEvent(event)
@@ -165,9 +261,9 @@ _HANDLE_CURSORS: dict[str, Qt.CursorShape] = {
 
 
 class ResizeHandle(QGraphicsRectItem):
-    """Draggable corner handle for node resizing."""
+    """Draggable corner handle that resizes its node or image."""
 
-    def __init__(self, role: str, parent_node: DiagramNode):
+    def __init__(self, role: str, parent_node: DiagramNode | DiagramImage):
         hs = _HANDLE_SIZE
         super().__init__(-hs / 2, -hs / 2, hs, hs, parent_node)
         self.role = role
@@ -185,7 +281,9 @@ class ResizeHandle(QGraphicsRectItem):
     def mousePressEvent(self, event) -> None:
         if event.button() == Qt.MouseButton.LeftButton:
             self._drag_start = event.scenePos()
-            self._orig_rect = QRectF(0, 0, self._parent_node.node_w, self._parent_node.node_h)
+            # rect() is the size for nodes and images alike (0, 0, w, h); an
+            # image has no node_w, and a drag on its handle raised on every event
+            self._orig_rect = QRectF(self._parent_node.rect())
             self._orig_pos = QPointF(self._parent_node.pos())
             self._parent_node._resizing = True
             scene = self.scene()
@@ -221,6 +319,10 @@ class ResizeHandle(QGraphicsRectItem):
 class DiagramNode(QGraphicsRectItem):
     """Composite node: invisible bounding rect holds a shape body + centred label + resize handles."""
 
+    # Where a loaded node stood among the diagram's nodes and images, bottom
+    # first (the file's "stack"); None when it was not loaded or not saved
+    saved_stack: float | None = None
+
     # Class-level grid config (set by DiagramScene)
     grid_enabled: bool = False
     grid_size: int = 20
@@ -233,14 +335,14 @@ class DiagramNode(QGraphicsRectItem):
         h: float = _DEFAULT_NODE_H,
         text: str = "Node",
         shape: NodeShape = NodeShape.RECTANGLE,
-        fill_color: str | None = None,
-        border_color: str | None = None,
-        font_size: int = _LABEL_FONT_SIZE,
+        style: NodeStyle | None = None,
     ):
+        style = style or NodeStyle()
         # Clamp to a positive minimum so a zero/negative size from corrupted data
-        # can't cause a divide-by-zero when computing edge intersection points.
-        w = max(_MIN_NODE_W, w)
-        h = max(_MIN_NODE_H, h)
+        # can't cause a divide-by-zero when computing edge intersection points,
+        # and to a ceiling so one from a file cannot ask for an absurd rect.
+        w = min(max(_MIN_NODE_W, w), MAX_ITEM_SIZE)
+        h = min(max(_MIN_NODE_H, h), MAX_ITEM_SIZE)
         super().__init__(0, 0, w, h)
         self.setPen(QPen(Qt.PenStyle.NoPen))
         self.setBrush(QBrush(Qt.BrushStyle.NoBrush))
@@ -257,9 +359,9 @@ class DiagramNode(QGraphicsRectItem):
         self._resizing = False
 
         # Colors
-        self._fill_color = _safe_color(fill_color, _NODE_BRUSH_COLOR)
-        self._border_color = _safe_color(border_color, _NODE_PEN_COLOR)
-        self._font_size = font_size
+        self._fill_color = _safe_color(style.fill_color, _NODE_BRUSH_COLOR)
+        self._border_color = _safe_color(style.border_color, _NODE_PEN_COLOR)
+        self._font_size = _clamped_font_size(style.font_size)
 
         # Shape body (child)
         self.body: QGraphicsItem = self._make_body(w, h)
@@ -426,7 +528,7 @@ class DiagramNode(QGraphicsRectItem):
         self.body.setPen(QPen(color, 2))
 
     def set_font_size(self, size: int) -> None:
-        self._font_size = max(6, min(size, 48))
+        self._font_size = _clamped_font_size(size)
         self.label.setFont(QFont(_LABEL_FONT_FAMILY, self._font_size))
         self._center_label()
 
@@ -471,21 +573,29 @@ class DiagramNode(QGraphicsRectItem):
             "fill_color": self._fill_color.name(),
             "border_color": self._border_color.name(),
             "font_size": self._font_size,
+            "z": self.zValue(),
         }
 
     @classmethod
     def from_dict(cls, data: dict) -> DiagramNode:
-        return cls(
-            x=data["x"],
-            y=data["y"],
-            w=data.get("w", _DEFAULT_NODE_W),
-            h=data.get("h", _DEFAULT_NODE_H),
+        node = cls(
+            x=_coordinate(data["x"]),
+            y=_coordinate(data["y"]),
+            w=_number(data.get("w", _DEFAULT_NODE_W), _DEFAULT_NODE_W),
+            h=_number(data.get("h", _DEFAULT_NODE_H), _DEFAULT_NODE_H),
             text=data.get("text", "Node"),
-            shape=NodeShape[data.get("shape", "RECTANGLE")],
-            fill_color=data.get("fill_color", data.get("color")),
-            border_color=data.get("border_color"),
-            font_size=data.get("font_size", _LABEL_FONT_SIZE),
+            shape=NodeShape.__members__.get(data.get("shape", "RECTANGLE"), NodeShape.RECTANGLE),
+            style=NodeStyle(
+                fill_color=data.get("fill_color", data.get("color")),
+                border_color=data.get("border_color"),
+                font_size=data.get("font_size", _LABEL_FONT_SIZE),
+            ),
         )
+        # Stacking is part of the diagram: without it, nodes the user brought
+        # to the front come back in whatever order the scene lists them.
+        node.setZValue(_number(data.get("z", 0.0), 0.0))
+        node.saved_stack = _number(data.get("stack"), None)
+        return node
 
 
 # ---------------------------------------------------------------------------
@@ -507,20 +617,26 @@ class DiagramConnection(QGraphicsPathItem):
         super().__init__()
         self.source = source
         self.target = target
-        self._line_color = QColor(line_color) if line_color else QColor(_CONNECTION_COLOR)
-        self._line_width = line_width
+        # Both come straight from a saved diagram: an unparseable colour would be
+        # drawn black instead of the default, and an unclamped width blows up the
+        # bounding rect (the setters below have always clamped and validated).
+        self._line_color = _safe_color(line_color, _CONNECTION_COLOR)
+        self._line_width = _clamped_line_width(line_width)
         self._style = style
         self._apply_pen()
         self.setFlags(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable)
         self.setCacheMode(QGraphicsItem.CacheMode.DeviceCoordinateCache)
         self.setZValue(-1)
 
-        source.connections.append(self)
-        target.connections.append(self)
-
         self._label_item: QGraphicsTextItem | None = None
         if label:
             self._create_label(label)
+
+        # Only once nothing else can fail: a label that raised (not text, from
+        # a file) left the connection registered on both nodes but never in
+        # the scene, and every move of either node updated it
+        source.connections.append(self)
+        target.connections.append(self)
 
         self.update_path()
 
@@ -542,7 +658,7 @@ class DiagramConnection(QGraphicsPathItem):
         self._apply_pen()
 
     def set_line_width(self, width: float) -> None:
-        self._line_width = max(0.5, min(width, 10.0))
+        self._line_width = _clamped_line_width(width)
         self._apply_pen()
 
     def set_style(self, style: ConnectionStyle) -> None:
@@ -647,6 +763,9 @@ _IMG_SELECTED_PEN = QPen(QColor(_NODE_SELECTED_COLOR), 2)
 
 
 class DiagramImage(QGraphicsRectItem):
+    # As for DiagramNode: its place in the saved stacking order, when loaded
+    saved_stack: float | None = None
+
     """A movable, resizable image item.
 
     Stores the *source* (local path or URL string) so the diagram can be
@@ -666,6 +785,10 @@ class DiagramImage(QGraphicsRectItem):
         source: str = "",
         pixmap: QPixmap | None = None,
     ):
+        # As for a node: a size read from a file is clamped before it reaches a
+        # rect or a pixmap scale.
+        w = min(max(_MIN_IMAGE_SIDE, w), MAX_ITEM_SIZE)
+        h = min(max(_MIN_IMAGE_SIDE, h), MAX_ITEM_SIZE)
         super().__init__(0, 0, w, h)
         self.setPen(_IMG_BORDER_PEN)
         self.setBrush(QBrush(Qt.BrushStyle.NoBrush))
@@ -690,6 +813,9 @@ class DiagramImage(QGraphicsRectItem):
         self._pix_item = QGraphicsPixmapItem(self)
         self._pix_item.setTransformationMode(Qt.TransformationMode.SmoothTransformation)
         self._pix_item.setCacheMode(QGraphicsItem.CacheMode.DeviceCoordinateCache)
+        # The image as loaded: every size is scaled from it. Scaled from the
+        # shown copy, a resize down and back up left it blurred for good
+        self._original: QPixmap | None = None
         if pixmap and not pixmap.isNull():
             self._apply_pixmap(pixmap)
 
@@ -703,6 +829,7 @@ class DiagramImage(QGraphicsRectItem):
     # --- pixmap ---
 
     def _apply_pixmap(self, pixmap: QPixmap) -> None:
+        self._original = pixmap
         scaled = pixmap.scaled(
             int(self.img_w), int(self.img_h),
             Qt.AspectRatioMode.KeepAspectRatio,
@@ -731,13 +858,13 @@ class DiagramImage(QGraphicsRectItem):
         return self.pos() + QPointF(self.img_w / 2, self.img_h / 2)
 
     def set_size(self, w: float, h: float) -> None:
-        w, h = max(40.0, w), max(40.0, h)
+        w = min(max(_MIN_IMAGE_SIDE, w), MAX_ITEM_SIZE)
+        h = min(max(_MIN_IMAGE_SIDE, h), MAX_ITEM_SIZE)
         self.prepareGeometryChange()
         self.img_w, self.img_h = w, h
         self.setRect(0, 0, w, h)
-        pix = self._pix_item.pixmap()
-        if pix and not pix.isNull():
-            self._apply_pixmap(QPixmap(pix))
+        if self._original is not None:
+            self._apply_pixmap(self._original)
         self._center_label()
         self._update_handles()
 
@@ -815,16 +942,24 @@ class DiagramImage(QGraphicsRectItem):
             "h": self.img_h,
             "source": self._source,
             "caption": self.text(),
+            "z": self.zValue(),
         }
 
     @classmethod
     def from_dict(cls, data: dict) -> DiagramImage:
+        source = data.get("source", "")
         img = cls(
-            x=data["x"], y=data["y"],
-            w=data.get("w", 200), h=data.get("h", 200),
-            source=data.get("source", ""),
+            x=_coordinate(data["x"]), y=_coordinate(data["y"]),
+            w=_number(data.get("w", 200), 200), h=_number(data.get("h", 200), 200),
+            # A file is anyone's to edit: a source that is not text is dropped,
+            # not carried on into a path lookup that raises mid-load.
+            source=source if isinstance(source, str) else "",
         )
         caption = data.get("caption", "")
         if caption:
             img.set_text(caption)
+        # Images kept no stacking: after a save, a load or any undo they came
+        # back above every node, whatever had been drawn over them
+        img.setZValue(_number(data.get("z", 0.0), 0.0))
+        img.saved_stack = _number(data.get("stack"), None)
         return img

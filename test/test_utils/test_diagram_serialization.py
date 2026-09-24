@@ -88,6 +88,52 @@ class TestSceneLoadRobustness:
         # Only the valid self-connection survives.
         assert len(scene.get_all_connections()) == 1
 
+    @pytest.mark.parametrize("entry", ["x", 5, None, ["x", 0]])
+    def test_an_entry_that_is_not_an_object_is_skipped(self, qt_app, entry):
+        # An image entry "x" raised AttributeError out of Open, with no message
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene
+
+        scene = DiagramScene()
+        scene.load_from_dict({
+            "nodes": [{"id": 0, "x": 0, "y": 0, "text": "Good"}, entry],
+            "connections": [entry],
+            "images": [entry],
+        })
+
+        assert [n.text() for n in scene.get_all_nodes()] == ["Good"]
+        assert scene.get_all_connections() == []
+
+    @pytest.mark.parametrize("source", [5, None, ["a.png"], {"x": 1}])
+    def test_an_image_source_that_is_not_text_is_dropped(self, qt_app, source):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene
+
+        scene = DiagramScene()
+        scene.load_from_dict({
+            "nodes": [{"id": 0, "x": 0, "y": 0, "text": "Kept"}],
+            "images": [{"x": 0, "y": 0, "w": 10, "h": 10, "source": source}],
+        })
+
+        # It used to raise TypeError after the canvas was cleared.
+        assert [node.text() for node in scene.get_all_nodes()] == ["Kept"]
+        (image,) = scene.get_all_images()
+        assert image.source() == ""
+
+    def test_a_load_that_fails_part_way_leaves_the_canvas_as_it_was(self, qt_app, monkeypatch):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene
+
+        scene = DiagramScene()
+        scene.load_from_dict({"nodes": [{"id": 0, "x": 0, "y": 0, "text": "Before"}]})
+
+        def broken(_image_dicts):
+            raise RuntimeError("something nobody foresaw")
+
+        monkeypatch.setattr(scene, "_load_images", broken)
+        with pytest.raises(RuntimeError):
+            scene.load_from_dict({"nodes": [{"id": 0, "x": 0, "y": 0, "text": "After"}], "images": []})
+        monkeypatch.undo()
+
+        assert [node.text() for node in scene.get_all_nodes()] == ["Before"]
+
     def test_invalid_connection_style_falls_back_to_solid(self, qt_app):
         from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene
         from pybreeze.pybreeze_ui.diagram_editor.diagram_items import ConnectionStyle
@@ -197,9 +243,9 @@ class TestCorruptedNodeData:
         assert node._fill_color.isValid()
 
     def test_valid_colour_preserved(self, qt_app):
-        from pybreeze.pybreeze_ui.diagram_editor.diagram_items import DiagramNode
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_items import DiagramNode, NodeStyle
 
-        node = DiagramNode(fill_color="#ff0000")
+        node = DiagramNode(style=NodeStyle(fill_color="#ff0000"))
         assert node._fill_color.name() == "#ff0000"
 
 
@@ -239,3 +285,363 @@ class TestMermaidImportEndToEnd:
         assert {"DB", "B", "C", "Decision"} == texts
         styles = sorted(c._style.name for c in scene.get_all_connections())
         assert styles == ["DOTTED", "DOTTED", "SOLID"]  # two dotted fan-out, one thick
+
+
+class TestALoadThatCannotWorkLeavesTheDiagramAlone:
+    """What is on the canvas must survive a file that turns out not to be a diagram.
+
+    The editor keeps the path it opened last and saves back to it, so a load that
+    empties the canvas half-way is a file the next save would overwrite with the
+    wreckage.
+    """
+
+    _GOOD = {
+        "nodes": [
+            {"id": 0, "x": 0, "y": 0, "w": 100, "h": 60, "text": "A", "shape": "RECTANGLE"},
+            {"id": 1, "x": 200, "y": 0, "w": 100, "h": 60, "text": "B", "shape": "RECTANGLE"},
+        ],
+        "connections": [{"source": 0, "target": 1}],
+        "images": [],
+    }
+
+    def _loaded_scene(self):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene
+
+        scene = DiagramScene()
+        scene.load_from_dict(self._GOOD)
+        return scene
+
+    @pytest.mark.parametrize("data", [
+        [1, 2],
+        "a diagram",
+        {"nodes": "not a list"},
+        {"nodes": [], "connections": {"source": 0}},
+    ], ids=["top level list", "top level string", "nodes not a list", "connections not a list"])
+    def test_a_file_that_is_not_a_diagram_is_refused_before_anything_is_cleared(self, qt_app, data):
+        scene = self._loaded_scene()
+
+        with pytest.raises(ValueError):
+            scene.load_from_dict(data)
+
+        assert {n.text() for n in scene.get_all_nodes()} == {"A", "B"}
+        assert len(scene.get_all_connections()) == 1
+
+    @pytest.mark.parametrize("connection", [
+        {"source": [], "target": 1},
+        "a string where an object belongs",
+        {"source": 0, "target": 1, "style": []},
+    ], ids=["unhashable source", "string entry", "unhashable style"])
+    def test_one_bad_connection_costs_only_that_connection(self, qt_app, connection):
+        scene = self._loaded_scene()
+        data = {**self._GOOD, "connections": [{"source": 0, "target": 1}, connection]}
+
+        scene.load_from_dict(data)
+
+        assert {n.text() for n in scene.get_all_nodes()} == {"A", "B"}
+        assert len(scene.get_all_connections()) == 1
+
+    @pytest.mark.parametrize("connection,attribute,expected", [
+        ({"source": 0, "target": 1, "line_width": "3"}, "_line_width", 3.0),
+        ({"source": 0, "target": 1, "line_width": "wide"}, "_line_width", 2.0),
+    ], ids=["a width written as text", "a width that is not a number"])
+    def test_a_connection_with_an_odd_pen_still_loads(
+            self, qt_app, connection, attribute, expected):
+        scene = self._loaded_scene()
+
+        scene.load_from_dict({**self._GOOD, "connections": [connection]})
+
+        loaded = scene.get_all_connections()
+        assert len(loaded) == 1
+        assert getattr(loaded[0], attribute) == expected
+
+    def test_a_colour_that_is_not_text_falls_back_and_still_loads(self, qt_app):
+        scene = self._loaded_scene()
+
+        scene.load_from_dict(
+            {**self._GOOD, "connections": [{"source": 0, "target": 1, "line_color": 5}]})
+
+        loaded = scene.get_all_connections()
+        assert len(loaded) == 1
+        assert loaded[0]._line_color.name() == "#37474f"
+
+    def test_a_node_with_an_unknown_shape_keeps_its_place_as_a_rectangle(self, qt_app):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_items import NodeShape
+
+        scene = self._loaded_scene()
+
+        scene.load_from_dict({
+            "nodes": [{"id": 0, "x": 0, "y": 0, "text": "Odd", "shape": "hexagon"}],
+            "connections": [],
+        })
+
+        nodes = scene.get_all_nodes()
+        assert [n.text() for n in nodes] == ["Odd"]
+        assert nodes[0].shape_type is NodeShape.RECTANGLE
+
+    def test_an_unhashable_node_id_costs_only_that_node(self, qt_app):
+        scene = self._loaded_scene()
+
+        scene.load_from_dict({
+            "nodes": [{"id": [], "x": 0, "y": 0, "text": "Odd"},
+                      {"id": 2, "x": 0, "y": 0, "text": "Fine"}],
+            "connections": [],
+        })
+
+        assert {n.text() for n in scene.get_all_nodes()} == {"Odd", "Fine"}
+
+
+class TestSizesAndPensFromAFile:
+    def test_an_enormous_image_is_clamped(self, qt_app):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_items import DiagramImage, MAX_ITEM_SIZE
+
+        image = DiagramImage.from_dict({"x": 0, "y": 0, "w": 40000, "h": 1e30})
+
+        assert image.img_w == MAX_ITEM_SIZE
+        assert image.img_h == MAX_ITEM_SIZE
+
+    def test_a_negative_image_size_is_clamped(self, qt_app):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_items import DiagramImage
+
+        image = DiagramImage.from_dict({"x": 0, "y": 0, "w": -5, "h": -5})
+
+        assert image.img_w > 0
+        assert image.img_h > 0
+
+    def test_an_enormous_node_is_clamped(self, qt_app):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_items import (
+            DiagramNode, MAX_ITEM_SIZE,
+        )
+
+        node = DiagramNode.from_dict(
+            {"x": 0, "y": 0, "w": 1e12, "h": 1e12, "text": "Big", "shape": "RECTANGLE"})
+
+        assert node.node_w == MAX_ITEM_SIZE
+        assert node.node_h == MAX_ITEM_SIZE
+
+    def test_a_wild_line_width_is_clamped_like_the_setter_does(self, qt_app):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_items import (
+            DiagramConnection, DiagramNode, NodeShape,
+        )
+
+        node = DiagramNode(x=0, y=0, w=100, h=60, text="A", shape=NodeShape.RECTANGLE)
+        connection = DiagramConnection(node, node, line_width=1e9)
+
+        assert connection._line_width == 10.0
+
+    def test_an_unparseable_line_colour_falls_back(self, qt_app):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_items import (
+            DiagramConnection, DiagramNode, NodeShape,
+        )
+
+        node = DiagramNode(x=0, y=0, w=100, h=60, text="A", shape=NodeShape.RECTANGLE)
+        connection = DiagramConnection(node, node, line_color="not-a-colour")
+
+        assert connection._line_color.isValid()
+        assert connection._line_color.name() != "#000000"
+
+
+class TestWhereAnImageMayComeFrom:
+    """A saved diagram names its images; where those names may point is a boundary."""
+
+    def _scene_with_source(self, monkeypatch, source: str):
+        from pybreeze.pybreeze_ui.diagram_editor import diagram_scene as scene_module
+
+        looked_at: list = []
+        monkeypatch.setattr(
+            scene_module.Path, "is_file",
+            lambda self: looked_at.append(str(self)) or False)
+        scene = scene_module.DiagramScene()
+        scene.load_from_dict({
+            "nodes": [], "connections": [],
+            "images": [{"x": 0, "y": 0, "w": 100, "h": 100, "source": source}],
+        })
+        return looked_at
+
+    @pytest.mark.parametrize("source", [
+        "\\\\attacker.example\\share\\x.png",
+        "//attacker.example/share/x.png",
+    ], ids=["windows unc", "forward slash unc"])
+    def test_a_path_on_another_machine_is_never_touched(self, qt_app, monkeypatch, source):
+        # Asking whether a UNC path is a file makes Windows authenticate to that
+        # host, so a diagram from someone else must not get that far.
+        assert self._scene_with_source(monkeypatch, source) == []
+
+    def test_a_name_that_is_not_an_image_is_never_touched(self, qt_app, monkeypatch):
+        assert self._scene_with_source(monkeypatch, r"C:\Windows\System32\config\SAM") == []
+
+    def test_a_local_image_path_is_still_looked_up(self, qt_app, monkeypatch):
+        assert self._scene_with_source(monkeypatch, r"C:\pictures\logo.png") == [
+            r"C:\pictures\logo.png"]
+
+
+class TestTheUndoScope:
+    def test_a_scope_whose_body_raises_leaves_nothing_pending(self, qt_app):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_items import DiagramNode, NodeShape
+
+        scene = DiagramScene()
+        with pytest.raises(RuntimeError):
+            with scene.undo_scope("Half done"):
+                scene.addItem(DiagramNode(x=0, y=0, text="A", shape=NodeShape.RECTANGLE))
+                raise RuntimeError("something in the middle went wrong")
+
+        assert scene._pending_undo_snapshot is None
+        pushed = scene.undo_stack.count()
+        # The next gesture ends with end_undo(); with a scope left open it would
+        # push a command undoing everything since.
+        scene.end_undo()
+        assert scene.undo_stack.count() == pushed
+
+
+class TestStackingOrder:
+    def _scene_with_two_nodes(self):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene
+
+        scene = DiagramScene()
+        scene.load_from_dict({
+            "nodes": [
+                {"id": 0, "x": 0, "y": 0, "text": "A", "shape": "RECTANGLE"},
+                {"id": 1, "x": 10, "y": 10, "text": "B", "shape": "RECTANGLE"},
+            ],
+            "connections": [],
+        })
+        return scene
+
+    def test_it_survives_a_save_and_a_load(self, qt_app):
+        scene = self._scene_with_two_nodes()
+        front = [n for n in scene.get_all_nodes() if n.text() == "B"][0]
+        front.setZValue(3)
+
+        stored = scene.to_dict()
+        scene.load_from_dict(stored)
+
+        assert {n.text(): n.zValue() for n in scene.get_all_nodes()} == {"A": 0.0, "B": 3.0}
+
+    def test_bringing_a_node_to_the_front_can_be_undone(self, qt_app):
+        scene = self._scene_with_two_nodes()
+        node = [n for n in scene.get_all_nodes() if n.text() == "B"][0]
+        node.setSelected(True)
+
+        scene._change_z(1)
+        assert [n.zValue() for n in scene.get_all_nodes() if n.text() == "B"] == [1.0]
+
+        scene.undo_stack.undo()
+        assert [n.zValue() for n in scene.get_all_nodes() if n.text() == "B"] == [0.0]
+
+    def test_a_z_that_is_not_a_number_is_ignored(self, qt_app):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_items import DiagramNode
+
+        node = DiagramNode.from_dict({"x": 0, "y": 0, "text": "A", "z": "front"})
+
+        assert node.zValue() == 0.0
+
+
+class TestWhatAFileCannotDo:
+    """A .diagram.json is anyone's to edit: what it says is checked before it is drawn."""
+
+    @pytest.mark.parametrize("x", [float("nan"), float("inf"), "left"])
+    def test_an_item_placed_nowhere_is_skipped(self, qt_app, x):
+        # NaN loaded as it was: an invisible item, a NaN bounding rect, and no
+        # export would work again
+        import math
+
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene
+
+        scene = DiagramScene()
+        scene.load_from_dict({
+            "nodes": [{"id": 0, "x": x, "y": 0}, {"id": 1, "x": 10, "y": 10}],
+            "images": [{"x": x, "y": 0, "source": ""}],
+        })
+
+        assert len(scene.to_dict()["nodes"]) == 1
+        assert scene.to_dict()["images"] == []
+        rect = scene.itemsBoundingRect()
+        assert all(math.isfinite(v) for v in (rect.x(), rect.y(), rect.width(), rect.height()))
+
+    def test_an_item_placed_absurdly_far_is_brought_within_reach(self, qt_app):
+        # 1e308 made the export's image size infinite
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_items import MAX_COORDINATE
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene
+
+        scene = DiagramScene()
+        scene.load_from_dict({"nodes": [{"id": 0, "x": 1e308, "y": -1e308}]})
+
+        node = scene.to_dict()["nodes"][0]
+        assert (node["x"], node["y"]) == (MAX_COORDINATE, -MAX_COORDINATE)
+
+    def test_a_connection_that_cannot_be_built_leaves_its_nodes_alone(self, qt_app):
+        # It stayed registered on both nodes while never being in the scene
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_items import DiagramNode
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene
+
+        scene = DiagramScene()
+        scene.load_from_dict({
+            "nodes": [{"id": 0, "x": 0, "y": 0}, {"id": 1, "x": 300, "y": 0}],
+            "connections": [{"source": 0, "target": 1, "label": 5}],
+        })
+
+        nodes = [item for item in scene.items() if isinstance(item, DiagramNode)]
+        assert [len(node.connections) for node in nodes] == [0, 0]
+        assert scene.to_dict()["connections"] == []
+
+
+class TestImagesAndNodesKeepTheirStacking:
+    """An image under a node stays under it: saved, loaded, undone, or brought forward."""
+
+    def _image_then_node(self):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_items import DiagramImage, DiagramNode
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene
+
+        scene = DiagramScene()
+        image = DiagramImage(x=0, y=0, w=100, h=100)
+        scene.addItem(image)
+        node = DiagramNode(x=10, y=10, text="Over")
+        scene.addItem(node)
+        return scene
+
+    @staticmethod
+    def _kinds_bottom_first(scene) -> list[str]:
+        return [type(item).__name__ for item in scene._stackable()]
+
+    def test_a_reload_keeps_the_node_on_top(self, qt_app):
+        # A load added every node before every image: the image came back on top
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene
+
+        saved = self._image_then_node().to_dict()
+        scene = DiagramScene()
+        scene.load_from_dict(saved)
+
+        assert self._kinds_bottom_first(scene) == ["DiagramImage", "DiagramNode"]
+
+    def test_an_unrelated_undo_keeps_the_node_on_top(self, qt_app):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_items import DiagramNode
+
+        scene = self._image_then_node()
+        with scene.undo_scope("Add"):
+            scene.addItem(DiagramNode(x=500, y=500, text="Elsewhere"))
+        scene.undo_stack.undo()
+
+        assert self._kinds_bottom_first(scene) == ["DiagramImage", "DiagramNode"]
+
+    def test_bring_to_front_can_put_a_node_above_an_image(self, qt_app):
+        # With one node there was no other node to go above, so nothing moved
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_items import DiagramImage, DiagramNode
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene
+
+        scene = DiagramScene()
+        node = DiagramNode(x=10, y=10)
+        scene.addItem(node)
+        scene.addItem(DiagramImage(x=0, y=0, w=100, h=100))
+        node.setSelected(True)
+
+        scene._change_z(1)
+
+        assert self._kinds_bottom_first(scene) == ["DiagramImage", "DiagramNode"]
+
+    def test_a_file_without_stacking_loads_as_before(self, qt_app):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene
+
+        scene = DiagramScene()
+        scene.load_from_dict({"nodes": [{"id": 0, "x": 0, "y": 0}], "images": [{"x": 0, "y": 0}]})
+
+        assert self._kinds_bottom_first(scene) == ["DiagramNode", "DiagramImage"]

@@ -5,12 +5,14 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtGui import QAction, Qt
 from je_editor import language_wrapper
-from je_editor.pyside_ui.main_ui.dock.destroy_dock import DestroyDock
+
 from je_editor import jeditor_logger
 
+from pybreeze.pybreeze_ui.closing import AskingDock
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_main_widget import SSHMainWidget
 from pybreeze.pybreeze_ui.connect_gui.url.ai_code_review_gui import AICodeReviewClient
 from pybreeze.pybreeze_ui.diagram_editor.diagram_editor_widget import DiagramEditorWidget
+from pybreeze.pybreeze_ui.extend_ai_gui.code_review.cot_code_review_gui import CoTCodeReviewGUI
 from pybreeze.pybreeze_ui.extend_ai_gui.prompt_edit_gui.cot_prompt_editor_widget import CoTPromptEditor
 from pybreeze.pybreeze_ui.extend_ai_gui.prompt_edit_gui.skills_prompt_editor_widget import \
     SkillPromptEditor
@@ -42,6 +44,7 @@ _WIDGET_FACTORIES: dict[str, Callable[[PyBreezeMainWindow], object]] = {
     "SSH": lambda _win: SSHMainWidget(),
     "AICodeReview": lambda _win: AICodeReviewClient(),
     "CoTPromptEditor": lambda _win: CoTPromptEditor(),
+    "CoTCodeReview": lambda _win: CoTCodeReviewGUI(),
     "SkillPromptEditor": lambda _win: SkillPromptEditor(),
     "SkillSendGUI": lambda _win: SkillsSendGUI(),
     "DiagramEditor": lambda _win: DiagramEditorWidget(),
@@ -65,6 +68,7 @@ _DOCK_TITLES: dict[str, str] = {
     "SSH": "extend_tools_menu_ssh_client_dock_title",
     "AICodeReview": "extend_tools_menu_ai_code_review_dock_title",
     "CoTPromptEditor": "extend_tools_menu_cot_prompt_editor_dock_title",
+    "CoTCodeReview": "extend_tools_menu_cot_code_review_dock_title",
     "SkillPromptEditor": "extend_tools_menu_skill_prompt_editor_dock_title",
     "SkillSendGUI": "extend_tools_menu_skill_prompt_send_dock_title",
     "DiagramEditor": "extend_tools_menu_diagram_editor_dock_title",
@@ -96,6 +100,9 @@ _TAB_ACTIONS: tuple[tuple[str, str, str, str, str], ...] = (
     ("CoTPromptEditor", "tools_ai_cot_prompt_editor_action", "tools_ai_menu",
      "extend_tools_menu_cot_prompt_editor_tab_action",
      "extend_tools_menu_cot_prompt_editor_tab_label"),
+    ("CoTCodeReview", "tools_ai_cot_code_review_action", "tools_ai_menu",
+     "extend_tools_menu_cot_code_review_tab_action",
+     "extend_tools_menu_cot_code_review_tab_label"),
     ("SkillPromptEditor", "tools_ai_skill_prompt_editor_action", "tools_ai_menu",
      "extend_tools_menu_skill_prompt_editor_tab_action",
      "extend_tools_menu_skill_prompt_editor_tab_label"),
@@ -141,6 +148,8 @@ _DOCK_ACTIONS: tuple[tuple[str, str, str, str], ...] = (
      "extend_tools_menu_ai_code_review_dock_action"),
     ("CoTPromptEditor", "tools_cot_prompt_editor_dock_action", "dock_ai_menu",
      "extend_tools_menu_cot_prompt_editor_dock_action"),
+    ("CoTCodeReview", "tools_cot_code_review_dock_action", "dock_ai_menu",
+     "extend_tools_menu_cot_code_review_dock_action"),
     ("SkillPromptEditor", "tools_skill_prompt_editor_dock_action", "dock_ai_menu",
      "extend_tools_menu_skill_prompt_editor_dock_action"),
     ("SkillSendGUI", "tools_skill_send_dock_action", "dock_ai_menu",
@@ -262,7 +271,9 @@ def add_dock(ui_we_want_to_set: PyBreezeMainWindow, widget_type: str | None = No
 
     # 建立一個可銷毀的 Dock 容器
     # Create a destroyable dock container
-    dock_widget = DestroyDock()
+    # One that asks its widget first: a docked prompt or diagram editor with
+    # unsaved changes closed from the dock's button without a word
+    dock_widget = AskingDock()
 
     title_key = _DOCK_TITLES.get(widget_type)
     if title_key is not None:

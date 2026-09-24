@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import codecs
 import os
-import re
+import weakref
 
 import paramiko
 from PySide6.QtCore import QThread, Signal
+from PySide6.QtGui import QTextCursor
 from PySide6.QtWidgets import (
     QWidget, QLineEdit, QPushButton,
     QPlainTextEdit, QHBoxLayout, QVBoxLayout,
@@ -12,18 +14,51 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
-from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_host_key_policy import apply_host_key_policy
-from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_key_loader import load_private_key
-from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_login_widget import LoginWidget
-from pybreeze.utils.logging.logger import pybreeze_logger
-
-ANSI_ESCAPE_PATTERN = re.compile(
-    r'\x1B(?:'
-    r'\][^\x07\x1B]*(?:\x07|\x1B\\)?'  # OSC; BEL/ST-terminated or implicitly ended by the next ESC / EOF
-    r'|[@-Z\\-_]'                      # other two-character C1 Fe sequences
-    r'|\[[0-?]*[ -/]*[@-~]'           # CSI (colours, cursor movement)
-    r')'
+from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_connect_thread import (
+    CONNECT_ERRORS, SHA1_ALGORITHMS, SshConnectThread
 )
+from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_host_key_policy import (
+    apply_host_key_policy, host_key_asker
+)
+from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_key_loader import load_private_key, unloadable_key_reason
+from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_login_widget import LoginWidget
+from pybreeze.pybreeze_ui.thread_keeper import if_alive, let_run_out
+from pybreeze.pybreeze_ui.error_text import error_text
+from pybreeze.utils.logging.logger import pybreeze_logger
+from pybreeze.utils.terminal_text import split_unfinished_end, strip_terminal_controls, take_leading_backspaces
+
+# What closing a channel or a client can raise on a connection already broken
+CLOSE_ERRORS = (OSError, EOFError, paramiko.SSHException)
+
+
+class TerminalDecoder:
+    """Turn what the shell sends into text to show, one read at a time.
+
+    A read ends wherever the channel's buffer did, so it can stop inside a
+    multi-byte UTF-8 character or inside an escape sequence. Decoding each read
+    on its own showed the character as replacement marks and the escape's tail
+    as text; this carries the unfinished part over to the next read.
+    """
+
+    def __init__(self) -> None:
+        self._decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
+        self._pending = ""
+
+    def reset(self) -> None:
+        """Forget anything carried over, for a new session."""
+        self._decoder.reset()
+        self._pending = ""
+
+    def feed(self, data: bytes) -> str:
+        """Return the text *data* completes, escape sequences removed.
+
+        Backspaces it starts with are kept, for the view to take back what an
+        earlier read showed; any others are applied here.
+        """
+        text, self._pending = split_unfinished_end(self._pending + self._decoder.decode(data))
+        backspaces, text = take_leading_backspaces(text)
+        return "\x08" * backspaces + strip_terminal_controls(text)
+
 
 # Bound the terminal scrollback so an endless stream (``tail -f``, ``yes``)
 # cannot grow the document without limit; oldest lines drop once exceeded.
@@ -33,6 +68,39 @@ TERMINAL_MAX_BLOCKS = 10000
 # dropped by the TCP stack, a NAT/firewall, or the SSH server (≈ OpenSSH's
 # ServerAliveInterval).
 SSH_KEEPALIVE_SECONDS = 30
+
+
+# Longest a command waits for the server to take it (a full SSH window), on the UI thread
+SEND_TIMEOUT_SECONDS = 5
+
+
+def send_all(channel: paramiko.Channel, data: bytes) -> None:
+    """Send every byte of *data*, waiting at most ``SEND_TIMEOUT_SECONDS`` for room.
+
+    ``Channel.send`` sends what fits in one packet and the window and returns
+    how much that was: a pasted command past about 32 KB lost its tail and its
+    newline. A ``str`` was also counted in characters, not in the UTF-8 bytes
+    that go out. The shell channel is otherwise non-blocking (its reader polls
+    it), so it is blocking only for this send; a timeout raises ``OSError``.
+    """
+    channel.settimeout(SEND_TIMEOUT_SECONDS)
+    try:
+        channel.sendall(data)
+    finally:
+        channel.settimeout(0.0)
+
+
+def open_shell_channel(client: paramiko.SSHClient) -> paramiko.Channel:
+    """Open an interactive shell on *client*'s connection. Waits on the network: not the UI thread.
+
+    The channel comes back non-blocking: its reader polls it.
+    """
+    transport = client.get_transport()
+    if transport is not None:
+        transport.set_keepalive(SSH_KEEPALIVE_SECONDS)
+    channel = client.invoke_shell(term="xterm", width=120, height=32)
+    channel.settimeout(0.0)
+    return channel
 
 
 class SSHReaderThread(QThread):
@@ -57,11 +125,21 @@ class SSHReaderThread(QThread):
                 self.data_received.emit(err)
         return not (self.chan.closed or self.chan.exit_status_ready())
 
+    def _drain(self) -> None:
+        """Forward what is still buffered once the shell has exited.
+
+        The last output and the exit status can arrive together; stopping at
+        the exit status dropped whatever did not fit in the final read.
+        """
+        while self._running and (self.chan.recv_ready() or self.chan.recv_stderr_ready()):
+            self._pump_once()
+
     def run(self):
         error_msg = None
         try:
             while self._running and self._pump_once():
                 self.msleep(10)
+            self._drain()
         except Exception as e:  # noqa: BLE001 — any reader failure must surface to the UI
             pybreeze_logger.debug("SSH reader thread error: %r", e)
             error_msg = f"{self.word_dict.get('ssh_command_widget_error_message_reader_failed')} {e}"
@@ -76,6 +154,9 @@ class SSHReaderThread(QThread):
 
 
 class SSHCommandWidget(QWidget):
+    # Emitted when the session comes up or goes down, for the tab's status label
+    state_changed = Signal()
+
     def __init__(self, external_login_widget: LoginWidget = None, add_login_widget: bool = True):
         super().__init__()
         self.word_dict = language_wrapper.language_word_dict
@@ -88,6 +169,11 @@ class SSHCommandWidget(QWidget):
         self.ssh_client: paramiko.SSHClient | None = None
         self.shell_channel: paramiko.Channel | None = None
         self.reader_thread: SSHReaderThread | None = None
+        # What the shell sends, joined across reads / 跨次讀取的解碼狀態
+        self._decoder = TerminalDecoder()
+        # The connect in progress, if any / 正在進行的連線
+        self._connecting: SshConnectThread | None = None
+        host_key_asker()  # built here, on the UI thread, for a connect to ask through
 
         if self.add_login_widget:
             # 使用獨立的登入介面
@@ -139,7 +225,31 @@ class SSHCommandWidget(QWidget):
         self.command_input_edit.returnPressed.connect(self.send_command)
 
     def append_text(self, text: str):
-        self.terminal.appendPlainText(text)
+        """Add a notice of our own, starting on a line of its own."""
+        end = QTextCursor(self.terminal.document())
+        end.movePosition(QTextCursor.MoveOperation.End)
+        self._insert_output(text if end.atBlockStart() else "\n" + text)
+
+    def _insert_output(self, text: str) -> None:
+        """Add *text* where the output ends, without starting a new line.
+
+        ``appendPlainText`` starts a new paragraph on every call, so each read
+        from the shell began on a line of its own, wherever the read happened
+        to stop. The view follows the output only if it was already at the end.
+        """
+        scroll_bar = self.terminal.verticalScrollBar()
+        following = scroll_bar.value() == scroll_bar.maximum()
+        end = QTextCursor(self.terminal.document())
+        end.movePosition(QTextCursor.MoveOperation.End)
+        backspaces, text = take_leading_backspaces(text)
+        if backspaces:
+            # They take back what an earlier read showed, never past the line's start
+            end.movePosition(QTextCursor.MoveOperation.Left, QTextCursor.MoveMode.KeepAnchor,
+                             min(backspaces, end.positionInBlock()))
+            end.removeSelectedText()
+        end.insertText(text)
+        if following:
+            scroll_bar.setValue(scroll_bar.maximum())
 
     def connect_ssh(self):
         host = self.login_widget.host_edit.text().strip()
@@ -157,81 +267,114 @@ class SSHCommandWidget(QWidget):
                     "ssh_command_widget_dialog_message_input_error_host_user_required"))
             return
 
-        try:
-            # Tear down any prior session first: re-clicking Connect while already
-            # connected would otherwise leak the old SSH client and orphan its
-            # reader thread (which keeps appending to the terminal).
-            self._cleanup()
-            self.ssh_client = paramiko.SSHClient()
-            apply_host_key_policy(self.ssh_client, self)
-            pybreeze_logger.info("SSH connecting to %s:%s", host, port)
-
-            if use_key:
-                if not self._authenticate_with_key(host, port, user, key_path, password):
-                    return
-            else:
-                self.ssh_client.connect(
-                    hostname=host, port=port, username=user, password=password, timeout=10
-                )
-
-            self._start_shell(host, port, user)
-        except Exception as e:
-            self.login_widget.status_label.setText(
-                self.word_dict.get('ssh_command_widget_status_label_disconnected'))
-            self.append_text(f"{self.word_dict.get('ssh_command_widget_log_message_error')} {e}\n")
-            self._cleanup()
-
-    def _authenticate_with_key(self, host: str, port: int, user: str, key_path: str, password: str) -> bool:
-        """Perform key-based auth. Returns True on success; False if the key file is missing."""
-        if not os.path.exists(key_path):
+        if self._connecting is not None and self._connecting.isRunning():
+            return
+        if use_key and not os.path.exists(key_path):
             QMessageBox.warning(
                 self,
                 self.word_dict.get("ssh_command_widget_dialog_title_key_error"),
                 self.word_dict.get("ssh_command_widget_dialog_message_key_file_not_exist"))
-            return False
+            return
+
+        # Tear down any prior session first: re-clicking Connect while already
+        # connected would otherwise leak the old SSH client and orphan its
+        # reader thread (which keeps appending to the terminal).
+        self._cleanup()
+        client = paramiko.SSHClient()
+        self.ssh_client = client
+        apply_host_key_policy(client, self)
+        pybreeze_logger.info("SSH connecting to %s:%s", host, port)
+        opened: dict = {}
+
+        def connect() -> None:
+            if use_key:
+                self._connect_with_key(client, host, port, user, key_path, password)
+            else:
+                client.connect(
+                    hostname=host, port=port, username=user, password=password, timeout=10,
+                    disabled_algorithms=SHA1_ALGORITHMS)
+            opened["channel"] = open_shell_channel(client)
+        # The connect and the shell's channel are made off the UI thread: an
+        # unreachable host used to hold the IDE for the connect, banner and auth
+        # timeouts together, and a server gone quiet after auth held it while
+        # the channel waited to open.
+        thread = SshConnectThread(connect)
+        # Weakly: this widget keeps the thread, so slots holding the widget
+        # kept the closed and deleted widget alive with it
+        me = weakref.ref(self)
+        thread.connected.connect(lambda: if_alive(
+            me, lambda widget: widget._on_connected(client, opened["channel"], host, port, user)))
+        thread.failed.connect(lambda message: if_alive(
+            me, lambda widget: widget._on_connect_failed(client, message)))
+        self._connecting = thread
+        thread.start()
+
+    def _connect_with_key(self, client: paramiko.SSHClient, host: str, port: int, user: str,
+                          key_path: str, password: str) -> None:
+        """Key-based auth, on the connecting thread. Raises what the connect raises."""
         try:
             pkey = load_private_key(key_path, password, context="SSH")
             if pkey is None:
-                raise ValueError(
-                    self.word_dict.get(
-                        "ssh_command_widget_error_message_unsupported_private_key"
-                    ))
-            self.ssh_client.connect(hostname=host, port=port, username=user, pkey=pkey, timeout=10)
-        except Exception as e:
+                raise ValueError(self.word_dict.get(unloadable_key_reason(key_path, password)))
+            client.connect(hostname=host, port=port, username=user, pkey=pkey, timeout=10,
+                           disabled_algorithms=SHA1_ALGORITHMS)
+        except CONNECT_ERRORS as e:
             raise RuntimeError(
                 f"{self.word_dict.get('ssh_command_widget_error_message_key_auth_failed')} {e}") from e
-        return True
 
-    def _start_shell(self, host: str, port: int, user: str) -> None:
-        transport = self.ssh_client.get_transport()
-        if transport is not None:
-            transport.set_keepalive(SSH_KEEPALIVE_SECONDS)
-        self.shell_channel = self.ssh_client.invoke_shell(term='xterm', width=120, height=32)
-        self.shell_channel.settimeout(0.0)
+    def _on_connected(self, client: paramiko.SSHClient, channel: paramiko.Channel,
+                      host: str, port: int, user: str) -> None:
+        """Start reading the shell once it is open. UI thread."""
+        if client is not self.ssh_client:
+            client.close()  # disconnected, or reconnected, while it was connecting
+            return
+        self._start_shell(channel, host, port, user)
+        self.state_changed.emit()
+
+    def _on_connect_failed(self, client: paramiko.SSHClient, message: str) -> None:
+        """Say why the connect failed and drop the half-made session. UI thread."""
+        if client is not self.ssh_client:
+            return
+        self.login_widget.status_label.setText(
+            self.word_dict.get('ssh_command_widget_status_label_disconnected'))
+        self.append_text(f"{self.word_dict.get('ssh_command_widget_log_message_error')} {error_text(message)}\n")
+        self._cleanup()
+        self.state_changed.emit()
+
+    def _start_shell(self, channel: paramiko.Channel, host: str, port: int, user: str) -> None:
+        """Show *channel*'s output from now on. UI thread; nothing here waits on the network."""
+        self.shell_channel = channel
+        self._decoder.reset()
         self.reader_thread = SSHReaderThread(self.shell_channel)
         self.reader_thread.data_received.connect(self._on_data)
         self.reader_thread.closed.connect(self._on_closed)
         self.reader_thread.start()
         self.login_widget.status_label.setText(
-            self.word_dict.get("ssh_command_widget_log_message_connected"))
-        self.append_text(f"{self.word_dict.get('ssh_command_widget_log_message_connected')}"
-                         f" {host}:{port} as {user}\n")
+            self.word_dict.get("ssh_command_widget_status_label_connected"))
+        # An IPv6 address in brackets, or its port reads as one more group
+        shown_host = f"[{host}]" if ":" in host else host
+        self.append_text(self.word_dict.get("ssh_command_widget_log_message_connected").format(
+            host=shown_host, port=port, user=user) + "\n")
 
     def _on_data(self, data: bytes):
-        try:
-            text = data.decode("utf-8", errors="replace")
-            clean_text = ANSI_ESCAPE_PATTERN.sub('', text)
-            self.append_text(clean_text)
-        except Exception as error:
-            self.append_text(f"{self.word_dict.get('ssh_command_widget_error_message_decode_failed')}"
-                             f" {error}\n")
+        self._insert_output(self._decoder.feed(data))
 
     def _on_closed(self, msg: str):
+        """The shell ended on the server's side (``exit``, a dropped link).
+
+        The session goes with it, as for Disconnect: it used to stay open,
+        sending keepalives, until the next Connect or the tab closing. And the
+        status is reported through ``state_changed``, which the combined view
+        turns into both halves' state; writing "disconnected" into the shared
+        label hid a file tree that was still connected.
+        """
         self.append_text(f"\n{self.word_dict.get('ssh_command_widget_log_message_channel_closed')}"
                          f" {msg}\n")
+        self._cleanup()
         self.login_widget.status_label.setText(self.word_dict.get(
             'ssh_command_widget_status_label_disconnected'
         ))
+        self.state_changed.emit()
 
     def send_command(self):
         cmd = self.command_input_edit.text()
@@ -239,9 +382,9 @@ class SSHCommandWidget(QWidget):
             return
         if self.shell_channel and not self.shell_channel.closed:
             try:
-                self.shell_channel.send(cmd + "\n")
+                send_all(self.shell_channel, (cmd + "\n").encode("utf-8"))
                 self.command_input_edit.clear()
-            except Exception as e:
+            except (OSError, paramiko.SSHException) as e:
                 self.append_text(f"{self.word_dict.get('ssh_command_widget_error_message_send_failed')} {e}\n")
         else:
             QMessageBox.information(
@@ -254,6 +397,29 @@ class SSHCommandWidget(QWidget):
         self._cleanup()
         self.login_widget.status_label.setText(
             self.word_dict.get('ssh_command_widget_status_label_disconnected'))
+        self.state_changed.emit()
+
+    def is_connected(self) -> bool:
+        """Whether a shell session is open here."""
+        return self.shell_channel is not None and not self.shell_channel.closed
+
+    def closeEvent(self, event) -> None:
+        """End the session with the widget.
+
+        The reader thread must not outlive it: Qt aborts the process when a
+        running QThread is destroyed, and a queued signal from one lands in a
+        widget that is already gone.
+        """
+        if self._connecting is not None and self._connecting.isRunning():
+            let_run_out(self._connecting, self._connecting.connected, self._connecting.failed)
+            # A connect that still succeeds after the tab has gone would leave its
+            # session open: close it whatever way the thread ends. (After
+            # let_run_out, which cuts off everything connected to ``finished``.)
+            connecting_client = self.ssh_client
+            if connecting_client is not None:
+                self._connecting.finished.connect(connecting_client.close)
+        self._cleanup()
+        super().closeEvent(event)
 
     def _cleanup(self):
         try:
@@ -263,20 +429,20 @@ class SSHCommandWidget(QWidget):
                 self.reader_thread.blockSignals(True)
                 self.reader_thread.stop()
                 self.reader_thread.wait(1000)
-        except Exception as error:
-            pybreeze_logger.debug(f"SSH reader thread cleanup: {error}")
+        except RuntimeError as error:  # its C++ object already deleted
+            pybreeze_logger.debug("SSH reader thread cleanup: %r", error)
         self.reader_thread = None
 
         try:
             if self.shell_channel and not self.shell_channel.closed:
                 self.shell_channel.close()
-        except Exception as error:
-            pybreeze_logger.debug(f"SSH channel cleanup: {error}")
+        except CLOSE_ERRORS as error:
+            pybreeze_logger.debug("SSH channel cleanup: %r", error)
         self.shell_channel = None
 
         try:
             if self.ssh_client:
                 self.ssh_client.close()
-        except Exception as error:
-            pybreeze_logger.debug(f"SSH client cleanup: {error}")
+        except CLOSE_ERRORS as error:
+            pybreeze_logger.debug("SSH client cleanup: %r", error)
         self.ssh_client = None

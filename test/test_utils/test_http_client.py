@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 
 from pybreeze.utils.network.http_client import (
     CONNECT_TIMEOUT,
     ResponseTooLargeError,
     read_capped_text,
+    succeeded,
     truncate_for_display,
 )
 
@@ -24,9 +27,14 @@ class TestConnectTimeout:
 class FakeResponse:
     """Minimal stand-in for a streamed requests.Response."""
 
-    def __init__(self, body: bytes, encoding: str | None = "utf-8", chunk: int = 8):
+    def __init__(self, body: bytes, encoding: str | None = "utf-8", chunk: int = 8,
+                 content_type: str | None = None):
         self._body = body
         self.encoding = encoding
+        # The charset is read from the header, as a server sends it
+        if content_type is None and encoding is not None:
+            content_type = f"text/plain; charset={encoding}"
+        self.headers = {"Content-Type": content_type} if content_type else {}
         self._chunk = chunk
         self.closed = False
 
@@ -74,3 +82,109 @@ class TestTruncateForDisplay:
         assert result.startswith("x" * 100)
         assert "truncated" in result
         assert "5000" in result
+
+
+class TestAnEncodingTheServerNames:
+    def test_an_encoding_python_does_not_know_falls_back(self):
+        # The charset comes from the response's Content-Type: a server naming
+        # one Python has never heard of must not raise out of the read.
+        resp = FakeResponse("héllo".encode("utf-8"), encoding="totally-made-up")
+
+        assert read_capped_text(resp, default_encoding="utf-8") == "héllo"
+
+
+class TestSucceeded:
+    @pytest.mark.parametrize("status", [200, 201, 204, 299])
+    def test_a_2xx_is_an_answer(self, status):
+        assert succeeded(SimpleNamespace(status_code=status))
+
+    @pytest.mark.parametrize("status", [199, 301, 302, 304, 400, 404, 500])
+    def test_anything_else_is_not(self, status):
+        # 3xx included, although requests calls it "ok"
+        assert not succeeded(SimpleNamespace(status_code=status))
+
+
+class TestWhichCharset:
+    def test_text_without_a_charset_is_utf8_not_latin1(self):
+        # requests sets ISO-8859-1 on any text/* without a charset
+        resp = FakeResponse("程式碼審查 ✓".encode("utf-8"), encoding="ISO-8859-1", content_type="text/plain")
+
+        assert read_capped_text(resp) == "程式碼審查 ✓"
+
+    def test_a_named_charset_is_used(self):
+        resp = FakeResponse("héllo".encode("latin-1"), encoding="ISO-8859-1",
+                            content_type='text/plain; charset="ISO-8859-1"')
+
+        assert read_capped_text(resp) == "héllo"
+
+    def test_json_without_a_charset_is_utf8(self):
+        resp = FakeResponse('{"a": "ü"}'.encode("utf-8"), encoding=None, content_type="application/json")
+
+        assert read_capped_text(resp) == '{"a": "ü"}'
+
+
+class TestHowLongAnAnswerMayTake:
+    def test_a_trickle_is_cut_off_at_the_deadline(self, monkeypatch):
+        # Each chunk came inside the read timeout, so nothing ever stopped it
+        import requests
+
+        from pybreeze.utils.network import http_client
+
+        clock = iter(range(0, 10_000, 25))  # every chunk 25 s after the last
+        monkeypatch.setattr(http_client.time, "monotonic", lambda: next(clock))
+        resp = FakeResponse(b"x" * 100, chunk=1)
+
+        with pytest.raises(requests.exceptions.ReadTimeout):
+            read_capped_text(resp, max_seconds=300)
+        assert resp.closed
+
+    def test_a_byte_now_and_then_inside_one_chunk_is_cut_off_too(self):
+        # A server announcing a long body and sending a byte every so often held
+        # one chunk's read for as long as it liked: each byte restarted the read
+        # timeout, and the deadline was only looked at between chunks
+        import socket
+        import threading
+        import time
+
+        import requests
+
+        listener = socket.socket()
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(1)
+        stop = threading.Event()
+
+        def trickle() -> None:
+            connection, _ = listener.accept()
+            with connection:
+                connection.recv(65536)
+                connection.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 100000\r\n\r\n")
+                while not stop.is_set():
+                    try:
+                        connection.sendall(b"x")
+                    except OSError:
+                        return
+                    stop.wait(0.2)
+
+        server = threading.Thread(target=trickle, daemon=True)
+        server.start()
+        try:
+            response = requests.get(  # noqa: S113 — a loopback server this test started; timeout given
+                f"http://127.0.0.1:{listener.getsockname()[1]}/", stream=True, timeout=(5, 5))
+            started = time.monotonic()
+            with pytest.raises(requests.exceptions.ReadTimeout):
+                read_capped_text(response, max_seconds=1)
+            assert time.monotonic() - started < 4
+        finally:
+            stop.set()
+            listener.close()
+            server.join(5)
+
+    def test_a_timely_answer_is_read_whole(self):
+        assert read_capped_text(FakeResponse(b"x" * 100, chunk=1), max_seconds=300) == "x" * 100
+
+    def test_the_deadline_reads_as_a_timeout_to_the_user(self):
+        import requests
+
+        from pybreeze.utils.network.http_client import describe_request_error
+
+        assert "timed out" in describe_request_error(requests.exceptions.ReadTimeout("slow"))

@@ -57,27 +57,27 @@ PyBreeze covers the full spectrum of automation testing out of the box:
 
 | Dimension | Module | What it does |
 |---|---|---|
-| **API** | [APITestka](https://github.com/Intergration-Automation-Testing/APITestka) | RESTful testing with request builders, response analyzers, mock servers and assertions |
-| **Web** | [WebRunner](https://github.com/Intergration-Automation-Testing/WebRunner) | Browser-driven interaction and testing with driver and locator integration |
-| **GUI** | [AutoControl](https://github.com/Intergration-Automation-Testing/AutoControl) | Desktop automation via image recognition, coordinates, keyboard/mouse control and recording |
-| **Load** | [LoadDensity](https://github.com/Intergration-Automation-Testing/LoadDensity) | High-concurrency performance testing for stability under pressure |
+| **API** | [APITestka](https://github.com/Integration-Automation/APITestka) | RESTful testing with request builders, response analyzers, mock servers and assertions |
+| **Web** | [WebRunner](https://github.com/Integration-Automation/WebRunner) | Browser-driven interaction and testing with driver and locator integration |
+| **GUI** | [AutoControl](https://github.com/Integration-Automation/AutoControlGUI) | Desktop automation via image recognition, coordinates, keyboard/mouse control and recording |
+| **Load** | [LoadDensity](https://github.com/Integration-Automation/LoadDensity) | High-concurrency performance testing for stability under pressure |
 
 Plus:
 
-- **File Automation** — file and directory operations via [automation-file](https://github.com/Intergration-Automation-Testing/AutomationFile)
-- **Mail Automation** — report delivery via [MailThunder](https://github.com/Intergration-Automation-Testing/MailThunder)
-- **Test Framework** — YAML-driven execution via [TestPioneer](https://github.com/Intergration-Automation-Testing/TestPioneer)
+- **File Automation** — file and directory operations via [automation-file](https://github.com/Integration-Automation/FileAutomation)
+- **Mail Automation** — report delivery via [MailThunder](https://github.com/Integration-Automation/MailThunder)
+- **Test Framework** — YAML-driven execution via [TestPioneer](https://github.com/Integration-Automation/TestPioneer)
 
 Each module gets the same menu shape: **Run** (single script, batch directory, with or without an emailed report), **Help** (docs and GitHub open as in-IDE browser tabs), **Project** (scaffold a template directory), and where available a native GUI tab.
 
 ### IDE core
 
-- **Automation-aware syntax highlighting** — the `AT_*` / GUI / Web / Load keyword sets are registered for `.json`, and TestPioneer's schema for `.yml`, on top of JEditor's language support
-- **Code editor** — built on [JEditor](https://github.com/Intergration-Automation-Testing/JEditor): tabs, project tree, format checker, debugger, terminal, variable inspector and a git client pane
-- **Script execution** — single or batch; large action files are passed by path, never through the command line, so Windows' ~32 KB argv limit is never a factor
+- **Automation-aware syntax highlighting** — the `AT_*` / GUI / Web / Load keyword sets are registered for `.json`, and TestPioneer's schema for `.yml` and `.yaml`, on top of JEditor's language support
+- **Code editor** — built on [JEditor](https://github.com/Integration-Automation/JEDITOR): tabs, project tree, format checker, debugger, terminal, variable inspector and a git client pane
+- **Script execution** — single or batch, each run in a window of its own with a Stop button; action files are passed by path, and a script from the tab in front that is too long for a Windows command line (~32 KB) goes through a temporary file
 - **Report generation** — HTML / JSON / XML after a run, with optional email delivery
 - **Integrated JupyterLab** — launches as a tab, installing JupyterLab into the project venv if it is missing
-- **Virtual environment awareness** — `venv/` and `.venv/` are detected and used automatically
+- **Virtual environment awareness** — `venv/` and `.venv/` are detected and used automatically; without one, scripts run on the interpreter the IDE runs on
 
 ---
 
@@ -99,7 +99,7 @@ Targets: Python `requests`, a ready-to-run **pytest** test, **APITestka** (Pytho
 
 ![HAR import](images/tool_har_import.png)
 
-Select what you want — or take everything listed — and generate one script using the same targets as the cURL importer. Repeated endpoints get numbered test names so no test silently replaces another; HTTP/2 pseudo-headers are dropped, and a `Cookie` header duplicating the recorded cookie list is removed so each value is sent once. A single selected request produces exactly what the cURL importer would. HAR is JSON, so this needs nothing beyond the standard library, and nothing is ever replayed for you.
+Select what you want — or take everything listed — and generate one script using the same targets as the cURL importer. Repeated endpoints get numbered test names so no test silently replaces another; HTTP/2 pseudo-headers are dropped, and a `Cookie` header duplicating the recorded cookie list is removed so each value is sent once (cookies sharing a name, which a dictionary cannot hold, go as the header instead). An entry that cannot become a request, such as one with a malformed URL or method, is skipped and the rest load. A single selected request produces exactly what the cURL importer would. HAR is JSON, so this needs nothing beyond the standard library, and nothing is ever replayed for you.
 
 ### Response Inspector — paste a response, read everything in it
 
@@ -126,13 +126,13 @@ Each is a tab or a dock, each has the same copy / open-in-editor / save-to-file 
 ![JWT decoder, regex tester, HTTP status reference, JSON format](images/tools_montage_a.png)
 
 - **JWT Decoder** — header and payload as pretty JSON, with `exp` / `iat` / `nbf` / `auth_time` as readable UTC. Inspection only: the signature is never verified and the token is never trusted.
-- **Regex Tester** — `IGNORECASE` / `MULTILINE` / `DOTALL` / `VERBOSE`, every match with offsets, numbered groups and named groups. An invalid pattern reports a friendly error instead of crashing.
+- **Regex Tester** — `IGNORECASE` / `MULTILINE` / `DOTALL` / `VERBOSE`, every match with offsets, numbered groups and named groups. Enter in the pattern runs it. An invalid pattern reports a friendly error instead of crashing.
 - **HTTP Status Reference** — search the full status table (sourced from the standard library, so it stays current) by code prefix or keyword.
 - **JSON Format** — pretty-print or minify, with a clear validation error when the input is not JSON.
 
 ![Timestamp converter, hash generator, query/JSON, URL builder](images/tools_montage_b.png)
 
-- **Timestamp Converter** — a Unix epoch (seconds or milliseconds, auto-detected) or an ISO-8601 date-time in, every representation out in UTC. Deterministic and independent of the local time zone.
+- **Timestamp Converter** — a Unix epoch (seconds, milliseconds, microseconds or nanoseconds, auto-detected) or an ISO-8601 date-time (with `Z`, `+08`, `+0800` or `+08:00`, any number of fraction digits, basic or extended) in, every representation out in UTC. Deterministic and independent of the local time zone.
 - **Hash Generator** — SHA-256, SHA-512, SHA-1 and MD5 at once (MD5/SHA-1 for interoperability with `usedforsecurity=False`, never for security decisions).
 - **Query ⇄ JSON** — `application/x-www-form-urlencoded` to pretty JSON and back; repeated keys become arrays and vice versa.
 - **URL Parser / Builder** — scheme, host, port, path, query, fragment and credentials as an editable JSON object, and back again. Brackets IPv6 literals and re-encodes query parameters for you.
@@ -149,12 +149,12 @@ A WYSIWYG `QGraphicsScene` editor: rectangle, rounded, ellipse and diamond nodes
 
 ![SSH client](images/ssh_client.png)
 
-Password or private-key authentication, an interactive shell with ANSI handling and keepalive, and a lazy-loading SFTP tree with create-folder / rename / delete / upload / download. Unknown host keys are **not** auto-accepted: the SHA256 fingerprint is shown for confirmation on first connection (trust on first use) and persisted to `~/.pybreeze/ssh_known_hosts`.
+Password or private-key authentication (the key file picked with Browse, starting in `~/.ssh`), an interactive shell with ANSI handling and keepalive, and a lazy-loading SFTP tree with create-folder / rename / delete / upload / download. Every SFTP request runs in the background, so a stalled link never freezes the IDE. An upload asks before it replaces a file on the server, and a transfer can be cancelled from the tree's menu. Both directions write to a temporary file first, so a dropped link leaves the old copy whole. Unknown host keys are **not** auto-accepted: the SHA256 fingerprint is shown for confirmation on first connection (trust on first use) and persisted to `~/.pybreeze/ssh_known_hosts`.
 
 ### And also
 
-- **File Tree Context Menu** — right-click to create, rename, delete, copy absolute or relative paths, or reveal the item in your platform file manager. Renaming or deleting a file open in an editor tab keeps the tab in sync.
-- **Package Manager** — install automation modules and build tools from the menu, output in the shell pane.
+- **File Tree Context Menu** — right-click to create, rename, delete, copy absolute or relative paths, or reveal the item in your platform file manager (a file shown selected in Explorer and Finder). Renaming or deleting a file open in an editor tab keeps the tab in sync.
+- **Package Manager** — install automation modules and build tools from the menu, output in a run window.
 - **Integrated Documentation** — each module's docs and GitHub page open as in-IDE browser tabs.
 
 ---
@@ -165,7 +165,7 @@ Password or private-key authentication, an interactive shell with ANSI handling 
 
 ![AI code review client](images/ai_code_review.png)
 
-*Shown in the pre-send state.* Send a selection to an LLM endpoint, then accept or reject the suggestion — the tally is kept in `~/.pybreeze/response_stats.txt`. The URL is SSRF-validated, redirects are not followed, and the response body is size-capped before it reaches the panel.
+*Shown in the pre-send state.* Send a selection to an LLM endpoint, then accept or reject the suggestion — the tally is kept in `~/.pybreeze/response_stats.txt`. The URL is SSRF-validated, the connection goes only to the address that was checked, redirects are not followed, and the response body is size-capped before it reaches the panel.
 
 ### Chain-of-Thought Code Review (prthinker)
 
@@ -173,13 +173,15 @@ Run the [prthinker](https://github.com/JE-Chen/Code-Review-Framework-Combining-L
 
 ![prthinker settings](images/prthinker_setting.png)
 
-One settings form holds the inference backend (`remote`, `local`, OpenAI-compatible, Anthropic, Gemini, Cohere, Mistral, `claude-cli`, `codex-cli`), the code host (GitHub / GitLab / Gitea) and the repository. **Keys and tokens are handed to the review as environment variables, never on a command line** where a process list would show them — and they are masked in logs.
+One settings form holds the inference backend (`remote`, `local`, OpenAI-compatible, Anthropic, Gemini, Cohere, Mistral, `claude-cli`, `codex-cli`), the code host (GitHub / GitLab / Gitea) and the repository. **Keys and tokens are handed to the review as environment variables, never on a command line** where a process list would show them — and they are masked in logs. The model name goes to whichever backend is chosen. Rule retrieval (RAG) is `off` unless set to `remote`, which asks the prthinker server's `/rag`: prthinker's local rule index ships with its repository, not with the package installed from it. The review runs with the interpreter chosen in `Python Env`, so PyBreeze itself can stay on an older Python than the 3.12 prthinker needs.
 
 ### CoT Prompt Editor
 
 ![CoT prompt editor](images/cot_prompt_editor.png)
 
-Create and manage the multi-step review chain: first summary → first code review → linter → code smell detector → total summary. Each step's result feeds the final summary. Files are watched, so an external edit shows up immediately.
+Create and manage the multi-step review chain: first summary → first code review → a judge of that review → linter → code smell detector → step-by-step analysis → total summary → a judge of the summary. Each step quotes the answers it needs from the steps before it. Files are watched, so an external edit shows up immediately.
+
+Run the chain from **Tools → AI → CoT Code Review** (a tab, or a dock from the Dock menu): paste the code, give the endpoint URL, and each step's answer appears in the selector as it arrives.
 
 ### Skill Prompt Editor & Skill Send
 
@@ -200,7 +202,7 @@ PyBreeze inherits JEditor's plugin architecture, auto-discovered from a `jeditor
 - **Run configurations** — "Run with…" for interpreted (`go run main.go`) and compiled (`gcc main.c -o main` then run) languages, executed through PyBreeze's `FileRunnerProcess` with the compiled artifact cleaned up afterwards
 - **Plugin Browser** — browse and install plugins from remote repositories inside the IDE
 
-Loaded plugins appear under their own **Plugins** menu with an About entry and one run action per supported suffix. See [PLUGIN_GUIDE.md](PLUGIN_GUIDE.md) for the full API and worked examples (C, C++, Go, Java, Rust, and a French translation).
+Loaded plugins appear under their own **Plugins** menu with an About entry and one run action, labelled with the suffixes it runs. [PLUGIN_GUIDE.md](PLUGIN_GUIDE.md) covers what PyBreeze adds and links JEditor's guide, which has the full API and worked examples (C, C++, Go, Java, Rust, and a French translation).
 
 ---
 
@@ -209,7 +211,7 @@ Loaded plugins appear under their own **Plugins** menu with an About entry and o
 - **English** (default)
 - **Traditional Chinese** (繁體中文)
 
-Both dictionaries carry the same 571 keys, and a test enforces that parity so a new string can never land in one language only. Further languages can be added via translation plugins.
+Both dictionaries carry the same 708 keys, and a test enforces that parity so a new string can never land in one language only. Further languages can be added via translation plugins.
 
 ---
 
@@ -296,8 +298,8 @@ pip install pybreeze
 ### From source
 
 ```bash
-git clone https://github.com/Intergration-Automation-Testing/AutomationEditor.git
-cd AutomationEditor
+git clone https://github.com/Integration-Automation/PyBreeze.git
+cd PyBreeze
 pip install -r requirements.txt
 ```
 
@@ -305,7 +307,7 @@ pip install -r requirements.txt
 
 - **Python**: 3.10 – 3.14
 - **OS**: Windows, macOS, Linux
-- **GUI**: PySide6 6.11.0 (installed automatically)
+- **GUI**: PySide6 6.11.2 (installed automatically)
 
 ---
 
@@ -360,7 +362,7 @@ PyBreeze/
 │   │   │   ├── python_task_process_manager.py   # TaskProcessManager (core)
 │   │   │   ├── process_executor_utils.py        # build_process / start_process
 │   │   │   ├── file_runner_process.py           # Plugin run configs (any language)
-│   │   │   ├── queue_pump.py                    # Shared QTimer drain
+│   │   │   ├── queue_pump.py                    # Shared pipe reader + QTimer drain
 │   │   │   ├── api_testka/ auto_control/ web_runner/
 │   │   │   ├── load_density/ file_automation/ mail_thunder/
 │   │   │   ├── test_pioneer/ prthinker/
@@ -399,7 +401,7 @@ PyBreeze/
 
 | Package | Purpose |
 |---|---|
-| `PySide6` (6.11.0) | GUI framework (Qt for Python) |
+| `PySide6` (6.11.2) | GUI framework (Qt for Python) |
 | `je-editor` | Base code editor engine |
 | `je_api_testka` | API testing automation |
 | `je_auto_control` | GUI/desktop automation |
@@ -413,7 +415,7 @@ PyBreeze/
 
 ### Development
 
-`build`, `twine`, `sphinx`, `sphinx-rtd-theme`, `auto-py-to-exe`, `pytest`, `hypothesis`
+`build`, `twine`, `sphinx`, `sphinx-rtd-theme`, `auto-py-to-exe`, `pytest`, `pytest-cov`, `hypothesis`, `ruff`
 
 ---
 
@@ -424,7 +426,7 @@ python -m pip install -r dev_requirements.txt
 python -m pytest test/test_utils/ -v --tb=short
 ```
 
-- **Unit tests** — `test/test_utils/`, 60 modules covering the pure-logic layer (curl and HAR parsing, header analysis, SSRF validation, JWT, hashing, timestamps, diffing) plus headless Qt widget tests via `QT_QPA_PLATFORM=offscreen`, with Hypothesis property tests over the parsers
+- **Unit tests** — `test/test_utils/`, covering the pure-logic layer (curl and HAR parsing, header analysis, SSRF validation, JWT, hashing, timestamps, diffing) plus headless Qt widget tests via `QT_QPA_PLATFORM=offscreen`, with Hypothesis property tests over the parsers
 - **Startup tests** — `test/unit_test/start_automation/` launches the IDE in debug mode and verifies it comes up and exits cleanly
 - **CI** — GitHub Actions on Windows across Python 3.10 – 3.14, on every push and PR plus a nightly run
 - **Static analysis** — SonarCloud, Codacy and Bandit

@@ -4,6 +4,7 @@ from __future__ import annotations
 from PySide6.QtWidgets import QLabel, QPushButton, QTextEdit, QVBoxLayout, QWidget
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.utils.hash_tools.hash_text import hash_all
 
@@ -54,4 +55,4 @@ class HashGUI(QWidget):
 
     def compute(self) -> None:
         """Hash the entered text and show one digest per algorithm."""
-        self.output_edit.setPlainText(build_hash_text(hash_all(self.input_edit.toPlainText())))
+        self.output_edit.setPlainText(build_hash_text(hash_all(exact_text(self.input_edit))))

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QFileDialog, QMessageBox
 from je_editor import language_wrapper
@@ -102,12 +103,15 @@ def install_prthinker(ui_we_want_to_set: PyBreezeMainWindow) -> None:
     setting = load_setting()
     target = install_target(setting.get("source_path", ""))
     if not target:
-        chosen = QFileDialog(parent=ui_we_want_to_set).getExistingDirectory(
-            caption=language_wrapper.language_word_dict.get(
-                "prthinker_choose_source_path_label"))
+        # Static: called through an instance, the dialog had no parent and
+        # could open behind the main window.
+        chosen = QFileDialog.getExistingDirectory(
+            ui_we_want_to_set,
+            language_wrapper.language_word_dict.get("prthinker_choose_source_path_label"))
         target = install_target(chosen or "")
         if not target:
             messagebox = QMessageBox(ui_we_want_to_set)
+            messagebox.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
             messagebox.setWindowTitle(
                 language_wrapper.language_word_dict.get("install_menu_prthinker"))
             messagebox.setText(

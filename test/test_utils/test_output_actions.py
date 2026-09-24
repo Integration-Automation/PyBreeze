@@ -72,7 +72,7 @@ class TestOpenInEditor:
         parent, output, actions = _make(app, main_window=window)
         output.setPlainText("some code")
         with patch(
-            "je_editor.pyside_ui.main_ui.editor.editor_widget.EditorWidget", _FakeEditor
+            "je_editor.EditorWidget", _FakeEditor
         ):
             editor = actions.open_in_editor()
         assert editor.code_edit.text == "some code"
@@ -131,6 +131,23 @@ class TestSaveToFile:
         assert actions.save_to_file() is None
         parent.deleteLater()
 
+    def test_a_failed_write_is_reported(self, app, tmp_path):
+        parent, output, actions = _make(app)
+        output.setPlainText("content")
+        target = tmp_path / "no-such-folder" / "out.txt"
+        warned: list = []
+        with patch(
+            "pybreeze.pybreeze_ui.tools_gui.output_actions.QFileDialog.getSaveFileName",
+            return_value=(str(target), ""),
+        ), patch(
+            "pybreeze.pybreeze_ui.tools_gui.output_actions.QMessageBox.warning",
+            side_effect=lambda *args: warned.append(args),
+        ):
+            assert actions.save_to_file() is None
+        # It went to the log only, and the user took the file as saved.
+        assert warned and "out.txt" in warned[0][2]
+        parent.deleteLater()
+
 
 class TestSuggestedFilename:
     def test_static(self, app):
@@ -143,3 +160,63 @@ class TestSuggestedFilename:
             app, basename=lambda: "dyn", extension=lambda: "py")
         assert actions.suggested_filename() == "dyn.py"
         parent.deleteLater()
+
+
+class TestTheTextIsWhatWasGenerated:
+    """Copy, Save and Open in editor read the output as written, not Qt's display copy."""
+
+    # A no-break space and a line separator: toPlainText() turned them into a
+    # space and a newline, and a saved script no longer parsed
+    _GENERATED = 'data = "x=1\u00a0y\u2028z"\n'
+
+    def test_copy_keeps_every_character(self, app):
+        parent, output, actions = _make(app)
+        output.setPlainText(self._GENERATED)
+
+        actions.copy()
+
+        assert QApplication.clipboard().text() == self._GENERATED
+        parent.deleteLater()
+
+    def test_a_saved_file_keeps_every_character(self, app, tmp_path):
+        import ast
+
+        parent, output, actions = _make(app, basename="request", extension="py")
+        output.setPlainText(self._GENERATED)
+        target = tmp_path / "request.py"
+        with patch(
+            "pybreeze.pybreeze_ui.tools_gui.output_actions.QFileDialog.getSaveFileName",
+            return_value=(str(target), "Python (*.py)"),
+        ):
+            actions.save_to_file()
+
+        saved = target.read_text(encoding="utf-8")
+        assert saved == self._GENERATED
+        ast.parse(saved)
+        parent.deleteLater()
+
+
+def test_a_save_that_fails_leaves_the_file_it_was_replacing(app, tmp_path):
+    # write_text emptied the chosen file first; a failure part-way lost it
+    from pybreeze.utils.file_process import replace_file
+
+    parent, output, actions = _make(app)
+    output.setPlainText("new content")
+    target = tmp_path / "keep.txt"
+    target.write_text("the user's file", encoding="utf-8")
+
+    def refuse(*_args):
+        raise OSError(28, "No space left on device")
+
+    with patch(
+        "pybreeze.pybreeze_ui.tools_gui.output_actions.QFileDialog.getSaveFileName",
+        return_value=(str(target), ""),
+    ), patch(
+        "pybreeze.pybreeze_ui.tools_gui.output_actions.QMessageBox.warning",
+        side_effect=lambda *args: None,
+    ), patch.object(replace_file.os, "replace", side_effect=refuse):
+        assert actions.save_to_file() is None
+
+    assert target.read_text(encoding="utf-8") == "the user's file"
+    assert list(tmp_path.iterdir()) == [target]
+    parent.deleteLater()

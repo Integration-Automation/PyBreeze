@@ -42,7 +42,8 @@ Run With 選單
 --------
 
 關於建立自訂外掛的詳細資訊，包括語法高亮外掛和 UI 翻譯外掛，
-請參閱 `外掛指南 <https://github.com/Intergration-Automation-Testing/AutomationEditor/blob/main/PLUGIN_GUIDE.md>`_。
+請參閱 `外掛指南 <https://github.com/Integration-Automation/JEDITOR/blob/main/PLUGIN_GUIDE.md>`_
+（指南放在 JEditor repo，因為 PyBreeze 用的是 JEditor 的插件系統）。
 
 語法高亮外掛範例
 ^^^^^^^^^^^^^^^^

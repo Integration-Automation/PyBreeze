@@ -2,21 +2,23 @@
 from __future__ import annotations
 
 import json
+import os
 
 import pytest
 
 from pybreeze.extend.prthinker_extend import prthinker_setting
 from pybreeze.extend.prthinker_extend.prthinker_setting import (
-    DEFAULT_SETTING, INSTALL_EXTRAS, SECRET_SETTINGS, SETTING_ENVIRONMENT,
+    BACKENDS, DEFAULT_SETTING, INSTALL_EXTRAS, MODEL_ENVIRONMENT, RAG_MODES, SECRET_SETTINGS, SETTING_FILE_NAME,
+    SETTING_ENVIRONMENT,
     environment_for, extra_arguments, install_target, load_setting, loggable,
-    review_file_arguments, review_pr_arguments, save_setting
+    review_file_arguments, review_pr_arguments, save_setting, setting_path, split_arguments
 )
 
 
 @pytest.fixture()
 def data_dir(tmp_path, monkeypatch):
     """Keep every test's settings file inside its own temporary directory."""
-    monkeypatch.setattr(prthinker_setting, "pybreeze_data_dir", lambda: tmp_path)
+    monkeypatch.setattr(prthinker_setting, "pybreeze_data_path", lambda: tmp_path)
     return tmp_path
 
 
@@ -40,6 +42,19 @@ class TestReadingAndWritingTheSettings:
             json.dumps({"nonsense": "value"}), encoding="utf-8")
         assert "nonsense" not in load_setting()
 
+    @pytest.mark.parametrize("value", [None, 5, True, ["--a", "--b"], {"k": "v"}])
+    def test_a_value_that_is_not_text_keeps_its_default(self, data_dir, value):
+        # str() made null the text "None", sent on as the API key and model.
+        (data_dir / "prthinker_setting.json").write_text(json.dumps({
+            "openai_api_key": value, "extra_arguments": value, "repository": "owner/name",
+        }), encoding="utf-8")
+
+        setting = load_setting()
+
+        assert setting["openai_api_key"] == DEFAULT_SETTING["openai_api_key"]
+        assert setting["extra_arguments"] == DEFAULT_SETTING["extra_arguments"]
+        assert setting["repository"] == "owner/name"
+
     def test_a_broken_file_does_not_stop_the_feature(self, data_dir):
         (data_dir / "prthinker_setting.json").write_text("{ not json", encoding="utf-8")
         assert load_setting() == DEFAULT_SETTING
@@ -47,8 +62,57 @@ class TestReadingAndWritingTheSettings:
     def test_saving_reports_failure_instead_of_raising(self, data_dir, monkeypatch):
         def refuse(*_args, **_kwargs):
             raise OSError("read-only")
-        monkeypatch.setattr(
-            prthinker_setting.Path, "write_text", refuse, raising=False)
+        monkeypatch.setattr(prthinker_setting, "replace_text", refuse)
+        assert save_setting(DEFAULT_SETTING) is False
+
+    def test_a_save_that_fails_part_way_keeps_the_stored_keys(self, data_dir, monkeypatch):
+        # Written in place, the file was emptied first: a full disk lost every
+        # key and token in it, and the next save stored the defaults
+        from pybreeze.utils.file_process import replace_file
+
+        save_setting({**DEFAULT_SETTING, "openai_api_key": "kept-key"})
+
+        def disk_full(*_args, **_kwargs):
+            raise OSError(28, "No space left on device")
+
+        monkeypatch.setattr(replace_file.os, "replace", disk_full)
+
+        assert save_setting({**DEFAULT_SETTING, "openai_api_key": "new-key"}) is False
+        assert load_setting()["openai_api_key"] == "kept-key"
+        assert [path.name for path in setting_path().parent.iterdir()] == [SETTING_FILE_NAME]
+
+    def test_a_lone_surrogate_loaded_from_the_file_fails_the_save_and_keeps_it(self, data_dir):
+        # The file may hold "\ud800" escaped; UTF-8 cannot write it back, and
+        # the error escaped the install menu's slot
+        (data_dir / SETTING_FILE_NAME).write_text('{"repository": "a\\ud800"}', encoding="utf-8")
+        before = (data_dir / SETTING_FILE_NAME).read_bytes()
+
+        assert save_setting(load_setting()) is False
+        assert (data_dir / SETTING_FILE_NAME).read_bytes() == before
+        assert [path.name for path in data_dir.iterdir()] == [SETTING_FILE_NAME]
+
+    def test_the_file_is_created_for_its_owner_only(self, data_dir, monkeypatch):
+        from pybreeze.utils.file_process import replace_file
+
+        modes: list = []
+        opened = replace_file.os.open
+
+        def record(path, flags, mode=0o777):
+            modes.append(mode)
+            return opened(path, flags, mode)
+
+        monkeypatch.setattr(replace_file.os, "open", record)
+
+        assert save_setting(DEFAULT_SETTING) is True
+        assert modes == [0o600]
+
+    def test_reading_creates_nothing_and_a_file_for_the_folder_reads_as_defaults(self, tmp_path, monkeypatch):
+        # Making the folder raised FileExistsError out of every prthinker entry
+        blocked = tmp_path / ".pybreeze"
+        blocked.write_text("not a folder", encoding="utf-8")
+        monkeypatch.setattr(prthinker_setting, "pybreeze_data_path", lambda: blocked)
+
+        assert load_setting() == DEFAULT_SETTING
         assert save_setting(DEFAULT_SETTING) is False
 
 
@@ -68,6 +132,76 @@ class TestTheEnvironmentGivenToTheChild:
     def test_every_setting_that_travels_has_a_variable(self):
         # Anything in the table has to name a setting that actually exists.
         assert set(SETTING_ENVIRONMENT) <= set(DEFAULT_SETTING)
+
+
+class TestTheModelName:
+    # prthinker reads the model from a different variable for each backend.
+    @pytest.mark.parametrize("backend,variable", [
+        ("remote", "PRTHINKER_MODEL_NAME"),
+        ("local", "PRTHINKER_MODEL_NAME"),
+        ("openai", "PRTHINKER_OPENAI_MODEL"),
+        ("anthropic", "PRTHINKER_ANTHROPIC_MODEL"),
+        ("gemini", "PRTHINKER_GEMINI_MODEL"),
+        ("cohere", "PRTHINKER_COHERE_MODEL"),
+        ("mistral", "PRTHINKER_MISTRAL_MODEL"),
+        ("claude-cli", "PRTHINKER_CLAUDE_CLI_MODEL"),
+        ("codex-cli", "PRTHINKER_CODEX_CLI_MODEL"),
+    ])
+    def test_it_goes_to_the_chosen_backends_variable(self, backend, variable):
+        environment = environment_for(
+            {**DEFAULT_SETTING, "backend": backend, "model_name": " the-model "})
+        model_variables = {name for name in environment if name.endswith(("_MODEL", "_MODEL_NAME"))}
+        assert model_variables == {variable}
+        assert environment[variable] == "the-model"
+
+    def test_every_backend_on_offer_has_a_model_variable(self):
+        assert set(MODEL_ENVIRONMENT) == set(BACKENDS)
+
+    def test_no_model_leaves_every_backend_its_default(self):
+        environment = environment_for({**DEFAULT_SETTING, "backend": "anthropic"})
+        assert not [name for name in environment if name.endswith(("_MODEL", "_MODEL_NAME"))]
+
+    def test_a_model_with_no_backend_to_send_it_to_is_reported(self, monkeypatch):
+        # A stored backend PyBreeze does not offer (hand-edited, or from a newer
+        # build) has no variable to put the model in. Dropping it quietly would
+        # leave the dialog showing a model prthinker never sees.
+        logged: list = []
+        monkeypatch.setattr(
+            prthinker_setting.pybreeze_logger, "error",
+            lambda message, *args: logged.append(message % args))
+
+        environment = environment_for(
+            {**DEFAULT_SETTING, "backend": "a-backend-from-the-future",
+             "model_name": "the-model"})
+
+        assert not [name for name in environment if name.endswith(("_MODEL", "_MODEL_NAME"))]
+        assert logged and "the-model" in logged[0]
+
+
+class TestRuleRetrieval:
+    # prthinker's local RAG index ships with its repository, not its package, so
+    # the prthinker PyBreeze installs can only do without it or ask the server.
+    def test_the_choices_are_off_and_the_server(self):
+        assert RAG_MODES == ("off", "remote")
+
+    def test_it_starts_off(self):
+        # Both variables travel every time: the child inherits the IDE's
+        # environment, so one left out would be decided by whatever is exported
+        # in the shell PyBreeze was started from.
+        assert environment_for(DEFAULT_SETTING) | {
+            "PRTHINKER_RAG_ENABLED": "false", "PRTHINKER_REMOTE_RAG": "false",
+        } == environment_for(DEFAULT_SETTING)
+
+    def test_remote_asks_the_server(self):
+        environment = environment_for({**DEFAULT_SETTING, "rag": "remote"})
+        assert environment["PRTHINKER_REMOTE_RAG"] == "true"
+        assert environment["PRTHINKER_RAG_ENABLED"] == "true"
+
+    @pytest.mark.parametrize("stored", ["local", "", "REMOTE "])
+    def test_anything_else_counts_as_off(self, stored):
+        environment = environment_for({**DEFAULT_SETTING, "rag": stored})
+        assert environment["PRTHINKER_RAG_ENABLED"] == "false"
+        assert environment["PRTHINKER_REMOTE_RAG"] == "false"
 
 
 class TestTheCommandsAreBuilt:
@@ -92,6 +226,28 @@ class TestTheCommandsAreBuilt:
         setting = {**DEFAULT_SETTING, "extra_arguments": '--marker "a b"'}
         assert extra_arguments(setting) == ["--marker", "a b"]
 
+    def test_a_windows_path_keeps_its_backslashes(self):
+        assert split_arguments(
+            r'--output-dir C:\reviews\out --marker "C:\with space\x"',
+            backslash_escapes=False,
+        ) == ["--output-dir", r"C:\reviews\out", "--marker", r"C:\with space\x"]
+
+    @pytest.mark.parametrize("backslash_escapes", [False, True])
+    def test_a_hash_is_part_of_an_argument_not_a_comment(self, backslash_escapes):
+        # Everything from the first "#" on was dropped without a word
+        assert split_arguments(
+            "--language C# --rules-url https://x/y#sec --focus #security --depth 2",
+            backslash_escapes=backslash_escapes,
+        ) == ["--language", "C#", "--rules-url", "https://x/y#sec", "--focus", "#security", "--depth", "2"]
+
+    def test_where_backslash_escapes_it_still_does(self):
+        assert split_arguments(r"--marker a\ b", backslash_escapes=True) == ["--marker", "a b"]
+
+    def test_the_platform_decides_what_a_backslash_means(self):
+        setting = {**DEFAULT_SETTING, "extra_arguments": r"--output-dir out\here"}
+        expected = r"out\here" if os.sep == "\\" else "outhere"
+        assert extra_arguments(setting) == ["--output-dir", expected]
+
     def test_an_unclosed_quote_costs_only_the_extra_arguments(self):
         setting = {**DEFAULT_SETTING, "extra_arguments": '--marker "unclosed'}
         assert extra_arguments(setting) == []
@@ -101,14 +257,36 @@ class TestTheCommandsAreBuilt:
 class TestInstallingFromSource:
     """prthinker is not on PyPI, so pip is pointed at a folder."""
 
-    def test_a_real_folder_becomes_a_target_with_the_extras(self, tmp_path):
+    @staticmethod
+    def _source(folder, name="prthinker"):
+        (folder / "pyproject.toml").write_text(
+            f'[project]\nname = "{name}"\nversion = "1.0"\n', encoding="utf-8")
+        return folder
+
+    def test_its_source_folder_becomes_a_target_with_the_extras(self, tmp_path):
+        self._source(tmp_path)
         assert install_target(str(tmp_path)) == f"{tmp_path}[{INSTALL_EXTRAS}]"
 
     def test_surrounding_spaces_are_dropped(self, tmp_path):
+        self._source(tmp_path)
         assert install_target(f"  {tmp_path} ") == f"{tmp_path}[{INSTALL_EXTRAS}]"
+
+    def test_any_other_folder_is_no_target(self, tmp_path):
+        # A wrong pick used to be saved and handed to a pip that could only fail.
+        assert install_target(str(tmp_path)) == ""
+        assert install_target(str(self._source(tmp_path, name="prthinker-docs"))) == ""
 
     def test_nothing_chosen_is_no_target(self):
         assert install_target("") == ""
+
+    def test_a_relative_folder_is_given_to_pip_as_a_path(self, tmp_path, monkeypatch):
+        # "prthinker[runner]" has no separator, and pip took it for the PyPI package
+        folder = tmp_path / "prthinker"
+        folder.mkdir()
+        self._source(folder)
+        monkeypatch.chdir(tmp_path)
+
+        assert install_target("prthinker") == f"{tmp_path / 'prthinker'}[{INSTALL_EXTRAS}]"
 
     def test_a_path_that_is_not_a_folder_is_no_target(self, tmp_path):
         a_file = tmp_path / "pyproject.toml"

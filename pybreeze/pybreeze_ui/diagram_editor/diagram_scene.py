@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+from http.client import HTTPException
 from enum import Enum, auto
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
-from PySide6.QtCore import QPointF, Qt, Signal
+from PySide6.QtCore import QPointF, Qt, QThread, Signal
 from PySide6.QtGui import QColor, QPen, QPixmap, QUndoStack
 from PySide6.QtWidgets import QGraphicsLineItem, QGraphicsScene, QMenu
 from je_editor import language_wrapper
@@ -22,14 +23,34 @@ from pybreeze.pybreeze_ui.diagram_editor.diagram_net_utils import (
     ImageDownloadError,
     safe_download_image,
 )
+from pybreeze.pybreeze_ui.thread_keeper import let_run_out
+from pybreeze.pybreeze_ui.error_text import error_text
+from pybreeze.utils.exception.exception_tags import (
+    diagram_not_an_object_error,
+    diagram_section_not_a_list_error,
+)
 from pybreeze.utils.logging.logger import pybreeze_logger
 
 # Allowlist of image extensions that a saved diagram may reference on disk.
 # Defined once at module scope because it is a security boundary (only these
 # local files are read back when reloading a ``.diagram.json``).
+# How far a pasted copy sits from the original, so it is visible as a copy
+_PASTE_OFFSET = 30
+
 _VALID_IMAGE_SUFFIXES = frozenset(
     {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".svg", ".webp", ".ico"}
 )
+
+
+def _is_on_this_machine(source: str) -> bool:
+    """Whether *source* names a path on this machine rather than another host.
+
+    UNC paths (``\\\\host\\share\\x.png``, or ``//host/share/x.png``, which
+    Windows treats the same) are refused: see ``_try_load_image_source``.
+    """
+    if source.startswith(("\\\\", "//")):
+        return False
+    return not PureWindowsPath(source).drive.startswith("\\\\")
 
 
 class ToolMode(Enum):
@@ -51,11 +72,40 @@ _MODE_SHAPE_MAP: dict[ToolMode, NodeShape] = {
 }
 
 
+class ImageDownloadThread(QThread):
+    """Fetch one image for the canvas, off the UI thread.
+
+    A download is bounded by ``safe_download_image``: 15 s for each wait, 120 s
+    in all, time the IDE would otherwise spend frozen -- once per image, and again on
+    every undo, because an undo rebuilds every item from the saved dictionary.
+    Only the two signals reach the UI.
+    """
+
+    fetched = Signal(str, bytes)
+    failed = Signal(str, str)
+
+    def __init__(self, source: str) -> None:
+        super().__init__()
+        self._source = source
+
+    def run(self) -> None:
+        try:
+            data = safe_download_image(self._source)
+        # ValueError: a URL urllib cannot parse at all
+        except (ImageDownloadError, OSError, HTTPException, ValueError) as err:
+            self.failed.emit(self._source, error_text(str(err)))
+        else:
+            self.fetched.emit(self._source, data)
+
+
 class DiagramScene(QGraphicsScene):
     """QGraphicsScene with tool-mode state, undo/redo, grid, copy/paste, and align."""
 
     mode_changed = Signal(ToolMode)
     item_count_changed = Signal()
+    # An undo step was recorded: something changed, perhaps on the canvas with
+    # the selection unchanged (a resize by its handles)
+    recorded = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -72,6 +122,11 @@ class DiagramScene(QGraphicsScene):
         self.undo_stack = QUndoStack(self)
         self._pending_undo_snapshot: dict | None = None
         self._pending_undo_desc: str | None = None
+        self._pending_merge_key: str | None = None
+
+        # Images already loaded, and the fetches still going, by source
+        self._pixmap_cache: dict[str, QPixmap] = {}
+        self._image_downloads: dict[str, ImageDownloadThread] = {}
 
         # Grid
         self._grid_enabled = False
@@ -130,28 +185,57 @@ class DiagramScene(QGraphicsScene):
     def _snapshot(self) -> dict:
         return self.to_dict()
 
-    def begin_undo(self, description: str) -> None:
+    def begin_undo(self, description: str, merge_key: str | None = None) -> None:
         self._pending_undo_desc = description
+        self._pending_merge_key = merge_key
         self._pending_undo_snapshot = self._snapshot()
 
     def end_undo(self) -> None:
         if self._pending_undo_snapshot is None:
             return
-        new = self._snapshot()
-        if new != self._pending_undo_snapshot:
-            cmd = DiagramSnapshotCommand(
-                self, self._pending_undo_desc or "Edit",
-                self._pending_undo_snapshot, new,
-            )
-            self.undo_stack.push(cmd)
+        self.record_change(self._pending_undo_desc or "Edit", self._pending_undo_snapshot,
+                           merge_key=self._pending_merge_key)
         self._pending_undo_snapshot = None
         self._pending_undo_desc = None
+        self._pending_merge_key = None
+
+    def record_change(self, description: str, before: dict, merge_key: str | None = None) -> None:
+        """Put one undo step on the stack, from *before* to the scene as it is now.
+
+        Nothing is recorded when nothing changed. The command skips its first
+        redo, so the scene is not rebuilt under the caller. A step with the
+        same *merge_key* as the one before it joins that step.
+        """
+        after = self._snapshot()
+        if after != before:
+            self.undo_stack.push(DiagramSnapshotCommand(self, description, before, after, merge_key))
+            self.recorded.emit()
 
     @contextmanager
-    def undo_scope(self, description: str):
-        self.begin_undo(description)
-        yield
-        self.end_undo()
+    def undo_scope(self, description: str, merge_key: str | None = None):
+        """Take a snapshot, run the body, and record what it changed.
+
+        *merge_key*: see :meth:`record_change`.
+
+        The closing snapshot is taken even when the body raises: a scope left
+        open would be closed by the next mouse release instead, turning an
+        unrelated click into an undo entry that reverts everything since.
+        """
+        self.begin_undo(description, merge_key)
+        try:
+            yield
+        finally:
+            self.end_undo()
+
+    @staticmethod
+    def _check_is_a_diagram(data: dict) -> None:
+        """Raise ``ValueError`` unless *data* has the shape of a diagram."""
+        if not isinstance(data, dict):
+            raise ValueError(diagram_not_an_object_error.format(kind=type(data).__name__))
+        for section in ("nodes", "connections", "images"):
+            value = data.get(section, [])
+            if not isinstance(value, list):
+                raise ValueError(diagram_section_not_a_list_error.format(section=section, kind=type(value).__name__))
 
     def _restore_from_dict(self, data: dict) -> None:
         """Rebuild scene from serialised data (used by undo/redo)."""
@@ -189,7 +273,7 @@ class DiagramScene(QGraphicsScene):
 
         if self._mode == ToolMode.SELECT:
             super().mousePressEvent(event)
-            if any(isinstance(i, DiagramNode) for i in self.selectedItems()):
+            if any(isinstance(i, (DiagramNode, DiagramImage)) for i in self.selectedItems()):
                 self.begin_undo("Move")
             return
 
@@ -268,6 +352,13 @@ class DiagramScene(QGraphicsScene):
         menu = QMenu()
         item = self._node_at(event.scenePos())
         conn = self._connection_at(event.scenePos())
+        clicked = item if item is not None else conn
+        # The view pans on a right press, so the scene never selected what was
+        # clicked: Delete removed whatever was selected before. A click on an
+        # item outside the selection makes it the selection, as elsewhere.
+        if clicked is not None and not clicked.isSelected():
+            self.clearSelection()
+            clicked.setSelected(True)
 
         if item is not None or conn is not None:
             menu.addAction(
@@ -339,9 +430,25 @@ class DiagramScene(QGraphicsScene):
             self._temp_line = None
 
     def _change_z(self, direction: int) -> None:
-        for item in self.selectedItems():
-            if isinstance(item, DiagramNode):
-                item.setZValue(item.zValue() + direction)
+        """Put the selected nodes and images above (1) or below (-1) every other one.
+
+        Their order among themselves is kept. Undoable, and kept in the file.
+        Stepping z by one left a node under any other whose z was already
+        higher.
+        """
+        # Images too: with nodes alone, a node could never be put above an image
+        chosen = sorted((item for item in self.selectedItems() if isinstance(item, (DiagramNode, DiagramImage))),
+                        key=lambda item: item.zValue())
+        others = [item.zValue() for item in self._stackable() if item not in chosen]
+        if not chosen or not others:
+            return
+        with self.undo_scope("Change Z"):
+            if direction > 0:
+                start = max(others) + 1
+            else:
+                start = min(others) - len(chosen)
+            for offset, node in enumerate(chosen):
+                node.setZValue(start + offset)
 
     # ------------------------------------------------------------------
     # Operations (all undoable)
@@ -373,8 +480,14 @@ class DiagramScene(QGraphicsScene):
                 item.setSelected(True)
 
     def copy_selected(self) -> None:
+        """Put the selected items on the clipboard, in the diagram's own format.
+
+        A connection comes along only when both of its ends do; an image comes
+        along on its own, which is also what ``Ctrl+D`` on one needs.
+        """
         nodes = [i for i in self.selectedItems() if isinstance(i, DiagramNode)]
-        if not nodes:
+        images = [i for i in self.selectedItems() if isinstance(i, DiagramImage)]
+        if not nodes and not images:
             return
         node_set = set(nodes)
         connections = [
@@ -386,6 +499,7 @@ class DiagramScene(QGraphicsScene):
         self._clipboard = {
             "nodes": [n.to_dict(node_map[n]) for n in nodes],
             "connections": [c.to_dict(node_map) for c in connections],
+            "images": [image.to_dict(index) for index, image in enumerate(images)],
         }
 
     def paste_clipboard(self) -> None:
@@ -396,8 +510,8 @@ class DiagramScene(QGraphicsScene):
             id_to_node: dict[int, DiagramNode] = {}
             for nd in self._clipboard["nodes"]:
                 data = dict(nd)
-                data["x"] += 30
-                data["y"] += 30
+                data["x"] += _PASTE_OFFSET
+                data["y"] += _PASTE_OFFSET
                 node = DiagramNode.from_dict(data)
                 self.addItem(node)
                 node.setSelected(True)
@@ -414,7 +528,21 @@ class DiagramScene(QGraphicsScene):
                         style=ConnectionStyle.__members__.get(cd.get("style", "SOLID"), ConnectionStyle.SOLID),
                     )
                     self.addItem(conn)
+            self._paste_images()
         self.item_count_changed.emit()
+
+    def _paste_images(self) -> None:
+        """Add the clipboard's images, offset like its nodes and selected with them."""
+        for image_dict in self._clipboard.get("images", ()):
+            data = dict(image_dict)
+            data["x"] += _PASTE_OFFSET
+            data["y"] += _PASTE_OFFSET
+            image = DiagramImage.from_dict(data)
+            self.addItem(image)
+            image.setSelected(True)
+            source = data.get("source", "")
+            if source:
+                self._try_load_image_source(image, source)
 
     def duplicate_selected(self) -> None:
         self.copy_selected()
@@ -527,6 +655,11 @@ class DiagramScene(QGraphicsScene):
                 pos = views[0].mapToScene(views[0].viewport().rect().center())
             else:
                 pos = QPointF(0, 0)
+        if source and not pixmap.isNull():
+            # An undo rebuilds every image from its source: without this, one
+            # the editor cannot reload (a .tiff picked through "All Files")
+            # went blank, and one from a URL was downloaded again.
+            self._pixmap_cache[source] = pixmap
         with self.undo_scope("Add Image"):
             img = DiagramImage(x=pos.x() - w / 2, y=pos.y() - h / 2, w=w, h=h, source=source, pixmap=pixmap)
             self.addItem(img)
@@ -534,29 +667,68 @@ class DiagramScene(QGraphicsScene):
         return img
 
     def get_all_images(self) -> list[DiagramImage]:
-        return [item for item in self.items() if isinstance(item, DiagramImage)]
+        return [item for item in self._bottom_first() if isinstance(item, DiagramImage)]
 
     # ------------------------------------------------------------------
     # Serialisation
     # ------------------------------------------------------------------
 
     def get_all_nodes(self) -> list[DiagramNode]:
-        return [item for item in self.items() if isinstance(item, DiagramNode)]
+        return [item for item in self._bottom_first() if isinstance(item, DiagramNode)]
 
     def get_all_connections(self) -> list[DiagramConnection]:
-        return [item for item in self.items() if isinstance(item, DiagramConnection)]
+        return [item for item in self._bottom_first() if isinstance(item, DiagramConnection)]
+
+    def _bottom_first(self) -> list:
+        """Every item, lowest in the stacking order first.
+
+        Saved and restored in this order, items of equal z come back stacked as
+        they were: a later item is drawn above an earlier one. Listed topmost
+        first, an undo turned overlapping nodes the other way up.
+        """
+        return self.items(Qt.SortOrder.AscendingOrder)
 
     def to_dict(self) -> dict:
         nodes = self.get_all_nodes()
         node_map: dict[DiagramNode, int] = {n: i for i, n in enumerate(nodes)}
+        # Where each node and image stands among all of them, bottom first:
+        # items of equal z stack in the order they were added, and a load adds
+        # nodes before images
+        stack = {item: place for place, item in enumerate(self._stackable())}
         return {
-            "nodes": [n.to_dict(node_map[n]) for n in nodes],
+            "nodes": [{**n.to_dict(node_map[n]), "stack": stack[n]} for n in nodes],
             "connections": [c.to_dict(node_map) for c in self.get_all_connections()],
-            "images": [img.to_dict(i) for i, img in enumerate(self.get_all_images())],
+            "images": [{**img.to_dict(i), "stack": stack[img]} for i, img in enumerate(self.get_all_images())],
         }
 
+    def _stackable(self) -> list[DiagramNode | DiagramImage]:
+        """Nodes and images, lowest in the stacking order first."""
+        return [item for item in self._bottom_first() if isinstance(item, (DiagramNode, DiagramImage))]
+
+    def _restore_stacking(self) -> None:
+        """Add the loaded nodes and images again in their saved order, bottom first.
+
+        Items of equal z stack in the order they were added. An item the file
+        gives no place keeps its place after those that have one.
+        """
+        stacked = self._stackable()
+        if all(item.saved_stack is None for item in stacked):
+            return
+        ordered = sorted(enumerate(stacked), key=lambda pair: (
+            pair[1].saved_stack is None, pair[1].saved_stack or 0.0, pair[0]))
+        for _place, item in ordered:
+            self.removeItem(item)
+            self.addItem(item)
+
     def _clear_items(self) -> None:
-        """Remove all diagram items without clearing the scene entirely."""
+        """Remove all diagram items without clearing the scene entirely.
+
+        A connection half made (its first node clicked) is dropped too: every
+        rebuild (undo, redo, Open, New, a Mermaid import) comes through here,
+        and a connection finished from a node no longer on the canvas made
+        every later snapshot, and so Save, fail with ``KeyError``.
+        """
+        self._cancel_connection()
         # snapshot: removeItem() mutates scene items during iteration
         for item in tuple(self.items()):
             if isinstance(item, (DiagramNode, DiagramConnection, DiagramImage)):
@@ -574,6 +746,7 @@ class DiagramScene(QGraphicsScene):
         id_to_node = self._load_nodes(data.get("nodes", []))
         self._load_connections(data.get("connections", []), id_to_node)
         self._load_images(data.get("images", []))
+        self._restore_stacking()
 
     def _load_nodes(self, node_dicts: list) -> dict[int, DiagramNode]:
         id_to_node: dict[int, DiagramNode] = {}
@@ -584,65 +757,157 @@ class DiagramScene(QGraphicsScene):
                 pybreeze_logger.debug("Skipping malformed diagram node %r: %s", nd, err)
                 continue
             self.addItem(node)
-            node_id = nd.get("id")
-            if node_id is not None:
-                id_to_node[node_id] = node
+            try:
+                node_id = nd.get("id")
+                if node_id is not None:
+                    if node_id in id_to_node:
+                        # Later wins, as before; connections to that id now
+                        # point at this node, which is worth a line in the log.
+                        pybreeze_logger.debug(
+                            "Diagram has more than one node with id %r", node_id)
+                    id_to_node[node_id] = node
+            except TypeError as err:
+                # An id that cannot be a key (a list, say): the node is on the
+                # canvas, only its connections cannot find it.
+                pybreeze_logger.debug("Diagram node with an unusable id %r: %s", nd, err)
         return id_to_node
 
     def _load_connections(self, conn_dicts: list, id_to_node: dict[int, DiagramNode]) -> None:
         for cd in conn_dicts:
-            src = id_to_node.get(cd.get("source"))
-            tgt = id_to_node.get(cd.get("target"))
-            if src is None or tgt is None:
+            try:
+                conn = self._connection_from_dict(cd, id_to_node)
+            except (AttributeError, KeyError, TypeError, ValueError) as err:
+                pybreeze_logger.debug("Skipping malformed diagram connection %r: %s", cd, err)
                 continue
-            style = ConnectionStyle.__members__.get(cd.get("style", "SOLID"), ConnectionStyle.SOLID)
-            conn = DiagramConnection(
-                src, tgt,
-                label=cd.get("label", ""),
-                line_color=cd.get("line_color"),
-                line_width=cd.get("line_width", 2.0),
-                style=style,
-            )
-            self.addItem(conn)
+            if conn is not None:
+                self.addItem(conn)
+
+    @staticmethod
+    def _connection_from_dict(
+            cd: dict, id_to_node: dict[int, DiagramNode]) -> DiagramConnection | None:
+        """Build one connection, or ``None`` when either end is not on the canvas."""
+        src = id_to_node.get(cd.get("source"))
+        tgt = id_to_node.get(cd.get("target"))
+        if src is None or tgt is None:
+            return None
+        style = ConnectionStyle.__members__.get(cd.get("style", "SOLID"), ConnectionStyle.SOLID)
+        return DiagramConnection(
+            src, tgt,
+            label=cd.get("label", ""),
+            line_color=cd.get("line_color"),
+            line_width=cd.get("line_width", 2.0),
+            style=style,
+        )
 
     def _load_images(self, image_dicts: list) -> None:
         for img_d in image_dicts:
             try:
                 img = DiagramImage.from_dict(img_d)
-            except (KeyError, ValueError, TypeError) as err:
+            # AttributeError: an entry that is not an object ("x"), which
+            # escaped Open without a message
+            except (AttributeError, KeyError, ValueError, TypeError) as err:
                 pybreeze_logger.debug("Skipping malformed diagram image %r: %s", img_d, err)
                 continue
             self.addItem(img)
-            # Try to reload pixmap from source
-            source = img_d.get("source", "")
+            # Try to reload pixmap from source; from_dict has already dropped
+            # one that is not text, which raised here after the canvas was cleared
+            source = img.source()
             if source:
                 self._try_load_image_source(img, source)
 
     def _try_load_image_source(self, img: DiagramImage, source: str) -> None:
-        """Load pixmap from local path or URL into a DiagramImage.
+        """Put the image *source* names into *img*, fetching it if it is a URL.
 
-        Local paths are restricted to existing image files.
-        URLs are validated and size-limited via ``safe_download_image``.
+        Local paths are restricted to existing image files on this machine. A URL
+        is validated and size-limited by ``safe_download_image``, on its own
+        thread, and what comes back is kept for the rest of the session: an undo
+        rebuilds every item, and re-fetching each time froze the IDE for as long
+        as the host took to answer.
         """
+        cached = self._pixmap_cache.get(source)
+        if cached is not None:
+            img.set_pixmap(cached, source)
+            return
         path = Path(source)
-        # Only load if the file actually exists and has an allowlisted extension.
-        if path.is_file() and path.suffix.lower() in _VALID_IMAGE_SUFFIXES:
+        # The extension is checked before the filesystem is touched, and a path
+        # on another machine is refused outright: on Windows, merely asking
+        # whether \\host\share\x.png is a file makes the SMB client authenticate
+        # to that host, so a diagram from someone else could collect the user's
+        # credentials, and an unreachable host would block the UI thread until
+        # SMB gives up.
+        if (path.suffix.lower() in _VALID_IMAGE_SUFFIXES
+                and _is_on_this_machine(source) and path.is_file()):
             pix = QPixmap(str(path))
             if not pix.isNull():
+                self._pixmap_cache[source] = pix
                 img.set_pixmap(pix, source)
                 return
-        if source.startswith(("http://", "https://")):  # NOSONAR S5332 — scheme detection; actual fetch goes through safe_download_image with SSRF validation
-            try:
-                data = safe_download_image(source)
-                pix = QPixmap()
-                pix.loadFromData(data)
-                if not pix.isNull():
-                    img.set_pixmap(pix, source)
-            except (ImageDownloadError, OSError) as err:
-                pybreeze_logger.debug("safe_download_image failed: %s", err)
+        if source.startswith(("http://", "https://")):  # NOSONAR S5332 — scheme check; fetched via safe_download_image
+            self._start_image_download(source)
+
+    def _start_image_download(self, source: str) -> None:
+        """Fetch *source* in the background, unless a fetch for it is already going."""
+        if source in self._image_downloads:
+            return
+        thread = ImageDownloadThread(source)
+        thread.fetched.connect(self._on_image_fetched)
+        thread.failed.connect(self._on_image_download_failed)
+        thread.finished.connect(lambda: self._image_downloads.pop(source, None))
+        self._image_downloads[source] = thread
+        thread.start()
+
+    def _on_image_fetched(self, source: str, data: bytes) -> None:
+        """Hand a fetched image to every item still waiting for it. UI thread."""
+        pix = QPixmap()
+        pix.loadFromData(data)
+        if pix.isNull():
+            pybreeze_logger.debug("Fetched image is not an image: %s", source)
+            return
+        self._pixmap_cache[source] = pix
+        for image in self.get_all_images():
+            if image.source() == source:
+                image.set_pixmap(pix, source)
+
+    @staticmethod
+    def _on_image_download_failed(source: str, message: str) -> None:
+        pybreeze_logger.debug("safe_download_image failed for %s: %s", source, message)
+
+    def let_image_downloads_run_out(self) -> None:
+        """Cut every fetch still going off from the scene, and keep it until it ends.
+
+        Called when the editor closes: a running QThread destroyed with the
+        scene aborts the process, and a late signal would reach a dead scene.
+        Waiting for them instead would hold the UI for up to a download's
+        timeout.
+        """
+        for thread in tuple(self._image_downloads.values()):
+            if thread.isRunning():
+                let_run_out(thread, thread.fetched, thread.failed)
+        self._image_downloads.clear()
 
     def load_from_dict(self, data: dict) -> None:
+        """Replace what is on the canvas with *data*.
+
+        The canvas is cleared only once *data* is known to be a diagram: the
+        editor saves back to the file it opened last, so a load that emptied the
+        canvas half-way would be written over the user's own file by the next
+        save.
+
+        Each entry is loaded on its own guard, and should anything still fail
+        part-way, the canvas is put back as it was before the error goes on:
+        a load either happens or changes nothing.
+
+        :param data: a diagram, as :meth:`to_dict` writes it
+        :raises ValueError: when *data* is not a diagram; nothing is cleared then
+        """
+        self._check_is_a_diagram(data)
+        previous = self.to_dict()
         self._clear_items()
-        self._load_items(data)
+        try:
+            self._load_items(data)
+        except Exception:  # restores the canvas, then re-raises
+            self._clear_items()
+            self._load_items(previous)
+            raise
         self.undo_stack.clear()
         self.item_count_changed.emit()

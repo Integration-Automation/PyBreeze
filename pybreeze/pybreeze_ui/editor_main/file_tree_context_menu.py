@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import os
 import shutil
+import stat
 import subprocess
 import sys
 from collections.abc import Callable
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
 from PySide6.QtCore import Qt, QModelIndex
 from PySide6.QtGui import QCursor
@@ -13,9 +14,13 @@ from PySide6.QtWidgets import (
     QTreeView, QMenu, QFileSystemModel, QInputDialog,
     QMessageBox, QApplication,
 )
-from je_editor import language_wrapper
-from je_editor.pyside_ui.main_ui.editor.editor_widget import EditorWidget
+from je_editor import EditorWidget, language_wrapper
+from je_editor.pyside_ui.code.auto_save.auto_save_manager import (
+    auto_save_manager_dict, file_is_open_manager_dict, init_new_auto_save_thread,
+)
+from je_editor.pyside_ui.main_ui.editor.editor_widget_dock import FullEditorWidget
 
+from pybreeze.pybreeze_ui.plain_text import as_text
 from pybreeze.utils.logging.logger import pybreeze_logger
 
 
@@ -30,7 +35,7 @@ def _perform_file_op(tree_view: QTreeView, operation: Callable[[], None]) -> boo
         return True
     except OSError as error:
         pybreeze_logger.error("File tree operation failed: %r", error)
-        QMessageBox.warning(tree_view, word.get("file_tree_ctx_error"), str(error))
+        QMessageBox.warning(tree_view, word.get("file_tree_ctx_error"), as_text(str(error)))
         return False
 
 
@@ -133,7 +138,7 @@ def _show_context_menu(pos, tree_view: QTreeView, main_window) -> None:
     elif action == copy_rel_path_act:
         _action_copy_path(tree_view, path, relative=True)
     elif action == reveal_act:
-        _action_reveal_in_explorer(path)
+        _action_reveal_in_explorer(tree_view, path)
 
 
 # --------------- actions ---------------
@@ -155,14 +160,17 @@ def _action_new_file(tree_view: QTreeView, path: Path | None) -> None:
     )
     if not ok or not name.strip():
         return
-    new_path = parent / name.strip()
+    new_path = _inside(tree_view, parent, name.strip())
+    if new_path is None:
+        return
     if new_path.exists():
         QMessageBox.warning(
             tree_view,
             word.get("file_tree_ctx_error"),
-            word.get("file_tree_ctx_already_exists").format(name=str(new_path)),
+            as_text(word.get("file_tree_ctx_already_exists").format(name=str(new_path))),
         )
         return
+
     def _create() -> None:
         new_path.parent.mkdir(parents=True, exist_ok=True)
         new_path.touch()
@@ -180,26 +188,122 @@ def _action_new_folder(tree_view: QTreeView, path: Path | None) -> None:
     )
     if not ok or not name.strip():
         return
-    new_path = parent / name.strip()
+    new_path = _inside(tree_view, parent, name.strip())
+    if new_path is None:
+        return
     if new_path.exists():
         QMessageBox.warning(
             tree_view,
             word.get("file_tree_ctx_error"),
-            word.get("file_tree_ctx_already_exists").format(name=str(new_path)),
+            as_text(word.get("file_tree_ctx_already_exists").format(name=str(new_path))),
         )
         return
     _perform_file_op(tree_view, lambda: new_path.mkdir(parents=True))
 
 
-def _find_editor_for_file(main_window, file_path: Path) -> EditorWidget | None:
-    """Find the EditorWidget that has the given file open."""
-    path_str = str(file_path)
-    for i in range(main_window.tab_widget.count()):
-        widget = main_window.tab_widget.widget(i)
-        if isinstance(widget, EditorWidget) and widget.current_file is not None:
-            if str(Path(widget.current_file)) == path_str:
-                return widget
-    return None
+def _is_at_or_under(file_path: Path, path: Path) -> bool:
+    """Whether *file_path* is *path* or lies under it."""
+    return file_path == path or path in file_path.parents
+
+
+def _editors_under(main_window, path: Path) -> list[tuple[EditorWidget, Path]]:
+    """The editor tabs open on *path*, or on any file under it, with their files."""
+    found = []
+    for index in range(main_window.tab_widget.count()):
+        widget = main_window.tab_widget.widget(index)
+        if not isinstance(widget, EditorWidget) or widget.current_file is None:
+            continue
+        file_path = Path(widget.current_file)
+        if _is_at_or_under(file_path, path):
+            found.append((widget, file_path))
+    return found
+
+
+def _dock_editors_under(main_window, path: Path) -> list[tuple[FullEditorWidget, Path]]:
+    """The docked editors (JEditor's Dock Editor) open on *path* or under it, with their files.
+
+    A docked editor has no auto-save: it writes its buffer back when it closes,
+    and only if its file still exists. Left on the old name after a rename, it
+    wrote nothing, and every edit made in it was lost.
+    """
+    found = []
+    for editor in main_window.findChildren(FullEditorWidget):
+        if editor.current_file and _is_at_or_under(Path(editor.current_file), path):
+            found.append((editor, Path(editor.current_file)))
+    return found
+
+
+def _unwatch(editor: EditorWidget) -> None:
+    """Stop the tab watching its file for changes made outside the IDE.
+
+    Done before the file moves: once it is gone, Windows does not let go of
+    the old name.
+    """
+    watcher = editor._file_watcher  # noqa: SLF001 — JEditor's own watcher, handled as open_an_file handles it (test_jeditor_contract.py)
+    watched = watcher.files()
+    if watched:
+        watcher.removePaths(watched)
+
+
+def _watch(editor: EditorWidget, file_path: Path) -> None:
+    """Watch *file_path* for changes made outside the IDE, as JEditor's ``open_an_file`` does.
+
+    Left on the old name, a change made to the renamed file outside the IDE
+    raised no question, and the tab's auto-save wrote over it.
+    """
+    _unwatch(editor)
+    editor._file_watcher.addPath(str(file_path))  # noqa: SLF001 — see _unwatch
+    # A save to the old name may have left it set, and it would swallow the
+    # first real change to the new one
+    editor._ignore_next_change = False  # noqa: SLF001 — see _unwatch
+
+
+def _stop_auto_save(editor: EditorWidget) -> None:
+    """Stop the tab's auto-save and its watch, and forget the path it was registered under.
+
+    JEditor's save thread loops for as long as the path it *started* with is a
+    file, writing to whatever ``file`` holds; after a rename it would write the
+    buffer back to the old name -- recreating it, so it never stops -- and never
+    save the new one. It cannot be pointed elsewhere, only replaced.
+    """
+    if editor.code_save_thread is not None:
+        editor.code_save_thread.still_run = False
+        editor.code_save_thread = None
+    _unwatch(editor)
+    old = str(editor.current_file)
+    auto_save_manager_dict.pop(old, None)
+    file_is_open_manager_dict.pop(str(Path(old)), None)
+
+
+def _start_auto_save(editor: EditorWidget, file_path: Path) -> None:
+    """Point the tab at *file_path* and start its auto-save there."""
+    editor.code_edit.current_file = str(file_path)
+    file_is_open_manager_dict[str(file_path)] = str(file_path)
+    # Sets current_file, carries the tab's encoding and line ending, and starts
+    # the thread, as JEditor does when it opens a file.
+    init_new_auto_save_thread(str(file_path), editor)
+    _watch(editor, file_path)
+    # As when JEditor opens a file: a new suffix may be another language, and
+    # the git baseline and the language server go by the path
+    editor.code_edit.reset_highlighter()
+    editor.code_edit.load_git_baseline()
+    editor.code_edit.start_language_server()
+    # rename_self_tab clears the unsaved mark, but nothing was saved: the old
+    # save thread was stopped without writing and the new one waits before its
+    # first write, and closing the tab in that time lost the edits unasked
+    unsaved = bool(getattr(editor, "_is_modified", False))
+    editor.rename_self_tab()
+    if unsaved:
+        editor._on_text_changed()
+
+
+def _is_the_same_file(first: Path, second: Path) -> bool:
+    """Whether *first* and *second* name one file (a different case of one name, say)."""
+    try:
+        return first.samefile(second)
+    except OSError as error:
+        pybreeze_logger.debug("Could not compare %s and %s: %r", first, second, error)
+        return False
 
 
 def _action_rename(tree_view: QTreeView, main_window, path: Path | None) -> None:
@@ -209,28 +313,37 @@ def _action_rename(tree_view: QTreeView, main_window, path: Path | None) -> None
     new_name, ok = QInputDialog.getText(
         tree_view,
         word.get("file_tree_ctx_rename"),
-        word.get("file_tree_ctx_input_new_name").format(name=path.name),
+        as_text(word.get("file_tree_ctx_input_new_name").format(name=path.name)),
         text=path.name,
     )
     if not ok or not new_name.strip() or new_name.strip() == path.name:
         return
-    target = path.parent / new_name.strip()
-    if target.exists():
+    target = _inside(tree_view, path.parent, new_name.strip(), single=True)
+    if target is None:
+        return
+    # On a case-insensitive filesystem "A.py" already exists when renaming
+    # "a.py" to it -- it is the same file, and a change of case is a rename.
+    if target.exists() and not _is_the_same_file(target, path):
         QMessageBox.warning(
             tree_view,
             word.get("file_tree_ctx_error"),
-            word.get("file_tree_ctx_already_exists").format(name=str(target)),
+            as_text(word.get("file_tree_ctx_already_exists").format(name=str(target))),
         )
         return
 
-    # If this file is currently open in an editor tab, update the tab
-    editor = _find_editor_for_file(main_window, path)
-    if not _perform_file_op(tree_view, lambda: path.rename(target)):
-        return
-    if editor is not None and target.is_file():
-        editor.current_file = str(target)
-        editor.code_edit.current_file = str(target)
-        editor.rename_self_tab()
+    # Every tab open on the file, or on a file under the folder, follows it. Their
+    # auto-save stops first, so none writes to the old path mid-rename.
+    moving = _editors_under(main_window, path)
+    docked = _dock_editors_under(main_window, path)
+    for editor, _old in moving:
+        _stop_auto_save(editor)
+    renamed = _perform_file_op(tree_view, lambda: path.rename(target))
+    for editor, old in moving:
+        now = target / old.relative_to(path) if renamed else old
+        _start_auto_save(editor, now)
+    if renamed:
+        for dock_editor, old in docked:
+            dock_editor.current_file = str(target / old.relative_to(path))
 
 
 def _action_delete(tree_view: QTreeView, main_window, path: Path | None) -> None:
@@ -240,27 +353,39 @@ def _action_delete(tree_view: QTreeView, main_window, path: Path | None) -> None
     reply = QMessageBox.question(
         tree_view,
         word.get("file_tree_ctx_confirm_delete"),
-        word.get("file_tree_ctx_confirm_delete_message").format(name=str(path)),
+        as_text(word.get("file_tree_ctx_confirm_delete_message").format(name=str(path))),
         QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
     )
     if reply != QMessageBox.StandardButton.Yes:
         return
 
-    # Close editor tab if this file is open
-    editor = _find_editor_for_file(main_window, path)
-    if editor is not None:
-        idx = main_window.tab_widget.indexOf(editor)
-        if idx >= 0:
-            editor.close()
-            main_window.tab_widget.removeTab(idx)
+    # Every tab open on the file, or on a file under the folder, stops its
+    # auto-save first, which would otherwise write the buffer back -- recreating
+    # the file -- while it is being removed.
+    open_tabs = _editors_under(main_window, path)
+    for editor, _file in open_tabs:
+        _stop_auto_save(editor)
 
     def _delete() -> None:
-        if path.is_dir():
-            shutil.rmtree(path)
+        if _is_link(path):
+            _remove_link(path)
+        elif path.is_dir():
+            remove_folder(path)
         else:
             path.unlink()
 
     _perform_file_op(tree_view, _delete)
+    # Only a tab whose file is gone closes. The delete can fail -- a locked or
+    # read-only file -- or remove only part of a folder, and closing the tabs
+    # beforehand lost a file's tab and its unsaved edits while the file stayed.
+    for editor, file_path in open_tabs:
+        if file_path.exists():
+            _start_auto_save(editor, file_path)
+            continue
+        index = main_window.tab_widget.indexOf(editor)
+        editor.close()
+        if index >= 0:
+            main_window.tab_widget.removeTab(index)
 
 
 def _action_copy_path(tree_view: QTreeView, path: Path | None, relative: bool = False) -> None:
@@ -278,15 +403,95 @@ def _action_copy_path(tree_view: QTreeView, path: Path | None, relative: bool = 
     clipboard.setText(text)
 
 
-def _action_reveal_in_explorer(path: Path | None) -> None:
+def reveal_command(path: Path, platform: str = sys.platform) -> list[str]:
+    """The command that shows *path* in the platform's file manager.
+
+    A file is shown selected in its folder where the file manager can do that
+    (Explorer's ``/select,``, Finder's ``open -R``); it used to open the folder
+    alone, leaving the user to find the file in it. ``xdg-open`` can only open
+    a folder, so elsewhere a file's folder is opened.
+    """
+    is_folder = path.is_dir()
+    if platform == "win32":
+        explorer = str(Path(os.environ.get("SystemRoot", "C:/Windows")) / "explorer.exe")
+        return [explorer, str(path)] if is_folder else [explorer, "/select,", str(path)]
+    if platform == "darwin":
+        return ["open", str(path)] if is_folder else ["open", "-R", str(path)]
+    return ["xdg-open", str(path if is_folder else path.parent)]
+
+
+def _action_reveal_in_explorer(tree_view: QTreeView, path: Path | None) -> None:
     if path is None:
         return
-    target = path if path.is_dir() else path.parent
-    # "Reveal in file explorer" — platform file-manager invocation on a path the
-    # user already selected in our tree. shell=False, fixed argv[0]. nosec B603/B606/B607.
-    if sys.platform == "win32":
-        os.startfile(str(target))  # nosec B606  # nosemgrep  # noqa: S606
-    elif sys.platform == "darwin":
-        subprocess.Popen(["open", str(target)])  # nosec B603 B607  # nosemgrep  # noqa: S603,S607
+    command = reveal_command(path)
+    # A file manager started on a path the user picked in the tree. shell=False,
+    # fixed argv[0]; a missing xdg-open is shown, not raised out of the slot.
+    _perform_file_op(tree_view, lambda: subprocess.Popen(command))  # nosec B603 B607  # nosemgrep  # noqa: S603
+
+
+def _inside(tree_view: QTreeView, parent: Path, name: str, *, single: bool = False) -> Path | None:
+    """*parent* / *name*, or ``None`` after saying why *name* cannot go there.
+
+    A name with a drive, a root, ``..`` or a ``:`` (a drive-relative path, or an
+    NTFS stream) went elsewhere: ``/tmp/notes.py`` was created as
+    ``C:\\tmp\\notes.py`` and a rename to ``/a.py`` moved the file to the drive
+    root. With *single*, the name must be one entry (a rename), not a path.
+    """
+    parts = PureWindowsPath(name)
+    escapes = (parts.drive or parts.root or ":" in name or ".." in parts.parts
+               or (single and len(parts.parts) != 1))
+    target = parent / name
+    if not escapes:
+        try:
+            escapes = not target.resolve().is_relative_to(parent.resolve())
+        except OSError:
+            escapes = True
+    if not escapes:
+        return target
+    word = language_wrapper.language_word_dict
+    QMessageBox.warning(tree_view, word.get("file_tree_ctx_error"),
+                        as_text(word.get("file_tree_ctx_bad_name").format(name=name)))
+    return None
+
+
+def _is_link(path: Path) -> bool:
+    """Whether *path* is a symbolic link or a Windows junction (a link either way)."""
+    if path.is_symlink():
+        return True
+    try:
+        attributes = getattr(os.lstat(path), "st_file_attributes", 0)
+    except OSError:
+        return False
+    return bool(attributes & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0))
+
+
+def _remove_link(path: Path) -> None:
+    """Remove the link at *path*, never what it points to.
+
+    ``rmtree`` refuses a link to a folder, so one could not be deleted at all.
+    """
+    try:
+        os.unlink(path)
+    except (IsADirectoryError, PermissionError):
+        os.rmdir(path)  # a junction, or a directory symlink on an older Windows
+
+
+def _clear_read_only_and_retry(function: Callable[[str], None], path: str, _error: object) -> None:
+    """``rmtree``'s error handler: make *path* writable and try *function* again."""
+    os.chmod(path, stat.S_IWRITE)
+    function(path)
+
+
+def remove_folder(path: Path) -> None:
+    """Delete the folder *path* and everything in it, read-only files included.
+
+    ``shutil.rmtree`` stops at the first read-only file on Windows, after
+    removing what came before it: git makes its objects read-only, so deleting
+    a cloned project left it half deleted with a broken repository.
+
+    :raises OSError: when something in it still cannot be removed
+    """
+    if sys.version_info >= (3, 12):
+        shutil.rmtree(path, onexc=_clear_read_only_and_retry)
     else:
-        subprocess.Popen(["xdg-open", str(target)])  # nosec B603 B607  # nosemgrep  # noqa: S603,S607
+        shutil.rmtree(path, onerror=_clear_read_only_and_retry)

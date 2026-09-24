@@ -91,6 +91,13 @@ class TestFormatTimestampClaim:
     def test_out_of_range_returns_none(self):
         assert format_timestamp_claim(10 ** 30) is None
 
+    def test_a_claim_before_1970_is_shown(self):
+        # It was silently left out on Windows.
+        assert format_timestamp_claim(-86400) == "1969-12-31T00:00:00+00:00"
+
+    def test_not_a_number_returns_none(self):
+        assert format_timestamp_claim(float("nan")) is None
+
 
 class TestHumanizedTimestampClaims:
     def test_extracts_known_claims(self):
@@ -107,3 +114,106 @@ class TestHumanizedTimestampClaims:
     def test_nbf_and_auth_time(self):
         payload = {"nbf": 1609459200, "auth_time": 1609459200}
         assert set(humanized_timestamp_claims(payload)) == {"nbf", "auth_time"}
+
+
+def test_a_payload_nested_past_the_recursion_limit_is_a_decode_error():
+    def segment(obj_text: str) -> str:
+        return base64.urlsafe_b64encode(obj_text.encode("utf-8")).decode("ascii").rstrip("=")
+
+    token = ".".join([segment('{"alg": "none"}'), segment("[" * 100000 + "]" * 100000), ""])
+    with pytest.raises(JwtDecodeException):
+        decode_jwt(token)
+
+
+class TestATokenPastedWithSomethingAroundIt:
+    """Bearer prefixes, quotes and line breaks come along when a token is copied."""
+
+    @pytest.mark.parametrize("header", [{"alg": "none"}, {"alg": "ES256", "kid": "a"}, {"alg": "HS256"}])
+    @pytest.mark.parametrize("wrap", ["Bearer {}", '"{}"', "Authorization: Bearer {}\n", "{}"])
+    def test_the_token_inside_is_decoded(self, header, wrap):
+        # "Bearer eyJ..." always failed; a quoted token failed or kept the quote in
+        # its signature depending on the header's length
+        token = _make_jwt(header, {"sub": "1"})
+
+        decoded = decode_jwt(wrap.format(token))
+
+        assert decoded.header == header
+        assert decoded.signature == "sig"
+
+    def test_a_token_wrapped_over_lines_is_joined(self):
+        token = _make_jwt({"alg": "HS256"}, {"sub": "1", "name": "a long enough name"})
+
+        decoded = decode_jwt(token[:20] + "\n" + token[20:40] + "\r\n  " + token[40:])
+
+        assert decoded.payload == {"sub": "1", "name": "a long enough name"}
+
+    def test_a_segment_with_characters_outside_base64url_is_refused(self):
+        # Non-strict decoding dropped them and decoded what was left
+        token = _make_jwt({"alg": "HS256"}, {"sub": "1"})
+        header, payload, signature = token.split(".")
+
+        with pytest.raises(JwtDecodeException):
+            decode_jwt(f"{header[:4]}!{header[4:]}.{payload}.{signature}")
+
+
+class TestTheSegmentsAsShown:
+    """The decoder keeps each segment's JSON text, and shows it as written."""
+
+    @staticmethod
+    def _raw_jwt(payload_text: str) -> str:
+        encoded = base64.urlsafe_b64encode(payload_text.encode("utf-8")).decode("ascii").rstrip("=")
+        return f"{_segment({'alg': 'none'})}.{encoded}.sig"
+
+    def test_numbers_keep_their_text(self):
+        from pybreeze.utils.jwt_tools.jwt_decoder import shown_json
+
+        decoded = decode_jwt(self._raw_jwt('{"n": 1e400, "big": 12345678901234567890123.5}'))
+        shown = shown_json(decoded.payload_json, decoded.payload)
+
+        # json.dumps wrote Infinity, which is not JSON, and rounded the long number
+        assert '"n": 1e400' in shown
+        assert '"big": 12345678901234567890123.5' in shown
+
+    def test_a_repeated_claim_falls_back_to_the_decoded_value(self):
+        from pybreeze.utils.jwt_tools.jwt_decoder import shown_json
+
+        decoded = decode_jwt(self._raw_jwt('{"a": 1, "a": 2}'))
+
+        assert json.loads(shown_json(decoded.payload_json, decoded.payload)) == {"a": 2}
+
+    def test_the_keys_are_sorted_unless_asked_not_to(self):
+        from pybreeze.utils.jwt_tools.jwt_decoder import shown_json
+
+        decoded = decode_jwt(self._raw_jwt('{"z": 1, "a": 2}'))
+
+        assert shown_json(decoded.payload_json, decoded.payload).index('"a"') < \
+            shown_json(decoded.payload_json, decoded.payload).index('"z"')
+        unsorted = shown_json(decoded.payload_json, decoded.payload, sort_keys=False)
+        assert unsorted.index('"z"') < unsorted.index('"a"')
+
+
+class TestWhereTheTokenEnds:
+    TOKEN = _make_jwt({"alg": "none"}, {"a": 1})
+
+    def test_the_line_after_it_is_not_part_of_the_signature(self):
+        # All whitespace went: the signature read "signextline"
+        assert decode_jwt(self.TOKEN + "\nnext line").signature == "sig"
+
+    def test_a_token_wrapped_across_lines_is_joined(self):
+        wrapped = f'"{self.TOKEN[:20]}\n    {self.TOKEN[20:]}",'
+        assert decode_jwt(wrapped).payload == {"a": 1}
+
+    def test_a_fourth_segment_is_refused_not_dropped(self):
+        with pytest.raises(JwtDecodeException, match="three"):
+            decode_jwt(self.TOKEN + ".extra")
+
+    def test_a_closing_full_stop_is_not_a_segment(self):
+        assert decode_jwt(f"The token is {self.TOKEN}.").signature == "sig"
+
+
+def test_a_header_whose_encoding_is_not_eyj_is_found_after_bearer():
+    # '{ "alg"' encodes to "eyAi", '{\n' to "ewo": only "eyJ" was looked for
+    header = base64.urlsafe_b64encode(b'{ "alg": "none"}').decode("ascii").rstrip("=")
+    token = f"{header}.{_segment({'a': 1})}.s"
+
+    assert decode_jwt(f"Bearer {token}").header == {"alg": "none"}

@@ -1,20 +1,19 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QMessageBox
 
-from je_editor import language_wrapper
-from je_editor.plugins import get_all_plugin_metadata
-from je_editor.pyside_ui.main_ui.editor.editor_widget import EditorWidget
+from je_editor import get_all_plugin_metadata, language_wrapper
 from je_editor.pyside_ui.main_ui.plugin_browser.plugin_browser_widget import PluginBrowserWidget
-from je_editor.pyside_ui.dialog.file_dialog.save_file_dialog import choose_file_get_save_file_path
-from je_editor.utils.file.save.save_file import write_file
 
-from pybreeze.extend.process_executor.file_runner_process import FileRunnerProcess
-from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
+from pybreeze.pybreeze_ui.menu.plugin_menu.build_run_with_menu import (
+    plugin_text, run_config_suffixes, run_current_file_with,
+)
+from pybreeze.pybreeze_ui.plain_text import as_text
+from pybreeze.utils.logging.logger import pybreeze_logger
 
 if TYPE_CHECKING:
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
@@ -24,8 +23,9 @@ def set_plugin_menu(ui_we_want_to_set: PyBreezeMainWindow) -> None:
     """
     建立插件選單，顯示所有已載入插件的名稱、版本、作者。
     Build Plugin menu showing all loaded plugins with name, version, author.
-    同一語言若支援多種副檔名，以子選單呈現。
-    If a language plugin supports multiple suffixes, show them in a submenu.
+    有執行設定的插件是一個子選單：About 和一個「Run with」項目，支援多種副檔名時一併列出。
+    A plugin with a run config gets a submenu: About, and one Run with entry
+    that lists the suffixes when there are several.
     """
     metadata_list = get_all_plugin_metadata()
     if not metadata_list:
@@ -45,28 +45,38 @@ def set_plugin_menu(ui_we_want_to_set: PyBreezeMainWindow) -> None:
     ui_we_want_to_set.plugin_menu.addSeparator()
 
     for meta in metadata_list:
-        _add_plugin_entry(ui_we_want_to_set, meta)
+        # One plugin with bad metadata costs its own entry, not the IDE's start
+        if not isinstance(meta, dict):
+            pybreeze_logger.error("Plugin metadata ignored: not a dict (%s)", type(meta).__name__)
+            continue
+        try:
+            _add_plugin_entry(ui_we_want_to_set, meta)
+        except Exception as error:  # noqa: BLE001 — a plugin is third-party code; the menu must still build
+            pybreeze_logger.error("Plugin %r left out of the menu: %r", meta.get("name"), error)
 
 
 def _add_plugin_entry(ui_we_want_to_set: PyBreezeMainWindow, meta: dict) -> None:
     """Add one plugin's menu entries (submenu with run actions, or a bare About action)."""
-    plugin_name = meta.get("name", "Unknown")
-    plugin_author = meta.get("author", "")
-    plugin_version = meta.get("version", "")
+    plugin_name = plugin_text(meta.get("name"), "Unknown")
+    plugin_author = plugin_text(meta.get("author"), "")
+    plugin_version = plugin_text(meta.get("version"), "")
     run_config = meta.get("run_config")
+    if run_config is not None and not isinstance(run_config, dict):
+        pybreeze_logger.error("Plugin %s run config ignored: not a dict", plugin_name)
+        run_config = None
 
     if run_config is None:
         # 沒有執行設定的插件（如翻譯插件），只顯示關於
         # Plugins without run config (e.g. translation), show about only
         about_action = QAction(plugin_name, ui_we_want_to_set.plugin_menu)
         about_action.triggered.connect(
-            _make_about_callback(plugin_name, plugin_version, plugin_author)
+            _make_about_callback(ui_we_want_to_set, plugin_name, plugin_version, plugin_author)
         )
         ui_we_want_to_set.plugin_menu.addAction(about_action)
         return
 
-    suffixes = run_config.get("suffixes", ())
-    config_name = run_config.get("name", plugin_name)
+    suffixes = run_config_suffixes(run_config)
+    config_name = plugin_text(run_config.get("name"), plugin_name)
     sub_menu = ui_we_want_to_set.plugin_menu.addMenu(config_name)
 
     about_action = QAction(
@@ -74,21 +84,14 @@ def _add_plugin_entry(ui_we_want_to_set: PyBreezeMainWindow, meta: dict) -> None
         sub_menu,
     )
     about_action.triggered.connect(
-        _make_about_callback(plugin_name, plugin_version, plugin_author)
+        _make_about_callback(ui_we_want_to_set, plugin_name, plugin_version, plugin_author)
     )
     sub_menu.addAction(about_action)
     sub_menu.addSeparator()
 
-    if len(suffixes) > 1:
-        # 多種副檔名：每個副檔名一個執行動作
-        # Multiple suffixes: one run action per suffix
-        for suffix in suffixes:
-            _add_run_action(ui_we_want_to_set, sub_menu, run_config,
-                            label_name=f"{config_name} ({suffix})")
-    else:
-        # 單一副檔名：一個執行動作
-        # Single suffix: one run action
-        _add_run_action(ui_we_want_to_set, sub_menu, run_config, label_name=config_name)
+    # One entry: every one ran the same config, whatever suffix its label named
+    label_name = f"{config_name} ({', '.join(suffixes)})" if len(suffixes) > 1 else config_name
+    _add_run_action(ui_we_want_to_set, sub_menu, run_config, label_name=label_name)
 
 
 def _add_run_action(ui_we_want_to_set: PyBreezeMainWindow, parent_menu,
@@ -117,72 +120,34 @@ def _open_plugin_browser(ui_we_want_to_set: PyBreezeMainWindow) -> None:
     )
 
 
-def _make_about_callback(name: str, version: str, author: str):
+def _make_about_callback(parent: PyBreezeMainWindow, name: str, version: str, author: str):
     """
     建立顯示插件資訊的回呼函式。
     Create a callback to show plugin info dialog.
+
+    The plugin's own name, version and author are shown as text: Qt read
+    markup in them. The box belongs to the main window; with no parent it
+    could open behind it.
     """
     def callback():
-        message_box = QMessageBox()
+        message_box = QMessageBox(parent)
+        message_box.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         message_box.setWindowTitle(name)
-        message_box.setText(
+        message_box.setText(as_text(
             f"{name}\n"
             f"Version: {version}\n"
             f"Author: {author}"
-        )
+        ))
         message_box.exec()
     return callback
 
 
 def _make_run_callback(ui_we_want_to_set: PyBreezeMainWindow, run_config: dict):
     """
-    建立使用插件執行設定來執行程式的回呼函式。
-    Create a callback to run a program using plugin run config.
-    使用 PyBreeze 的 FileRunnerProcess 與 CodeWindow。
-    Uses PyBreeze's FileRunnerProcess and CodeWindow.
+    建立使用插件執行設定來執行程式的回呼函式，與「Run with...」選單同一套流程。
+    Create a callback that runs the current file with a plugin run config, the
+    same way the "Run with..." menu does.
     """
     def callback():
-        widget = ui_we_want_to_set.tab_widget.currentWidget()
-        if not isinstance(widget, EditorWidget):
-            return
-
-        # 取得並儲存檔案 / Get and save file
-        if widget.current_file:
-            write_file(widget.current_file, widget.code_edit.toPlainText())
-            file_path = widget.current_file
-        else:
-            if not choose_file_get_save_file_path(ui_we_want_to_set):
-                return
-            file_path = widget.current_file
-
-        # The save dialog can be accepted without a path being set.
-        if not file_path:
-            return
-
-        # 檢查副檔名是否匹配 / Check suffix match
-        file_suffix = Path(file_path).suffix.lower()
-        supported = run_config.get("suffixes", ())
-        if supported and file_suffix not in supported:
-            msg = QMessageBox(ui_we_want_to_set)
-            msg.setWindowTitle(language_wrapper.language_word_dict.get("run_with_menu_label", "Run with..."))
-            msg.setText(
-                language_wrapper.language_word_dict.get(
-                    "run_with_suffix_mismatch",
-                    "Current file ({suffix}) does not match expected suffixes: {expected}",
-                ).format(suffix=file_suffix, expected=", ".join(supported))
-            )
-            msg.exec()
-            return
-
-        # 建立 CodeWindow 並執行 / Create CodeWindow and run
-        code_window = CodeWindow()
-        code_window.setWindowTitle(f"{run_config['name']} - {Path(file_path).name}")
-        ui_we_want_to_set.current_run_code_window.append(code_window)
-
-        runner = FileRunnerProcess(
-            main_window=code_window,
-            program_encoding=ui_we_want_to_set.encoding,
-        )
-        runner.run_file(run_config, file_path)
-
+        run_current_file_with(ui_we_want_to_set, run_config)
     return callback

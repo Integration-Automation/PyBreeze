@@ -6,11 +6,8 @@ import json
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
-from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_file_viewer_widget import (
-    format_size,
-    natural_key,
-    remote_join,
-)
+from pybreeze.pybreeze_ui.connect_gui.ssh.sftp_session import natural_key, remote_join
+from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_file_viewer_widget import format_size
 from pybreeze.pybreeze_ui.diagram_editor.diagram_mermaid_parser import parse_mermaid
 from pybreeze.pybreeze_ui.diagram_editor.diagram_net_utils import (
     _is_text_content_type,

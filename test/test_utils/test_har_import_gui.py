@@ -155,6 +155,16 @@ class TestHarImportFileDialog:
         assert result == str(path)
         assert widget.entry_list.count() == 2
 
+    def test_an_export_with_a_byte_order_mark_loads(self, widget, tmp_path):
+        path = tmp_path / "session.har"
+        path.write_text(_HAR, encoding="utf-8-sig")  # starts with a BOM
+        with patch(
+            "pybreeze.pybreeze_ui.tools_gui.har_import_gui.QFileDialog.getOpenFileName",
+            return_value=(str(path), "HAR export (*.har *.json)"),
+        ):
+            assert widget.open_file() == str(path)
+        assert widget.entry_list.count() == 2
+
     def test_cancelled_dialog_changes_nothing(self, widget):
         with patch(
             "pybreeze.pybreeze_ui.tools_gui.har_import_gui.QFileDialog.getOpenFileName",
@@ -171,3 +181,98 @@ class TestHarImportFileDialog:
         ):
             assert widget.open_file() is None
         assert widget.output_edit.toPlainText() != ""
+
+
+class TestReadingAFileThatIsNotUsable:
+    def test_a_file_that_is_not_utf8_is_reported_not_raised(self, widget, tmp_path):
+        exported = tmp_path / "export.har"
+        exported.write_text('{"log": {"entries": []}}', encoding="utf-16")
+        with patch(
+            "pybreeze.pybreeze_ui.tools_gui.har_import_gui.QFileDialog.getOpenFileName",
+            return_value=(str(exported), ""),
+        ):
+            assert widget.open_file() is None
+        assert "UTF-8" in widget.output_edit.toPlainText()
+
+    def test_the_message_does_not_show_the_path(self, widget, tmp_path):
+        missing = tmp_path / "private-folder-name" / "gone.har"
+        with patch(
+            "pybreeze.pybreeze_ui.tools_gui.har_import_gui.QFileDialog.getOpenFileName",
+            return_value=(str(missing), ""),
+        ):
+            widget.open_file()
+        shown = widget.output_edit.toPlainText()
+        assert shown
+        assert "private-folder-name" not in shown
+
+
+def test_a_target_that_cannot_carry_an_upload_says_so(widget):
+    # The APITestka JSON action cannot open a file: it raised out of the slot
+    har = json.dumps({"log": {"entries": [{"request": {
+        "method": "POST", "url": "https://api.example.com/upload", "headers": [],
+        "postData": {"mimeType": "multipart/form-data",
+                     "params": [{"name": "photo", "fileName": "a.jpg"}]},
+    }}]}})
+    widget.load_text(har)
+    widget.target_select.setCurrentIndex(widget.target_select.findData("apitestka_action"))
+
+    widget.generate_all()
+
+    assert "choose a Python target" in widget.output_edit.toPlainText()
+
+
+class TestWhatTheOutputBelongsTo:
+    """Save writes the output: it must be the script of the file and target now shown."""
+
+    def test_loading_another_file_clears_the_previous_script(self, loaded):
+        loaded.generate_all()
+        other = _HAR.replace("api.example.com", "second.example")
+
+        assert loaded.load_text(other)
+
+        assert loaded.output_edit.toPlainText() == ""
+        assert not loaded.actions._has_output()
+
+    def test_a_file_that_cannot_be_read_unlists_the_previous_one(self, loaded, tmp_path):
+        with patch(
+            "pybreeze.pybreeze_ui.tools_gui.har_import_gui.QFileDialog.getOpenFileName",
+            return_value=(str(tmp_path / "gone.har"), ""),
+        ):
+            loaded.open_file()
+
+        assert loaded.entry_list.count() == 0
+        loaded.generate_all()
+        assert "/v1/items" not in loaded.output_edit.toPlainText()
+        assert not loaded.actions._has_output()
+
+    def test_choosing_another_target_generates_again(self, loaded):
+        loaded.generate_all()
+
+        loaded.target_select.setCurrentIndex(loaded.target_select.findData("apitestka_action"))
+
+        assert len(json.loads(loaded.output_edit.toPlainText())) == 2
+        assert loaded.actions.suggested_filename() == "actions.json"
+
+    def test_choosing_a_target_before_generating_generates_nothing(self, loaded):
+        loaded.target_select.setCurrentIndex(loaded.target_select.findData("pytest"))
+
+        assert loaded.output_edit.toPlainText() == ""
+
+    def test_going_back_from_a_target_that_failed_generates_again(self, widget):
+        # A recorded upload: the APITestka action list cannot carry it
+        upload = json.dumps({"log": {"entries": [{
+            "request": {"method": "POST", "url": "https://api.example.com/up", "headers": [],
+                        "postData": {"mimeType": "multipart/form-data",
+                                     "params": [{"name": "f", "fileName": "a.txt"}]}},
+            "response": {"status": 200, "content": {"mimeType": "application/json"}}}]}})
+        widget.load_text(upload)
+        widget.api_only_check.setChecked(False)
+        widget.generate_all()
+        requests_script = widget.output_edit.toPlainText()
+
+        widget.target_select.setCurrentIndex(widget.target_select.findData("apitestka_action"))
+        assert not widget.actions._has_output()
+        widget.target_select.setCurrentIndex(widget.target_select.findData("requests"))
+
+        assert widget.output_edit.toPlainText() == requests_script
+        assert widget.actions._has_output()

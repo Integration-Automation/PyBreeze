@@ -2,19 +2,27 @@ from __future__ import annotations
 
 import sys
 
-from PySide6.QtCore import QUrl
+from PySide6.QtCore import Qt, QUrl
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import QApplication, QVBoxLayout, QWidget, QLabel
 from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.jupyter_lab_gui.jupyter_lab_thread import JupyterLauncherThread
-from pybreeze.utils.logging.logger import pybreeze_logger
+from pybreeze.pybreeze_ui.thread_keeper import let_run_out
 
 
 class JupyterLabWidget(QWidget):
 
-    def __init__(self):
+    def __init__(self, python_exe: str | None = None):
+        """
+        :param python_exe: the interpreter chosen in the IDE; the lab and its
+            kernels run in it (see ``choose_python``)
+        """
         super().__init__()
+        # Deleted when its tab closes: close_tab removes the tab but keeps the
+        # widget, and every closed tab kept its web view, and the Chromium
+        # renderer behind it, on a dead page until the IDE exited
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
 
         layout = QVBoxLayout(self)
 
@@ -25,7 +33,7 @@ class JupyterLabWidget(QWidget):
         self.browser.hide()
         layout.addWidget(self.browser)
 
-        self.thread = JupyterLauncherThread()
+        self.thread = JupyterLauncherThread(python_exe=python_exe)
         self.thread.status_update.connect(self.update_status)
         self.thread.server_ready.connect(self.load_lab)
         self.thread.error_occurred.connect(self.show_error)
@@ -47,18 +55,39 @@ class JupyterLabWidget(QWidget):
         self.browser.show()
 
     def show_error(self, msg):
+        """Say that the lab did not start, and why.
+
+        The reason (no venv found, a failed pip install, the server's last
+        output) used to go to the log only, behind a bare "init failed". The
+        launcher has logged it already.
+        """
         if self.status_label:
-            self.status_label.setText(language_wrapper.language_word_dict.get("jupyterlab_init_failed"))
-        pybreeze_logger.error(msg)
+            # Plain text: pip's or the server's output is not markup
+            self.status_label.setTextFormat(Qt.TextFormat.PlainText)
+            self.status_label.setWordWrap(True)
+            self.status_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+            self.status_label.setText(
+                f"{language_wrapper.language_word_dict.get('jupyterlab_init_failed')}: {msg}")
 
     def closeEvent(self, event):
+        """Stop the server with the tab.
+
+        The server outlives the launcher thread, which ends as soon as the lab
+        is ready, so stopping only a thread that is still running left a
+        JupyterLab process behind for every tab that had finished loading --
+        holding its port, and reachable for as long as the machine was up.
+        """
         if self.thread.isRunning():
-            # Block signals first so a late status/error emit can't reach a slot
-            # on the widget being torn down.
-            self.thread.blockSignals(True)
-            self.thread.stop()
-            self.thread.quit()
-            self.thread.wait()
+            # Still installing or starting: cut off from this tab first, so a
+            # late status or error cannot reach it, and kept until it ends
+            # rather than waited for -- an install can take minutes, and a
+            # QThread destroyed while running aborts the process. (Not
+            # blockSignals: that would also block the ``finished`` that lets
+            # the keeper release it.)
+            let_run_out(self.thread, self.thread.status_update,
+                        self.thread.server_ready, self.thread.error_occurred)
+        # After this the launcher starts no server, even one still installing.
+        self.thread.stop()
         event.accept()
 
 

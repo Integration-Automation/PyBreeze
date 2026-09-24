@@ -14,18 +14,22 @@ from __future__ import annotations
 from typing import Dict
 
 from PySide6.QtWidgets import (
-    QComboBox, QDialog, QDialogButtonBox, QFormLayout, QLabel, QLineEdit,
+    QComboBox, QDialog, QDialogButtonBox, QFormLayout, QLabel, QLineEdit, QMessageBox,
     QVBoxLayout
 )
 from je_editor import language_wrapper
 
 from pybreeze.extend.prthinker_extend.prthinker_setting import (
-    BACKENDS, PLATFORMS, load_setting, save_setting, setting_path
+    BACKENDS, PLATFORMS, RAG_MODES, load_setting, read_extra_arguments, save_setting, setting_path
 )
+from pybreeze.pybreeze_ui.plain_text import as_text
 
 # 以圓點顯示的欄位 / The fields shown as dots
 SECRET_FIELDS = (
     "remote_api_key", "openai_api_key", "anthropic_api_key", "platform_token")
+
+# 從清單裡選的欄位，以及各自的選項 / The fields picked from a list, and each one's choices
+CHOICE_FIELDS = {"backend": BACKENDS, "rag": RAG_MODES, "platform": PLATFORMS}
 
 # 表格上的欄位順序，以及每一欄的說明用哪個語言鍵
 # The fields in the order they are shown, and the language key labelling each
@@ -34,6 +38,7 @@ FIELDS = (
     ("model_name", "prthinker_setting_model_name_label"),
     ("remote_url", "prthinker_setting_remote_url_label"),
     ("remote_api_key", "prthinker_setting_remote_api_key_label"),
+    ("rag", "prthinker_setting_rag_label"),
     ("openai_base_url", "prthinker_setting_openai_base_url_label"),
     ("openai_api_key", "prthinker_setting_openai_api_key_label"),
     ("anthropic_api_key", "prthinker_setting_anthropic_api_key_label"),
@@ -78,10 +83,8 @@ class PRThinkerSettingDialog(QDialog):
 
     def _editor_for(self, key: str):
         """依欄位種類給對應的輸入元件 / The right kind of editor for a field."""
-        if key == "backend":
-            editor = self._chooser(BACKENDS, self.setting.get(key, ""))
-        elif key == "platform":
-            editor = self._chooser(PLATFORMS, self.setting.get(key, ""))
+        if key in CHOICE_FIELDS:
+            editor = self._chooser(CHOICE_FIELDS[key], self.setting.get(key, ""))
         else:
             editor = QLineEdit(self.setting.get(key, ""))
             if key in SECRET_FIELDS:
@@ -112,6 +115,23 @@ class PRThinkerSettingDialog(QDialog):
 
     def save(self) -> None:
         """存檔並關閉；存不起來就留在視窗上 / Store and close, or stay open if it cannot be stored."""
-        self.setting.update(self.values())
+        values = self.values()
+        try:
+            read_extra_arguments(values.get("extra_arguments", ""))
+        except ValueError:
+            # 以前照存，執行時整串被丟掉，審查少了使用者以為有加上的參數
+            # It used to be stored, then dropped whole at run time: a review ran
+            # without the arguments the user thought it had
+            QMessageBox.warning(
+                self, self.word_dict.get("prthinker_setting_dialog_title"),
+                self.word_dict.get("prthinker_setting_bad_extra_arguments"))
+            return
+        self.setting.update(values)
         if save_setting(self.setting):
             self.accept()
+            return
+        # 以前只寫進 log，視窗不關也不說原因
+        # It used to go to the log only: the window stayed open with no reason given
+        QMessageBox.warning(
+            self, self.word_dict.get("prthinker_setting_dialog_title"),
+            as_text(self.word_dict.get("prthinker_setting_save_failed").format(path=setting_path())))

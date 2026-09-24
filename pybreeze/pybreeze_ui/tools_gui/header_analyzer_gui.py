@@ -7,9 +7,12 @@ headers that are missing.
 """
 from __future__ import annotations
 
+import textwrap
+
 from PySide6.QtWidgets import QLabel, QPushButton, QTextEdit, QVBoxLayout, QWidget
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.jwt_decoder_gui import JwtDecoderGUI
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.pybreeze_ui.tools_gui.tool_tabs import open_tool_tab
@@ -110,7 +113,9 @@ class HeaderAnalyzerGUI(QWidget):
     def analyze(self) -> None:
         """Analyse the pasted headers and show the report."""
         word = language_wrapper.language_word_dict
-        text = self.input_edit.toPlainText().strip()
+        # Dedented before stripped: stripping first took the indent off the first
+        # line only, and every other line then read as folded into it
+        text = textwrap.dedent(exact_text(self.input_edit)).strip()
         if not text:
             self._clear_analysis(word.get("header_analyzer_empty_hint"))
             return

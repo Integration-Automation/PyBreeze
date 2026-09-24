@@ -4,6 +4,7 @@ import sys
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QSplitter, QApplication, QSizePolicy
+from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_command_widget import SSHCommandWidget
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_file_viewer_widget import SSHFileTreeManager
@@ -42,6 +43,38 @@ class SSHMainWidget(QWidget):
 
         main_layout.addWidget(splitter)
         self.setLayout(main_layout)
+
+        # One Connect button, two sessions: the shell and the file tree each open
+        # their own, on a thread of their own. Setting the shared label from each
+        # would let whichever finished last decide what it says, so the pair is
+        # reported each time either one comes up or goes down.
+        self.command_widget.state_changed.connect(self.report_connection_state)
+        self.file_tree.state_changed.connect(self.report_connection_state)
+
+    def report_connection_state(self) -> None:
+        """Put what actually happened to both sessions in the shared status label."""
+        word_dict = language_wrapper.language_word_dict
+        shell_up = self.command_widget.is_connected()
+        files_up = self.file_tree.client.connected
+        if shell_up and files_up:
+            state = word_dict.get("ssh_state_shell_and_files")
+        elif shell_up:
+            state = word_dict.get("ssh_state_shell_only")
+        elif files_up:
+            state = word_dict.get("ssh_state_files_only")
+        else:
+            state = word_dict.get("ssh_state_neither")
+        self.login_widget.status_label.setText(state)
+
+    def closeEvent(self, event) -> None:
+        """Close both halves with the tab.
+
+        Qt delivers the close event only to the widget being closed, and each
+        half owns its own session.
+        """
+        self.command_widget.close()
+        self.file_tree.close()
+        super().closeEvent(event)
 
 
 if __name__ == "__main__":

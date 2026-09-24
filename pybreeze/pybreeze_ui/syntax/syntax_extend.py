@@ -8,8 +8,7 @@ if TYPE_CHECKING:
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
 from PySide6.QtGui import QColor
 
-from pybreeze.pybreeze_ui.syntax.syntax_keyword import \
-    package_keyword_list
+from pybreeze.pybreeze_ui.syntax.syntax_keyword import TEST_PIONEER_SUFFIXES, package_keyword_list
 from pybreeze.utils.manager.package_manager.package_manager_class import package_manager
 
 
@@ -25,14 +24,16 @@ def syntax_extend_package(main_window: PyBreezeMainWindow) -> None:
         }
     register_programming_language(".json", json_syntax_words)
 
-    # Register YAML syntax keywords for test_pioneer
+    # Register YAML syntax keywords for test_pioneer, under every suffix the
+    # TestPioneer menu runs (".yaml" files were run but not highlighted)
     yml_syntax_words = {
         "test_pioneer": {
             "words": set(package_keyword_list.get("test_pioneer", [])),
             "color": QColor(255, 153, 0),
         }
     }
-    register_programming_language(".yml", yml_syntax_words)
+    for suffix in TEST_PIONEER_SUFFIXES:
+        register_programming_language(suffix, yml_syntax_words)
 
     widget = main_window.tab_widget.currentWidget()
     if isinstance(widget, EditorWidget):

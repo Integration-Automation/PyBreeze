@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from PySide6.QtGui import QAction
 from je_editor import language_wrapper
 
-from pybreeze.pybreeze_ui.menu.install_menu.install_utils import install_package
+from pybreeze.pybreeze_ui.menu.install_menu.install_utils import install_packages
 
 if TYPE_CHECKING:
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
@@ -24,6 +24,5 @@ def build_tool_install_menu(ui_we_want_to_set: PyBreezeMainWindow):
 
 
 def install_build_tools(ui_we_want_to_set: PyBreezeMainWindow) -> None:
-    install_package("setuptools", ui_we_want_to_set)
-    install_package("build", ui_we_want_to_set)
-    install_package("wheel", ui_we_want_to_set)
+    """Install the packaging tools with one pip."""
+    install_packages(["setuptools", "build", "wheel"], ui_we_want_to_set)

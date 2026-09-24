@@ -2,6 +2,11 @@ from __future__ import annotations
 
 from je_editor import english_word_dict
 
+from pybreeze.utils.exception.error_templates import (
+    ERROR_TEXT_KEY_PREFIX,
+    error_templates,
+)
+
 _COT_PROMPT_EDITOR = "CoT Prompt Editor"
 _SKILL_PROMPT_EDITOR = "Skill Prompt Editor"
 
@@ -9,6 +14,8 @@ _SKILL_PROMPT_EDITOR = "Skill Prompt Editor"
 pybreeze_english_word_dict = {
     # application name
     "application_name": "PyBreeze",
+    # Run window
+    "code_window_stop_button": "Stop",
     # Menubar
     "automation_menu_label": "Automation",
     "install_menu_label": "Install",
@@ -16,6 +23,10 @@ pybreeze_english_word_dict = {
     "run_label": "Run",
     "help_label": "HELP",
     "project_label": "Project",
+    "create_project_exists": "{path} already exists. Replace its template files and lose your changes to them?",
+    "create_project_failed": "The project could not be created at {path}: {error}",
+    "create_project_not_installed": "{package} is not installed: {error}",
+    "create_project_created": "Project created: {path}",
     # Tab tools menu
     "tab_menu_jupyterlab_tab_name": "JupyterLab",
     # APITestka Menu
@@ -43,6 +54,8 @@ pybreeze_english_word_dict = {
     "autocontrol_record_menu_label": "Record",
     "autocontrol_record_start_label": "Record Start",
     "autocontrol_record_stop_label": "Record Stop",
+    "autocontrol_record_nothing": "Nothing was recorded. Start recording first, then stop it.",
+    "autocontrol_record_copied": "The recording was copied to the clipboard: no editor tab is in front to insert it into.",
     # File Automation Menu
     "file_automation_menu_label": "FileAutomation",
     "file_automation_run_script_label": "Run FileAutomation Script",
@@ -103,6 +116,9 @@ pybreeze_english_word_dict = {
     # Test Pioneer Menu
     "test_pioneer_label": "TestPioneer",
     "test_pioneer_create_template_label": "Create TestPioneer Yaml template",
+    "test_pioneer_template_exists": "{path} already exists. Replace it with a fresh template and lose its content?",
+    "test_pioneer_template_failed": "The template could not be created at {path}: {error}",
+    "test_pioneer_template_created": "Template created: {path}",
     "test_pioneer_run_yaml": "Execute Test Pioneer Yaml",
     "test_pioneer_not_choose_yaml": "Please choose a Yaml file",
     # prthinker code review
@@ -124,6 +140,7 @@ pybreeze_english_word_dict = {
     "prthinker_setting_model_name_label": "Model name",
     "prthinker_setting_remote_url_label": "Server URL (remote backend)",
     "prthinker_setting_remote_api_key_label": "Server API key",
+    "prthinker_setting_rag_label": "Rule retrieval (RAG)",
     "prthinker_setting_openai_base_url_label": "OpenAI-compatible base URL",
     "prthinker_setting_openai_api_key_label": "OpenAI API key",
     "prthinker_setting_anthropic_api_key_label": "Anthropic API key",
@@ -134,6 +151,8 @@ pybreeze_english_word_dict = {
     "prthinker_setting_extra_arguments_label": "Extra command-line arguments",
     "prthinker_setting_source_path_label": "prthinker source folder",
     "prthinker_setting_stored_at_label": "Stored at:",
+    "prthinker_setting_bad_extra_arguments": "The extra arguments cannot be read: a quote is left open. Close it or remove it, then save.",
+    "prthinker_setting_save_failed": "The settings could not be saved to {path}. What was there before is kept.",
     # Prompt editors — where the edited prompts override the built-in ones from
     "prompt_editor_stored_at_label": "Prompt files (these override the built-in prompts):",
     "prthinker_choose_source_path_label": "Choose the prthinker source folder",
@@ -156,12 +175,13 @@ pybreeze_english_word_dict = {
     "ssh_command_widget_dialog_title_key_error": "Key error",
     "ssh_command_widget_dialog_message_key_file_not_exist": "Key file does not exist.",
     "ssh_command_widget_error_message_unsupported_private_key": "Unsupported or invalid private key.",
+    "ssh_key_error_passphrase_needed": "The private key is protected by a passphrase: enter it in the password field.",
+    "ssh_key_error_passphrase_wrong": "The passphrase for the private key is wrong.",
     "ssh_command_widget_error_message_key_auth_failed": "Key auth failed",
     "ssh_command_widget_status_label_connected": "Connected",
     "ssh_command_widget_status_label_disconnected": "Disconnected",
-    "ssh_command_widget_log_message_connected": "Connected to",
+    "ssh_command_widget_log_message_connected": "Connected to {host}:{port} as {user}",
     "ssh_command_widget_log_message_error": "[Error] ",
-    "ssh_command_widget_error_message_decode_failed": "<decode error> ",
     "ssh_command_widget_log_message_channel_closed": "[Channel closed]",
     "ssh_command_widget_error_message_reader_failed": "Reader error",
     "ssh_command_widget_log_message_reader_closed": "Reader closed",
@@ -172,6 +192,7 @@ pybreeze_english_word_dict = {
     # SSH File Viewer GUI
     "ssh_file_viewer_dialog_title_list_error": "List error",
     "ssh_file_viewer_dialog_message_list_failed": "Failed to list",
+    "ssh_file_viewer_loading": "Loading…",
     "ssh_file_viewer_dialog_title_operation_failed": "Operation failed",
     "ssh_file_viewer_dialog_message_operation_failed": "Error",
     "ssh_file_viewer_context_menu_action_refresh": "Refresh",
@@ -180,30 +201,64 @@ pybreeze_english_word_dict = {
     "ssh_file_viewer_context_menu_action_delete": "Delete",
     "ssh_file_viewer_context_menu_action_download": "Download",
     "ssh_file_viewer_context_menu_action_upload": "Upload to this folder",
-    "ssh_file_viewer_log_message_refreshing": "Refreshing current item children (or root)",
+    "ssh_file_viewer_context_menu_action_cancel_transfer": "Cancel the transfer",
+    "ssh_file_viewer_dialog_title_transfer_cancelled": "Transfer cancelled",
+    "ssh_file_viewer_message_transfer_cancelled":
+        "The transfer was cancelled. What had arrived was removed; a file it was to replace is unchanged.",
     "ssh_file_viewer_dialog_title_no_selection": "No selection",
     "ssh_file_viewer_dialog_message_select_folder_to_create": "Select a folder to create inside.",
+    "ssh_file_viewer_dialog_message_bad_name": "A name is one entry: it cannot contain '/', or be '.' or '..'.",
+    "ssh_file_viewer_dialog_title_confirm_replace": "Replace file",
+    "ssh_file_viewer_dialog_message_confirm_replace": "'{path}' already exists on the server. Replace it?",
     "ssh_file_viewer_dialog_title_create_folder": "Create folder",
     "ssh_file_viewer_dialog_label_folder_name": "Folder name:",
     "ssh_file_viewer_dialog_title_rename": "Rename",
     "ssh_file_viewer_dialog_label_new_name_for_item": "New name for",
     "ssh_file_viewer_dialog_title_confirm_delete": "Confirm delete",
     "ssh_file_viewer_dialog_message_confirm_delete": "Delete",
+    "ssh_file_viewer_message_folder_not_removed":
+        "The folder was not deleted. SFTP deletes only an empty folder: empty it first. The server said: {error}",
     "ssh_file_viewer_dialog_title_invalid_selection": "Invalid selection",
     "ssh_file_viewer_dialog_message_select_file_to_download": "Select a file to download.",
     "ssh_file_viewer_dialog_title_save_as": "Save as",
+    "prompt_editor_not_utf8":
+        "{filename} is not UTF-8 text. It is shown with the characters that could not be read replaced; saving writes it back as UTF-8.",
+    "prompt_editor_switch_over_edits":
+        "{filename} has edits that are not saved. Switch templates and lose them?",
+    "prompt_editor_reload_button_over_edits":
+        "{filename} has edits that are not saved. Reload it from disk and lose them?",
+    "prompt_editor_create_over_edits":
+        "Create {filename} from its built-in template? What you typed here is replaced.",
+    "prompt_editor_unreadable":
+        "{filename} could not be read: {error}",
+    "prompt_editor_close_over_edits":
+        "{filename} has edits that are not saved. Close and lose them?",
+    "diagram_editor_close_over_edits":
+        "The diagram has changes that are not saved. Close and lose them?",
+    "unsaved_close_title": "Unsaved changes",
+    "prompt_editor_reload_over_edits":
+        "{filename} changed on disk. Reload it and lose the edits made here?",
+    "ssh_state_shell_and_files": "Connected: shell and files",
+    "ssh_state_shell_only": "Connected: shell only (the file tree did not connect)",
+    "ssh_state_files_only": "Connected: files only (the shell did not connect)",
+    "ssh_state_neither": "Disconnected",
+    "ssh_file_viewer_message_session_busy":
+        "The SFTP session is busy with a transfer or a listing. Try again when it is done.",
+    "ssh_file_viewer_dialog_title_transfer_running": "A transfer is already running",
+    "ssh_file_viewer_dialog_message_transfer_running":
+        "One file at a time: wait for the transfer that is running to finish.",
     "ssh_file_viewer_dialog_title_downloaded": "Downloaded",
     "ssh_file_viewer_dialog_message_saved_to": "Saved to",
     "ssh_file_viewer_dialog_title_select_local_file": "Select local file to upload",
     "ssh_file_viewer_dialog_title_uploaded": "Uploaded",
     "ssh_file_viewer_dialog_message_uploaded_to": "Uploaded to",
-    "ssh_file_viewer_dialog_label_input_text": "Input text",
-    "ssh_file_viewer_dialog_button_ok": "OK",
     "ssh_file_viewer_window_title_file_tree_manager": "SSH File TreeView Manager",
     "ssh_file_viewer_tree_header_name": "Name",
     "ssh_file_viewer_tree_header_type": "Type",
     "ssh_file_viewer_tree_header_size": "Size",
     "ssh_file_viewer_tree_header_path": "Path",
+    "ssh_file_viewer_type_dir": "Folder",
+    "ssh_file_viewer_type_file": "File",
     "ssh_file_viewer_dialog_title_missing_input": "Missing input",
     "ssh_file_viewer_dialog_message_missing_input": "Host, user, and password are required.",
     "ssh_file_viewer_dialog_title_connection_failed": "Connection failed",
@@ -221,6 +276,8 @@ pybreeze_english_word_dict = {
     "ssh_login_widget_button_use_key_auth": "Use key auth",
     "ssh_login_widget_button_connect": "Connect",
     "ssh_login_widget_button_disconnect": "Disconnect",
+    "ssh_login_widget_button_browse_key": "Browse...",
+    "ssh_login_widget_dialog_title_choose_key": "Choose a private key",
     "ssh_login_widget_status_disconnected": "Disconnected",
     # AI Code Review GUI
     "ai_code_review_gui_window_title": "AI Code-Review Client",
@@ -277,6 +334,8 @@ pybreeze_english_word_dict = {
     "extend_tools_menu_ai_code_review_tab_label": "AI Code-Review",
     "extend_tools_menu_cot_prompt_editor_tab_action": _COT_PROMPT_EDITOR,
     "extend_tools_menu_cot_prompt_editor_tab_label": _COT_PROMPT_EDITOR,
+    "extend_tools_menu_cot_code_review_tab_action": "CoT Code Review Tab",
+    "extend_tools_menu_cot_code_review_tab_label": "CoT Code Review",
     "extend_tools_menu_skill_prompt_editor_tab_action": _SKILL_PROMPT_EDITOR,
     "extend_tools_menu_skill_prompt_editor_tab_label": _SKILL_PROMPT_EDITOR,
     "extend_tools_menu_skill_prompt_send_tab_label": "Skill Send GUI",
@@ -285,6 +344,8 @@ pybreeze_english_word_dict = {
     "extend_tools_menu_ssh_client_dock_action": "SSH Client Dock",
     "extend_tools_menu_ai_code_review_dock_action": "AI Code-Review Dock",
     "extend_tools_menu_cot_prompt_editor_dock_action": "CoT Prompt Editor Dock",
+    "extend_tools_menu_cot_code_review_dock_action": "CoT Code Review Dock",
+    "extend_tools_menu_cot_code_review_dock_title": "CoT Code Review",
     "extend_tools_menu_skill_prompt_editor_dock_action": "Skill Prompt Editor Dock",
     "extend_tools_menu_ssh_client_dock_title": "SSH Client",
     "extend_tools_menu_ai_code_review_dock_title": "AI Code-Review",
@@ -300,12 +361,10 @@ pybreeze_english_word_dict = {
     "cot_gui_label_prompt_area": "Prompt Area",
     "cot_gui_label_response_area": "Response Area",
     "cot_gui_button_send": "Start Sending",
-    "cot_gui_error_read_file": "Unable to read file:",
+    "cot_gui_warning_title": "Warning",
     "cot_gui_error_no_url": "Please enter the API URL first!",
     "cot_gui_error_sending": "Error sending:",
     # Skills GUI
-    "skills_finished_signal": "Success or error message",
-    "skills_error_signal": "Exception occurred",
     "skills_error_status": "Error: {status_code}\n{text}",
     "skills_exception": "Exception occurred: {error}",
     "skills_api_url_label": "LLM API URL:",
@@ -316,18 +375,24 @@ pybreeze_english_word_dict = {
     "skills_response_label": "Response:",
     "skills_missing_input": "Please enter API URL and Prompt",
     "skills_generating": "Generating...",
+    "skills_switch_over_edits": "The prompt has been edited. Replace it with {name} and lose the edits?",
+    "skills_code_missing": "Put the code in place of {code_diff} in the prompt before sending.",
     # JupyterLab GUI
     "jupyterlab_init": "Initializing...",
     "jupyterlab_downloading": "Downloading...",
     "jupyterlab_loading": "Loading...",
-    "jupyterlab_timeout": "JupyterLab Timeout",
+    "jupyterlab_timeout": "JupyterLab did not start in time",
+    "jupyterlab_exited_early": "JupyterLab exited early (code {code}): {output}",
     "jupyterlab_init_failed": "JupyterLab init failed",
     # Plugin Menu
     "plugin_menu_label": "Plugins",
     "plugin_menu_about": "About",
     "plugin_menu_run_with": "Run with {name}",
     # Run with Menu
+    "run_folder_title": "Run a folder",
+    "run_folder_no_action_files": "There are no action JSON files in {folder}, so nothing was run.",
     "run_with_menu_label": "Run with...",
+    "run_with_save_failed": "{file} could not be saved, so it was not run: {error}",
     "run_with_suffix_mismatch": "Current file ({suffix}) does not match expected suffixes: {expected}",
     # File Tree Context Menu
     "file_tree_ctx_new_file": "New File",
@@ -342,6 +407,7 @@ pybreeze_english_word_dict = {
     "file_tree_ctx_input_new_name": "New name for '{name}':",
     "file_tree_ctx_error": "Error",
     "file_tree_ctx_already_exists": "'{name}' already exists.",
+    "file_tree_ctx_bad_name": "'{name}' is not a name inside this folder: it may not have a drive, start with a slash, or contain '..' or ':'.",
     "file_tree_ctx_confirm_delete": "Confirm Delete",
     "file_tree_ctx_confirm_delete_message": "Are you sure you want to delete '{name}'?",
     # Diagram Editor — Menu
@@ -386,12 +452,16 @@ pybreeze_english_word_dict = {
     "har_import_empty_hint":
         "Open a .har file saved from your browser's dev tools (Network → Save all as HAR).",
     "har_import_error": "Could not read the HAR export: {error}",
+    "har_import_generate_error": "Could not write the script: {error}",
+    "har_import_not_utf8": "it is not UTF-8 text",
     "har_import_read_error": "Could not open the file: {error}",
     # Shared output actions (copy / open in editor / save to file)
     "output_actions_copy": "Copy",
     "output_actions_open_editor": "Open in editor tab",
     "output_actions_save": "Save to file...",
     "output_actions_editor_tab_label": "Generated",
+    "output_actions_save_failed_title": "Not saved",
+    "output_actions_save_failed_message": "{file} could not be saved: {error}",
     "output_actions_save_dialog_title": "Save output",
     "output_actions_filter_python": "Python (*.py)",
     "output_actions_filter_json": "JSON (*.json)",
@@ -461,6 +531,7 @@ pybreeze_english_word_dict = {
     "url_builder_to_json_button": "URL → JSON",
     "url_builder_to_url_button": "JSON → URL",
     "url_builder_output_label": "Result:",
+    "url_builder_parse_error": "Could not read the URL: {error}",
     "url_builder_error": "Could not build URL: {error}",
     "url_builder_empty_hint": "Enter a URL or a JSON object of URL parts above.",
     # Regex Tester — Menu
@@ -476,6 +547,8 @@ pybreeze_english_word_dict = {
     "regex_test_button": "Find matches",
     "regex_output_label": "Matches:",
     "regex_match_count": "{count} match(es):",
+    "regex_match_count_capped": "The first {count} match(es); there may be more:",
+    "regex_running": "Running the pattern…",
     "regex_no_match": "No matches.",
     "regex_error": "Regex error: {error}",
     # HTTP Status Reference — Menu
@@ -497,6 +570,7 @@ pybreeze_english_word_dict = {
     "diff_right_label": "Actual:",
     "diff_compare_button": "Compare",
     "diff_identical": "The two texts are identical.",
+    "diff_comparing": "Comparing…",
     "diff_summary": "{added} line(s) added, {removed} line(s) removed.",
     # JSON Format — Menu
     "extend_tools_menu_json_format_tab_action": "JSON Format Tab",
@@ -624,6 +698,7 @@ pybreeze_english_word_dict = {
     "diagram_editor_dialog_export_png": "Export PNG",
     "diagram_editor_dialog_export_svg": "Export SVG",
     "diagram_editor_error_title": "Error",
+    "diagram_editor_export_failed": "Could not export the diagram to:\n{path}",
     # Diagram Editor — Property Panel
     "diagram_editor_prop_title": "Properties",
     "diagram_editor_prop_no_selection": "No selection",
@@ -697,6 +772,10 @@ pybreeze_english_word_dict = {
     "plugin_browser_status_installed": "Installed: {path}",
     "plugin_browser_restart_hint": "Plugin downloaded to:\n{path}\n\nPlease restart the editor to activate.",
 }
+# Why a tool refused its input (pybreeze_ui/error_text.py): in English, the
+# constants the tools raise
+pybreeze_english_word_dict.update(
+    {ERROR_TEXT_KEY_PREFIX + name: template for name, template in error_templates().items()})
 
 
 def update_english_word_dict():

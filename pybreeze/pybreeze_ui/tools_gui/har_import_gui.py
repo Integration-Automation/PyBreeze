@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QAbstractItemView, QCheckBox, QComboBox, QFileDialog, QHBoxLayout, QLabel,
     QListWidget, QPushButton, QTextEdit, QVBoxLayout, QWidget
@@ -18,10 +19,12 @@ from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.utils.curl_import.script_templates import TEMPLATE_TARGETS
-from pybreeze.utils.exception.exceptions import HarParseException
+from pybreeze.utils.exception.exceptions import CurlParseException, HarParseException
 from pybreeze.utils.har_import.har_codegen import generate_har_script
 from pybreeze.utils.har_import.har_parser import HarEntry, api_entries, parse_har, summarize
+from pybreeze.utils.file_process.read_capped import read_text_capped
 from pybreeze.utils.logging.logger import pybreeze_logger
+from pybreeze.pybreeze_ui.error_text import error_text
 
 # The single target that generates JSON rather than Python
 _JSON_TARGET = "apitestka_action"
@@ -43,6 +46,9 @@ class HarImportGUI(QWidget):
         self._entries: list[HarEntry] = []
         self._shown: list[HarEntry] = []
         self._generated_code: str | None = None
+        # The requests the output was generated from, to generate again for
+        # another target
+        self._generated_from: list[HarEntry] = []
         word = language_wrapper.language_word_dict
 
         self.open_button = QPushButton(word.get("har_import_open_button"))
@@ -56,6 +62,9 @@ class HarImportGUI(QWidget):
         top_row.addWidget(self.api_only_check)
 
         self.summary_label = QLabel(word.get("har_import_empty_hint"))
+        # It lists the file's host names: plain text, or a host written as
+        # <img src=...> was loaded as an image
+        self.summary_label.setTextFormat(Qt.TextFormat.PlainText)
         self.entry_list = QListWidget()
         self.entry_list.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
 
@@ -63,6 +72,9 @@ class HarImportGUI(QWidget):
         self.target_select = QComboBox()
         for target_key, label_key in TEMPLATE_TARGETS:
             self.target_select.addItem(word.get(label_key), target_key)
+        # Save names the file after the target: the output has to follow it,
+        # or Python was saved as actions.json
+        self.target_select.currentIndexChanged.connect(self._regenerate)
 
         self.generate_selected_button = QPushButton(word.get("har_import_generate_selected"))
         self.generate_selected_button.clicked.connect(self.generate_selected)
@@ -108,10 +120,16 @@ class HarImportGUI(QWidget):
         if not path:
             return None
         try:
-            text = Path(path).read_text(encoding="utf-8")
-        except OSError as error:
+            # utf-8-sig: an export saved with a byte-order mark is still JSON
+            # Size-checked first: a multi-GB export froze the IDE while read here
+            text = read_text_capped(Path(path), encoding="utf-8-sig")
+        except (OSError, UnicodeDecodeError) as error:
             pybreeze_logger.info("har_import_gui.py read failed: %r", error)
-            self._report_error(word.get("har_import_read_error").format(error=str(error)))
+            # The reason without the path: str(OSError) carries the file's full
+            # path, which is not the user's business to be shown back.
+            reason = (word.get("har_import_not_utf8") if isinstance(error, UnicodeDecodeError)
+                      else error.strerror or type(error).__name__)
+            self._report_error(word.get("har_import_read_error").format(error=reason))
             return None
         self.load_text(text)
         return path
@@ -126,19 +144,28 @@ class HarImportGUI(QWidget):
             entries = parse_har(text)
         except HarParseException as error:
             pybreeze_logger.info("har_import_gui.py parse failed: %r", error)
-            self._entries = []
-            self._refresh_entry_list()
             self._report_error(
                 language_wrapper.language_word_dict.get("har_import_error").format(
-                    error=str(error)))
+                    error=error_text(str(error))))
             return False
         self._entries = entries
         self._refresh_entry_list()
+        # The previous file's script is not this one's: Save wrote it
+        self._generated_code = None
+        self._generated_from = []
+        self.output_edit.clear()
         return True
 
     def _report_error(self, message: str) -> None:
-        """Show *message* as the summary and clear any generated output."""
+        """Show *message* as the summary, with nothing listed and no output.
+
+        The previous file's requests went too: listed under the error, Generate
+        still made their script.
+        """
+        self._entries = []
+        self._refresh_entry_list()
         self._generated_code = None
+        self._generated_from = []
         self.summary_label.setText(message)
         self.output_edit.setPlainText(message)
 
@@ -167,15 +194,32 @@ class HarImportGUI(QWidget):
         rows = sorted(index.row() for index in self.entry_list.selectedIndexes())
         return [self._shown[row] for row in rows if 0 <= row < len(self._shown)]
 
+    def _regenerate(self) -> None:
+        """Generate the output again for the target now chosen, if something was generated.
+
+        Also after a target that could not carry the requests: going back to
+        one that can left its error in the output.
+        """
+        if self._generated_from:
+            self._generate(self._generated_from, "har_import_empty_hint")
+
     def _generate(self, entries: list[HarEntry], empty_hint_key: str) -> None:
         """Generate a script for *entries*, or show the hint when there are none."""
         word = language_wrapper.language_word_dict
+        self._generated_from = list(entries)
         if not entries:
             self._generated_code = None
             self.output_edit.setPlainText(word.get(empty_hint_key))
             return
-        code = generate_har_script(
-            self.selected_target(), [entry.request for entry in entries])
+        try:
+            code = generate_har_script(
+                self.selected_target(), [entry.request for entry in entries])
+        except CurlParseException as error:
+            # A target that cannot carry a recorded file upload says so
+            pybreeze_logger.info("har_import_gui.py generate failed: %r", error)
+            self._generated_code = None
+            self.output_edit.setPlainText(word.get("har_import_generate_error").format(error=error_text(str(error))))
+            return
         self._generated_code = code
         self.output_edit.setPlainText(code)
 

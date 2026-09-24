@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import contextlib
 import json
-import queue
+import os
 import subprocess
 import sys
+import tempfile
 import threading
 from typing import Callable
 from pathlib import Path
@@ -11,15 +13,27 @@ from queue import Queue
 from threading import Thread
 
 from PySide6.QtCore import QTimer
-from PySide6.QtGui import QTextCharFormat
-from je_editor.pyside_ui.main_ui.save_settings.user_color_setting_file import actually_color_dict
-from je_editor.utils.exception.exceptions import JEditorExecException
+from je_editor import JEditorExecException
 from je_editor.utils.venv_check.check_venv import check_and_choose_venv
 
-from pybreeze.extend.process_executor.queue_pump import pump_message_queue
+from pybreeze.extend.process_executor.queue_pump import (
+    OUTPUT_STILL_HELD_NOTE,
+    ReaderGrace,
+    any_alive,
+    output_queue,
+    pump_message_queue,
+    read_stream_into_queue,
+)
 from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
 from pybreeze.utils.logging.logger import pybreeze_logger
-from pybreeze.utils.subprocess_util import no_window_creationflags, utf8_subprocess_env
+from pybreeze.utils.subprocess_util import (
+    no_window_creationflags, own_session_options, stop_tree, utf8_subprocess_env,
+)
+
+
+# Windows refuses a command line over 32,767 characters; a script longer than
+# this goes to the child as a file instead
+_MAX_COMMAND_LINE = 30_000
 
 
 def find_venv_path() -> Path:
@@ -41,30 +55,49 @@ def find_venv_path() -> Path:
     return candidates[0]
 
 
+def default_interpreter() -> str:
+    """The interpreter a run uses when none was chosen in the IDE.
+
+    A ``venv`` or ``.venv`` in the working folder, else the IDE's own, as the
+    JupyterLab tab does (``choose_python``); only a packaged build, whose
+    ``sys.executable`` is the app, looks on PATH. PATH came before the IDE's
+    own: on Windows that is often the Microsoft Store's ``python3`` stub, which
+    exits 9009 printing nothing, and a real one there seldom has the
+    automation packages the IDE was installed with.
+
+    :raises JEditorExecException: when a packaged build finds no Python
+    """
+    venv_path = find_venv_path()
+    if venv_path.is_dir() or getattr(sys, "frozen", False):
+        return check_and_choose_venv(venv_path)
+    return sys.executable
+
+
 class TaskProcessManager:
     def __init__(
             self,
             main_window: CodeWindow,
             task_done_trigger_function: Callable | None = None,
-            error_trigger_function: Callable | None = None,
             program_buffer_size: int = 1024,
             program_encoding: str = "utf-8"
     ):
-        super().__init__()
         self.compiler_path = None
-        # ite_instance param
         self.read_program_error_output_from_thread: threading.Thread | None = None
         self.read_program_output_from_thread: threading.Thread | None = None
         self.main_window: CodeWindow = main_window
         self.timer: QTimer = QTimer(self.main_window)
         self.still_run_program: bool = True
         self.program_encoding: str = program_encoding
-        self.run_output_queue: Queue = Queue()
-        self.run_error_queue: Queue = Queue()
+        self.run_output_queue: Queue = output_queue()
+        self.run_error_queue: Queue = output_queue()
         self.process: subprocess.Popen | None = None
+        self._reader_grace = ReaderGrace()
+        # Stop was asked for: a batch run that follows this one does not go on
+        self.was_stopped = False
+        # The file a script too long for the command line was written to
+        self._script_file: Path | None = None
 
-        self.task_done_trigger_function: Callable = task_done_trigger_function
-        self.error_trigger_function: Callable = error_trigger_function
+        self.task_done_trigger_function: Callable | None = task_done_trigger_function
         self.program_buffer_size = program_buffer_size
 
     def renew_path(self) -> bool:
@@ -72,12 +105,12 @@ class TaskProcessManager:
         Python can be found, surfacing the error in the run window instead of
         crashing the menu callback."""
         if self.main_window.python_compiler is None:
-            venv_path = find_venv_path()
             try:
-                self.compiler_path = check_and_choose_venv(venv_path)
+                self.compiler_path = default_interpreter()
             except JEditorExecException as error:
                 pybreeze_logger.error("No Python interpreter found for run: %r", error)
-                self._append_text(f"[Error] No Python interpreter found: {error}", is_error=True)
+                self.main_window.append_output(
+                    f"[Error] No Python interpreter found: {error}\n", is_error=True, own_line=True)
                 self.main_window.show()
                 return False
         else:
@@ -85,18 +118,42 @@ class TaskProcessManager:
         return True
 
     def start_test_process(self, package: str, exec_str: str):
+        """Run *package* on the script *exec_str*, passed on the command line.
+
+        A script too long for a Windows command line goes as a file instead
+        (``--execute_file``): passed as it was, the run did not start at all.
+        """
         if not self.renew_path():
             return
-        if sys.platform in ["win32", "cygwin", "msys"]:
-            exec_str = json.dumps(exec_str)
-        args = [
-            str(self.compiler_path),
-            "-m",
-            package,
-            "--execute_str",
-            exec_str
-        ]
+        argument = json.dumps(exec_str) if sys.platform in ["win32", "cygwin", "msys"] else exec_str
+        args = [str(self.compiler_path), "-m", package, "--execute_str", argument]
+        if sys.platform == "win32" and len(subprocess.list2cmdline(args)) > _MAX_COMMAND_LINE:
+            args[-2:] = ["--execute_file", str(self._write_script_file(exec_str))]
         self._spawn_and_pump(package, args)
+
+    def _write_script_file(self, script: str) -> Path:
+        """Write *script* to a file of its own for the child to read, and return its path.
+
+        JSON is written back with every character escaped: some packages read
+        the file in the locale's encoding, and an escape reads the same in any.
+        The file goes when the run ends (``_remove_script_file``).
+        """
+        try:
+            text = json.dumps(json.loads(script), ensure_ascii=True)
+        except (ValueError, RecursionError):
+            text = script  # not JSON: the package reports it, as it would have
+        handle, name = tempfile.mkstemp(prefix="pybreeze_run_", suffix=".json")
+        with os.fdopen(handle, "w", encoding="utf-8") as file:
+            file.write(text)
+        self._script_file = Path(name)
+        return self._script_file
+
+    def _remove_script_file(self) -> None:
+        """Remove the file a long script was written to, if there is one."""
+        if self._script_file is not None:
+            with contextlib.suppress(OSError):
+                self._script_file.unlink()
+            self._script_file = None
 
     def start_test_process_file(self, package: str, file_path: str):
         # Pass the action JSON as a path so we never hit the Windows ~32K
@@ -134,14 +191,33 @@ class TaskProcessManager:
         child_environment = utf8_subprocess_env(self.program_encoding)
         if environment:
             child_environment.update(environment)
-        self.process = subprocess.Popen(  # nosec B603  # nosemgrep  # noqa: S603
-            args,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            creationflags=no_window_creationflags(),
-            env=child_environment,
-        )
+        try:
+            self.process = subprocess.Popen(  # nosec B603  # nosemgrep  # noqa: S603
+                args,
+                # Not the IDE's own stdin: a script calling input() blocked on
+                # the IDE's console and consumed what was typed there. It gets
+                # end of file, as FileRunnerProcess's children do.
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                creationflags=no_window_creationflags(),
+                env=child_environment,
+                **own_session_options(),
+            )
+        except OSError as error:
+            # An interpreter that is gone, or a command line over Windows'
+            # limit (a large script run as --execute_str): this raised out of
+            # the menu and left a run window no one would ever see.
+            pybreeze_logger.error("%s could not start: %r", package, error)
+            self._remove_script_file()
+            self.main_window.append_output(
+                f"[Error] {package} could not start: {error.strerror or error}\n",
+                is_error=True, own_line=True)
+            self.main_window.show()
+            return
         self.still_run_program = True
+        self._reader_grace.restart()
+        self.main_window.run_started()
         self.read_program_output_from_thread = Thread(
             target=self.read_program_output_from_process,
             daemon=True
@@ -159,89 +235,82 @@ class TaskProcessManager:
         self.timer.timeout.connect(self.pull_text)
         self.timer.start()
 
-    def _append_text(self, text: str, is_error: bool = False) -> None:
-        """Append text to the code result widget."""
-        text_cursor = self.main_window.code_result.textCursor()
-        text_format = QTextCharFormat()
-        color_key = "error_output_color" if is_error else "normal_output_color"
-        text_format.setForeground(actually_color_dict.get(color_key))
-        text_cursor.insertText(text, text_format)
-        text_cursor.insertBlock()
+    def stop(self) -> None:
+        """Stop the child if it is still running.
+
+        The child and every process it started (``stop_tree``): a browser a
+        web run opened, or a program a launcher started, used to be left
+        running. The run window reports the exit on the next pump, as for any
+        other exit.
+        """
+        self.was_stopped = True
+        if self.process is not None:
+            stop_tree(self.process)
 
     # Pyside UI update method
     def pull_text(self):
-        pump_message_queue(self.run_output_queue, self._append_text, is_error=False)
-        pump_message_queue(self.run_error_queue, self._append_text, is_error=True)
+        pumped = pump_message_queue(self.run_output_queue, self.main_window.append_output, is_error=False)
+        pumped += pump_message_queue(self.run_error_queue, self.main_window.append_output, is_error=True)
         if self.process is None:
             if self.timer.isActive():
                 self.timer.stop()
             return
         if self.process.returncode is not None:
+            # Output still on its way is pumped on the next ticks, not waited
+            # for here: this is the UI thread
+            if self._reader_grace.still_reading(
+                    self.read_program_output_from_thread, self.read_program_error_output_from_thread,
+                    progressed=pumped > 0):
+                return
             if self.timer.isActive():
                 self.timer.stop()
             self.exit_program()
         elif self.still_run_program:
             self.process.poll()
 
-    # exit program change run flag to false and clean read thread and queue and process
     def exit_program(self):
+        """End the run: show what is left of its output, report the exit, run the done hook.
+
+        Does not wait for the reader threads; the pump gave them their grace.
+        One still alive means a process the run started holds the output, and
+        the window says so.
+        """
         self.still_run_program = False
-        # Wait for threads to finish before cleanup
-        if self.read_program_output_from_thread is not None:
-            self.read_program_output_from_thread.join(timeout=2)
-            self.read_program_output_from_thread = None
-        if self.read_program_error_output_from_thread is not None:
-            self.read_program_error_output_from_thread.join(timeout=2)
-            self.read_program_error_output_from_thread = None
+        readers = (self.read_program_output_from_thread, self.read_program_error_output_from_thread)
+        self.read_program_output_from_thread = None
+        self.read_program_error_output_from_thread = None
         self.drain_and_display_queue()
+        if any_alive(*readers):
+            self.main_window.append_output(OUTPUT_STILL_HELD_NOTE, own_line=True)
         if self.process is not None:
             self.process.terminate()
-            self._append_text(f"Task exit with code {self.process.returncode}")
+            self.main_window.append_output(
+                f"Task exit with code {self.process.returncode}\n", own_line=True)
             self.process = None
+        self._remove_script_file()
         if self.task_done_trigger_function is not None:
             try:
                 self.task_done_trigger_function()
-            except Exception as e:
-                pybreeze_logger.error(f"Task done trigger failed: {e}")
+            except Exception as error:  # noqa: BLE001 — a failing hook (e.g. the report mail) must not break the run window
+                pybreeze_logger.error("Task done trigger failed: %r", error)
+        self.main_window.run_ended()
 
     def drain_and_display_queue(self):
-        while not self.run_output_queue.empty():
-            try:
-                output_message = str(self.run_output_queue.get_nowait()).strip()
-                if output_message:
-                    self._append_text(output_message)
-            except queue.Empty:
-                break
-        while not self.run_error_queue.empty():
-            try:
-                error_message = str(self.run_error_queue.get_nowait()).strip()
-                if error_message:
-                    self._append_text(error_message, is_error=True)
-            except queue.Empty:
-                break
+        pump_message_queue(
+            self.run_output_queue, self.main_window.append_output, is_error=False, max_messages=None)
+        pump_message_queue(
+            self.run_error_queue, self.main_window.append_output, is_error=True, max_messages=None)
 
     def _read_stream_into_queue(self, stream_name: str, target_queue: Queue) -> None:
-        # Block on readline until a line arrives or the pipe hits EOF. Stopping on
-        # EOF (empty read) is essential: without it the loop spins at 100% CPU
-        # re-reading a closed pipe until the QTimer notices the process exited.
-        while self.still_run_program:
-            proc = self.process
-            if proc is None:
-                break
-            stream = getattr(proc, stream_name)
-            if stream is None:
-                break
-            try:
-                line = stream.readline(self.program_buffer_size)
-            except (ValueError, OSError):
-                # Pipe closed underneath us during shutdown.
-                break
-            if not line:
-                break
-            if isinstance(line, bytes):
-                line = line.decode(self.program_encoding, "replace")
-            if line.strip():
-                target_queue.put(line)
+        stream = getattr(self.process, stream_name, None)
+        if stream is None:
+            return
+        read_stream_into_queue(
+            stream, target_queue,
+            buffer_size=self.program_buffer_size,
+            encoding=self.program_encoding,
+            keep_reading=lambda: self.still_run_program,
+        )
 
     def read_program_output_from_process(self):
         self._read_stream_into_queue("stdout", self.run_output_queue)

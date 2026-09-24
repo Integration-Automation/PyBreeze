@@ -14,9 +14,9 @@ description = "IDE for multi automation"
 requires-python = ">=3.10"
 license-files = ["LICENSE"]
 dependencies = [
-    "je-editor", "je_auto_control", "je_web_runner",
+    "je-editor>=1.0.27", "je_auto_control", "je_web_runner",
     "je_load_density", "je_api_testka", "je-mail-thunder",
-    "automation-file", "PySide6==6.11.0", "test_pioneer", "paramiko",
+    "automation-file", "PySide6==6.11.2", "test_pioneer", "paramiko",
     "jupyterlab",
 ]
 classifiers = [
@@ -33,8 +33,8 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Intergration-Automation-Testing/AutomationEditor"
-Code = "https://github.com/Intergration-Automation-Testing/AutomationEditor"
+Homepage = "https://github.com/Integration-Automation/PyBreeze"
+Code = "https://github.com/Integration-Automation/PyBreeze"
 
 [project.readme]
 file = "README.md"

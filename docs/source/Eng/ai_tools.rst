@@ -25,7 +25,8 @@ Features
 ^^^^^^^^
 
 - Tracks accept/reject statistics for AI responses
-- Saves URL history to ``.pybreeze/urls.txt``
+- Records which endpoints have been used in ``.pybreeze/urls.txt``, as fingerprints:
+  an API URL can carry a token, so the URL itself is never written to disk
 - Stores response statistics in ``.pybreeze/response_stats.txt``
 
 Usage

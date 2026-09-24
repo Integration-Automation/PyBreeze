@@ -191,3 +191,12 @@ class TestEveryFindingCodeIsTranslated:
         for finding in analysis.findings:
             assert finding.code not in report
         assert "secret" not in report.split("== Findings ==")[1]
+
+
+def test_an_indented_paste_is_read_line_by_line(widget):
+    # The tab stripped the first line's indent only, and the rest read as folded
+    widget.input_edit.setPlainText("    Content-Type: text/html\n    Server: nginx\n    Set-Cookie: sid=1")
+
+    widget.analyze()
+
+    assert [field.name for field in widget._analysis.fields] == ["Content-Type", "Server", "Set-Cookie"]

@@ -10,11 +10,12 @@ templates use, so the two paths cannot drift apart.
 """
 from __future__ import annotations
 
-import json
+import re
 from collections.abc import Callable
 
 from pybreeze.utils.curl_import.curl_parser import CurlRequest
 from pybreeze.utils.curl_import.request_codegen import REQUESTS_IMPORT, request_statements
+from pybreeze.utils.json_format.view_safe import dumps_for_view
 from pybreeze.utils.curl_import.script_templates import (
     APITESTKA_IMPORT,
     LOADDENSITY_IMPORT,
@@ -37,20 +38,42 @@ def unique_test_names(requests: list[CurlRequest]) -> list[str]:
     function twice, and the second would silently replace the first.
 
     :param requests: the requests to name, in order
-    :return: a name per request, suffixed ``_2``, ``_3`` … on a repeat
+    :return: a name per request, suffixed ``_2``, ``_3`` … on a repeat; a
+        suffix is skipped when another request's own name already has it
+        (``/a``, ``/a``, ``/a/2`` give ``test_get_a``, ``test_get_a_3``, ``test_get_a_2``)
     """
+    bases = [test_function_name(request) for request in requests]
+    used = set(bases)
     names: list[str] = []
-    seen: dict[str, int] = {}
-    for request in requests:
-        base = test_function_name(request)
-        seen[base] = seen.get(base, 0) + 1
-        names.append(base if seen[base] == 1 else f"{base}_{seen[base]}")
+    taken: set[str] = set()
+    next_suffix: dict[str, int] = {}
+    for base in bases:
+        if base not in taken:
+            taken.add(base)
+            names.append(base)
+            continue
+        suffix = next_suffix.get(base, 2)
+        while f"{base}_{suffix}" in used or f"{base}_{suffix}" in taken:
+            suffix += 1
+        next_suffix[base] = suffix + 1
+        taken.add(f"{base}_{suffix}")
+        names.append(f"{base}_{suffix}")
     return names
 
 
+# Characters that must not reach a comment as they are: they would end it
+# ASCII controls, and the line breaks outside ASCII that a Qt editor makes real
+_CONTROL_CHARACTERS = re.compile("[\x00-\x1f\x7f\x85\u2028\u2029]")
+
+
 def _numbered_comment(index: int, request: CurlRequest) -> str:
-    """Return the comment introducing one request's block."""
-    return f"# {index}. {request.method} {request.full_url}"
+    """Return the comment introducing one request's block.
+
+    A recorded URL can hold anything, a line break included, and a line break
+    in a comment ends it: control characters are written as escapes.
+    """
+    text = f"{request.method} {request.full_url}"
+    return f"# {index}. " + _CONTROL_CHARACTERS.sub(lambda match: f"\\u{ord(match.group()):04x}", text)
 
 
 def _requests_script(requests: list[CurlRequest]) -> str:
@@ -87,7 +110,7 @@ def _apitestka_python_script(requests: list[CurlRequest]) -> str:
 def _apitestka_action_script(requests: list[CurlRequest]) -> str:
     """Collect every request into one action list, replayed in capture order."""
     actions = [to_apitestka_action(request) for request in requests]
-    return json.dumps(actions, indent=4, ensure_ascii=False) + "\n"
+    return dumps_for_view(actions, indent=4) + "\n"
 
 
 def _loaddensity_script(requests: list[CurlRequest]) -> str:

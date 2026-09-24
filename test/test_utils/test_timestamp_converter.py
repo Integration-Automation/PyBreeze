@@ -82,3 +82,119 @@ class TestConvertErrors:
     def test_out_of_range_epoch_raises(self):
         with pytest.raises(TimestampParseException):
             convert_timestamp("1" * 40)
+
+
+class TestInstantsDatetimeCannotHold:
+    @pytest.mark.parametrize("text", ["0001-01-01T00:00:00+01:00", "9999-12-31T23:30:00-01:00"])
+    def test_a_date_that_leaves_the_range_in_utc_is_a_parse_error(self, text):
+        # In UTC these fall before year 1 or after year 9999: OverflowError, not ValueError.
+        with pytest.raises(TimestampParseException):
+            convert_timestamp(text)
+
+
+class TestSubSecondPrecision:
+    def test_milliseconds_keep_their_sub_second_part(self):
+        result = convert_timestamp("1700000000123")
+
+        assert result.epoch_millis == 1700000000123
+        assert result.epoch_seconds == 1700000000
+
+    def test_an_instant_before_1970_rounds_down_not_toward_zero(self):
+        result = convert_timestamp("-1.5")
+
+        assert result.epoch_millis == -1500
+        assert result.epoch_seconds == -2
+
+    @pytest.mark.parametrize("text,iso", [
+        ("-86400", "1969-12-31T00:00:00+00:00"),
+        ("-315619200", "1960-01-01T00:00:00+00:00"),
+    ])
+    def test_a_day_or_more_before_1970_converts_on_every_platform(self, text, iso):
+        # fromtimestamp() refused these on Windows: "not a recognized epoch number"
+        assert convert_timestamp(text).iso_utc == iso
+
+    def test_an_iso_time_with_milliseconds_keeps_them(self):
+        assert convert_timestamp("2021-01-01T00:00:00.250Z").epoch_millis == 1609459200250
+
+
+class TestFormsToolsWrite:
+    """Read the same on Python 3.10 as on 3.14: fromisoformat took less before 3.11."""
+
+    @pytest.mark.parametrize("text", [
+        "2024-01-01T00:00:00+0000",
+        "2024-01-01T00:00:00+00",
+        "2024-01-01T08:00:00+08",
+        "2024-01-01T00:00:00z",
+        "20240101T000000Z",
+        "2024-01-01 00:00:00Z",
+    ])
+    def test_offsets_and_designators(self, text):
+        from pybreeze.utils.timestamp_tools.timestamp_converter import convert_timestamp
+
+        assert convert_timestamp(text).epoch_seconds == 1704067200
+
+    @pytest.mark.parametrize(("text", "millis"), [
+        ("2024-01-01T00:00:00.1Z", 1704067200100),
+        ("2024-01-01T00:00:00.12Z", 1704067200120),
+        ("2024-01-01T00:00:00.123456789Z", 1704067200123),
+    ])
+    def test_any_number_of_fraction_digits(self, text, millis):
+        from pybreeze.utils.timestamp_tools.timestamp_converter import convert_timestamp
+
+        assert convert_timestamp(text).epoch_millis == millis
+
+    @pytest.mark.parametrize("text", ["1700000000123456", "1700000000123456789"])
+    def test_microseconds_and_nanoseconds(self, text):
+        # Both were divided by 1000 as milliseconds and overflowed
+        from pybreeze.utils.timestamp_tools.timestamp_converter import convert_timestamp
+
+        assert convert_timestamp(text).epoch_millis == 1700000000123
+
+    def test_an_eight_digit_date_is_a_date(self):
+        # 20240101 was read as seconds: August 1970
+        from pybreeze.utils.timestamp_tools.timestamp_converter import convert_timestamp
+
+        assert convert_timestamp("20240101").iso_utc == "2024-01-01T00:00:00+00:00"
+        assert convert_timestamp("12345678").epoch_seconds == 12345678  # not a date: seconds
+
+    def test_a_field_out_of_range_is_refused(self):
+        from pybreeze.utils.exception.exceptions import TimestampParseException
+        from pybreeze.utils.timestamp_tools.timestamp_converter import convert_timestamp
+
+        with pytest.raises(TimestampParseException):
+            convert_timestamp("2024-13-01T00:00:00Z")
+
+    def test_an_offset_past_59_minutes_is_refused(self):
+        # +05:99 was taken as +06:39
+        from pybreeze.utils.exception.exceptions import TimestampParseException
+        from pybreeze.utils.timestamp_tools.timestamp_converter import convert_timestamp
+
+        with pytest.raises(TimestampParseException):
+            convert_timestamp("2024-01-01T00:00+05:99")
+        assert convert_timestamp("2024-01-01T00:00+05:59").iso_utc == "2023-12-31T18:01:00+00:00"
+
+
+class TestADecimalEpochRoundsTowardThePast:
+    """As a whole number does, and as the result's fields say: a float was rounded to the nearest."""
+
+    @pytest.mark.parametrize(("text", "iso"), [
+        ("0.0000009", "1970-01-01T00:00:00+00:00"),
+        ("-0.0000001", "1969-12-31T23:59:59.999999+00:00"),
+        ("1700000000.9999999", "2023-11-14T22:13:20.999999+00:00"),
+        ("1700000000123.4567", "2023-11-14T22:13:20.123456+00:00"),
+        ("-1e-999999999", "1969-12-31T23:59:59.999999+00:00"),
+        ("0e999999999", "1970-01-01T00:00:00+00:00"),
+        ("0." + "9" * 70, "1970-01-01T00:00:00.999999+00:00"),  # rounded up to 1 s at 60 digits
+    ])
+    def test_it_is_cut_to_the_microsecond(self, text, iso):
+        from pybreeze.utils.timestamp_tools.timestamp_converter import convert_timestamp
+
+        assert convert_timestamp(text).iso_utc == iso
+
+    @pytest.mark.parametrize("text", ["1e999999999", "Infinity", "-inf", "nan", "sNaN", "9" * 40])
+    def test_one_no_date_can_be_is_refused(self, text):
+        from pybreeze.utils.exception.exceptions import TimestampParseException
+        from pybreeze.utils.timestamp_tools.timestamp_converter import convert_timestamp
+
+        with pytest.raises(TimestampParseException):
+            convert_timestamp(text)

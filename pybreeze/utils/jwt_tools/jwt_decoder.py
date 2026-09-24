@@ -14,7 +14,6 @@ import base64
 import json
 import re
 from dataclasses import dataclass
-from datetime import datetime, timezone
 
 from pybreeze.utils.exception.exception_tags import (
     empty_jwt_error,
@@ -22,7 +21,10 @@ from pybreeze.utils.exception.exception_tags import (
     malformed_jwt_error,
 )
 from pybreeze.utils.exception.exceptions import JwtDecodeException
+from pybreeze.utils.json_format.json_process import pretty_json_or_none
+from pybreeze.utils.json_format.view_safe import dumps_for_view
 from pybreeze.utils.logging.logger import pybreeze_logger
+from pybreeze.utils.timestamp_tools.timestamp_converter import utc_from_epoch_seconds
 
 # A JWT is three base64url segments joined by dots
 _JWT_SEGMENT_COUNT = 3
@@ -30,7 +32,14 @@ _JWT_SEGMENT_COUNT = 3
 _TIMESTAMP_CLAIMS = ("exp", "iat", "nbf", "auth_time")
 # Matches a JWT-looking token anywhere in a larger text, such as the value of an
 # ``Authorization: Bearer ...`` header. The signature segment may be empty.
-JWT_TOKEN_RE = re.compile(r"eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*")
+# A header is a JSON object, so its encoding starts "ey" ('{"') or "ew" ('{'
+# then a space, tab or line break), not always "eyJ". The token must start and
+# end where the match does: not inside a word or another token (its payload
+# starts "ey" too), and not before a fourth segment (a sentence's closing full
+# stop is fine).
+JWT_TOKEN_RE = re.compile(
+    r"(?<![A-Za-z0-9_.-])e[wy][A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*"
+    r"(?![A-Za-z0-9_-]|\.[A-Za-z0-9_-])")
 
 
 @dataclass
@@ -40,39 +49,60 @@ class DecodedJwt:
     :param header: decoded JOSE header (algorithm, type, ...)
     :param payload: decoded claims set
     :param signature: the raw (still-encoded) signature segment
+    :param header_json: the header's JSON text as the token carries it
+    :param payload_json: the payload's JSON text as the token carries it
     """
 
     header: dict
     payload: dict
     signature: str
+    header_json: str = ""
+    payload_json: str = ""
 
 
-def _decode_segment(segment: str) -> dict:
+def shown_json(text: str, value: dict, *, sort_keys: bool = True) -> str:
+    """A decoded segment laid out for display: its own *text*, numbers as written.
+
+    ``json.dumps`` of the decoded *value* wrote ``1e400`` as ``Infinity``, which
+    is not JSON, and a long number rounded. The decoded value stands in when
+    the text is not one JSON Format accepts (a claim repeated, ``NaN``), or
+    was not kept.
+    """
+    return pretty_json_or_none(text, sort_keys=sort_keys) or dumps_for_view(value, indent=4, sort_keys=sort_keys)
+
+
+def _decode_segment(segment: str) -> tuple[dict, str]:
     """Base64url-decode one JWT segment into a JSON object.
 
     :param segment: a single base64url-encoded segment
-    :return: the decoded JSON object
+    :return: the decoded JSON object, and its JSON text
     :raises JwtDecodeException: when the segment is not valid base64url/JSON
         or does not decode to a JSON object
     """
     # base64url omits padding; restore it so the stdlib decoder accepts the input.
     padding = "=" * (-len(segment) % 4)
     try:
-        raw = base64.urlsafe_b64decode(segment + padding)
-        decoded = json.loads(raw.decode("utf-8"))
-    # binascii.Error and UnicodeDecodeError both derive from ValueError.
-    except ValueError as error:
+        # Strict: urlsafe_b64decode drops characters outside the alphabet after
+        # the padding was worked out from a length that counted them, so a
+        # stray quote decoded or failed depending on the segment's length
+        raw = base64.b64decode(segment + padding, altchars=b"-_", validate=True)
+        text = raw.decode("utf-8")
+        decoded = json.loads(text)
+    # binascii.Error and UnicodeDecodeError both derive from ValueError; a
+    # payload nested past the recursion limit raises RecursionError.
+    except (ValueError, RecursionError) as error:
         pybreeze_logger.error(jwt_segment_decode_error)
         raise JwtDecodeException(jwt_segment_decode_error) from error
     if not isinstance(decoded, dict):
         raise JwtDecodeException(jwt_segment_decode_error)
-    return decoded
+    return decoded, text
 
 
 def decode_jwt(token: str) -> DecodedJwt:
     """Decode a JWT's header and payload without verifying its signature.
 
-    :param token: the compact JWT string ``header.payload.signature``
+    :param token: the compact JWT string ``header.payload.signature``, or
+        text holding one (``Bearer <token>``, a quoted or wrapped token)
     :return: the decoded parts
     :raises JwtDecodeException: when the token is empty or not three segments,
         or a segment cannot be decoded
@@ -82,14 +112,44 @@ def decode_jwt(token: str) -> DecodedJwt:
         pybreeze_logger.error(empty_jwt_error)
         raise JwtDecodeException(empty_jwt_error)
 
-    segments = stripped.split(".")
+    segments = _the_token(stripped).split(".")
     if len(segments) != _JWT_SEGMENT_COUNT:
         pybreeze_logger.error(malformed_jwt_error)
         raise JwtDecodeException(malformed_jwt_error)
 
-    header = _decode_segment(segments[0])
-    payload = _decode_segment(segments[1])
-    return DecodedJwt(header=header, payload=payload, signature=segments[2])
+    header, header_json = _decode_segment(segments[0])
+    payload, payload_json = _decode_segment(segments[1])
+    return DecodedJwt(header=header, payload=payload, signature=segments[2],
+                      header_json=header_json, payload_json=payload_json)
+
+
+def _the_token(text: str) -> str:
+    """The compact token in *text*, as pasted.
+
+    A token is often copied with something around it: ``Bearer`` from an
+    ``Authorization`` header, the quotes of a JSON string, line breaks where it
+    wrapped. Those used to reach the decoder, and ``Bearer eyJ...`` always failed.
+    """
+    unwrapped = _unwrapped(text)
+    if JWT_TOKEN_RE.fullmatch(unwrapped):
+        return unwrapped
+    found = find_tokens(unwrapped)
+    return found[0] if found else unwrapped
+
+
+def _unwrapped(text: str) -> str:
+    """*text* with the line breaks a wrapped token was cut at taken out.
+
+    A line joins the one above when it is a single word: a token wrapped
+    across lines has no space inside, while a line of other text does. All
+    whitespace used to go, so the text after a token (``next line``) became
+    part of its signature.
+    """
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    joined = lines[0] if lines else ""
+    for line in lines[1:]:
+        joined += line if len(line.split()) == 1 else f"\n{line}"
+    return joined
 
 
 def find_tokens(text: str) -> list[str]:
@@ -118,8 +178,9 @@ def format_timestamp_claim(value: object) -> str | None:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return None
     try:
-        return datetime.fromtimestamp(value, tz=timezone.utc).isoformat()
-    except (OverflowError, OSError, ValueError):
+        # Not fromtimestamp: on Windows it refused claims before 1970
+        return utc_from_epoch_seconds(value).isoformat()
+    except (OverflowError, ValueError):
         return None
 
 

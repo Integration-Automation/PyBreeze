@@ -8,10 +8,14 @@ from je_editor import language_wrapper
 from pybreeze.pybreeze_ui.extend_ai_gui.code_review.cot_chain import (
     CODE_DIFF, STEP_RESULT_KEY, build_prompt
 )
+from pybreeze.pybreeze_ui.error_text import error_text
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.network.http_client import (
-    ResponseTooLargeError, read_capped_text, CONNECT_TIMEOUT,
+    DEFAULT_MAX_READ_SECONDS, ResponseTooLargeError, read_capped_text, CONNECT_TIMEOUT,
+    describe_request_error, succeeded,
+    truncate_for_display,
 )
+from pybreeze.utils.network.public_http import overall_deadline, public_session
 from pybreeze.utils.network.url_validation import UnsafeURLError, validate_url
 
 
@@ -29,11 +33,11 @@ class SenderThread(QThread):
             validate_url(self.url)
         except UnsafeURLError as error:
             pybreeze_logger.error("CoT code review URL rejected: %r", error)
-            self.update_response.emit("error", str(error))
+            self.update_response.emit("error", error_text(str(error)))
             return
         # One session reuses a single TCP/TLS connection across all the
         # sequential per-template POSTs to the same endpoint.
-        session = requests.Session()
+        session = public_session()
         try:
             self._run_templates(session, self.code)
         finally:
@@ -63,13 +67,25 @@ class SenderThread(QThread):
     def _ask(self, session: requests.Session, file: str, prompt: str) -> tuple[str, bool]:
         """Send one step's prompt; return its answer and whether it arrived."""
         try:
-            # 傳送到指定 URL（重用 session 連線）
-            resp = session.post(
-                self.url, json={"prompt": prompt},
-                timeout=(CONNECT_TIMEOUT, 60), allow_redirects=False, stream=True,
-            )
-            return read_capped_text(resp), True
+            # 傳送到指定 URL（重用 session 連線）; the whole step bounded, headers
+            # included: a read timeout restarts with every byte
+            with overall_deadline(DEFAULT_MAX_READ_SECONDS):
+                resp = session.post(
+                    self.url, json={"prompt": prompt},
+                    timeout=(CONNECT_TIMEOUT, 30), allow_redirects=False, stream=True,
+                )
+                body = read_capped_text(resp)
         except (requests.RequestException, ResponseTooLargeError) as error:
-            pybreeze_logger.error("CoT code review send failed for %s: %r", file, error)
+            # Not %r: a requests error carries the whole URL, which may hold a token.
+            pybreeze_logger.error(
+                "CoT code review send failed for %s: %s", file, type(error).__name__)
             word = language_wrapper.language_word_dict
-            return f"{word.get('cot_gui_error_sending')} {file} {error}", False
+            return f"{word.get('cot_gui_error_sending')} {file} {error_text(describe_request_error(error))}", False
+        if not succeeded(resp):
+            # An error page or an unfollowed redirect is not an answer: counted
+            # as one, it was quoted into every later step of the chain.
+            pybreeze_logger.error("CoT code review step %s got HTTP %s", file, resp.status_code)
+            word = language_wrapper.language_word_dict
+            return (f"{word.get('cot_gui_error_sending')} {file} "
+                    f"HTTP {resp.status_code}\n{truncate_for_display(body)}"), False
+        return body, True

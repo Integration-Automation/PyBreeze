@@ -7,11 +7,12 @@ the user would have given is supplied directly.
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest
-from PySide6.QtCore import QPoint, Qt
+from PySide6.QtCore import QFileSystemWatcher, QPoint, Qt
 from PySide6.QtWidgets import (
     QApplication, QFileSystemModel, QMessageBox, QTabWidget, QTreeView, QWidget
 )
@@ -20,7 +21,7 @@ from pybreeze.extend_multi_language.update_language_dict import update_language_
 from pybreeze.pybreeze_ui.editor_main import file_tree_context_menu as ctx
 from pybreeze.pybreeze_ui.editor_main.file_tree_context_menu import (
     _action_copy_path, _action_delete, _action_new_file, _action_new_folder,
-    _action_rename, _attach_context_menu, _find_editor_for_file, _get_tree_root_path,
+    _action_rename, _attach_context_menu, _editors_under, _get_tree_root_path,
     _perform_file_op, _resolve_parent_dir, setup_file_tree_context_menu
 )
 
@@ -69,6 +70,23 @@ def warnings(monkeypatch):
     return shown
 
 
+class FakeCodeEdit:
+    """The editing area, recording what a rename reloads."""
+
+    def __init__(self, path: str) -> None:
+        self.current_file = path
+        self.reloaded: list[str] = []
+
+    def reset_highlighter(self) -> None:
+        self.reloaded.append("highlighter")
+
+    def load_git_baseline(self) -> None:
+        self.reloaded.append("git baseline")
+
+    def start_language_server(self) -> None:
+        self.reloaded.append("language server")
+
+
 class FakeEditor(QWidget):
     """Stands in for an EditorWidget holding one open file.
 
@@ -79,22 +97,34 @@ class FakeEditor(QWidget):
     def __init__(self, path: str) -> None:
         super().__init__()
         self.current_file = path
-        self.code_edit = type("Edit", (), {"current_file": path})()
+        self.code_edit = FakeCodeEdit(path)
+        # What JEditor's EditorWidget watches its file with
+        self._file_watcher = QFileSystemWatcher([path], self)
+        self._ignore_next_change = False
         self.renamed = False
         self.closed = False
+        self.code_save_thread = None
+
+    _is_modified = False
 
     def rename_self_tab(self) -> None:
+        # As JEditor's: it clears the unsaved mark
         self.renamed = True
+        self._is_modified = False
+
+    def _on_text_changed(self) -> None:
+        self._is_modified = True
 
     def close(self) -> bool:
         self.closed = True
         return super().close()
 
 
-class FakeWindow:
-    """A main window with just the tab widget the actions reach for."""
+class FakeWindow(QWidget):
+    """A main window with just the tab widget the actions reach for; docked editors are its children."""
 
     def __init__(self) -> None:
+        super().__init__()
         self.tab_widget = QTabWidget()
 
 
@@ -212,18 +242,40 @@ class TestRenaming:
         assert occupied.read_text(encoding="utf-8") == "keep me"
         assert warnings
 
+    def test_a_change_of_case_is_a_rename(self, tree, tmp_path, monkeypatch, warnings):
+        # On Windows "Main.py" already "exists" -- as the very file being renamed.
+        original = tmp_path / "main.py"
+        original.write_text("print(1)", encoding="utf-8")
+        answer(monkeypatch, "Main.py")
+
+        _action_rename(tree, FakeWindow(), original)
+
+        assert warnings == []
+        assert [child.name for child in tmp_path.iterdir()] == ["Main.py"]
+        assert (tmp_path / "Main.py").read_text(encoding="utf-8") == "print(1)"
+
     def test_an_open_tab_follows_the_rename(self, tree, tmp_path, monkeypatch):
         original = tmp_path / "open.py"
         original.touch()
         window = FakeWindow()
         editor = FakeEditor(str(original))
+        editor.code_save_thread = None
         monkeypatch.setattr(
-            ctx, "_find_editor_for_file", lambda _w, _p: editor)
+            ctx, "_editors_under", lambda _w, _p: [(editor, original)])
+        # The real one starts JEditor's save thread; the stand-in only records
+        # where the tab now points, the way it does.
+        monkeypatch.setattr(
+            ctx, "init_new_auto_save_thread",
+            lambda file_path, widget: setattr(widget, "current_file", file_path))
         answer(monkeypatch, "renamed.py")
         _action_rename(tree, window, original)
         assert editor.current_file == str(tmp_path / "renamed.py")
         assert editor.code_edit.current_file == str(tmp_path / "renamed.py")
         assert editor.renamed
+        # As when JEditor opens a file: it watched the old name, and kept the
+        # old name's highlighter, git baseline and language server
+        assert [Path(one) for one in editor._file_watcher.files()] == [tmp_path / "renamed.py"]
+        assert editor.code_edit.reloaded == ["highlighter", "git baseline", "language server"]
 
 
 class TestDeleting:
@@ -259,12 +311,67 @@ class TestDeleting:
         window = FakeWindow()
         editor = FakeEditor(str(target))
         window.tab_widget.addTab(editor, "open.py")
-        monkeypatch.setattr(ctx, "_find_editor_for_file", lambda _w, _p: editor)
+        monkeypatch.setattr(ctx, "_editors_under", lambda _w, _p: [(editor, target)])
         confirm(monkeypatch, yes=True)
         _action_delete(tree, window, target)
         assert editor.closed
         assert window.tab_widget.count() == 0
         assert not target.exists()
+
+    def test_every_tab_inside_a_deleted_folder_is_closed(self, tree, tmp_path, monkeypatch):
+        folder = tmp_path / "pkg"
+        folder.mkdir()
+        inside = [folder / "a.py", folder / "b.py"]
+        for file in inside:
+            file.touch()
+        window = FakeWindow()
+        editors = [FakeEditor(str(file)) for file in inside]
+        outside = FakeEditor(str(tmp_path / "other.py"))
+        for editor in (*editors, outside):
+            window.tab_widget.addTab(editor, "tab")
+        asked = []
+
+        def under(_window, path):
+            asked.append(path)
+            return list(zip(editors, inside))
+
+        monkeypatch.setattr(ctx, "_editors_under", under)
+        confirm(monkeypatch, yes=True)
+        _action_delete(tree, window, folder)
+
+        assert asked == [folder]
+        assert all(editor.closed for editor in editors)
+        assert not outside.closed
+        assert window.tab_widget.count() == 1
+        assert not folder.exists()
+
+    def test_a_delete_that_fails_keeps_the_tab_open(self, tree, tmp_path, monkeypatch):
+        # The tabs used to close before the delete ran, so a locked file stayed
+        # on disk while its tab, and any unsaved edits in it, were gone.
+        target = tmp_path / "locked.py"
+        target.touch()
+        window = FakeWindow()
+        editor = FakeEditor(str(target))
+        window.tab_widget.addTab(editor, "locked.py")
+        monkeypatch.setattr(ctx, "_editors_under", lambda _w, _p: [(editor, target)])
+        restarted: list = []
+        monkeypatch.setattr(
+            ctx, "init_new_auto_save_thread",
+            lambda file_path, widget: restarted.append(file_path))
+        monkeypatch.setattr(QMessageBox, "warning", staticmethod(lambda *a, **k: None))
+
+        def refuse(self, *args, **kwargs):
+            raise PermissionError(13, "The process cannot access the file")
+
+        monkeypatch.setattr(Path, "unlink", refuse)
+        confirm(monkeypatch, yes=True)
+        _action_delete(tree, window, target)
+
+        assert target.exists()
+        assert not editor.closed
+        assert window.tab_widget.count() == 1
+        # Its auto-save, stopped for the delete, runs again.
+        assert restarted == [str(target)]
 
 
 class TestCopyingThePath:
@@ -293,9 +400,9 @@ class TestCopyingThePath:
         assert QApplication.clipboard().text() == "untouched"
 
 
-class TestFindingTheOpenEditor:
+class TestFindingTheOpenEditors:
     def test_a_window_with_no_editor_tabs_finds_nothing(self, app, tmp_path):
-        assert _find_editor_for_file(FakeWindow(), tmp_path / "any.py") is None
+        assert _editors_under(FakeWindow(), tmp_path / "any.py") == []
 
 
 class TestAttachingTheMenu:
@@ -326,3 +433,132 @@ class TestAttachingTheMenu:
         assert index == 0
         assert window.tab_widget.count() == 1
         placeholder.deleteLater()
+
+
+class TestANameStaysInItsFolder:
+    """A drive, a root, '..' or ':' put the file elsewhere: /tmp/notes.py became C:\\tmp\\notes.py."""
+
+    @pytest.mark.parametrize(
+        "name", ["/tmp/notes.py", "C:\\x.py", "C:x.py", "..\\up.py", "a/../../up.py", "notes.py:stream"])
+    def test_a_new_file_outside_the_folder_is_refused(self, tree, tmp_path, monkeypatch, warnings, name):
+        folder = tmp_path / "project"
+        folder.mkdir()
+        answer(monkeypatch, name)
+
+        _action_new_file(tree, folder)
+
+        assert warnings
+        assert list(folder.iterdir()) == []
+        assert sorted(item.name for item in tmp_path.iterdir()) == ["project"]
+
+    def test_a_new_file_in_a_subfolder_is_still_allowed(self, tree, tmp_path, monkeypatch):
+        answer(monkeypatch, "pkg/module.py")
+
+        _action_new_file(tree, None)
+
+        assert (tmp_path / "pkg" / "module.py").is_file()
+
+    @pytest.mark.parametrize("name", ["/a.py", "sub/a.py", "..\\a.py"])
+    def test_a_rename_is_one_name(self, tree, tmp_path, monkeypatch, warnings, name):
+        original = tmp_path / "a.py"
+        original.write_text("x", encoding="utf-8")
+        answer(monkeypatch, name)
+
+        _action_rename(tree, FakeWindow(), original)
+
+        assert warnings
+        assert original.is_file()
+
+
+class TestDeletingAFolder:
+    def test_read_only_files_go_too(self, tmp_path):
+        # rmtree stopped at the first one: git makes its objects read-only, and
+        # a cloned project was left half deleted with a broken repository
+        import stat
+
+        folder = tmp_path / "project"
+        (folder / ".git" / "objects" / "ab").mkdir(parents=True)
+        (folder / ".git" / "HEAD").write_text("ref", encoding="utf-8")
+        locked = folder / ".git" / "objects" / "ab" / "cdef"
+        locked.write_bytes(b"blob")
+        os.chmod(locked, stat.S_IREAD)
+
+        ctx.remove_folder(folder)
+
+        assert not folder.exists()
+
+    @pytest.mark.skipif(os.name != "nt", reason="junctions are Windows'")
+    def test_a_junction_is_removed_and_what_it_points_to_is_kept(self, tree, tmp_path, monkeypatch):
+        import subprocess
+
+        target = tmp_path / "real"
+        target.mkdir()
+        (target / "keep.txt").write_text("keep", encoding="utf-8")
+        link = tmp_path / "link"
+        subprocess.run(["cmd", "/c", "mklink", "/J", str(link), str(target)],
+                       check=True, capture_output=True, timeout=30)
+        confirm(monkeypatch, yes=True)
+
+        _action_delete(tree, FakeWindow(), link)
+
+        assert not link.exists() and not os.path.lexists(link)
+        assert (target / "keep.txt").read_text(encoding="utf-8") == "keep"
+
+
+def test_a_rename_keeps_the_unsaved_mark_of_an_edited_tab(tree, tmp_path, monkeypatch):
+    # rename_self_tab cleared it while nothing had been saved: closing the tab
+    # before the new auto-save wrote lost the edits without asking
+    original = tmp_path / "a.py"
+    original.write_text("x", encoding="utf-8")
+    editor = FakeEditor(str(original))
+    editor._is_modified = True
+    monkeypatch.setattr(ctx, "_editors_under", lambda _w, _p: [(editor, original)])
+    monkeypatch.setattr(
+        ctx, "init_new_auto_save_thread",
+        lambda file_path, widget: setattr(widget, "current_file", file_path))
+    answer(monkeypatch, "b.py")
+
+    _action_rename(tree, FakeWindow(), original)
+
+    assert (tmp_path / "b.py").is_file()
+    assert editor.renamed and editor._is_modified
+
+
+
+class TestRevealing:
+    """A file was never shown selected: its folder opened, and the user had to find it."""
+
+    @pytest.mark.parametrize(("platform", "flags"), [("win32", ["/select,"]), ("darwin", ["-R"])])
+    def test_a_file_is_shown_selected(self, tmp_path, platform, flags):
+        target = tmp_path / "a.py"
+        target.write_text("", encoding="utf-8")
+
+        command = ctx.reveal_command(target, platform)
+
+        assert command[1:] == [*flags, str(target)]
+
+    @pytest.mark.parametrize("platform", ["win32", "darwin", "linux"])
+    def test_a_folder_is_opened(self, tmp_path, platform):
+        assert ctx.reveal_command(tmp_path, platform)[1:] == [str(tmp_path)]
+
+    def test_elsewhere_a_files_folder_is_opened(self, tmp_path):
+        target = tmp_path / "a.py"
+        target.write_text("", encoding="utf-8")
+
+        assert ctx.reveal_command(target, "linux") == ["xdg-open", str(tmp_path)]
+
+    def test_explorer_is_the_systems(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("SystemRoot", str(tmp_path))
+
+        assert ctx.reveal_command(tmp_path, "win32")[0] == str(tmp_path / "explorer.exe")
+
+    def test_a_missing_file_manager_is_shown_not_raised(self, tree, tmp_path, monkeypatch, warnings):
+        # No xdg-open: FileNotFoundError left the slot as a traceback
+        def missing(_command):
+            raise FileNotFoundError(2, "No such file or directory", "xdg-open")
+
+        monkeypatch.setattr(ctx.subprocess, "Popen", missing)
+
+        ctx._action_reveal_in_explorer(tree, tmp_path)
+
+        assert len(warnings) == 1 and "xdg-open" in warnings[0]

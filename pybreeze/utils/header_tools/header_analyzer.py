@@ -14,6 +14,7 @@ them; values that could be secrets are never copied into a finding's detail.
 from __future__ import annotations
 
 import re
+import textwrap
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
@@ -25,8 +26,10 @@ LEVEL_INFO = "info"
 HEADER_LINE_RE = re.compile(r"^([A-Za-z0-9!#$%&'*+.^_`|~-]+):[ \t]?(.*)$")
 # Matches a leading response status line, e.g. "HTTP/1.1 200 OK"
 _STATUS_LINE_RE = re.compile(r"^\s*HTTP/\d(?:\.\d)?\s+\d{3}\b")
-# Matches the max-age directive of an HSTS policy
-_MAX_AGE_RE = re.compile(r"max-age\s*=\s*(\d+)", re.IGNORECASE)
+# Matches the max-age directive of an HSTS policy, whose value RFC 6797 lets be quoted
+_MAX_AGE_RE = re.compile(r'max-age\s*=\s*"?(\d+)"?', re.IGNORECASE)
+# The start of a line that continues the header above it (obs-fold, RFC 9112 5.2)
+FOLDED_LINE_START = (" ", "\t")
 
 # Header names referenced from more than one table below
 _HSTS_HEADER = "strict-transport-security"
@@ -39,6 +42,8 @@ _SET_COOKIE_HEADER = "set-cookie"
 # An HSTS policy shorter than 180 days is too short to survive a browser restart
 # cycle and is below what the preload list accepts.
 _MIN_HSTS_MAX_AGE = 15_552_000
+# More digits than this is centuries of max-age: long enough, without int()
+_MAX_AGE_DIGITS = 18
 
 # Headers that are legitimately sent more than once, so a repeat is not a finding
 _REPEATABLE_HEADERS = frozenset({
@@ -129,10 +134,19 @@ def parse_headers(text: str) -> list[HeaderField]:
     :return: the headers found, in order, duplicates kept
     """
     fields: list[HeaderField] = []
-    for line in text.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+    # The block's common indent is not folding: a block copied from an indented
+    # document read as one header folded over every line, and nothing was checked
+    block = textwrap.dedent(text.replace("\r\n", "\n").replace("\r", "\n"))
+    for line in block.split("\n"):
         if not line.strip():
             if fields:
                 break  # the blank line between the headers and the body
+            continue
+        if line.startswith(FOLDED_LINE_START) and fields:
+            # A folded continuation: part of the value above, joined by one
+            # space. Dropped, a CSP directive written on it went unchecked.
+            last = fields[-1]
+            fields[-1] = HeaderField(name=last.name, value=f"{last.value} {line.strip()}".strip())
             continue
         match = HEADER_LINE_RE.match(line)
         if match is not None:
@@ -177,6 +191,9 @@ def _check_content_type_options(header: HeaderField) -> list[HeaderFinding]:
 def _check_hsts(header: HeaderField) -> list[HeaderFinding]:
     """Flag an HSTS policy whose ``max-age`` is missing or too short to matter."""
     match = _MAX_AGE_RE.search(header.value)
+    # A value too long for int() to convert is far past any minimum anyway.
+    if match is not None and len(match.group(1)) > _MAX_AGE_DIGITS:
+        return []
     max_age = int(match.group(1)) if match is not None else 0
     if max_age >= _MIN_HSTS_MAX_AGE:
         return []

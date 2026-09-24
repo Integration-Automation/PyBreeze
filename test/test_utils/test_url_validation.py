@@ -33,6 +33,7 @@ class TestPrivateAddressBlocking:
         "http://224.0.0.1/",          # multicast
         "http://[::1]/",              # IPv6 loopback
         "http://[fe80::1]/",          # IPv6 link-local
+        "http://[fec0::1]/",          # IPv6 site-local (deprecated, still routed in places)
     ])
     def test_blocked(self, url):
         with pytest.raises(UnsafeURLError):
@@ -60,3 +61,21 @@ class TestPublicAddressAllowed:
     ])
     def test_public_ip_allowed(self, url):
         assert validate_url(url) == url
+
+
+class TestHostnamesThatCannotBeLookedUp:
+    """Whatever a hostname is, the answer is an UnsafeURLError, not a stray exception.
+
+    A caller catches ``UnsafeURLError``; anything else escapes its handler and,
+    in a Qt slot, takes the application with it.
+    """
+
+    @pytest.mark.parametrize("url", [
+        "http://" + "a" * 70 + ".example",
+        "http://.example",
+        "http://exa mple.example",
+        "http://" + "b" * 300,
+    ], ids=["label too long", "empty label", "space in hostname", "name too long"])
+    def test_an_impossible_hostname_is_refused_like_any_other(self, url):
+        with pytest.raises(UnsafeURLError):
+            validate_url(url)

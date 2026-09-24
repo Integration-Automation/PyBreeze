@@ -76,3 +76,65 @@ class TestRoundTrip:
 
     def test_repeated_key_round_trip(self):
         assert json_to_query(query_to_json("a=1&a=2")) == "a=1&a=2"
+
+
+class TestValuesWithoutAQueryForm:
+    def test_null_is_an_empty_value(self):
+        from pybreeze.utils.query_tools.query_convert import json_to_query
+
+        assert json_to_query('{"a": null, "b": 1}') == "a=&b=1"
+
+    @pytest.mark.parametrize("text", ['{"a": {"c": 1}}', '{"a": [[1]]}', '{"a": [{"c": 1}]}'])
+    def test_an_object_or_a_nested_list_is_refused(self, text):
+        from pybreeze.utils.query_tools.query_convert import json_to_query
+
+        with pytest.raises(QueryConvertException):
+            json_to_query(text)
+
+
+def test_json_nested_too_deep_is_reported_not_raised_out_of_the_tab():
+    from pybreeze.utils.exception.exceptions import QueryConvertException
+    from pybreeze.utils.query_tools.query_convert import json_to_query
+
+    # json.loads raises RecursionError, which the tab did not catch
+    with pytest.raises(QueryConvertException):
+        json_to_query("[" * 100000)
+
+
+class TestValuesAsWritten:
+    @pytest.mark.parametrize(("value", "sent"), [
+        ("1E3", "1E3"), ("1.10", "1.10"), ("12345678901234567890123.0", "12345678901234567890123.0"),
+        ("1e400", "1e400"), ("-0", "-0"),
+    ])
+    def test_a_number_goes_out_as_written(self, value, sent):
+        # Through float: 1000.0, 1.1, 1.2345678901234568e+22, inf
+        assert json_to_query(f'{{"v": {value}}}') == f"v={sent}".replace("+", "%2B")
+
+    @pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+    def test_python_constants_are_not_json(self, constant):
+        with pytest.raises(QueryConvertException):
+            json_to_query(f'{{"v": {constant}}}')
+
+    def test_a_lone_surrogate_is_refused_not_raised(self):
+        # The UnicodeEncodeError escaped the tab's slot
+        with pytest.raises(QueryConvertException):
+            json_to_query('{"q": "\ud83d"}')
+
+
+class TestNothingIsLostWithoutAWord:
+    def test_a_percent_escape_that_is_not_utf8_is_refused(self):
+        # It became U+FFFD and the byte was gone
+        with pytest.raises(QueryConvertException, match="not UTF-8"):
+            query_to_json("a=%B0")
+
+    def test_a_repeated_json_key_is_refused(self):
+        # {"a": 1, "a": 2} went out as a=2; a list is how a key repeats
+        with pytest.raises(QueryConvertException, match="twice"):
+            json_to_query('{"a": 1, "a": 2}')
+
+    def test_a_repeated_url_part_is_refused(self):
+        from pybreeze.utils.exception.exceptions import UrlConvertException
+        from pybreeze.utils.url_tools.url_convert import json_to_url
+
+        with pytest.raises(UrlConvertException, match="twice"):
+            json_to_url('{"scheme": "http", "host": "a", "host": "b"}')

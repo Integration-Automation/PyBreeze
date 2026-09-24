@@ -5,15 +5,15 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from pybreeze.pybreeze_ui.connect_gui.ssh import ssh_file_viewer_widget as sftp_mod
-from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_file_viewer_widget import (
-    SSHFileTreeManager,
+from pybreeze.pybreeze_ui.connect_gui.ssh import sftp_session as sftp_mod
+from pybreeze.pybreeze_ui.connect_gui.ssh.sftp_session import (
     SSH_KEEPALIVE_SECONDS,
     SFTPClientWrapper,
-    format_size,
     natural_key,
     remote_join,
+    sort_entries,
 )
+from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_file_viewer_widget import format_size
 
 
 class TestKeepalive:
@@ -82,7 +82,7 @@ class TestSortEntries:
             _Entry("file2.txt", is_dir=False),
             _Entry("alpha_dir", is_dir=True),
         ]
-        ordered = [name for name, _ in SSHFileTreeManager._sort_entries(entries)]
+        ordered = [name for name, _ in sort_entries(entries)]
         # directories first (natural/case-insensitive), then files (natural)
         assert ordered == ["alpha_dir", "zeta_dir", "file2.txt", "file10.txt"]
 

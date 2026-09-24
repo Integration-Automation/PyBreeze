@@ -60,3 +60,14 @@ class TestQueryJsonGUI:
         widget.convert_to_json()
         widget.actions.copy()
         assert "a" in QApplication.clipboard().text()
+
+
+def test_a_query_with_no_json_form_says_so_and_cannot_be_saved(widget):
+    widget.input_edit.setPlainText("a=1")
+    widget.convert_to_json()
+    widget.input_edit.setPlainText("a=%B0")
+
+    widget.convert_to_json()
+
+    assert "UTF-8" in widget.output_edit.toPlainText()
+    assert widget._valid_output is False

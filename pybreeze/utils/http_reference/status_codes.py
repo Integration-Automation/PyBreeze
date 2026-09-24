@@ -58,6 +58,19 @@ def all_statuses() -> list[StatusInfo]:
     return [_to_info(status) for status in sorted(HTTPStatus, key=int)]
 
 
+def status_of(code: int, phrase: str = "") -> StatusInfo:
+    """The status for *code*: the registered one, else one built from its class.
+
+    A server may send a code nobody registered (``299``, ``599``); what it
+    means is still its class, and *phrase* -- the reason phrase from its
+    status line -- is what it called it.
+
+    :param code: the numeric status code
+    :param phrase: the reason phrase the response gave, if any
+    """
+    return lookup(code) or StatusInfo(code=code, phrase=phrase, description="", category=_category_for(code))
+
+
 def lookup(code: int) -> StatusInfo | None:
     """Return the status for an exact *code*, or ``None`` if unknown.
 

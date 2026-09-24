@@ -12,9 +12,12 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from urllib.parse import urlparse
+from urllib.parse import parse_qsl, urlparse
 
-from pybreeze.utils.curl_import.curl_parser import CurlRequest, parse_query_pairs
+from pybreeze.utils.curl_import.curl_parser import (
+    CurlRequest, add_repeated_value, http_method, url_is_well_formed,
+)
+from pybreeze.utils.query_tools.query_convert import query_round_trips
 from pybreeze.utils.exception.exception_tags import (
     empty_har_error,
     invalid_har_json_error,
@@ -116,12 +119,20 @@ def _apply_cookies(request: CurlRequest, raw_request: dict) -> None:
     A HAR records cookies both as a structured list and inside the ``Cookie``
     header. Keeping both would send every cookie twice, so the structured list
     wins — it is the one the generated code can edit.
+
+    A browser sends two cookies of one name when their paths differ; a
+    dictionary keeps only the last, so then the cookies go as the ``Cookie``
+    header instead, in the order recorded.
     """
-    for name, value in _header_pairs(raw_request.get("cookies")):
-        request.cookies[name] = value
-    if not request.cookies:
+    pairs = _header_pairs(raw_request.get("cookies"))
+    if not pairs:
         return
     stored = stored_header_name(request.headers, _COOKIE_HEADER)
+    if len({name for name, _value in pairs}) < len(pairs):
+        if stored is None:
+            request.headers["Cookie"] = "; ".join(f"{name}={value}" for name, value in pairs)
+        return
+    request.cookies.update(pairs)
     if stored is not None:
         del request.headers[stored]
 
@@ -130,20 +141,39 @@ def _apply_query(request: CurlRequest, raw_request: dict, query: str) -> None:
     """Collect the query parameters from the URL, then from ``queryString``.
 
     The URL is authoritative because it is what was actually sent; the recorded
-    ``queryString`` list only fills in what the URL did not carry.
+    ``queryString`` list only fills in what the URL did not carry. Values from
+    the URL are percent-decoded, as the cURL importer does: ``params`` holds
+    values, and :attr:`CurlRequest.full_url` and the generated scripts encode
+    them once on the way out.
     """
-    for key, value in parse_query_pairs(query.split("&")).items():
-        request.params.setdefault(key, value)
+    carried = parse_qsl(query, keep_blank_values=True)
+    if query_round_trips(query):
+        for key, value in carried:
+            add_repeated_value(request.params, key, value)
+    elif query:
+        # Split and encoded again it would not be what was sent
+        request.url = f"{request.url}?{query}"
+    # The recorded list repeats the URL's parameters: only a name the URL did
+    # not carry is taken from it, with all of that name's values.
+    recorded: dict[str, str | list[str]] = {}
     for name, value in _header_pairs(raw_request.get("queryString")):
-        request.params.setdefault(name, value)
+        add_repeated_value(recorded, name, value)
+    for name, values in recorded.items():
+        if name not in {key for key, _value in carried}:
+            request.params.setdefault(name, values)
 
 
-def _multipart_fields(params: list[tuple[str, str, str]]) -> list[str]:
-    """Render multipart params in curl's ``-F`` syntax so form handling is shared."""
-    return [
-        f"{name}=@{file_name}" if file_name else f"{name}={value}"
-        for name, value, file_name in params
-    ]
+def _apply_multipart(request: CurlRequest, params: list[tuple[str, str, str]]) -> None:
+    """Add recorded multipart params: uploads in curl's ``-F`` syntax, text literally.
+
+    A text value goes to ``form_strings``: in ``-F`` syntax one starting with
+    ``@`` would have become a file to upload.
+    """
+    for name, value, file_name in params:
+        if file_name:
+            request.form_fields.append(f"{name}=@{file_name}")
+        else:
+            request.form_strings.append(f"{name}={value}")
 
 
 def _post_params(raw_post: dict) -> list[tuple[str, str, str]]:
@@ -167,7 +197,7 @@ def _apply_body(request: CurlRequest, raw_request: dict) -> None:
     media_type = str(raw_post.get("mimeType", "")).lower()
     params = _post_params(raw_post)
     if params and media_type.startswith(_MULTIPART_MEDIA_TYPE):
-        request.form_fields.extend(_multipart_fields(params))
+        _apply_multipart(request, params)
         return
     if params and _FORM_MEDIA_TYPE in media_type:
         request.data_parts.extend(f"{name}={value}" for name, value, _file in params)
@@ -181,8 +211,11 @@ def _entry_request(raw_request: dict) -> CurlRequest:
     """Build a :class:`CurlRequest` from a HAR entry's ``request`` object."""
     url = str(raw_request.get("url", ""))
     base, _separator, query = url.partition("?")
-    request = CurlRequest(
-        method=str(raw_request.get("method", "GET")).upper(), url=base)
+    try:
+        method = http_method(str(raw_request.get("method", "GET")))
+    except ValueError as error:
+        raise HarParseException(str(error)) from None
+    request = CurlRequest(method=method, url=base)
     _apply_headers(request, raw_request)
     _apply_cookies(request, raw_request)
     _apply_query(request, raw_request, query)
@@ -213,7 +246,9 @@ def _load_entries(text: str) -> list[dict]:
         raise HarParseException(empty_har_error)
     try:
         document = json.loads(text)
-    except ValueError as error:
+    # RecursionError: JSON nested deeper than the parser goes, which escaped
+    # the tab's slot
+    except (ValueError, RecursionError) as error:
         pybreeze_logger.error(invalid_har_json_error)
         raise HarParseException(invalid_har_json_error) from error
     log = document.get("log") if isinstance(document, dict) else None
@@ -224,26 +259,55 @@ def _load_entries(text: str) -> list[dict]:
     return [entry for entry in entries if isinstance(entry, dict)]
 
 
+def _is_unicode(raw_request: dict) -> bool:
+    """Whether every text in *raw_request* is whole Unicode (no lone surrogate)."""
+    try:
+        json.dumps(raw_request, ensure_ascii=False).encode("utf-8")
+    except UnicodeEncodeError:
+        return False
+    return True
+
+
 def parse_har(text: str) -> list[HarEntry]:
     """Parse a HAR export into one entry per recorded request.
 
     :param text: the contents of a ``.har`` file
     :return: the recorded requests, in the order they were captured
     :raises HarParseException: when the text is not a HAR export, or records no
-        request with a URL
+        request with a URL and a method (an entry without is skipped; when
+        none is left, the first entry's reason is the error)
     """
     entries: list[HarEntry] = []
+    first_error: HarParseException | None = None
     for raw_entry in _load_entries(text):
         raw_request = raw_entry.get("request")
         if not isinstance(raw_request, dict) or not raw_request.get("url"):
             continue
+        if not _is_unicode(raw_request):
+            # A JSON escape such as "\ud800" gives half a character, which no
+            # request can carry: encoding it raised out of the tab
+            pybreeze_logger.info("HAR entry with a lone surrogate skipped")
+            continue
+        if not url_is_well_formed(str(raw_request["url"])):
+            # Skipped, not shown: listing or generating it raised from the
+            # tab. Not logged either -- a recorded URL may carry a token.
+            pybreeze_logger.info("HAR entry with a malformed URL skipped")
+            continue
+        try:
+            request = _entry_request(raw_request)
+        except HarParseException as error:
+            pybreeze_logger.info("HAR entry skipped: %s", error)
+            first_error = first_error or error
+            continue
         status, media_type = _response_details(raw_entry.get("response"))
         entries.append(HarEntry(
-            request=_entry_request(raw_request),
+            request=request,
             status=status,
             response_media_type=media_type,
             started=str(raw_entry.get("startedDateTime", "")),
         ))
+    if not entries and first_error is not None:
+        raise first_error
     if not entries:
         pybreeze_logger.error(no_entries_in_har_error)
         raise HarParseException(no_entries_in_har_error)

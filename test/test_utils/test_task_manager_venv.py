@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import os
+import sys
+from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -20,7 +22,7 @@ def qt_app():
 
 
 def _raise_no_python(_path):
-    from je_editor.utils.exception.exceptions import JEditorExecException
+    from je_editor import JEditorExecException
     raise JEditorExecException("no python interpreter found")
 
 
@@ -36,7 +38,9 @@ class TestRenewPathNoInterpreter:
         manager = TaskProcessManager.__new__(TaskProcessManager)
         manager.main_window = window
 
-        monkeypatch.setattr(mod, "find_venv_path", lambda: "ignored")
+        # Only a packaged build, with no venv, can find no Python at all
+        monkeypatch.setattr(sys, "frozen", True, raising=False)
+        monkeypatch.setattr(mod, "find_venv_path", lambda: Path("ignored"))
         monkeypatch.setattr(mod, "check_and_choose_venv", _raise_no_python)
 
         # Must report (not raise) so the run menu callback does not crash.

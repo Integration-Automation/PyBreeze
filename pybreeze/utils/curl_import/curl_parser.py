@@ -9,17 +9,25 @@ The parser is pure logic (no Qt, no network) and never executes the command.
 """
 from __future__ import annotations
 
+import math
 import re
 import shlex
+import sys
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from urllib.parse import parse_qsl, quote, urlencode
+from urllib.parse import parse_qsl, quote, urlencode, urlsplit
 
 from pybreeze.utils.exception.exception_tags import (
     empty_curl_command_error,
+    get_with_file_body_error,
+    invalid_http_method_error,
     malformed_curl_command_error,
+    malformed_url_error,
+    no_url_in_curl_error,
     not_a_curl_command_error,
 )
 from pybreeze.utils.exception.exceptions import CurlParseException
+from pybreeze.utils.query_tools.query_convert import query_round_trips
 from pybreeze.utils.header_tools.header_merge import (
     add_header, set_default_header, stored_header_name
 )
@@ -31,6 +39,23 @@ _DEFAULT_METHOD = "GET"
 _METHOD_WITH_BODY = "POST"
 # Matches a backslash or caret line continuation before a newline
 _LINE_CONTINUATION_RE = re.compile(r"[\\^]\r?\n")
+# An HTTP method is a token (RFC 9110, section 5.6.2)
+_METHOD_TOKEN_RE = re.compile(r"[!#$%&'*+.^_`|~0-9A-Za-z-]+")
+
+
+def http_method(value: str) -> str:
+    """Return *value* as an upper-case HTTP method.
+
+    Generated scripts put the method into code -- a function name, a comment --
+    so anything that is not a token (a space, a newline, a parenthesis) is
+    refused here rather than written into a script.
+
+    :raises ValueError: when *value* is not an HTTP method
+    """
+    method = value.strip().upper()
+    if not _METHOD_TOKEN_RE.fullmatch(method):
+        raise ValueError(f"{invalid_http_method_error}: {value!r}")
+    return method
 
 
 @dataclass
@@ -40,13 +65,25 @@ class CurlRequest:
     :param method: HTTP method (upper-case), e.g. ``GET`` or ``POST``
     :param url: request URL, or an empty string when none was found
     :param headers: request headers as ``name -> value`` (names kept as written)
-    :param params: query parameters collected from ``-G`` / ``--data`` pairs
+    :param params: query parameters from the URL and from ``-G`` / ``--data``
+        pairs; a key given more than once maps to the list of its values
     :param data_parts: raw body fragments in the order they appeared
     :param username: basic-auth user, or ``None``
     :param password: basic-auth password, or ``None``
     :param send_data_as_params: ``True`` when ``-G`` moves the body to the query
-    :param form_fields: multipart form fragments from ``-F`` / ``--form``
+    :param head_only: ``True`` when ``-I`` / ``--head`` asks for the headers only
+    :param bearer_token: the ``--oauth2-bearer`` token, or ``None``; sent as
+        the ``Authorization`` header unless ``-H`` gives one
+    :param form_fields: multipart form fragments from ``-F`` / ``--form``, in
+        curl's syntax: a value starting with ``@`` is a file to upload
+    :param form_strings: multipart ``name=value`` fields taken literally, from
+        ``--form-string`` or a recorded text field; ``@`` means nothing there
     :param data_file_refs: filenames whose content forms the body (``-d @file``)
+    :param data_file_positions: for each of them, how many ``data_parts`` came
+        before it on the command line, so the body keeps curl's order
+    :param binary_data_files: those of them given with ``--data-binary``, sent
+        byte for byte; curl drops carriage returns and newlines from the others
+    :param cookie_files: files ``-b`` names, which curl reads cookies from
     :param timeout: request timeout in seconds from ``--max-time`` / ``-m``, or
         ``None`` when the command sets none
     :param cookies: cookies parsed from ``-b`` / ``--cookie`` name=value pairs
@@ -55,20 +92,31 @@ class CurlRequest:
     method: str = _DEFAULT_METHOD
     url: str = ""
     headers: dict[str, str] = field(default_factory=dict)
-    params: dict[str, str] = field(default_factory=dict)
+    params: dict[str, str | list[str]] = field(default_factory=dict)
     data_parts: list[str] = field(default_factory=list)
     username: str | None = None
     password: str | None = None
     send_data_as_params: bool = False
+    head_only: bool = False
+    bearer_token: str | None = None
     form_fields: list[str] = field(default_factory=list)
+    form_strings: list[str] = field(default_factory=list)
     data_file_refs: list[str] = field(default_factory=list)
+    data_file_positions: list[int] = field(default_factory=list)
+    binary_data_files: set[str] = field(default_factory=set)
+    cookie_files: list[str] = field(default_factory=list)
     timeout: str | None = None
     cookies: dict[str, str] = field(default_factory=dict)
 
     @property
+    def has_form(self) -> bool:
+        """Whether the request carries a multipart form."""
+        return bool(self.form_fields or self.form_strings)
+
+    @property
     def has_body(self) -> bool:
         """Whether the request carries any body, form or file payload."""
-        return bool(self.data_parts or self.form_fields or self.data_file_refs)
+        return bool(self.data_parts or self.has_form or self.data_file_refs)
 
     @property
     def body(self) -> str:
@@ -86,7 +134,7 @@ class CurlRequest:
         if not self.params:
             return self.url
         joiner = "&" if "?" in self.url else "?"
-        return f"{self.url}{joiner}{urlencode(self.params)}"
+        return f"{self.url}{joiner}{urlencode(self.params, doseq=True)}"
 
     def header_value(self, name: str) -> str | None:
         """Return a header's value by case-insensitive *name*, or ``None``."""
@@ -102,26 +150,29 @@ _VALUE_FLAGS: dict[str, str] = {
     # ``-d`` and friends honour curl's ``@file`` syntax; ``--data-raw`` /
     # ``--data-urlencode`` are always literal (a leading ``@`` is data, not a file).
     "-d": "data_file", "--data": "data_file",
-    "--data-ascii": "data_file", "--data-binary": "data_file",
+    "--data-ascii": "data_file", "--data-binary": "data_binary",
     "--data-raw": "data", "--data-urlencode": "data_urlencode",
     "--json": "json_flag",
-    "-F": "form", "--form": "form", "--form-string": "form",
+    "-F": "form", "--form": "form", "--form-string": "form_string",
     "-u": "user", "--user": "user",
     "-b": "cookie", "--cookie": "cookie",
     "-A": "user_agent", "--user-agent": "user_agent",
     "-e": "referer", "--referer": "referer",
     "--url": "url",
     "-m": "timeout", "--max-time": "timeout",
+    "--oauth2-bearer": "oauth2_bearer",
 }
 
 # Value-less flags that still change behaviour.
 _GET_FLAGS = frozenset({"-G", "--get"})
+# -I fetches the headers only: a HEAD request, unless -X names another method
+_HEAD_FLAGS = frozenset({"-I", "--head"})
 
 # Value-less flags to accept and skip (they do not affect the generated request).
 _VALUELESS_FLAGS = frozenset({
     "--compressed", "-L", "--location", "-k", "--insecure", "-s", "--silent",
     "-S", "--show-error", "-q", "--disable",
-    "-v", "--verbose", "-i", "--include", "-I", "--head", "-f", "--fail",
+    "-v", "--verbose", "-i", "--include", "-f", "--fail",
     "--fail-with-body", "-g", "--globoff", "-O", "--remote-name",
     "-J", "--remote-header-name", "-#", "--progress-bar", "-N", "--no-buffer",
     "-j", "--junk-session-cookies", "--no-keepalive", "--no-progress-meter",
@@ -141,7 +192,7 @@ _IGNORED_VALUE_FLAGS = frozenset({
     "--cert-type", "--key-type", "--pass", "-T", "--upload-file", "--limit-rate",
     "-r", "--range", "-c", "--cookie-jar", "--resolve", "--interface",
     "--dns-servers", "--local-port", "--ciphers", "-y", "--speed-time",
-    "-Y", "--speed-limit", "--keepalive-time", "--oauth2-bearer", "--aws-sigv4",
+    "-Y", "--speed-limit", "--keepalive-time", "--aws-sigv4",
     "-C", "--continue-at", "-z", "--time-cond", "-D", "--dump-header",
     "-K", "--config",
 })
@@ -158,7 +209,7 @@ def _short_flags(*tables: object) -> frozenset[str]:
 # Short flags derived from the tables above so a bundled cluster like
 # ``-sXPOST`` can split into ``-s`` and ``-X`` + ``POST`` without a second list.
 _SHORT_VALUE_FLAGS = _short_flags(_VALUE_FLAGS, _IGNORED_VALUE_FLAGS)
-_SHORT_VALUELESS_FLAGS = _short_flags(_VALUELESS_FLAGS, _GET_FLAGS)
+_SHORT_VALUELESS_FLAGS = _short_flags(_VALUELESS_FLAGS, _GET_FLAGS, _HEAD_FLAGS)
 
 
 def _is_short_flag_cluster(token: str) -> bool:
@@ -204,10 +255,80 @@ def _normalise_command(command: str) -> str:
     return _LINE_CONTINUATION_RE.sub(" ", command.strip())
 
 
+# One escape inside bash's $'...' quoting
+_ANSI_C_ESCAPE_RE = re.compile(
+    r"\\(x[0-9a-fA-F]{1,2}|u[0-9a-fA-F]{1,4}|U[0-9a-fA-F]{1,8}|[0-7]{1,3}|.)", re.DOTALL)
+# What the single-character escapes stand for
+_ANSI_C_SIMPLE = {
+    "n": "\n", "t": "\t", "r": "\r", "a": "\a", "b": "\b", "e": "\x1b", "E": "\x1b",
+    "f": "\f", "v": "\v", "\\": "\\", "'": "'", '"': '"', "?": "?",
+}
+
+
+def _ansi_c_character(match: re.Match) -> str:
+    """The character one ``$'...'`` escape stands for; an unknown one stays as written."""
+    code = match.group(1)
+    if code[0] in "xuU" and len(code) > 1:
+        return chr(min(int(code[1:], 16), sys.maxunicode))
+    if code[0] in "01234567":
+        return chr(int(code, 8) & 0xFF)
+    return _ANSI_C_SIMPLE.get(code, match.group(0))
+
+
+def _ansi_c_end(command: str, start: int) -> int:
+    """Index of the quote closing the ``$'...'`` whose body starts at *start*."""
+    index = start
+    while index < len(command):
+        if command[index] == "\\":
+            index += 2
+            continue
+        if command[index] == "'":
+            return index
+        index += 1
+    pybreeze_logger.error(malformed_curl_command_error)
+    raise CurlParseException(malformed_curl_command_error)
+
+
+def _expand_ansi_c_quotes(command: str) -> str:
+    """Rewrite bash ``$'...'`` strings as the plain quoted text they stand for.
+
+    Copy as cURL (bash) in the browsers writes a body holding a newline or a
+    quote as ``$'...'``, which ``shlex`` does not know: it left a ``$`` in
+    front of the body, or refused an escaped quote as unbalanced. Only a ``$'``
+    outside other quotes starts one, as in bash.
+    """
+    pieces: list[str] = []
+    index = 0
+    quote = ""
+    while index < len(command):
+        char = command[index]
+        if quote:
+            if char == quote:
+                quote = ""
+            elif char == "\\" and quote == '"':
+                pieces.append(command[index:index + 2])
+                index += 2
+                continue
+        elif char == "\\":
+            pieces.append(command[index:index + 2])
+            index += 2
+            continue
+        elif command.startswith("$'", index):
+            end = _ansi_c_end(command, index + 2)
+            pieces.append(shlex.quote(_ANSI_C_ESCAPE_RE.sub(_ansi_c_character, command[index + 2:end])))
+            index = end + 1
+            continue
+        elif char in "'\"":
+            quote = char
+        pieces.append(char)
+        index += 1
+    return "".join(pieces)
+
+
 def _tokenize(command: str) -> list[str]:
     """Split *command* into shell tokens, raising on unbalanced quotes."""
     try:
-        return shlex.split(command, posix=True)
+        return shlex.split(_expand_ansi_c_quotes(command), posix=True)
     except ValueError as error:
         pybreeze_logger.error(malformed_curl_command_error)
         raise CurlParseException(malformed_curl_command_error) from error
@@ -249,8 +370,12 @@ def _urlencode_data_part(value: str) -> str:
 def _apply_timeout(request: CurlRequest, value: str) -> None:
     """Record a numeric timeout (seconds); ignore a non-numeric value."""
     try:
-        float(value)
+        seconds = float(value)
     except ValueError:
+        return
+    # float() also takes "nan" and "inf", which would be written into the
+    # script as an undefined name.
+    if not math.isfinite(seconds):
         return
     request.timeout = value
 
@@ -259,18 +384,27 @@ def _apply_data_or_file(request: CurlRequest, value: str) -> None:
     """Record a ``-d`` value as an ``@file`` reference or an inline body part."""
     if value.startswith("@"):
         request.data_file_refs.append(value[1:])
+        request.data_file_positions.append(len(request.data_parts))
     else:
         request.data_parts.append(value)
+
+
+def _apply_binary_data(request: CurlRequest, value: str) -> None:
+    """Record a ``--data-binary`` value; its ``@file`` is sent byte for byte."""
+    _apply_data_or_file(request, value)
+    if value.startswith("@"):
+        request.binary_data_files.add(value[1:])
 
 
 def _apply_cookie(request: CurlRequest, value: str) -> None:
     """Parse a ``-b`` cookie string into ``name=value`` pairs.
 
     ``curl -b 'a=1; b=2'`` yields inline cookies; a value with no ``=`` is a
-    cookie *file* curl would read, which we keep as a ``Cookie`` header instead.
+    cookie *file* curl reads. It was sent as the header ``Cookie: cookies.txt``;
+    it is kept in ``cookie_files`` for the generators to say so.
     """
     if "=" not in value:
-        set_default_header(request.headers, "Cookie", value)
+        request.cookie_files.append(value)
         return
     for segment in value.split(";"):
         name, separator, cookie_value = segment.strip().partition("=")
@@ -278,37 +412,59 @@ def _apply_cookie(request: CurlRequest, value: str) -> None:
             request.cookies[name] = cookie_value
 
 
+def _apply_method(request: CurlRequest, value: str) -> None:
+    try:
+        request.method = http_method(value)
+    except ValueError as error:
+        raise CurlParseException(str(error)) from None
+
+
+def _apply_json_flag(request: CurlRequest, value: str) -> None:
+    # curl --json is shorthand for --data + JSON Content-Type and Accept.
+    request.data_parts.append(value)
+    set_default_header(request.headers, "Content-Type", "application/json")
+    set_default_header(request.headers, "Accept", "application/json")
+
+
+def _apply_user(request: CurlRequest, value: str) -> None:
+    request.username, _separator, request.password = value.partition(":")
+
+
+def _apply_oauth2_bearer(request: CurlRequest, value: str) -> None:
+    # Applied once every -H is in (_finalise_method): an explicit one wins
+    request.bearer_token = value
+
+
+def _set_url(request: CurlRequest, value: str) -> None:
+    request.url = value
+
+
+# What each kind of value-taking flag does to the request
+_VALUE_FLAG_HANDLERS: dict[str, Callable[[CurlRequest, str], None]] = {
+    "method": _apply_method,
+    "header": _apply_header,
+    "data": lambda request, value: request.data_parts.append(value),
+    "data_urlencode": lambda request, value: request.data_parts.append(_urlencode_data_part(value)),
+    "data_file": _apply_data_or_file,
+    "data_binary": _apply_binary_data,
+    "json_flag": _apply_json_flag,
+    "form": lambda request, value: request.form_fields.append(value),
+    "form_string": lambda request, value: request.form_strings.append(value),
+    "cookie": _apply_cookie,
+    "user_agent": lambda request, value: set_default_header(request.headers, "User-Agent", value),
+    "referer": lambda request, value: set_default_header(request.headers, "Referer", value),
+    "url": _set_url,
+    "timeout": _apply_timeout,
+    "user": _apply_user,
+    "oauth2_bearer": _apply_oauth2_bearer,
+}
+
+
 def _apply_value_flag(request: CurlRequest, kind: str, value: str) -> None:
     """Apply one value-taking flag to *request* according to its *kind*."""
-    if kind == "method":
-        request.method = value.upper()
-    elif kind == "header":
-        _apply_header(request, value)
-    elif kind == "data":
-        request.data_parts.append(value)
-    elif kind == "data_urlencode":
-        request.data_parts.append(_urlencode_data_part(value))
-    elif kind == "data_file":
-        _apply_data_or_file(request, value)
-    elif kind == "json_flag":
-        # curl --json is shorthand for --data + JSON Content-Type and Accept.
-        request.data_parts.append(value)
-        set_default_header(request.headers, "Content-Type", "application/json")
-        set_default_header(request.headers, "Accept", "application/json")
-    elif kind == "form":
-        request.form_fields.append(value)
-    elif kind == "cookie":
-        _apply_cookie(request, value)
-    elif kind == "user_agent":
-        set_default_header(request.headers, "User-Agent", value)
-    elif kind == "referer":
-        set_default_header(request.headers, "Referer", value)
-    elif kind == "url":
-        request.url = value
-    elif kind == "timeout":
-        _apply_timeout(request, value)
-    elif kind == "user":
-        request.username, _sep, request.password = value.partition(":")
+    handler = _VALUE_FLAG_HANDLERS.get(kind)
+    if handler is not None:
+        handler(request, value)
 
 
 def _consume_tokens(tokens: list[str], request: CurlRequest) -> None:
@@ -329,6 +485,8 @@ def _consume_tokens(tokens: list[str], request: CurlRequest) -> None:
             index += 1  # consume and discard the value
         elif token in _GET_FLAGS:
             request.send_data_as_params = True
+        elif token in _HEAD_FLAGS:
+            request.head_only = True
         elif token in _VALUELESS_FLAGS:
             pass  # a known valueless flag: nothing to do
         elif not token.startswith("-") and not request.url:
@@ -338,12 +496,47 @@ def _consume_tokens(tokens: list[str], request: CurlRequest) -> None:
 
 
 def _finalise_method(request: CurlRequest) -> None:
-    """Infer the method and move the body to the query when ``-G`` was given."""
+    """Settle what depends on the whole command.
+
+    The method (``-I``, or POST for a body), the ``--oauth2-bearer`` header
+    unless ``-H`` set one, and the body moved to the query when ``-G`` was given.
+    """
+    if request.head_only and request.method == _DEFAULT_METHOD:
+        request.method = "HEAD"
+    if request.bearer_token is not None:
+        set_default_header(request.headers, "Authorization", f"Bearer {request.bearer_token}")
     if request.method == _DEFAULT_METHOD and request.has_body and not request.send_data_as_params:
         request.method = _METHOD_WITH_BODY
+    if request.send_data_as_params and request.data_file_refs:
+        # The file's content is the query, and it is not known until the script runs
+        raise CurlParseException(get_with_file_body_error)
     if request.send_data_as_params:
-        request.params.update(parse_query_pairs(request.data_parts))
+        # With -G, curl appends the data to the URL exactly as given, joined by
+        # '&': each fragment is query text already, so it is split on '&' and
+        # decoded here, or full_url would encode it a second time.
+        for part in request.data_parts:
+            for key, value in parse_qsl(part, keep_blank_values=True):
+                add_repeated_value(request.params, key, value)
         request.data_parts = []
+
+
+def add_repeated_value(params: dict[str, str | list[str]], key: str, value: str) -> None:
+    """Add *value* under *key*, keeping the values already there.
+
+    For anything that may repeat a name: ``?id=1&id=2`` sends both, and a
+    response may carry several ``Set-Cookie`` lines; a plain dict kept only one
+    of each. A key seen once maps to its value, a repeated one to the list of
+    its values, which ``requests`` and ``urlencode(doseq=True)`` both expand
+    back.
+    """
+    if key not in params:
+        params[key] = value
+        return
+    existing = params[key]
+    if isinstance(existing, list):
+        existing.append(value)
+    else:
+        params[key] = [existing, value]
 
 
 def _split_url_query(request: CurlRequest) -> None:
@@ -352,28 +545,34 @@ def _split_url_query(request: CurlRequest) -> None:
     Browser "copy as cURL" keeps the query in the URL; splitting it out lets it
     show up alongside ``-G`` / ``-d`` query pairs, while
     :attr:`CurlRequest.full_url` can still rebuild the original address. Values
-    are URL-decoded, and existing params are not overwritten.
+    are URL-decoded, and a key given more than once keeps every value. A query
+    that would not come back as written stays in the URL
+    (:func:`query_round_trips`).
     """
+    # The fragment is the browser's: curl never sends it, and left in, it
+    # became part of the last query value (?b=1#frag sent b="1#frag").
+    request.url = request.url.partition("#")[0]
     base, separator, query = request.url.partition("?")
-    if not separator:
+    if not separator or not query_round_trips(query):
         return
     request.url = base
     for key, value in parse_qsl(query, keep_blank_values=True):
-        request.params.setdefault(key, value)
+        add_repeated_value(request.params, key, value)
 
 
-def parse_query_pairs(parts: list[str]) -> dict[str, str]:
-    """Parse ``key=value`` fragments into a dict, ignoring pieces without ``=``.
+def url_is_well_formed(url: str) -> bool:
+    """Whether *url* can be taken apart: ``urllib`` raises ``ValueError`` on an
+    unclosed IPv6 bracket (``http://[::1/api``) or a port that is not a number.
 
-    :param parts: body fragments such as ``["a=1", "b=2"]``
-    :return: the parsed ``key -> value`` mapping
+    Checked here, where the error can be reported: the code generators and
+    the HAR list call ``urlparse`` later, from a Qt slot that catches only
+    the parse errors.
     """
-    pairs: dict[str, str] = {}
-    for part in parts:
-        key, separator, value = part.partition("=")
-        if separator:
-            pairs[key] = value
-    return pairs
+    try:
+        _ = urlsplit(url).port
+    except ValueError:
+        return False
+    return True
 
 
 def parse_curl(command: str) -> CurlRequest:
@@ -382,7 +581,8 @@ def parse_curl(command: str) -> CurlRequest:
     :param command: the full command, e.g. ``curl -X POST https://api/x -d '...'``
     :return: the structured request
     :raises CurlParseException: when the command is empty, is not a curl command,
-        or cannot be tokenised (for example, unbalanced quotes)
+        cannot be tokenised (for example, unbalanced quotes), or its URL is
+        missing or malformed
     """
     normalised = _normalise_command(command)
     if not normalised:
@@ -396,6 +596,15 @@ def parse_curl(command: str) -> CurlRequest:
 
     request = CurlRequest()
     _consume_tokens(_expand_short_flags(tokens[1:]), request)
-    _finalise_method(request)
+    # The URL's own query first: curl appends -G data after it.
     _split_url_query(request)
+    # curl refuses a command without one ("no URL specified"); the generated
+    # script would only fail when run, on requests.get("")
+    if not request.url:
+        pybreeze_logger.error(no_url_in_curl_error)
+        raise CurlParseException(no_url_in_curl_error)
+    if not url_is_well_formed(request.url):
+        pybreeze_logger.error(malformed_url_error)
+        raise CurlParseException(malformed_url_error)
+    _finalise_method(request)
     return request

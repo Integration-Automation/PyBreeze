@@ -26,11 +26,16 @@ from PySide6.QtWidgets import (
 from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.diagram_editor.diagram_mermaid_parser import parse_mermaid
-from pybreeze.pybreeze_ui.diagram_editor.diagram_net_utils import safe_download_image
 from pybreeze.pybreeze_ui.diagram_editor.diagram_property_panel import DiagramPropertyPanel
-from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene, ToolMode
+from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene, ImageDownloadThread, ToolMode
 from pybreeze.pybreeze_ui.diagram_editor.diagram_view import DiagramView
+from pybreeze.pybreeze_ui.error_text import error_text
+from pybreeze.pybreeze_ui.thread_keeper import let_run_out
+from pybreeze.pybreeze_ui.plain_text import as_text
+from pybreeze.utils.file_process.read_capped import read_text_capped
+from pybreeze.utils.file_process.replace_file import replace_text, replace_written
 from pybreeze.utils.logging.logger import pybreeze_logger
+from pybreeze.pybreeze_ui.exact_text import exact_text
 
 
 def _lang(key: str, fallback: str = "") -> str:
@@ -83,6 +88,16 @@ graph TD
 """
 
 
+def _save_png(image: QImage, target: Path) -> None:
+    """Save *image* as a PNG file at *target*; ``OSError`` when it cannot.
+
+    ``QImage.save`` returns False (without raising) on permission, path or
+    format errors.
+    """
+    if not image.save(str(target), "PNG"):
+        raise OSError("QImage.save returned False")
+
+
 class MermaidImportDialog(QDialog):
     """Dialog for pasting Mermaid flowchart code."""
 
@@ -116,7 +131,7 @@ class MermaidImportDialog(QDialog):
         layout.addLayout(btn_row)
 
     def get_text(self) -> str:
-        return self._editor.toPlainText()
+        return exact_text(self._editor)
 
 
 class DiagramEditorWidget(QWidget):
@@ -125,6 +140,8 @@ class DiagramEditorWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._current_path: Path | None = None
+        # Images being fetched for Add Image from URL
+        self._url_fetches: set[ImageDownloadThread] = set()
 
         # --- MVC core ---
         self._scene = DiagramScene(self)
@@ -214,6 +231,7 @@ class DiagramEditorWidget(QWidget):
             ("diagram_editor_action_new", self._new_diagram),
             ("diagram_editor_action_open", self._open_diagram),
             ("diagram_editor_action_save", self._save_diagram),
+            ("diagram_editor_action_save_as", self._save_as_diagram),
             ("diagram_editor_action_import", self._import_mermaid),
         ]:
             btn = _make_action_btn(_lang(lang_key))
@@ -337,6 +355,12 @@ class DiagramEditorWidget(QWidget):
         ]
         for key, slot in shortcuts:
             sc = QShortcut(key, self)
+            # Only while the diagram editor has focus. Opened as a dock it
+            # shares the window with the code editor, whose own Ctrl+Z, Ctrl+C,
+            # Ctrl+D, Ctrl+= ... a window-wide shortcut would take over, or --
+            # where the editor binds the same key -- leave both ambiguous and
+            # doing nothing.
+            sc.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
             sc.activated.connect(slot)
 
     # ------------------------------------------------------------------
@@ -391,12 +415,17 @@ class DiagramEditorWidget(QWidget):
         if not path:
             return
         try:
-            data = json.loads(Path(path).read_text(encoding="utf-8"))
+            # Size-checked first: a multi-GB file froze the IDE while read here
+            data = json.loads(read_text_capped(Path(path)))
             self._scene.load_from_dict(data)
             self._current_path = Path(path)
-        except Exception as e:
-            pybreeze_logger.error(f"Open diagram failed: {e}")
-            QMessageBox.warning(self, _lang("diagram_editor_error_title", "Error"), str(e))
+        # ValueError covers bad JSON, a file that is not UTF-8 and one that is
+        # not a diagram; TypeError and KeyError an item with the wrong fields;
+        # RecursionError JSON nested deeper than the parser goes
+        except (OSError, ValueError, TypeError, KeyError, RecursionError, MemoryError) as e:
+            pybreeze_logger.error("Open diagram failed: %r", e)
+            reason = e.strerror if isinstance(e, OSError) and e.strerror else error_text(str(e)) or type(e).__name__
+            QMessageBox.warning(self, _lang("diagram_editor_error_title", "Error"), as_text(reason))
 
     def _save_diagram(self) -> None:
         if self._current_path is None:
@@ -437,21 +466,57 @@ class DiagramEditorWidget(QWidget):
                 self._scene._load_items(data)
             self._scene.item_count_changed.emit()
             self._zoom_fit()
-        except Exception as e:
-            pybreeze_logger.error(f"Mermaid import failed: {e}")
+        except (ValueError, TypeError, KeyError) as e:
+            pybreeze_logger.error("Mermaid import failed: %r", e)
             QMessageBox.warning(
                 self,
                 _lang("diagram_editor_import_error", "Parse Error"),
-                str(e),
+                as_text(error_text(str(e))),
             )
 
+    def may_close(self) -> bool:
+        """Whether the editor may close: the diagram is as last saved or opened, or the user lets it go.
+
+        Asked by the main window before it closes this tab or the IDE: an
+        unsaved diagram was lost on close without a word.
+        """
+        if self._scene.undo_stack.isClean():
+            return True
+        reply = QMessageBox.question(
+            self, _lang("unsaved_close_title", "Unsaved changes"),
+            _lang("diagram_editor_close_over_edits",
+                  "The diagram has changes that are not saved. Close and lose them?"),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
+        return reply == QMessageBox.StandardButton.Yes
+
+    def closeEvent(self, event) -> None:
+        """Let the image fetches still going run out, cut off from the editor."""
+        for fetch in tuple(self._url_fetches):
+            if fetch.isRunning():
+                let_run_out(fetch, fetch.fetched, fetch.failed)
+        self._url_fetches.clear()
+        self._scene.let_image_downloads_run_out()
+        super().closeEvent(event)
+
     def _write_json(self, path: Path) -> None:
+        """Write the diagram to *path*, leaving whatever is there now if it fails.
+
+        The text goes to a file beside it first and replaces the target in one
+        step, so a failure part-way through (a full disk, a file being read by
+        something else) costs the new save, never the last good one.
+        """
         try:
             data = self._scene.to_dict()
-            path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-        except Exception as e:
-            pybreeze_logger.error(f"Save diagram failed: {e}")
-            QMessageBox.warning(self, _lang("diagram_editor_error_title", "Error"), str(e))
+            replace_text(path, json.dumps(data, indent=2, ensure_ascii=False))
+        # KeyError: a connection whose node is not on the canvas; it escaped the
+        # slot, and Save did nothing without a word
+        except (OSError, TypeError, ValueError, KeyError) as e:
+            pybreeze_logger.error("Save diagram failed: %r", e)
+            reason = e.strerror if isinstance(e, OSError) and e.strerror else str(e)
+            QMessageBox.warning(self, _lang("diagram_editor_error_title", "Error"), as_text(reason))
+            return
+        # What is on the canvas is now what is on disk
+        self._scene.undo_stack.setClean()
 
     # ------------------------------------------------------------------
     # Export
@@ -466,8 +531,8 @@ class DiagramEditorWidget(QWidget):
         QMessageBox.warning(
             self,
             _lang("diagram_editor_error_title", "Error"),
-            _lang("diagram_editor_export_failed", "Could not export the diagram to:\n{path}")
-            .format(path=path),
+            as_text(_lang("diagram_editor_export_failed", "Could not export the diagram to:\n{path}")
+            .format(path=path)),
         )
 
     def _export_png(self) -> None:
@@ -495,15 +560,14 @@ class DiagramEditorWidget(QWidget):
             image.fill(Qt.GlobalColor.white)
             painter = QPainter(image)
             painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-            painter.scale(scale, scale)
-            painter.translate(-rect.topLeft())
             self._scene.clearSelection()
-            self._scene.render(painter, QRectF(), rect)
+            # render() maps the scene's rect onto the target itself: a painter
+            # scaled and moved as well put the drawing off to one side, shrunk
+            self._scene.render(painter, QRectF(0, 0, image.width(), image.height()), rect)
             painter.end()
-            # QImage.save returns False (without raising) on permission/path/format
-            # errors, so the result must be checked to avoid a silent failure.
-            if not image.save(path):
-                self._warn_export_failed(path, "QImage.save returned False")
+            # Written beside the file and moved into place: a save that failed
+            # part-way used to leave the previous export cut short
+            replace_written(Path(path), lambda target: _save_png(image, target))
         except Exception as error:  # noqa: BLE001 — export must not crash the editor
             self._warn_export_failed(path, repr(error))
 
@@ -516,21 +580,28 @@ class DiagramEditorWidget(QWidget):
             return
         try:
             rect = self._get_content_rect()
-            gen = QSvgGenerator()
-            gen.setFileName(path)
-            gen.setSize(QSizeF(rect.width(), rect.height()).toSize())
-            gen.setViewBox(QRectF(0, 0, rect.width(), rect.height()))
-            painter = QPainter(gen)
-            if not painter.isActive():
-                self._warn_export_failed(path, "could not open SVG for writing")
-                return
-            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-            painter.translate(-rect.topLeft())
             self._scene.clearSelection()
-            self._scene.render(painter, QRectF(), rect)
-            painter.end()
+            # QSvgGenerator empties its file as soon as painting starts: it
+            # writes beside the chosen file, which is replaced only when done
+            replace_written(Path(path), lambda target: self._write_svg(target, rect))
         except Exception as error:  # noqa: BLE001 — export must not crash the editor
             self._warn_export_failed(path, repr(error))
+
+    def _write_svg(self, target: Path, rect: QRectF) -> None:
+        """Render the scene's *rect* as an SVG file at *target*; ``OSError`` when it cannot."""
+        gen = QSvgGenerator()
+        gen.setFileName(str(target))
+        gen.setSize(QSizeF(rect.width(), rect.height()).toSize())
+        gen.setViewBox(QRectF(0, 0, rect.width(), rect.height()))
+        painter = QPainter(gen)
+        if not painter.isActive():
+            raise OSError("could not open SVG for writing")
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        # Onto the view box as it is: with the painter moved as well, the
+        # drawing sat outside it
+        self._scene.render(painter, QRectF(0, 0, rect.width(), rect.height()), rect)
+        if not painter.end():
+            raise OSError("could not finish writing the SVG")
 
     # ------------------------------------------------------------------
     # Image operations
@@ -560,17 +631,41 @@ class DiagramEditorWidget(QWidget):
         )
         if not ok or not url.strip():
             return
-        url = url.strip()
-        try:
-            data = safe_download_image(url)
-            pix = QPixmap()
-            pix.loadFromData(data)
-            if pix.isNull():
-                raise ValueError("Invalid image data")
-            self._scene.add_image(pix, url)
-        except Exception as e:
-            pybreeze_logger.error(f"URL image load failed: {e}")
-            QMessageBox.warning(self, _lang("diagram_editor_error_title", "Error"), str(e))
+        # Fetched on its own thread: the download (and the DNS lookup its URL
+        # check makes) used to hold the IDE until the host answered.
+        fetch = ImageDownloadThread(url.strip())
+        fetch.fetched.connect(self._on_url_image_fetched)
+        fetch.failed.connect(self._on_url_image_failed)
+        # A bound method: a lambda holding this editor and the fetch, on the
+        # fetch, kept the closed editor, its scene and every image alive
+        fetch.finished.connect(self._forget_fetch)
+        self._url_fetches.add(fetch)
+        fetch.start()
+
+    def _forget_fetch(self) -> None:
+        """Let go of the fetch that just finished. UI thread."""
+        fetch = self.sender()
+        if isinstance(fetch, ImageDownloadThread):
+            # finished is emitted just before the thread ends; freed while it
+            # still runs, Qt would abort
+            fetch.wait()
+            self._url_fetches.discard(fetch)
+
+    def _on_url_image_fetched(self, url: str, data: bytes) -> None:
+        """Put a fetched image on the canvas, or say it was not one. UI thread."""
+        pix = QPixmap()
+        pix.loadFromData(data)
+        if pix.isNull():
+            self._on_url_image_failed(url, _lang("diagram_editor_image_load_failed", "Failed to load image."))
+            return
+        self._scene.add_image(pix, url)
+
+    def _on_url_image_failed(self, url: str, message: str) -> None:
+        """Say why the image at *url* could not be added. UI thread."""
+        pybreeze_logger.error("URL image load failed: %s", message)
+        # As text: the message quotes the server (its reason phrase, its
+        # Content-Type), and Qt read markup in it, an <img> and all
+        QMessageBox.warning(self, _lang("diagram_editor_error_title", "Error"), as_text(message))
 
     # ------------------------------------------------------------------
     # View helpers
@@ -580,5 +675,5 @@ class DiagramEditorWidget(QWidget):
         rect = self._scene.itemsBoundingRect()
         if rect.isNull():
             return
-        self._view.fitInView(rect.marginsAdded(QMarginsF(20, 20, 20, 20)), Qt.AspectRatioMode.KeepAspectRatio)
-        self._zoom_label.setText(f"{int(self._view.transform().m11() * 100)}%")
+        # Within the zoom range: fitted outside it, the wheel could not zoom back
+        self._view.fit(rect.marginsAdded(QMarginsF(20, 20, 20, 20)))

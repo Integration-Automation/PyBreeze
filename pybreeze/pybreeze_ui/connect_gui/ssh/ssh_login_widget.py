@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QLabel,
-    QLineEdit, QSpinBox, QCheckBox, QPushButton
+    QLineEdit, QSpinBox, QCheckBox, QPushButton, QFileDialog
 )
 from je_editor import language_wrapper
 
@@ -20,6 +22,7 @@ class LoginWidget(QWidget):
         self.pass_edit = QLineEdit()
         self.key_edit = QLineEdit()
         self.use_key_check = QCheckBox(language_wrapper.language_word_dict.get("ssh_login_widget_button_use_key_auth"))
+        self.browse_key_btn = QPushButton(language_wrapper.language_word_dict.get("ssh_login_widget_button_browse_key"))
         self.connect_btn = QPushButton(language_wrapper.language_word_dict.get("ssh_login_widget_button_connect"))
         self.disconnect_btn = QPushButton(language_wrapper.language_word_dict.get("ssh_login_widget_button_disconnect"))
         self.status_label = QLabel(language_wrapper.language_word_dict.get("ssh_login_widget_status_disconnected"))
@@ -39,6 +42,10 @@ class LoginWidget(QWidget):
         self.pass_edit.setEchoMode(QLineEdit.EchoMode.Password)
         self.key_edit.setPlaceholderText(
             language_wrapper.language_word_dict.get("ssh_login_widget_placeholder_private_key"))
+        self.browse_key_btn.clicked.connect(self.choose_key_file)
+        # Enter in any field connects, as in a login form
+        for edit in (self.host_edit, self.user_edit, self.pass_edit, self.key_edit):
+            edit.returnPressed.connect(self.connect_btn.click)
 
         # 佈局設計
         top = QHBoxLayout()
@@ -53,6 +60,7 @@ class LoginWidget(QWidget):
         auth.addWidget(self.use_key_check)
         auth.addWidget(QLabel(language_wrapper.language_word_dict.get("ssh_login_widget_label_key")))
         auth.addWidget(self.key_edit)
+        auth.addWidget(self.browse_key_btn)
         auth.addWidget(QLabel(language_wrapper.language_word_dict.get("ssh_login_widget_label_password")))
         auth.addWidget(self.pass_edit)
 
@@ -67,3 +75,13 @@ class LoginWidget(QWidget):
         root.addLayout(conn)
 
         self.setLayout(root)
+
+    def choose_key_file(self) -> None:
+        """Pick the private key file in a dialog, starting in ``~/.ssh``; it also ticks key authentication."""
+        start = Path.home() / ".ssh"
+        path, _ = QFileDialog.getOpenFileName(
+            self, language_wrapper.language_word_dict.get("ssh_login_widget_dialog_title_choose_key"),
+            str(start if start.is_dir() else Path.home()))
+        if path:
+            self.key_edit.setText(path)
+            self.use_key_check.setChecked(True)

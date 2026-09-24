@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.header_analyzer_gui import HeaderAnalyzerGUI
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.pybreeze_ui.tools_gui.tool_tabs import open_tool_tab
@@ -21,7 +22,9 @@ from pybreeze.pybreeze_ui.tools_gui.url_builder_gui import UrlBuilderGUI
 from pybreeze.utils.curl_import.curl_parser import CurlRequest, parse_curl
 from pybreeze.utils.curl_import.script_templates import TEMPLATE_TARGETS, generate_template
 from pybreeze.utils.exception.exceptions import CurlParseException
+from pybreeze.utils.header_tools.header_merge import stored_header_name
 from pybreeze.utils.logging.logger import pybreeze_logger
+from pybreeze.pybreeze_ui.error_text import error_text
 
 # The single target that generates JSON rather than Python
 _JSON_TARGET = "apitestka_action"
@@ -99,7 +102,7 @@ class CurlImportGUI(QWidget):
 
     def _on_target_changed(self, _index: int) -> None:
         """Regenerate when the target changes, if there is already input."""
-        if self.input_edit.toPlainText().strip():
+        if exact_text(self.input_edit).strip():
             self.convert()
 
     def _clear_result(self) -> None:
@@ -112,7 +115,7 @@ class CurlImportGUI(QWidget):
     def convert(self) -> None:
         """Parse the input command and show the template for the chosen target."""
         word = language_wrapper.language_word_dict
-        command = self.input_edit.toPlainText().strip()
+        command = exact_text(self.input_edit).strip()
         if not command:
             self._clear_result()
             self.output_edit.setPlainText(word.get("curl_import_empty_hint"))
@@ -124,12 +127,12 @@ class CurlImportGUI(QWidget):
             pybreeze_logger.info("curl_import_gui.py convert failed: %r", error)
             self._clear_result()
             self.output_edit.setPlainText(
-                word.get("curl_import_error").format(error=str(error)))
+                word.get("curl_import_error").format(error=error_text(str(error))))
             return
         self._generated_code = code
         self._request = request
         self.open_url_button.setEnabled(bool(request.url))
-        self.open_headers_button.setEnabled(bool(request.headers))
+        self.open_headers_button.setEnabled(bool(request.headers or request.cookies))
         self.output_edit.setPlainText(code)
 
     def open_url_in_builder(self) -> QWidget | None:
@@ -146,11 +149,19 @@ class CurlImportGUI(QWidget):
             "extend_tools_menu_url_builder_tab_label")
 
     def open_headers_in_analyzer(self) -> QWidget | None:
-        """Open the command's headers in the header analyzer, already analysed."""
-        if self._request is None or not self._request.headers:
+        """Open the command's headers in the header analyzer, already analysed.
+
+        Cookies from ``-b`` go as the ``Cookie`` header they are sent as; curl
+        (and ``requests``) sends them only when no ``-H 'Cookie: ...'`` is given.
+        """
+        if self._request is None:
             return None
-        block = "\n".join(
-            f"{name}: {value}" for name, value in self._request.headers.items())
+        headers = dict(self._request.headers)
+        if self._request.cookies and stored_header_name(headers, "Cookie") is None:
+            headers["Cookie"] = "; ".join(f"{name}={value}" for name, value in self._request.cookies.items())
+        if not headers:
+            return None
+        block = "\n".join(f"{name}: {value}" for name, value in headers.items())
         return open_tool_tab(
             self._main_window,
             HeaderAnalyzerGUI(main_window=self._main_window, initial_headers=block),

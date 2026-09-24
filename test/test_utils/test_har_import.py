@@ -96,6 +96,13 @@ class TestParseHarErrors:
         with pytest.raises(HarParseException):
             parse_har(_har())
 
+    def test_an_entry_with_a_malformed_url_is_skipped(self):
+        # Listing it raised ValueError out of the tab, which kept showing the
+        # previous file's requests, and "Generate all" generated those.
+        entries = parse_har(_har(_entry(url="http://[::1/api"), _entry()))
+
+        assert [entry.request.url for entry in entries] == ["https://api.example.com/v1/items"]
+
 
 class TestHeadersAndCookies:
     def test_headers_are_collected(self):
@@ -133,6 +140,20 @@ class TestHeadersAndCookies:
             cookies=[{"name": "sid", "value": "abc"}])))[0]
         assert entry.request.cookies == {"sid": "abc"}
         assert "Cookie" not in entry.request.headers
+
+    def test_cookies_sharing_a_name_all_go_as_the_header(self):
+        # Two paths, two sid cookies: a dict would keep only the last
+        entry = parse_har(_har(_entry(
+            headers=[{"name": "cookie", "value": "sid=1; sid=2"}],
+            cookies=[{"name": "sid", "value": "1"}, {"name": "sid", "value": "2"}])))[0]
+        assert entry.request.cookies == {}
+        assert entry.request.headers == {"cookie": "sid=1; sid=2"}
+
+    def test_cookies_sharing_a_name_without_a_header_make_one(self):
+        entry = parse_har(_har(_entry(
+            cookies=[{"name": "sid", "value": "1"}, {"name": "sid", "value": "2"}])))[0]
+        assert entry.request.cookies == {}
+        assert entry.request.headers == {"Cookie": "sid=1; sid=2"}
 
     def test_cookie_header_is_kept_when_no_cookies_were_recorded(self):
         entry = parse_har(_har(_entry(headers=[{"name": "Cookie", "value": "sid=abc"}])))[0]
@@ -179,7 +200,17 @@ class TestRequestBody:
                 {"name": "note", "value": "hi"},
                 {"name": "file", "value": "", "fileName": "a.png"},
             ]})))[0]
-        assert entry.request.form_fields == ["note=hi", "file=@a.png"]
+        assert entry.request.form_strings == ["note=hi"]
+        assert entry.request.form_fields == ["file=@a.png"]
+
+    def test_a_text_field_starting_with_at_is_not_a_file(self):
+        from pybreeze.utils.curl_import.request_body import form_parts
+
+        entry = parse_har(_har(_entry(method="POST", post_data={
+            "mimeType": "multipart/form-data; boundary=x",
+            "params": [{"name": "handle", "value": "@alice"}]})))[0]
+
+        assert form_parts(entry.request) == ({"handle": "@alice"}, {})
 
     def test_no_post_data_leaves_no_body(self):
         assert not parse_har(_har(_entry()))[0].request.has_body
@@ -236,6 +267,15 @@ class TestUniqueTestNames:
             _entry(url="https://x/api/items"), _entry(url="https://x/api/items")))]
         assert unique_test_names(requests) == ["test_get_api_items", "test_get_api_items_2"]
 
+    @pytest.mark.parametrize("paths", [("a", "a", "a/2"), ("a/2", "a", "a"), ("a", "a/2", "a", "a", "a/3")])
+    def test_a_number_never_takes_another_requests_own_name(self, paths):
+        requests = [e.request for e in parse_har(_har(*[_entry(url=f"https://x/{p}") for p in paths]))]
+
+        names = unique_test_names(requests)
+
+        assert len(set(names)) == len(names)
+        assert "test_get_a_2" in names
+
 
 class TestGenerateHarScript:
     def _requests(self, *urls: str):
@@ -289,3 +329,86 @@ class TestGenerateHarScript:
     def test_unknown_target_falls_back_to_requests(self):
         code = generate_har_script("nonsense", self._requests("https://x/one", "https://x/two"))
         assert "import requests" in code
+
+
+class TestQueryValuesFromTheUrl:
+    """A value in the recorded URL is percent-encoded; params hold it decoded, once."""
+
+    def test_an_encoded_value_is_decoded(self):
+        entry = parse_har(_har(_entry(url="https://x/api?q=hello+world&tag=a%2Bb")))[0]
+
+        assert entry.request.params == {"q": "hello world", "tag": "a+b"}
+
+    def test_the_rebuilt_url_is_encoded_once(self):
+        entry = parse_har(_har(_entry(url="https://x/api?q=hello+world")))[0]
+
+        assert entry.request.full_url == "https://x/api?q=hello+world"
+
+    def test_a_query_that_would_not_come_back_as_written_stays_as_recorded(self):
+        # Decoded and encoded again, %20 became + and a bare key gained =
+        entry = parse_har(_har(_entry(url="https://x/api?q=hello%20world&flag")))[0]
+
+        assert entry.request.params == {}
+        assert entry.request.full_url == "https://x/api?q=hello%20world&flag"
+
+
+class TestWhatReachesTheGeneratedCode:
+    """A recording's method and URL end up in code; nothing in them may become code."""
+
+    def test_a_method_that_is_not_a_token_is_refused(self):
+        with pytest.raises(HarParseException, match="not an HTTP method"):
+            parse_har(_har(_entry(method="GET():\n    __import__('os').system('calc')\ndef t")))
+
+    @pytest.mark.parametrize("bad", [
+        {"url": "https://x/a?q=\ud800"},
+        {"url": "https://x/a", "query": [{"name": "q", "value": "\ud800"}]},
+        {"url": "https://x/a", "headers": [{"name": "X", "value": "\udfff"}]},
+    ])
+    def test_an_entry_with_half_a_character_is_skipped_and_the_rest_load(self, bad):
+        # JSON's "\ud800" escape: encoding it raised UnicodeEncodeError out of the tab
+        entries = parse_har(_har(_entry(**bad), _entry(url="https://x/b")))
+
+        assert [entry.request.url for entry in entries] == ["https://x/b"]
+
+    def test_an_entry_with_a_bad_method_is_skipped_and_the_rest_load(self):
+        entries = parse_har(_har(_entry(url="https://x/a", method=""), _entry(url="https://x/b")))
+
+        assert [entry.request.url for entry in entries] == ["https://x/b"]
+
+    def test_a_line_break_in_a_url_stays_inside_the_comment(self):
+        import ast
+
+        url = "https://x/a\nimport os; os.system('calc')  #"
+        requests = [e.request for e in parse_har(_har(_entry(url=url), _entry()))]
+
+        code = generate_har_script("requests", requests)
+
+        imports = [node for node in ast.parse(code).body if isinstance(node, ast.Import)]
+        assert [alias.name for node in imports for alias in node.names] == ["requests"]
+        assert "\x0a" in code
+
+
+class TestRepeatedQueryKeys:
+    def test_every_value_in_the_url_is_kept_once(self):
+        entry = parse_har(_har(_entry(
+            url="https://api.example.com/v1/items?id=1&id=2",
+            query=[{"name": "id", "value": "1"}, {"name": "id", "value": "2"}])))[0]
+
+        assert entry.request.params == {"id": ["1", "2"]}
+
+    def test_a_recorded_name_the_url_lacks_keeps_all_its_values(self):
+        entry = parse_har(_har(_entry(
+            url="https://api.example.com/v1/items?q=a",
+            query=[{"name": "q", "value": "a"},
+                   {"name": "tag", "value": "x"}, {"name": "tag", "value": "y"}])))[0]
+
+        assert entry.request.params == {"q": "a", "tag": ["x", "y"]}
+
+
+def test_json_nested_too_deep_is_reported_not_raised_out_of_the_tab():
+    from pybreeze.utils.exception.exceptions import HarParseException
+    from pybreeze.utils.har_import.har_parser import parse_har
+
+    # json.loads raises RecursionError, which the tab did not catch
+    with pytest.raises(HarParseException):
+        parse_har("[" * 100000)

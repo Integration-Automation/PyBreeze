@@ -5,17 +5,18 @@ subject, expiry) while building or debugging an API test, not for trusting it.
 """
 from __future__ import annotations
 
-import json
 
 from PySide6.QtWidgets import QLabel, QPushButton, QTextEdit, QVBoxLayout, QWidget
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.utils.exception.exceptions import JwtDecodeException
 from pybreeze.utils.jwt_tools.jwt_decoder import (
-    DecodedJwt, decode_jwt, humanized_timestamp_claims
+    DecodedJwt, decode_jwt, humanized_timestamp_claims, shown_json
 )
 from pybreeze.utils.logging.logger import pybreeze_logger
+from pybreeze.pybreeze_ui.error_text import error_text
 
 
 def build_decoded_text(decoded: DecodedJwt) -> str:
@@ -27,10 +28,10 @@ def build_decoded_text(decoded: DecodedJwt) -> str:
     word = language_wrapper.language_word_dict
     sections = [
         word.get("jwt_decoder_header_label"),
-        json.dumps(decoded.header, indent=4, sort_keys=True, ensure_ascii=False),
+        shown_json(decoded.header_json, decoded.header),
         "",
         word.get("jwt_decoder_payload_label"),
-        json.dumps(decoded.payload, indent=4, sort_keys=True, ensure_ascii=False),
+        shown_json(decoded.payload_json, decoded.payload),
     ]
     readable = humanized_timestamp_claims(decoded.payload)
     if readable:
@@ -84,7 +85,7 @@ class JwtDecoderGUI(QWidget):
     def decode(self) -> None:
         """Decode the pasted token and show its header and payload."""
         word = language_wrapper.language_word_dict
-        token = self.input_edit.toPlainText().strip()
+        token = exact_text(self.input_edit).strip()
         if not token:
             self._valid_output = False
             self.output_edit.setPlainText(word.get("jwt_decoder_empty_hint"))
@@ -95,7 +96,7 @@ class JwtDecoderGUI(QWidget):
             pybreeze_logger.info("jwt_decoder_gui.py decode failed: %r", error)
             self._valid_output = False
             self.output_edit.setPlainText(
-                word.get("jwt_decoder_error").format(error=str(error)))
+                word.get("jwt_decoder_error").format(error=error_text(str(error))))
             return
         self._valid_output = True
         self.output_edit.setPlainText(build_decoded_text(decoded))

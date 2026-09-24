@@ -6,7 +6,6 @@ import pytest
 from pybreeze.utils.curl_import.curl_parser import (
     CurlRequest,
     parse_curl,
-    parse_query_pairs,
 )
 from pybreeze.utils.curl_import.request_codegen import to_requests_code
 from pybreeze.utils.exception.exceptions import CurlParseException
@@ -139,6 +138,16 @@ class TestParseCurlBodyAndAuth:
 
 
 class TestParseCurlRobustness:
+    @pytest.mark.parametrize("url", ["http://[::1/api", "http://host:port/x"])
+    def test_a_malformed_url_is_a_parse_error(self, url):
+        # It raised ValueError later, from the code generator, out of the tab,
+        # which kept showing the previous command's code.
+        with pytest.raises(CurlParseException):
+            parse_curl(f"curl '{url}'")
+
+    def test_an_ipv6_url_with_a_port_is_fine(self):
+        assert parse_curl("curl 'http://[::1]:8080/a'").url == "http://[::1]:8080/a"
+
     def test_line_continuations(self):
         command = "curl https://x \\\n  -H 'Accept: application/json' \\\n  -d 'a=1'"
         request = parse_curl(command)
@@ -161,6 +170,12 @@ class TestParseCurlRobustness:
     def test_non_curl_command_raises(self):
         with pytest.raises(CurlParseException):
             parse_curl("wget https://x")
+
+    @pytest.mark.parametrize("command", ["curl", "curl -X POST -d a=1", "curl -H 'Accept: x'", "curl '#top'"])
+    def test_a_command_without_a_url_raises(self, command):
+        # curl says "no URL specified"; a script calling requests.get("") only fails when run
+        with pytest.raises(CurlParseException, match="no URL"):
+            parse_curl(command)
 
     def test_unbalanced_quotes_raise(self):
         with pytest.raises(CurlParseException):
@@ -299,8 +314,19 @@ class TestParseCurlUrlQuery:
         assert request.params == {"a": "1", "b": "2"}
 
     def test_query_values_are_url_decoded(self):
-        request = parse_curl("curl 'https://x?q=hello%20world'")
-        assert request.params["q"] == "hello world"
+        request = parse_curl("curl 'https://x?q=hello+world&tag=a%2Bb'")
+        assert request.params == {"q": "hello world", "tag": "a+b"}
+
+    @pytest.mark.parametrize("url", [
+        "https://x/a?q=hello%20world", "https://x/a?flag&q=1", "https://x/a?q=%B0",
+        "https://x/a?r=/x&s=a,b", "https://x/a?X-Amz-Signature=ab%2Fcd&X-Amz-Date=20260923T000000Z%20",
+    ])
+    def test_a_query_that_would_not_come_back_as_written_stays_in_the_url(self, url):
+        # Split and encoded again it went out changed: %20 as +, flag as flag=,
+        # %B0 as %EF%BF%BD, / as %2F -- which breaks a signed URL
+        request = parse_curl(f"curl '{url}'")
+        assert request.params == {}
+        assert request.full_url == url
 
     def test_blank_query_value_kept(self):
         request = parse_curl("curl 'https://x?flag='")
@@ -323,9 +349,29 @@ class TestParseCurlUrlQuery:
         request = parse_curl("curl -G https://x/api -d 'a=1'")
         assert request.full_url == "https://x/api?a=1"
 
-    def test_explicit_params_not_overwritten_by_url_query(self):
+    def test_url_query_and_get_data_are_both_sent_url_first(self):
+        # What curl 8 sends for this command: ?a=fromurl&a=fromdata
         request = parse_curl("curl -G 'https://x?a=fromurl' -d 'a=fromdata'")
-        assert request.params["a"] == "fromdata"
+        assert request.params["a"] == ["fromurl", "fromdata"]
+        assert request.full_url == "https://x?a=fromurl&a=fromdata"
+
+    def test_a_repeated_url_key_keeps_every_value(self):
+        request = parse_curl("curl 'https://x/p?id=1&id=2&q=a'")
+        assert request.params == {"id": ["1", "2"], "q": "a"}
+        assert request.full_url == "https://x/p?id=1&id=2&q=a"
+
+    def test_a_repeated_get_data_key_keeps_every_value(self):
+        request = parse_curl("curl -G https://x/p -d id=1 -d id=2")
+        assert request.full_url == "https://x/p?id=1&id=2"
+
+    def test_generated_code_sends_every_value(self):
+        import ast
+
+        code = to_requests_code(parse_curl("curl 'https://x/p?id=1&id=2'"))
+        assignment = next(
+            node for node in ast.parse(code).body
+            if isinstance(node, ast.Assign) and node.targets[0].id == "params")
+        assert ast.literal_eval(assignment.value) == {"id": ["1", "2"]}
 
     def test_url_query_feeds_requests_params(self):
         code = to_requests_code(parse_curl("curl 'https://x/api?a=1'"))
@@ -348,11 +394,13 @@ class TestParseCurlCookies:
         request = parse_curl("curl --cookie 'a=1' https://x")
         assert request.cookies == {"a": "1"}
 
-    def test_cookie_file_falls_back_to_header(self):
-        # A bare token with no '=' is a cookie file curl would read, not pairs.
+    def test_a_cookie_file_is_kept_as_a_file_not_sent_as_a_cookie(self):
+        # A bare token with no '=' is a cookie file curl reads. It was sent as
+        # the header "Cookie: cookies.txt".
         request = parse_curl("curl -b cookies.txt https://x")
         assert request.cookies == {}
-        assert request.headers["Cookie"] == "cookies.txt"
+        assert "Cookie" not in request.headers
+        assert request.cookie_files == ["cookies.txt"]
 
     def test_no_cookies_by_default(self):
         assert parse_curl("curl https://x").cookies == {}
@@ -421,6 +469,23 @@ class TestParseCurlDataFile:
         assert request.data_file_refs == []
         assert request.body == "a=1"
 
+    @pytest.mark.parametrize(("command", "sent"), [
+        ("curl -d @a.txt -d b=1 https://x", b"A&b=1"),
+        ("curl -d b=1 -d @a.txt -d c=2 --data-binary @z.bin https://x", b"b=1&A&c=2&Z\r\n"),
+        ("curl -d x=1 -d y=2 -d @a.txt https://x", b"x=1&y=2&A"),
+    ])
+    def test_the_pieces_are_sent_in_command_line_order(self, tmp_path, monkeypatch, command, sent):
+        # Every inline piece went first: -d @a.txt -d b=1 sent "b=1&A"
+        from pybreeze.utils.curl_import.request_codegen import data_from_file_expr
+
+        (tmp_path / "a.txt").write_bytes(b"A\r\n")
+        (tmp_path / "z.bin").write_bytes(b"Z\r\n")
+        monkeypatch.chdir(tmp_path)
+
+        expression = data_from_file_expr(parse_curl(command))
+
+        assert eval(expression, {"__builtins__": {"open": open}}) == sent  # noqa: S307 — the generator's own output, in a test
+
 
 class TestParseCurlDataUrlencode:
     def test_encodes_value_part(self):
@@ -473,18 +538,19 @@ class TestParseCurlForm:
 
     def test_form_string_flag(self):
         request = parse_curl("curl --form-string 'a=1' https://x")
-        assert request.form_fields == ["a=1"]
+        assert request.form_strings == ["a=1"]
+        assert request.has_form and request.has_body
 
+    def test_form_string_takes_an_at_sign_literally(self):
+        from pybreeze.utils.curl_import.request_body import form_parts
 
-class TestParseQueryPairs:
-    def test_parses_pairs(self):
-        assert parse_query_pairs(["a=1", "b=2"]) == {"a": "1", "b": "2"}
+        request = parse_curl("curl --form-string 'handle=@alice' -F 'photo=@me.png' https://x")
 
-    def test_ignores_fragments_without_equals(self):
-        assert parse_query_pairs(["a=1", "bad"]) == {"a": "1"}
+        assert form_parts(request) == ({"handle": "@alice"}, {"photo": "me.png"})
 
-    def test_empty(self):
-        assert parse_query_pairs([]) == {}
+    @pytest.mark.parametrize("value", ["nan", "inf", "-inf"])
+    def test_a_timeout_that_is_not_finite_is_ignored(self, value):
+        assert parse_curl(f"curl -m {value} https://x").timeout is None
 
 
 class TestToRequestsCode:
@@ -560,3 +626,55 @@ class TestCurlRequestDataclass:
         assert request.headers == {}
         # The JSON round-trip in codegen should never see a stale shared dict.
         assert CurlRequest().headers is not request.headers
+
+
+class TestGetWithData:
+    """With -G, curl appends each -d fragment to the URL as given, joined by '&'."""
+
+    def test_one_fragment_with_several_pairs_is_split(self):
+        request = parse_curl("curl -G https://x/api -d 'a=1&b=2'")
+
+        assert request.params == {"a": "1", "b": "2"}
+        assert request.full_url == "https://x/api?a=1&b=2"
+
+    def test_data_urlencode_is_encoded_once(self):
+        request = parse_curl("curl -G https://x/api --data-urlencode 'q=hello world'")
+
+        assert request.params == {"q": "hello world"}
+        assert request.full_url == "https://x/api?q=hello+world"
+
+
+class TestBashAnsiCQuoting:
+    """Copy as cURL (bash) writes a body holding a newline or a quote as $'...'."""
+
+    def test_a_json_body_with_a_newline_is_json(self):
+        from pybreeze.utils.curl_import.request_body import body_kind
+
+        # The JSON escape \n reaches bash as \\n inside $'...'
+        request = parse_curl(
+            "curl https://x/api -H 'content-type: application/json' "
+            "--data-raw $'{\"msg\":\"a\\\\nb\"}'")
+
+        assert request.body == '{"msg":"a\\nb"}'
+        assert body_kind(request) == ("json", {"msg": "a\nb"})
+
+    def test_an_escaped_quote_is_a_quote(self):
+        assert parse_curl("curl https://x --data-raw $'it\\'s'").body == "it's"
+
+    @pytest.mark.parametrize(("escape", "character"), [
+        ("\\t", "\t"), ("\\\\", "\\"), ("\\x41", "A"), ("\\u00e9", "\u00e9"),
+        ("\\U0001F600", "\U0001F600"), ("\\101", "A"), ("\\e", "\x1b"), ("\\q", "\\q"),
+    ])
+    def test_each_escape_stands_for_its_character(self, escape, character):
+        assert parse_curl(f"curl https://x -d $'[{escape}]'").body == f"[{character}]"
+
+    def test_a_dollar_quote_inside_other_quotes_is_literal(self):
+        assert parse_curl("curl https://x -d \"a $'b'\"").body == "a $'b'"
+        assert parse_curl("curl https://x -d 'a $b'").body == "a $b"
+
+    def test_an_unterminated_one_is_refused(self):
+        from pybreeze.utils.exception.exceptions import CurlParseException
+
+        with pytest.raises(CurlParseException):
+            parse_curl("curl https://x -d $'open")
+
