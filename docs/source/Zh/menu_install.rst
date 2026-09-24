@@ -27,6 +27,8 @@ Automation 子選單
      - 執行 ``pip install -U automation_file``
    * - **Install MailThunder**
      - 執行 ``pip install -U je_mail_thunder``
+   * - **Install TestPioneer**
+     - 執行 ``pip install -U test_pioneer``
    * - **Install prthinker (code review)**
      - prthinker 不在 PyPI 上。第一次會詢問它的原始碼資料夾並記下來，
        之後執行 ``pip install -U <資料夾>[runner]``
@@ -48,4 +50,5 @@ Tools 子選單
 
    每次安裝都會開一個自己的執行視窗，在裡面執行 ``python -m pip``，中間不經過 shell，
    所以資料夾名稱裡有 ``&`` 或 ``|`` 也會原樣交給 pip。pip 使用 Python 環境選單選定的
-   直譯器；沒有選的話，使用工作目錄下的 ``venv`` 或 ``.venv``，再沒有就用 ``PATH`` 上找到的 Python。
+   直譯器；沒有選的話，使用工作目錄下的 ``venv`` 或 ``.venv``，再沒有就用 PyBreeze 自己執行所用的直譯器
+   （只有打包版才會去 ``PATH`` 上找）。

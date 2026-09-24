@@ -27,6 +27,8 @@ Installs the automation module packages via pip.
      - Runs ``pip install -U automation_file``
    * - **Install MailThunder**
      - Runs ``pip install -U je_mail_thunder``
+   * - **Install TestPioneer**
+     - Runs ``pip install -U test_pioneer``
    * - **Install prthinker (code review)**
      - prthinker is not on PyPI. The first time, asks for its source folder and
        remembers it; then runs ``pip install -U <folder>[runner]``
@@ -50,4 +52,5 @@ Tools Submenu
    with no shell in between, so a folder name holding ``&`` or ``|`` reaches pip
    unchanged. pip runs with the interpreter chosen in the Python environment
    menu; when none is chosen, with a ``venv`` or ``.venv`` in the working
-   directory, and otherwise with the Python found on ``PATH``.
+   directory, and otherwise with the interpreter PyBreeze itself runs on (only a
+   packaged build looks on ``PATH``).
