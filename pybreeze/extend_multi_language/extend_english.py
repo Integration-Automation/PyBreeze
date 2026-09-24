@@ -501,6 +501,7 @@ pybreeze_english_word_dict = {
     "timestamp_epoch_seconds_label": "Epoch (seconds)",
     "timestamp_epoch_millis_label": "Epoch (milliseconds)",
     "timestamp_iso_label": "ISO-8601 (UTC)",
+    "timestamp_result_line": "{label}: {value}",
     "timestamp_error": "Could not convert the value: {error}",
     "timestamp_empty_hint": "Enter an epoch value or an ISO date-time above.",
     # Hash Generator — Menu
@@ -557,6 +558,8 @@ pybreeze_english_word_dict = {
     "regex_match_count_capped": "The first {count} match(es); there may be more:",
     "regex_running": "Running the pattern…",
     "regex_no_match": "No matches.",
+    "regex_group_line": "group {index}: {value}",
+    "regex_named_group_line": "{name}: {value}",
     "regex_error": "Regex error: {error}",
     # HTTP Status Reference — Menu
     "extend_tools_menu_http_status_tab_action": "HTTP Status Reference Tab",

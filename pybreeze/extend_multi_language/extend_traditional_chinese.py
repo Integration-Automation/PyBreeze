@@ -465,6 +465,7 @@ pybreeze_traditional_chinese_word_dict = {
     "timestamp_epoch_seconds_label": "Epoch（秒）",
     "timestamp_epoch_millis_label": "Epoch（毫秒）",
     "timestamp_iso_label": "ISO-8601（UTC）",
+    "timestamp_result_line": "{label}：{value}",
     "timestamp_error": "無法轉換此值：{error}",
     "timestamp_empty_hint": "請在上方輸入 epoch 值或 ISO 日期時間。",
     # 雜湊產生器 — 選單
@@ -521,6 +522,8 @@ pybreeze_traditional_chinese_word_dict = {
     "regex_match_count_capped": "前 {count} 個符合，可能還有更多：",
     "regex_running": "正在執行這個 pattern…",
     "regex_no_match": "沒有符合項。",
+    "regex_group_line": "群組 {index}：{value}",
+    "regex_named_group_line": "{name}：{value}",
     "regex_error": "正規表示式錯誤：{error}",
     # HTTP 狀態碼參考 — 選單
     "extend_tools_menu_http_status_tab_action": "HTTP 狀態碼參考分頁",

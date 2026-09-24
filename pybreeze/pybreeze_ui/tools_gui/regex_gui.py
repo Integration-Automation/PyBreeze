@@ -56,9 +56,9 @@ def build_matches_text(matches: list[MatchResult], no_match_message: str) -> str
     for index, match in enumerate(matches, start=1):
         lines.append(f"[{index}] ({match.start}-{match.end}) {match.matched_text!r}")
         for group_index, value in enumerate(match.groups, start=1):
-            lines.append(f"    group {group_index}: {value!r}")
+            lines.append("    " + word.get("regex_group_line").format(index=group_index, value=repr(value)))
         for name, value in match.named_groups.items():
-            lines.append(f"    {name}: {value!r}")
+            lines.append("    " + word.get("regex_named_group_line").format(name=name, value=repr(value)))
     return "\n".join(lines)
 
 
