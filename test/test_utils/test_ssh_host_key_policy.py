@@ -167,3 +167,30 @@ def test_a_store_that_fails_keeps_the_hosts_already_trusted(asked, keys, tmp_pat
 
     assert (tmp_path / "ssh_known_hosts").read_text(encoding="utf-8") == before
     assert sorted(path.name for path in tmp_path.iterdir()) == ["ssh_known_hosts"]
+
+
+# A line whose key is not base64: HostKeys.load raised InvalidHostKey, no SSHException
+_BAD_LINE = "badhost ssh-ed25519 abc"
+# A line paramiko 4 no longer reads (it dropped DSA), which is still someone's host
+_DSA_LINE = "old.example ssh-dss AAAAB3NzaC1kc3MAAACBAP=="
+
+
+def test_a_bad_line_skips_that_line_and_the_rest_still_load(asked, keys, tmp_path):
+    good = paramiko.hostkeys.HostKeyEntry(["good.example"], keys[0]).to_line().strip()
+    (tmp_path / "ssh_known_hosts").write_text(f"{_BAD_LINE}\n{good}\n", encoding="utf-8")
+    client = paramiko.SSHClient()
+
+    policy_mod.apply_host_key_policy(client, None)
+
+    assert client.get_host_keys().lookup("good.example")["ssh-rsa"] == keys[0]
+    assert client.get_host_keys().lookup("badhost") is None
+
+
+def test_accepting_a_host_keeps_the_lines_paramiko_could_not_read(asked, keys, tmp_path):
+    (tmp_path / "ssh_known_hosts").write_text(f"{_BAD_LINE}\n{_DSA_LINE}\n", encoding="utf-8")
+
+    _meet("new.example", keys[0])
+
+    lines = (tmp_path / "ssh_known_hosts").read_text(encoding="utf-8").splitlines()
+    assert lines[:2] == [_BAD_LINE, _DSA_LINE]
+    assert policy_mod._read_known_hosts().lookup("new.example")["ssh-rsa"] == keys[0]

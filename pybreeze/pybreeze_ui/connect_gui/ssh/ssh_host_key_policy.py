@@ -18,12 +18,13 @@ from typing import TYPE_CHECKING
 
 import paramiko
 import shiboken6
+from paramiko.hostkeys import HostKeyEntry, InvalidHostKey
 from je_editor import language_wrapper
 from PySide6.QtCore import QObject, Qt, QThread, Signal, Slot
 from PySide6.QtWidgets import QMessageBox
 
 from pybreeze.utils.app_dirs import pybreeze_data_dir
-from pybreeze.utils.file_process.replace_file import replace_written
+from pybreeze.utils.file_process.replace_file import replace_text
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.pybreeze_ui.plain_text import as_text
 
@@ -57,15 +58,43 @@ def _declined_just_now(hostname: str, fingerprint: str) -> bool:
     return declined_at is not None and time.monotonic() - declined_at < _DECLINE_REMEMBERED_SECONDS
 
 
+def _file_lines(path: Path) -> list[str]:
+    """The lines of *path*; none when it is missing or cannot be read."""
+    if not path.is_file():
+        return []
+    try:
+        return path.read_bytes().decode("utf-8", errors="replace").splitlines()
+    except OSError as err:
+        pybreeze_logger.warning("Failed to read known hosts %s: %s", path.name, err)
+        return []
+
+
+def load_known_hosts(target: paramiko.HostKeys, path: Path) -> None:
+    """Add every host key in the known hosts file *path* to *target*, skipping bad lines.
+
+    ``HostKeys.load`` stops at a line whose key is not base64 with
+    ``InvalidHostKey``, which is no ``SSHException``: it escaped the shell
+    tab's Connect and ended the SFTP connect without a word. OpenSSH skips
+    such a line, and so does this.
+    """
+    for number, line in enumerate(_file_lines(path), 1):
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        try:
+            entry = HostKeyEntry.from_line(line, number)
+        except (InvalidHostKey, paramiko.SSHException, ValueError) as err:
+            pybreeze_logger.warning("Skipping line %d of %s: %s", number, path.name, type(err).__name__)
+            continue
+        if entry is not None:
+            for name in entry.hostnames:
+                target.add(name, entry.key.get_name(), entry.key)
+
+
 def _read_known_hosts() -> paramiko.HostKeys:
     """The known hosts file as it is now; empty when it is missing or unreadable."""
     known = paramiko.HostKeys()
-    path = _known_hosts_path()
-    if path.is_file():
-        try:
-            known.load(str(path))
-        except OSError as err:
-            pybreeze_logger.warning("Failed to load PyBreeze known_hosts: %s", err)
+    load_known_hosts(known, _known_hosts_path())
     return known
 
 
@@ -75,18 +104,19 @@ def _is_trusted_on_disk(hostname: str, key: paramiko.PKey) -> bool:
     return entry is not None and entry.get(key.get_name()) == key
 
 
-def _store(hostname: str, key_type: str, key: paramiko.PKey) -> None:
-    """Add the key to the file as it is now.
+def _store(hostname: str, key: paramiko.PKey) -> None:
+    """Add a line for the key to the file as it is now.
 
     Not ``client.save_host_keys``: that writes the client's own copy, read at
-    its Connect, over hosts another tab accepted since.
+    its Connect, over hosts another tab accepted since. Nor ``HostKeys.save``
+    of what paramiko read: a line it cannot read (a bad one, an ``ssh-dss``
+    key paramiko 4 no longer takes) was dropped from the file. The file is
+    replaced in one step: a failure part-way lost every host trusted so far.
     """
-    known = _read_known_hosts()
-    known.add(hostname, key_type, key)
+    path = _known_hosts_path()
+    line = HostKeyEntry([hostname], key).to_line()
     try:
-        # Replaced in one step: HostKeys.save opens the file for writing, which
-        # empties it, and a failure part-way lost every host trusted so far
-        replace_written(_known_hosts_path(), lambda target: known.save(str(target)))
+        replace_text(path, "\n".join([*_file_lines(path), line.rstrip("\n")]) + "\n")
     except OSError as err:
         pybreeze_logger.warning(
             "Failed to persist SSH host key for %s: %s", hostname, err
@@ -153,7 +183,7 @@ class InteractiveHostKeyPolicy(paramiko.MissingHostKeyPolicy):
                     f"Host key for {hostname} rejected by user."
                 )
             client.get_host_keys().add(hostname, key_type, key)
-            _store(hostname, key_type, key)
+            _store(hostname, key)
         pybreeze_logger.info(
             "SSH host key for %s accepted and stored (%s)", hostname, fingerprint
         )
@@ -225,11 +255,8 @@ def host_key_asker() -> HostKeyAsker:
 
 def apply_host_key_policy(client: paramiko.SSHClient, parent: QWidget | None) -> None:
     """Load known hosts and attach the interactive TOFU policy to *client*."""
-    client.load_system_host_keys()
-    known_hosts = _known_hosts_path()
-    if known_hosts.is_file():
-        try:
-            client.load_host_keys(str(known_hosts))
-        except OSError as err:
-            pybreeze_logger.warning("Failed to load PyBreeze known_hosts: %s", err)
+    # Both files are read leniently into the client's own keys: a bad line in
+    # either stopped paramiko's loaders with an error the Connect let escape
+    load_known_hosts(client.get_host_keys(), Path.home() / ".ssh" / "known_hosts")
+    load_known_hosts(client.get_host_keys(), _known_hosts_path())
     client.set_missing_host_key_policy(InteractiveHostKeyPolicy(parent))

@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-218 | 2026-09-24 | Skip a bad known_hosts line instead of failing the SSH connect | #fix #ssh | [2026-09-b](2026-09-b.md) |
 | U-20260923-217 | 2026-09-24 | Say when an SSH key's passphrase is missing or wrong | #fix #ssh | [2026-09-b](2026-09-b.md) |
 | U-20260923-216 | 2026-09-24 | Send curl's data pieces in command-line order when one is a file | #fix #curl | [2026-09-b](2026-09-b.md) |
 | U-20260923-215 | 2026-09-24 | Send a JSON body raw when the object would not send it back as it was | #fix #curl | [2026-09-b](2026-09-b.md) |
@@ -299,4 +300,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | File | Period | Entries |
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
-| [2026-09-b.md](2026-09-b.md) | 2026-09 | 17 |
+| [2026-09-b.md](2026-09-b.md) | 2026-09 | 18 |
