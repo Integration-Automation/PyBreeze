@@ -7,7 +7,7 @@
 
 [English](../README.md) | [简体中文](README_zh-CN.md)
 
-**PyBreeze** 是一款專為自動化工程師打造的 Python IDE。Web、API、GUI 與負載測試都在同一個視窗裡，旁邊還有自動化工作實際需要的日常 HTTP 工具——不必四處找插件，也不必挖掘環境設定。
+**PyBreeze** 是一款專為自動化工程師打造的 Python IDE。Web、API、GUI 與負載測試都在同一個視窗裡，旁邊還有自動化工作實際需要的日常 HTTP 工具——不必四處找外掛，也不必挖掘環境設定。
 
 ![PyBreeze 主視窗](../images/main_window.png)
 
@@ -21,7 +21,7 @@
 - [四維自動化](#四維自動化)
 - [內建工具](#內建工具)
 - [AI 輔助開發](#ai-輔助開發)
-- [插件系統](#插件系統)
+- [外掛系統](#外掛系統)
 - [多語言介面](#多語言介面)
 - [架構](#架構)
 - [安裝](#安裝)
@@ -193,16 +193,16 @@ PyBreeze 開箱即用，涵蓋自動化測試的完整範疇：
 
 ---
 
-## 插件系統
+## 外掛系統
 
-PyBreeze 沿用 JEditor 的插件架構，會自動從工作目錄中的 `jeditor_plugins/` 目錄探索插件。插件可以註冊：
+PyBreeze 沿用 JEditor 的外掛架構，會自動從工作目錄中的 `jeditor_plugins/` 目錄探索外掛。外掛可以註冊：
 
 - **語法高亮** — 任何語言的關鍵字集與規則
 - **介面翻譯** — 新的介面語言
 - **執行設定** — 為直譯式（`go run main.go`）與編譯式（`gcc main.c -o main` 後執行）語言提供「Run with…」，透過 PyBreeze 的 `FileRunnerProcess` 執行，並在結束後清掉編譯產物
-- **插件瀏覽器** — 在 IDE 內瀏覽並安裝遠端儲存庫中的插件
+- **外掛瀏覽器** — 在 IDE 內瀏覽並安裝遠端儲存庫中的外掛
 
-已載入的插件會出現在它們專屬的 **Plugins** 選單下，附一個 About 項目和一個執行動作，動作名稱標示它能執行的副檔名。[PLUGIN_GUIDE.md](../PLUGIN_GUIDE.md) 說明 PyBreeze 額外提供的部分，並連到 JEditor 的指南，那裡有完整的 API 與實作範例（C、C++、Go、Java、Rust，以及法文翻譯）。
+已載入的外掛會出現在它們專屬的 **Plugins**（外掛）選單下，附一個 About 項目和一個執行動作，動作名稱標示它能執行的副檔名。[PLUGIN_GUIDE.md](../PLUGIN_GUIDE.md) 說明 PyBreeze 額外提供的部分，並連到 JEditor 的指南，那裡有完整的 API 與實作範例（C、C++、Go、Java、Rust，以及法文翻譯）。
 
 ---
 
@@ -211,7 +211,7 @@ PyBreeze 沿用 JEditor 的插件架構，會自動從工作目錄中的 `jedito
 - **English**（英文，預設）
 - **繁體中文**（Traditional Chinese）
 
-選單、對話框、工具拒絕輸入時說明的原因，以及執行視窗自己的訊息（`[錯誤] …`、`[執行] …`）都會跟著所選的語言顯示。兩份字典都有相同的 733 個鍵，並有測試強制兩者一致，因此新字串不可能只出現在其中一種語言。其他語言可透過翻譯插件加入。
+選單、對話框、工具拒絕輸入時說明的原因，以及執行視窗自己的訊息（`[錯誤] …`、`[執行] …`）都會跟著所選的語言顯示。兩份字典都有相同的 733 個鍵，並有測試強制兩者一致，因此新字串不可能只出現在其中一種語言。其他語言可透過翻譯外掛加入。
 
 ---
 
@@ -355,13 +355,13 @@ start_editor(theme="dark_teal.xml")         # 任何 qt_material 主題
 ```
 PyBreeze/
 ├── pybreeze/
-│   ├── __init__.py                    # 公開 API（start_editor、插件 re-export）
+│   ├── __init__.py                    # 公開 API（start_editor、外掛 re-export）
 │   ├── __main__.py                    # 進入點（python -m pybreeze）
 │   ├── extend/
 │   │   ├── process_executor/          # 子行程隔離層
 │   │   │   ├── python_task_process_manager.py   # TaskProcessManager（核心）
 │   │   │   ├── process_executor_utils.py        # build_process / start_process
-│   │   │   ├── file_runner_process.py           # 插件執行設定（任何語言）
+│   │   │   ├── file_runner_process.py           # 外掛執行設定（任何語言）
 │   │   │   ├── queue_pump.py                    # 共用的管線讀取器 + QTimer 取出
 │   │   │   ├── api_testka/ auto_control/ web_runner/
 │   │   │   ├── load_density/ file_automation/ mail_thunder/
@@ -371,7 +371,7 @@ PyBreeze/
 │   ├── extend_multi_language/         # 內建多語言（英文、繁體中文）
 │   ├── pybreeze_ui/
 │   │   ├── editor_main/               # 主視窗 + 檔案樹右鍵選單
-│   │   ├── menu/                      # Automation / Install / Tools / 插件選單
+│   │   ├── menu/                      # Automation / Install / Tools / 外掛選單
 │   │   ├── tools_gui/                 # cURL、HAR、JWT、diff、regex 等工具分頁
 │   │   ├── diagram_editor/            # 所見即所得圖表編輯器
 │   │   ├── extend_ai_gui/             # CoT 審查、提示詞編輯器、skill send
@@ -387,7 +387,7 @@ PyBreeze/
 ├── test/                              # 單元測試（test_utils）+ 啟動測試
 ├── images/                            # 截圖
 ├── architecture_explore.md            # 逐模組的架構筆記
-├── PLUGIN_GUIDE.md                    # 插件開發文件
+├── PLUGIN_GUIDE.md                    # 外掛開發文件
 ├── pyproject.toml                     # 套件設定（穩定版）
 ├── dev.toml                           # 套件設定（開發通道）
 └── requirements.txt                   # 執行階段相依套件

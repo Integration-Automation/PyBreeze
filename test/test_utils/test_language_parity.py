@@ -68,6 +68,20 @@ class TestLanguageParity:
         }
         assert not doubled, f"A word written twice: {doubled}"
 
+    def test_traditional_chinese_uses_taiwan_terms(self):
+        # The automation menus said 運行 where the run window said 執行; JEditor's
+        # own entries (its Run and plugin menus) are not in this dictionary
+        mainland = {"運行": "執行", "字體": "字型", "插件": "外掛", "默認": "預設", "文件夾": "資料夾",
+                    "信息": "訊息", "軟件": "軟體", "數據": "資料", "屏幕": "螢幕", "鼠標": "滑鼠"}
+        found = {
+            key: [word for word in mainland if word in value]
+            for key, value in ZH.items()
+            if any(word in value for word in mainland)
+        }
+        assert not found, f"Mainland terms, Taiwan uses {mainland}: {found}"
+        # 終端 on its own is 終端機
+        assert not {key: value for key, value in ZH.items() if re.search("終端(?!機)", value)}
+
 
 class TestCodeKeysAreDefined:
     def test_every_get_key_exists_in_dict(self):
