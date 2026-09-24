@@ -279,6 +279,15 @@ class TestInstallingFromSource:
     def test_nothing_chosen_is_no_target(self):
         assert install_target("") == ""
 
+    def test_a_relative_folder_is_given_to_pip_as_a_path(self, tmp_path, monkeypatch):
+        # "prthinker[runner]" has no separator, and pip took it for the PyPI package
+        folder = tmp_path / "prthinker"
+        folder.mkdir()
+        self._source(folder)
+        monkeypatch.chdir(tmp_path)
+
+        assert install_target("prthinker") == f"{tmp_path / 'prthinker'}[{INSTALL_EXTRAS}]"
+
     def test_a_path_that_is_not_a_folder_is_no_target(self, tmp_path):
         a_file = tmp_path / "pyproject.toml"
         a_file.write_text("", encoding="utf-8")

@@ -351,7 +351,10 @@ def install_target(source_path: str) -> str:
     path = Path(source_path.strip()) if source_path.strip() else None
     if path is None or not _is_prthinker_source(path):
         return ""
-    return f"{path}[{INSTALL_EXTRAS}]"
+    # 絕對路徑：pip 把沒有路徑分隔字元的 prthinker[runner] 當成 PyPI 上的套件名
+    # Absolute: pip takes "prthinker[runner]", with no separator in it, for a
+    # package name on PyPI and installs that instead of the folder
+    return f"{path.absolute()}[{INSTALL_EXTRAS}]"
 
 
 def _is_prthinker_source(folder: Path) -> bool:
