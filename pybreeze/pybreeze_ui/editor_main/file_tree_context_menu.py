@@ -9,6 +9,7 @@ from collections.abc import Callable
 from pathlib import Path, PureWindowsPath
 
 from PySide6.QtCore import Qt, QModelIndex
+from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QTreeView, QMenu, QFileSystemModel, QInputDialog,
     QMessageBox, QApplication,
@@ -72,6 +73,34 @@ def _attach_context_menu(tree_view: QTreeView, main_window) -> None:
     tree_view.customContextMenuRequested.connect(
         lambda pos, tv=tree_view, mw=main_window: _show_context_menu(pos, tv, mw)
     )
+    _attach_keys(tree_view, main_window)
+
+
+# Keys that act on the entry in focus while the tree has the focus, as in a file manager
+_RENAME_KEY = QKeySequence(Qt.Key.Key_F2)
+_DELETE_KEY = QKeySequence(Qt.Key.Key_Delete)
+
+
+def _attach_keys(tree_view: QTreeView, main_window) -> None:
+    """F2 renames and Delete deletes the current entry, through the menu's own actions.
+
+    Only while the tree itself has the focus (``WidgetShortcut``): Delete in the
+    editor beside it is the editor's. Delete asks first, No being the default.
+    """
+    for keys, act in ((_RENAME_KEY, "rename"), (_DELETE_KEY, "delete")):
+        shortcut = QShortcut(keys, tree_view)
+        shortcut.setContext(Qt.ShortcutContext.WidgetShortcut)
+        shortcut.activated.connect(
+            lambda tv=tree_view, mw=main_window, what=act: _act_on_current(what, tv, mw))
+
+
+def _act_on_current(what: str, tree_view: QTreeView, main_window) -> None:
+    """Rename or delete (*what*) the entry in focus, if there is one."""
+    path = _get_path_from_index(tree_view, tree_view.currentIndex())
+    if what == "rename":
+        _action_rename(tree_view, main_window, path)
+    else:
+        _action_delete(tree_view, main_window, path)
 
 
 def _get_path_from_index(tree_view: QTreeView, index: QModelIndex) -> Path | None:
@@ -107,6 +136,9 @@ def _show_context_menu(pos, tree_view: QTreeView, main_window) -> None:
     delete_act = menu.addAction(word.get("file_tree_ctx_delete"))
     rename_act.setEnabled(path is not None)
     delete_act.setEnabled(path is not None)
+    for act, keys in ((rename_act, _RENAME_KEY), (delete_act, _DELETE_KEY)):
+        act.setShortcut(keys)  # shown beside the entry: the tree's own keys do it
+        act.setShortcutVisibleInContextMenu(True)
     menu.addSeparator()
 
     # --- Clipboard ---

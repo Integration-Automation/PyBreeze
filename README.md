@@ -155,7 +155,7 @@ Password or private-key authentication (the key file picked with Browse, startin
 
 ### And also
 
-- **File Tree Context Menu** — right-click to create, rename, delete, copy absolute or relative paths, or reveal the item in your platform file manager (a file shown selected in Explorer and Finder). Renaming or deleting a file open in an editor tab keeps the tab in sync.
+- **File Tree Context Menu** — right-click to create, rename, delete, copy absolute or relative paths, or reveal the item in your platform file manager (a file shown selected in Explorer and Finder). F2 renames and Delete deletes the item in focus while the tree has the focus; Delete asks first, with No as the default. Renaming or deleting a file open in an editor tab keeps the tab in sync.
 - **Package Manager** — install automation modules and build tools from the menu, output in a run window.
 - **Integrated Documentation** — each module's docs and GitHub page open as in-IDE browser tabs (TestPioneer's documentation is its GitHub README).
 

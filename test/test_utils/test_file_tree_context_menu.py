@@ -7,6 +7,7 @@ the user would have given is supplied directly.
 from __future__ import annotations
 
 import os
+import time
 from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -433,6 +434,64 @@ class TestAttachingTheMenu:
         assert index == 0
         assert window.tab_widget.count() == 1
         placeholder.deleteLater()
+
+
+class TestTheKeys:
+    """F2 renames and Delete deletes the entry in focus, as in a file manager: only the menu did."""
+
+    @staticmethod
+    def _shortcut(tree, keys: str):
+        from PySide6.QtGui import QKeySequence, QShortcut
+
+        found = [shortcut for shortcut in tree.findChildren(QShortcut) if shortcut.key() == QKeySequence(keys)]
+        assert len(found) == 1, keys
+        assert found[0].context() == Qt.ShortcutContext.WidgetShortcut  # only while the tree has the focus
+        return found[0]
+
+    @pytest.mark.parametrize(("keys", "action"), [("F2", "_action_rename"), ("Del", "_action_delete")])
+    def test_the_key_acts_on_the_current_entry(self, tree, tmp_path, monkeypatch, keys, action):
+        target = tmp_path / "notes.py"
+        target.touch()
+        asked: list = []
+        monkeypatch.setattr(ctx, action, lambda _tree, _window, path: asked.append(path))
+        _attach_context_menu(tree, FakeWindow())
+        tree.setCurrentIndex(tree.model().index(str(target)))
+
+        self._shortcut(tree, keys).activated.emit()
+
+        assert asked == [target]
+
+    @pytest.mark.parametrize(("key", "action"), [(Qt.Key.Key_F2, "_action_rename"),
+                                                 (Qt.Key.Key_Delete, "_action_delete")])
+    def test_a_key_pressed_in_the_tree_reaches_it(self, tree, tmp_path, monkeypatch, key, action):
+        # The view handles keys of its own (F2 starts an edit): the shortcut must still get them
+        from PySide6.QtTest import QTest
+
+        target = tmp_path / "notes.py"
+        target.touch()
+        asked: list = []
+        monkeypatch.setattr(ctx, action, lambda _tree, _window, path: asked.append(path))
+        _attach_context_menu(tree, FakeWindow())
+        tree.show()
+        tree.activateWindow()
+        tree.setFocus()
+        # The model lists the folder in the background, as it does for a user who then picks a file
+        deadline = time.monotonic() + 10
+        while tree.model().rowCount(tree.rootIndex()) == 0 and time.monotonic() < deadline:
+            QApplication.processEvents()
+        tree.setCurrentIndex(tree.model().index(str(target)))
+        QApplication.processEvents()
+
+        QTest.keyClick(tree, key)
+
+        assert asked == [target]
+        tree.close()
+
+    def test_attaching_twice_adds_the_keys_once(self, tree):
+        window = FakeWindow()
+        _attach_context_menu(tree, window)
+        _attach_context_menu(tree, window)
+        self._shortcut(tree, "F2")
 
 
 class TestANameStaysInItsFolder:
