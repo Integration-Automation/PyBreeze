@@ -7,6 +7,8 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import paramiko
 import pytest
+from PySide6.QtCore import Qt
+from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
 from pybreeze.extend_multi_language.update_language_dict import update_language_dict
@@ -206,6 +208,56 @@ class TestSendingACommand:
 
         assert channel.sent == [b"\n"]
         widget.shell_channel = None
+        widget.close()
+
+    def test_interrupt_sends_ctrl_c_and_keeps_the_line(self, app):
+        # A ping or tail -f could only be stopped by disconnecting
+        widget = SSHCommandWidget()
+        channel = PartialSendChannel()
+        widget.shell_channel = channel
+        widget.command_input_edit.setText("half typed")
+
+        widget.interrupt_button.click()
+
+        assert channel.sent == [b"\x03"]
+        assert widget.command_input_edit.text() == "half typed"
+        widget.shell_channel = None
+        widget.close()
+
+    def test_ctrl_c_in_the_command_line_interrupts(self, app):
+        widget = SSHCommandWidget()
+        channel = PartialSendChannel()
+        widget.shell_channel = channel
+        widget.command_input_edit.setText("ping example.com")
+
+        QTest.keyClick(widget.command_input_edit, Qt.Key.Key_C, Qt.KeyboardModifier.ControlModifier)
+
+        assert channel.sent == [b"\x03"]
+        widget.shell_channel = None
+        widget.close()
+
+    def test_ctrl_c_on_a_selection_copies_it(self, app):
+        widget = SSHCommandWidget()
+        channel = PartialSendChannel()
+        widget.shell_channel = channel
+        widget.command_input_edit.setText("copy me")
+        widget.command_input_edit.selectAll()
+
+        QTest.keyClick(widget.command_input_edit, Qt.Key.Key_C, Qt.KeyboardModifier.ControlModifier)
+
+        assert channel.sent == []
+        assert QApplication.clipboard().text() == "copy me"
+        widget.shell_channel = None
+        widget.close()
+
+    def test_interrupt_without_a_session_does_nothing(self, app, monkeypatch):
+        widget = SSHCommandWidget()
+        asked: list = []
+        monkeypatch.setattr(ssh_command_widget.QMessageBox, "information", lambda *args: asked.append(args))
+
+        widget.interrupt_button.click()
+
+        assert asked == []
         widget.close()
 
     def test_an_empty_line_without_a_session_asks_nothing(self, app, monkeypatch):

@@ -164,6 +164,8 @@ pybreeze_traditional_chinese_word_dict = {
     # SSH command widget
     "ssh_command_widget_window_title_ssh_command_widget": "SSH 指令介面",
     "ssh_command_widget_button_label_send_command": "送出",
+    "ssh_command_widget_button_label_interrupt": "中斷",
+    "ssh_command_widget_tooltip_interrupt": "送出 Ctrl+C，停止 shell 中正在執行的程式（指令列沒有選取文字時按 Ctrl+C 也一樣）",
     "ssh_command_widget_input_placeholder_command_line": "輸入指令後按 Enter...",
     "ssh_command_widget_dialog_title_input_error": "輸入錯誤",
     "ssh_command_widget_dialog_message_input_error_host_user_required": "必須輸入主機與使用者名稱。",

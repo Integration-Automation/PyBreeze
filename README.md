@@ -149,7 +149,7 @@ A WYSIWYG `QGraphicsScene` editor: rectangle, rounded, ellipse and diamond nodes
 
 ![SSH client](images/ssh_client.png)
 
-Password or private-key authentication (the key file picked with Browse, starting in `~/.ssh`), an interactive shell with ANSI handling and keepalive, and a lazy-loading SFTP tree with create-folder / rename / delete / upload / download. Every SFTP request runs in the background, so a stalled link never freezes the IDE. An upload asks before it replaces a file on the server, and a transfer can be cancelled from the tree's menu. Both directions write to a temporary file first, so a dropped link leaves the old copy whole. Unknown host keys are **not** auto-accepted: the SHA256 fingerprint is shown for confirmation on first connection (trust on first use) and persisted to `~/.pybreeze/ssh_known_hosts`.
+Password or private-key authentication (the key file picked with Browse, starting in `~/.ssh`), an interactive shell with ANSI handling and keepalive (Enter on an empty line reaches the shell, and **Interrupt**, or Ctrl+C in the command line with nothing selected, stops what runs in it), and a lazy-loading SFTP tree with create-folder / rename / delete / upload / download. Every SFTP request runs in the background, so a stalled link never freezes the IDE. An upload asks before it replaces a file on the server, and a transfer can be cancelled from the tree's menu. Both directions write to a temporary file first, so a dropped link leaves the old copy whole. Unknown host keys are **not** auto-accepted: the SHA256 fingerprint is shown for confirmation on first connection (trust on first use) and persisted to `~/.pybreeze/ssh_known_hosts`.
 
 ### And also
 
@@ -211,7 +211,7 @@ Loaded plugins appear under their own **Plugins** menu with an About entry and o
 - **English** (default)
 - **Traditional Chinese** (繁體中文)
 
-Menus, dialogs, the reasons a tool refuses its input and the run window's own notices (`[Error] …`, `[Run] …`) all follow the chosen language. Both dictionaries carry the same 733 keys, and a test enforces that parity so a new string can never land in one language only. Further languages can be added via translation plugins.
+Menus, dialogs, the reasons a tool refuses its input and the run window's own notices (`[Error] …`, `[Run] …`) all follow the chosen language. Both dictionaries carry the same 735 keys, and a test enforces that parity so a new string can never land in one language only. Further languages can be added via translation plugins.
 
 ---
 

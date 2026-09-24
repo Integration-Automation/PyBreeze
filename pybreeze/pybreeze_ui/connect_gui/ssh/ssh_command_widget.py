@@ -5,7 +5,7 @@ import os
 import weakref
 
 import paramiko
-from PySide6.QtCore import QThread, Signal
+from PySide6.QtCore import QEvent, QThread, Qt, Signal
 from PySide6.QtGui import QTextCursor
 from PySide6.QtWidgets import (
     QWidget, QLineEdit, QPushButton,
@@ -69,6 +69,9 @@ TERMINAL_MAX_BLOCKS = 10000
 # ServerAliveInterval).
 SSH_KEEPALIVE_SECONDS = 30
 
+
+# What Ctrl+C sends in a terminal (ETX): the shell's line discipline turns it into SIGINT
+INTERRUPT = b"\x03"
 
 # Longest a command waits for the server to take it (a full SSH window), on the UI thread
 SEND_TIMEOUT_SECONDS = 5
@@ -190,6 +193,9 @@ class SSHCommandWidget(QWidget):
         self.command_input_edit = QLineEdit()
         self.command_send_button = QPushButton(
             self.word_dict.get("ssh_command_widget_button_label_send_command"))
+        self.interrupt_button = QPushButton(
+            self.word_dict.get("ssh_command_widget_button_label_interrupt"))
+        self.interrupt_button.setToolTip(self.word_dict.get("ssh_command_widget_tooltip_interrupt"))
 
         self._setup_ui()
         self._bind_events()
@@ -207,6 +213,7 @@ class SSHCommandWidget(QWidget):
         command_input_bar = QHBoxLayout()
         command_input_bar.addWidget(self.command_input_edit)
         command_input_bar.addWidget(self.command_send_button)
+        command_input_bar.addWidget(self.interrupt_button)
 
         main_widget = QVBoxLayout()
         main_widget.addWidget(self.login_widget)  # 插入登入介面
@@ -223,6 +230,18 @@ class SSHCommandWidget(QWidget):
         # 綁定其他按鈕
         self.command_send_button.clicked.connect(self.send_command)
         self.command_input_edit.returnPressed.connect(self.send_command)
+        self.interrupt_button.clicked.connect(self.send_interrupt)
+        self.command_input_edit.installEventFilter(self)
+
+    def eventFilter(self, watched, event) -> bool:
+        """Ctrl+C in the command line interrupts the shell, unless it copies a selection."""
+        if (watched is self.command_input_edit and event.type() == QEvent.Type.KeyPress
+                and event.key() == Qt.Key.Key_C
+                and event.modifiers() == Qt.KeyboardModifier.ControlModifier
+                and not self.command_input_edit.hasSelectedText()):
+            self.send_interrupt()
+            return True
+        return super().eventFilter(watched, event)
 
     def append_text(self, text: str):
         """Add a notice of our own, starting on a line of its own."""
@@ -384,17 +403,34 @@ class SSHCommandWidget(QWidget):
         session it only asks to connect when something was typed.
         """
         cmd = self.command_input_edit.text()
-        if self.shell_channel and not self.shell_channel.closed:
-            try:
-                send_all(self.shell_channel, (cmd + "\n").encode("utf-8"))
+        if self._has_shell():
+            if self._send((cmd + "\n").encode("utf-8")):
                 self.command_input_edit.clear()
-            except (OSError, paramiko.SSHException) as e:
-                self.append_text(f"{self.word_dict.get('ssh_command_widget_error_message_send_failed')} {e}\n")
         elif cmd:
             QMessageBox.information(
                 self,
                 self.word_dict.get('ssh_command_widget_dialog_title_not_connected'),
                 self.word_dict.get('ssh_command_widget_dialog_message_not_connected_shell'))
+
+    def send_interrupt(self) -> None:
+        """Send Ctrl+C to the shell, which stops what runs in it (``ping``, ``tail -f``).
+
+        What is typed in the command line stays. Without a session it does nothing.
+        """
+        if self._has_shell():
+            self._send(INTERRUPT)
+
+    def _has_shell(self) -> bool:
+        return self.shell_channel is not None and not self.shell_channel.closed
+
+    def _send(self, data: bytes) -> bool:
+        """Send *data* to the shell; say so in the terminal and return False when it fails."""
+        try:
+            send_all(self.shell_channel, data)
+        except (OSError, paramiko.SSHException) as e:
+            self.append_text(f"{self.word_dict.get('ssh_command_widget_error_message_send_failed')} {e}\n")
+            return False
+        return True
 
     def disconnect_ssh(self):
         self.append_text(f"{self.word_dict.get('ssh_command_widget_log_message_disconnect_in_progress')} \n")

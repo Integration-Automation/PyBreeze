@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260924-286 | 2026-09-24 | Interrupt what runs in the SSH shell | #feature #ssh #i18n | [2026-09-b](2026-09-b.md) |
 | U-20260924-285 | 2026-09-24 | Enter on an empty SSH command line sends Enter | #fix #ssh | [2026-09-b](2026-09-b.md) |
 | U-20260924-284 | 2026-09-24 | Taiwan terms in the Traditional Chinese interface | #fix #i18n | [2026-09-b](2026-09-b.md) |
 | U-20260924-283 | 2026-09-24 | architecture_explore.md coverage figures re-measured | #docs #test | [2026-09-b](2026-09-b.md) |
@@ -367,4 +368,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | File | Period | Entries |
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
-| [2026-09-b.md](2026-09-b.md) | 2026-09 | 83 |
+| [2026-09-b.md](2026-09-b.md) | 2026-09 | 84 |

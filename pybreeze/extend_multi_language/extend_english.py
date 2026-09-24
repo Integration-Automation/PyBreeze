@@ -169,6 +169,10 @@ pybreeze_english_word_dict = {
     # SSH command widget
     "ssh_command_widget_window_title_ssh_command_widget": "SSH Command Widget",
     "ssh_command_widget_button_label_send_command": "Send",
+    "ssh_command_widget_button_label_interrupt": "Interrupt",
+    "ssh_command_widget_tooltip_interrupt":
+        "Send Ctrl+C to stop what runs in the shell (Ctrl+C in the command line does the same "
+        "when no text is selected)",
     "ssh_command_widget_input_placeholder_command_line": "Type command then Enter...",
     "ssh_command_widget_dialog_title_input_error": "Input error",
     "ssh_command_widget_dialog_message_input_error_host_user_required": "Host and username are required.",
