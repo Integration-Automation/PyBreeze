@@ -523,3 +523,42 @@ def test_a_rename_keeps_the_unsaved_mark_of_an_edited_tab(tree, tmp_path, monkey
     assert (tmp_path / "b.py").is_file()
     assert editor.renamed and editor._is_modified
 
+
+
+class TestRevealing:
+    """A file was never shown selected: its folder opened, and the user had to find it."""
+
+    @pytest.mark.parametrize(("platform", "flags"), [("win32", ["/select,"]), ("darwin", ["-R"])])
+    def test_a_file_is_shown_selected(self, tmp_path, platform, flags):
+        target = tmp_path / "a.py"
+        target.write_text("", encoding="utf-8")
+
+        command = ctx.reveal_command(target, platform)
+
+        assert command[1:] == [*flags, str(target)]
+
+    @pytest.mark.parametrize("platform", ["win32", "darwin", "linux"])
+    def test_a_folder_is_opened(self, tmp_path, platform):
+        assert ctx.reveal_command(tmp_path, platform)[1:] == [str(tmp_path)]
+
+    def test_elsewhere_a_files_folder_is_opened(self, tmp_path):
+        target = tmp_path / "a.py"
+        target.write_text("", encoding="utf-8")
+
+        assert ctx.reveal_command(target, "linux") == ["xdg-open", str(tmp_path)]
+
+    def test_explorer_is_the_systems(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("SystemRoot", str(tmp_path))
+
+        assert ctx.reveal_command(tmp_path, "win32")[0] == str(tmp_path / "explorer.exe")
+
+    def test_a_missing_file_manager_is_shown_not_raised(self, tree, tmp_path, monkeypatch, warnings):
+        # No xdg-open: FileNotFoundError left the slot as a traceback
+        def missing(_command):
+            raise FileNotFoundError(2, "No such file or directory", "xdg-open")
+
+        monkeypatch.setattr(ctx.subprocess, "Popen", missing)
+
+        ctx._action_reveal_in_explorer(tree, tmp_path)
+
+        assert len(warnings) == 1 and "xdg-open" in warnings[0]

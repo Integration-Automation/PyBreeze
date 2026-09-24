@@ -138,7 +138,7 @@ def _show_context_menu(pos, tree_view: QTreeView, main_window) -> None:
     elif action == copy_rel_path_act:
         _action_copy_path(tree_view, path, relative=True)
     elif action == reveal_act:
-        _action_reveal_in_explorer(path)
+        _action_reveal_in_explorer(tree_view, path)
 
 
 # --------------- actions ---------------
@@ -403,18 +403,30 @@ def _action_copy_path(tree_view: QTreeView, path: Path | None, relative: bool = 
     clipboard.setText(text)
 
 
-def _action_reveal_in_explorer(path: Path | None) -> None:
+def reveal_command(path: Path, platform: str = sys.platform) -> list[str]:
+    """The command that shows *path* in the platform's file manager.
+
+    A file is shown selected in its folder where the file manager can do that
+    (Explorer's ``/select,``, Finder's ``open -R``); it used to open the folder
+    alone, leaving the user to find the file in it. ``xdg-open`` can only open
+    a folder, so elsewhere a file's folder is opened.
+    """
+    is_folder = path.is_dir()
+    if platform == "win32":
+        explorer = str(Path(os.environ.get("SystemRoot", "C:/Windows")) / "explorer.exe")
+        return [explorer, str(path)] if is_folder else [explorer, "/select,", str(path)]
+    if platform == "darwin":
+        return ["open", str(path)] if is_folder else ["open", "-R", str(path)]
+    return ["xdg-open", str(path if is_folder else path.parent)]
+
+
+def _action_reveal_in_explorer(tree_view: QTreeView, path: Path | None) -> None:
     if path is None:
         return
-    target = path if path.is_dir() else path.parent
-    # "Reveal in file explorer" — platform file-manager invocation on a path the
-    # user already selected in our tree. shell=False, fixed argv[0]. nosec B603/B606/B607.
-    if sys.platform == "win32":
-        os.startfile(str(target))  # nosec B606  # nosemgrep  # noqa: S606
-    elif sys.platform == "darwin":
-        subprocess.Popen(["open", str(target)])  # nosec B603 B607  # nosemgrep  # noqa: S603,S607
-    else:
-        subprocess.Popen(["xdg-open", str(target)])  # nosec B603 B607  # nosemgrep  # noqa: S603,S607
+    command = reveal_command(path)
+    # A file manager started on a path the user picked in the tree. shell=False,
+    # fixed argv[0]; a missing xdg-open is shown, not raised out of the slot.
+    _perform_file_op(tree_view, lambda: subprocess.Popen(command))  # nosec B603 B607  # nosemgrep  # noqa: S603
 
 
 def _inside(tree_view: QTreeView, parent: Path, name: str, *, single: bool = False) -> Path | None:
