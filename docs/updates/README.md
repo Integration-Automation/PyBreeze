@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260924-283 | 2026-09-24 | architecture_explore.md coverage figures re-measured | #docs #test | [2026-09-b](2026-09-b.md) |
 | U-20260924-282 | 2026-09-24 | A right-drag on the diagram canvas pans without opening the menu | #fix #diagram | [2026-09-b](2026-09-b.md) |
 | U-20260924-281 | 2026-09-24 | architecture_explore.md line counts re-measured | #docs | [2026-09-b](2026-09-b.md) |
 | U-20260924-280 | 2026-09-24 | curl -b '' reads no cookie file | #fix #curl | [2026-09-b](2026-09-b.md) |
@@ -364,4 +365,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | File | Period | Entries |
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
-| [2026-09-b.md](2026-09-b.md) | 2026-09 | 80 |
+| [2026-09-b.md](2026-09-b.md) | 2026-09 | 81 |
