@@ -22,6 +22,7 @@ from pybreeze.utils.exception.exception_tags import (
     redirect_same_server_error,
     server_error_error,
 )
+from pybreeze.pybreeze_ui.error_text import error_text
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.network.http_client import (
     DEFAULT_MAX_READ_SECONDS, ResponseTooLargeError, read_capped_text, CONNECT_TIMEOUT,
@@ -69,7 +70,7 @@ class RequestThread(QThread):
         except (requests.RequestException, ResponseTooLargeError, UnsafeURLError) as e:
             # Not %r: a requests error carries the whole URL, which may hold a token.
             pybreeze_logger.error("Skills send request failed: %s", type(e).__name__)
-            self.error.emit(language_wrapper.language_word_dict.get("skills_exception").format(error=describe_request_error(e)))
+            self.error.emit(language_wrapper.language_word_dict.get("skills_exception").format(error=error_text(describe_request_error(e))))
 
 
 def _redirect_text(location: str) -> str:
@@ -96,11 +97,11 @@ def describe_failed_status(response, body: str) -> tuple[bool, str]:
     answer; a refused request and a server error are errors.
     """
     if response.is_redirect:
-        return False, _redirect_text(response.headers.get("Location", ""))
+        return False, error_text(_redirect_text(response.headers.get("Location", "")))
     if response.status_code in (401, 403):
-        return True, authorization_failed_error
+        return True, error_text(authorization_failed_error)
     if response.status_code >= 500:
-        return True, server_error_error.format(body=truncate_for_display(body))
+        return True, error_text(server_error_error.format(body=truncate_for_display(body)))
     return False, truncate_for_display(body)
 
 

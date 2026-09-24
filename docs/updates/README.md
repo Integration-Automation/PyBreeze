@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260924-259 | 2026-09-24 | Network, image, host-key and Skills reasons in the IDE language | #fix #i18n #network | [2026-09-b](2026-09-b.md) |
 | U-20260924-258 | 2026-09-24 | Refactor: the network, image, host-key and Skills messages become exception_tags constants | #refactor #i18n | [2026-09-b](2026-09-b.md) |
 | U-20260924-257 | 2026-09-24 | Drop TaskProcessManager's unused error hook | #cleanup #executor | [2026-09-b](2026-09-b.md) |
 | U-20260924-256 | 2026-09-24 | A HAR file that is not one says why in the IDE language too | #fix #tools #i18n | [2026-09-b](2026-09-b.md) |
@@ -340,4 +341,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | File | Period | Entries |
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
-| [2026-09-b.md](2026-09-b.md) | 2026-09 | 58 |
+| [2026-09-b.md](2026-09-b.md) | 2026-09 | 59 |

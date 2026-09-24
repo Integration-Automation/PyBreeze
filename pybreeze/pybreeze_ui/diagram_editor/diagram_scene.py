@@ -24,6 +24,7 @@ from pybreeze.pybreeze_ui.diagram_editor.diagram_net_utils import (
     safe_download_image,
 )
 from pybreeze.pybreeze_ui.thread_keeper import let_run_out
+from pybreeze.pybreeze_ui.error_text import error_text
 from pybreeze.utils.logging.logger import pybreeze_logger
 
 # Allowlist of image extensions that a saved diagram may reference on disk.
@@ -88,7 +89,7 @@ class ImageDownloadThread(QThread):
             data = safe_download_image(self._source)
         # ValueError: a URL urllib cannot parse at all
         except (ImageDownloadError, OSError, HTTPException, ValueError) as err:
-            self.failed.emit(self._source, str(err))
+            self.failed.emit(self._source, error_text(str(err)))
         else:
             self.fetched.emit(self._source, data)
 

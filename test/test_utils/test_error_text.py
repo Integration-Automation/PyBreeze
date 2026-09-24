@@ -106,3 +106,67 @@ class TestATab:
         assert "這份 JSON 沒有 log.entries 清單，不是 HAR 匯出檔" in shown
         assert "entries list" not in shown
         tab.deleteLater()
+
+
+class TestTheNetworkReasons:
+    """URL checks, request failures, image downloads, host keys and Skills' status texts."""
+
+    @pytest.mark.parametrize(("status", "headers", "body", "expected"), [
+        (302, {"Location": "https://elsewhere.example/x?key=1"}, "", "重新導向（未跟隨）至 https://elsewhere.example"),
+        (302, {"Location": "/next"}, "", "重新導向（未跟隨）至這台伺服器上的另一個路徑"),
+        (401, {}, "", "驗證或授權失敗"),
+        (503, {}, "overloaded", "伺服器錯誤：overloaded"),
+    ])
+    def test_a_skills_answer_that_is_not_2xx(self, chinese, status, headers, body, expected):
+        from types import SimpleNamespace
+
+        from pybreeze.pybreeze_ui.extend_ai_gui.skills.skills_send_gui import describe_failed_status
+
+        response = SimpleNamespace(status_code=status, headers=headers, is_redirect=status == 302)
+
+        assert describe_failed_status(response, body)[1] == expected
+
+    def test_an_image_that_did_not_download(self, app, chinese, monkeypatch):
+        from pybreeze.pybreeze_ui.diagram_editor import diagram_scene
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_net_utils import ImageDownloadError
+
+        def refuse(_source):
+            raise ImageDownloadError(exception_tags.image_too_large_error.format(megabytes=20))
+
+        monkeypatch.setattr(diagram_scene, "safe_download_image", refuse)
+        thread = diagram_scene.ImageDownloadThread("https://example.org/a.png")
+        failed: list = []
+        thread.failed.connect(lambda _source, message: failed.append(message))
+
+        thread.run()  # on this thread: a direct connection
+
+        assert failed == ["圖片超過 20 MB 的上限。"]
+
+    def test_a_url_the_ssrf_check_refuses(self, chinese):
+        from pybreeze.utils.network.url_validation import UnsafeURLError, validate_url
+
+        with pytest.raises(UnsafeURLError) as refused:
+            validate_url("ftp://example.org/")
+
+        assert error_text(str(refused.value)) == "不允許 'ftp' 協定，請使用 http 或 https。"
+
+    def test_a_request_that_timed_out(self, chinese):
+        import requests
+
+        from pybreeze.utils.network.http_client import describe_request_error
+
+        assert error_text(describe_request_error(requests.ReadTimeout())) == "請求逾時 (ReadTimeout)"
+
+    def test_a_host_key_the_user_declined(self, app, chinese):
+        from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_command_widget import SSHCommandWidget
+
+        widget = SSHCommandWidget()
+        client = object()
+        widget.ssh_client = client
+        widget._cleanup = lambda: None
+
+        widget._on_connect_failed(client, exception_tags.host_key_rejected_error.format(hostname="example.org"))
+
+        assert "已拒絕 example.org 的主機金鑰。" in widget.terminal.toPlainText()
+        widget.ssh_client = None
+        widget.close()

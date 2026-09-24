@@ -23,6 +23,7 @@ from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_host_key_policy import (
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_key_loader import load_private_key, unloadable_key_reason
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_login_widget import LoginWidget
 from pybreeze.pybreeze_ui.thread_keeper import if_alive, let_run_out
+from pybreeze.pybreeze_ui.error_text import error_text
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.terminal_text import split_unfinished_end, strip_terminal_controls, take_leading_backspaces
 
@@ -336,7 +337,7 @@ class SSHCommandWidget(QWidget):
             return
         self.login_widget.status_label.setText(
             self.word_dict.get('ssh_command_widget_status_label_disconnected'))
-        self.append_text(f"{self.word_dict.get('ssh_command_widget_log_message_error')} {message}\n")
+        self.append_text(f"{self.word_dict.get('ssh_command_widget_log_message_error')} {error_text(message)}\n")
         self._cleanup()
         self.state_changed.emit()
 

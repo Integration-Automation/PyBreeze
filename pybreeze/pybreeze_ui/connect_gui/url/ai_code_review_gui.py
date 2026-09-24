@@ -16,6 +16,7 @@ from pybreeze.pybreeze_ui.thread_keeper import let_run_out
 from pybreeze.utils.app_dirs import pybreeze_data_dir
 from pybreeze.utils.file_process.replace_file import replace_text
 from pybreeze.utils.hash_tools.hash_text import hash_text
+from pybreeze.pybreeze_ui.error_text import error_text
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.network.http_client import (
     DEFAULT_MAX_READ_SECONDS, ResponseTooLargeError, read_capped_text, CONNECT_TIMEOUT,
@@ -89,7 +90,7 @@ class ReviewRequestThread(QThread):
         except (requests.RequestException, ResponseTooLargeError, UnsafeURLError) as error:
             # Not %r: a requests error carries the whole URL, which may hold a token.
             pybreeze_logger.error("AI code review request failed: %s", type(error).__name__)
-            self.failed.emit(describe_request_error(error))
+            self.failed.emit(error_text(describe_request_error(error)))
 
     def _send(self, session: requests.Session) -> requests.Response:
         """Send the request with the chosen method, code in the body where there is one."""
