@@ -58,6 +58,13 @@ class TestLanguageParity:
         }
         assert not mismatched, f"Placeholder mismatches between languages: {mismatched}"
 
+    def test_no_value_starts_or_ends_with_a_space(self):
+        # The code puts its own space between a label and what follows it: the SSH
+        # terminal's "[Error] " came out "[Error]  <message>" in English only
+        padded = {key: value for words in (EN, ZH) for key, value in words.items()
+                  if str(value) != str(value).strip(" ")}
+        assert padded == {}
+
     def test_no_word_is_written_twice(self):
         # Four Chinese menu entries read "運行 Multi WebRunner 腳本 腳本並寄信"
         doubled = {
