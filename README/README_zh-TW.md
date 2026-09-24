@@ -3,135 +3,233 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../LICENSE)
 [![PySide6](https://img.shields.io/badge/GUI-PySide6-green.svg)](https://doc.qt.io/qtforpython/)
+[![Documentation](https://readthedocs.org/projects/pybreeze/badge/?version=latest)](https://pybreeze.readthedocs.io/en/latest/index.html)
 
 [English](../README.md) | [简体中文](README_zh-CN.md)
 
-![主介面](../images/main_gui.png)
+**PyBreeze** 是一款專為自動化工程師打造的 Python IDE。Web、API、GUI 與負載測試都在同一個視窗裡，旁邊還有自動化工作實際需要的日常 HTTP 工具——不必四處找插件，也不必挖掘環境設定。
 
-**PyBreeze** 是一款專為自動化工程師打造的 Python IDE。它將 Web、API、GUI 和負載測試自動化整合到單一統一環境中——無需尋找插件、無需複雜的環境設定，開啟即可開始自動化。
+![PyBreeze 主視窗](../images/main_window.png)
+
+*主視窗：APITestka 動作檔中的自動化關鍵字已高亮，左側是專案樹，下方是執行／格式檢查／除錯／終端機面板。*
 
 ---
 
 ## 目錄
 
-- [功能特色](#功能特色)
-  - [四維自動化](#四維自動化)
-  - [IDE 核心功能](#ide-核心功能)
-  - [內建工具](#內建工具)
-  - [AI 輔助開發](#ai-輔助開發)
-  - [插件系統](#插件系統)
-  - [多語言介面](#多語言介面)
-- [架構設計](#架構設計)
-- [安裝方式](#安裝方式)
+- [截圖導覽](#截圖導覽)
+- [四維自動化](#四維自動化)
+- [內建工具](#內建工具)
+- [AI 輔助開發](#ai-輔助開發)
+- [插件系統](#插件系統)
+- [多語言介面](#多語言介面)
+- [架構](#架構)
+- [安裝](#安裝)
 - [快速開始](#快速開始)
-- [整合自動化模組](#整合自動化模組)
+- [整合的自動化模組](#整合的自動化模組)
 - [專案結構](#專案結構)
-- [依賴項目](#依賴項目)
+- [相依套件](#相依套件)
+- [測試與 CI](#測試與-ci)
 - [目標使用者](#目標使用者)
 - [授權條款](#授權條款)
 
 ---
 
-## 功能特色
+## 截圖導覽
 
-### 四維自動化
+IDE 的大部分功能集中在三個選單（繁體中文介面顯示為括號內的名稱）。**Automation**（自動化）執行你的腳本，**Tools**（工具）開啟各種工具分頁，**Install**（安裝）下載安裝各個模組。
 
-PyBreeze 開箱即用，涵蓋自動化測試的完整範疇：
-
-| 維度 | 模組 | 說明 |
+| Automation | Tools | Install |
 |---|---|---|
-| **Web 自動化** | [WebRunner](https://github.com/Integration-Automation/WebRunner) | 瀏覽器互動模擬與測試，深度整合瀏覽器驅動與元素定位器 |
-| **API 自動化** | [APITestka](https://github.com/Integration-Automation/APITestka) | RESTful API 開發與測試，內建請求建構器、回應分析器、Mock 伺服器及斷言驗證 |
-| **GUI 自動化** | [AutoControl](https://github.com/Integration-Automation/AutoControlGUI) | 桌面應用程式自動化，支援圖像辨識、座標定位、鍵盤滑鼠控制及動作錄製 |
-| **負載與壓力測試** | [LoadDensity](https://github.com/Integration-Automation/LoadDensity) | 高併發效能測試引擎，用於監控系統在極端壓力下的穩定性 |
+| ![Automation 選單](../images/menu_automation.png) | ![Tools 選單](../images/menu_tools.png) | ![Install 選單](../images/menu_install.png) |
 
-此外還包含：
+每次自動化執行都在獨立的子行程中進行。輸出會即時傳回執行視窗，編輯器同時保持可操作——stdout 以一般顏色顯示，stderr 以紅色顯示，最後附上行程的結束代碼：
 
-- **檔案自動化** — 透過 [automation-file](https://github.com/Integration-Automation/FileAutomation) 模組實現自動化檔案與目錄操作
-- **郵件自動化** — 透過 [MailThunder](https://github.com/Integration-Automation/MailThunder) 實現自動化郵件寄送（例如測試報告傳遞）
-- **測試框架** — 透過 [TestPioneer](https://github.com/Integration-Automation/TestPioneer) 實現結構化 YAML 驅動的測試執行
+![執行輸出視窗](../images/run_output_window.png)
 
-### IDE 核心功能
-
-PyBreeze 不僅僅是一個程式碼編輯器——它是自動化生命週期的指揮中心：
-
-- **語法高亮** — 內建 Python 語法高亮，針對自動化函式庫（APITestka、AutoControl、WebRunner、LoadDensity 等）提供深度關鍵字識別。可透過插件新增自訂語法規則。
-- **程式碼編輯器** — 基於 [JEditor](https://github.com/Integration-Automation/JEDITOR) 構建，提供完整的編輯器功能，包含分頁管理、檔案樹瀏覽與專案工作區支援。
-- **腳本執行** — 直接在 IDE 中執行自動化腳本，並即時顯示輸出。支援單一腳本與多腳本批次執行。
-- **報告生成** — 自動化模組可在測試執行後生成 HTML、JSON 和 XML 報告，並支援可選的電子郵件傳遞。
-- **整合 JupyterLab** — 在 PyBreeze 中直接以分頁方式啟動 JupyterLab，進行互動式筆記本開發。若未安裝 JupyterLab 將自動安裝。
-- **虛擬環境感知** — 自動偵測並使用專案的虛擬環境（`.venv` 或 `venv`）。
-
-### 內建工具
-
-- **SSH 用戶端** — 完整的 SSH 終端用戶端，支援：
-  - 密碼與私鑰驗證
-  - 互動式指令執行
-  - 遠端檔案樹檢視器，支援 CRUD 操作（建立資料夾、重新命名、刪除、上傳、下載）
-  - 互動式 TOFU host key 驗證，已確認的金鑰會持久化到 `~/.pybreeze/ssh_known_hosts`
-- **架構圖編輯器** — 內建的 WYSIWYG 架構圖編輯器：
-  - 矩形、圓角矩形、橢圓、菱形節點、連線、自由文字
-  - 從本地檔案或 URL 插入圖片（URL 下載會做 SSRF 驗證並有大小上限）
-  - 支援 Mermaid `flowchart` / `graph` 匯入
-  - 儲存/開啟為 `.diagram.json`，匯出為 PNG 或 SVG
-  - Undo/redo、對齊、分佈、Grid、Snap、Zoom 控制
-- **檔案樹右鍵選單** — 在專案檔案樹中對任何檔案或資料夾按右鍵，可建立檔案/資料夾、重新命名、刪除、複製絕對或相對路徑、在系統檔案管理器中開啟。重新命名或刪除目前已開在編輯器分頁中的檔案時，分頁會同步更新。
-- **套件管理器** — 直接從 IDE 選單安裝自動化模組和建構工具，無需離開編輯器。
-- **整合文件** — 從選單列快速存取每個自動化模組的文件和 GitHub 頁面。
-
-### AI 輔助開發
-
-- **AI 程式碼審查** — 將程式碼傳送到 LLM API 端點進行自動化程式碼審查。可直接在 IDE 中接受或拒絕建議。
-- **思維鏈程式碼審查（prthinker）** — 以 [prthinker](https://github.com/JE-Chen/Code-Review-Framework-Combining-Large-Language-Models-and-Chain-of-Thought-Reasoning) 的審查流程審查正在編輯的檔案，或審查一個 Pull Request，輸出即時流進執行視窗。一張設定表填完推論後端（審查伺服器、OpenAI 相容端點、Anthropic 或本機模型）、程式碼託管平台與儲存庫；金鑰與權杖以環境變數交給審查，不會出現在命令列上——那是工作管理員看得到的地方。
-- **CoT（思維鏈）提示詞編輯器** — 建立和管理多步驟 CoT 提示詞，用於結構化程式碼分析，包含：
-  - 程式碼審查提示詞
-  - Code Smell 偵測
-  - 程式碼檢查分析
-  - 逐步分析
-  - 摘要生成
-- **Skill 提示詞編輯器** — 定義和管理可重複使用的技能型提示詞（程式碼解說、程式碼審查範本），可傳送至 LLM API。
-- **Skill Send GUI** — 在獨立的分頁或停靠面板中選擇技能提示詞範本、視需要編輯提示詞內容、傳送到 LLM API 端點並檢視回應。
-
-### 插件系統
-
-PyBreeze 支援可擴展的插件架構，用於：
-
-- **語法高亮** — 透過插件為任何程式語言新增語法高亮
-- **UI 翻譯** — 透過翻譯插件新增新的介面語言
-- **執行設定** — 為編譯式和直譯式語言新增「以...執行」支援（C、C++、Go、Java、Rust 等）
-- **插件瀏覽器** — 直接在 IDE 中從遠端儲存庫瀏覽並安裝插件
-
-插件會從 `jeditor_plugins/` 目錄自動探索載入。完整文件請參閱 [PLUGIN_GUIDE.md](../PLUGIN_GUIDE.md)。
-
-**內建插件：** C、C++、Go、Java、Rust 語法高亮與執行支援；法文翻譯。
-
-### 多語言介面
-
-IDE 介面支援多種語言：
-
-- **English**（英文，預設）
-- **繁體中文**
-- 可透過插件新增其他語言
-
-選單、對話框、工具拒絕輸入時說明的原因，以及執行視窗自己的訊息（`[錯誤] …`、`[執行] …`）都會跟著所選的語言顯示。
+*一次實際的執行：透過 IDE 的檔案執行器呼叫 PyBreeze 自己的 curl 解析器，產生一支 pytest 測試。*
 
 ---
 
-## 架構設計
+## 四維自動化
+
+PyBreeze 開箱即用，涵蓋自動化測試的完整範疇：
+
+| 維度 | 模組 | 功能 |
+|---|---|---|
+| **API** | [APITestka](https://github.com/Integration-Automation/APITestka) | RESTful 測試，內建請求建構器、回應分析器、Mock 伺服器與斷言 |
+| **Web** | [WebRunner](https://github.com/Integration-Automation/WebRunner) | 以瀏覽器驅動的互動與測試，整合驅動程式與元素定位器 |
+| **GUI** | [AutoControl](https://github.com/Integration-Automation/AutoControlGUI) | 桌面自動化，支援圖像辨識、座標、鍵盤／滑鼠控制與錄製 |
+| **Load** | [LoadDensity](https://github.com/Integration-Automation/LoadDensity) | 高併發效能測試，檢驗系統在壓力下的穩定性 |
+
+此外還有：
+
+- **檔案自動化** — 透過 [automation-file](https://github.com/Integration-Automation/FileAutomation) 進行檔案與目錄操作
+- **郵件自動化** — 透過 [MailThunder](https://github.com/Integration-Automation/MailThunder) 寄送報告
+- **測試框架** — 透過 [TestPioneer](https://github.com/Integration-Automation/TestPioneer) 以 YAML 驅動執行
+
+每個模組的選單結構都一樣：**Run**（單一腳本、整個目錄批次執行，可選擇是否寄出報告郵件）、**Help**（文件與 GitHub 頁面以 IDE 內的瀏覽器分頁開啟）、**Project**（建立範本目錄），以及在有提供時的原生 GUI 分頁。
+
+### IDE 核心
+
+- **認得自動化的語法高亮** — 在 JEditor 的語言支援之上，`AT_*`／GUI／Web／Load 關鍵字集註冊給 `.json`，TestPioneer 的結構描述註冊給 `.yml` 與 `.yaml`
+- **程式碼編輯器** — 以 [JEditor](https://github.com/Integration-Automation/JEDITOR) 為基礎：分頁、專案樹、格式檢查、除錯器、終端機、變數檢視器與 git 用戶端面板
+- **腳本執行** — 單一或批次執行，每次執行都有自己的視窗與 Stop 按鈕；動作檔以路徑傳入，而目前分頁中的腳本若超過 Windows 命令列長度上限（約 32 KB），會改用暫存檔傳遞
+- **報告產生** — 執行後產生 HTML／JSON／XML 報告，並可選擇以電子郵件寄送
+- **整合 JupyterLab** — 以分頁方式啟動；專案虛擬環境中沒有 JupyterLab 時會自動安裝
+- **虛擬環境感知** — 自動偵測並使用 `venv/` 與 `.venv/`；都沒有時，腳本會以 IDE 本身使用的直譯器執行
+
+---
+
+## 內建工具
+
+### cURL 匯入 — 複製下來的請求變成可執行的腳本
+
+從瀏覽器開發者工具貼上一段 `curl` 指令，再選擇輸出目標。解析器能處理方法、URL、標頭、本文、Basic 驗證、`-G` 查詢參數、`-F` multipart 欄位（上傳檔案會變成 `files=open(...)`）、`--json` 簡寫、`-d @file` 本文，以及多行接續。重複的 `-H` 值會照 HTTP 的方式合併（cookie 用 `; `，其他用 `, `），而不是默默只留下最後一個。過程中不會執行任何東西——純粹是解析。
+
+| 目標：pytest | 目標：APITestka JSON 動作 |
+|---|---|
+| ![cURL 匯入為 pytest](../images/tool_curl_import.png) | ![cURL 匯入為 APITestka 動作](../images/tool_curl_import_action.png) |
+
+輸出目標：Python `requests`、可直接執行的 **pytest** 測試、**APITestka**（Python，或可由 `execute_files` 直接執行的 `[["AT_test_api_method", {...}]]` 動作清單），以及 **LoadDensity** 的 Locust 負載測試。輸出可以複製、直接開到編輯器分頁，或以正確的副檔名儲存。只要按一下，也能把解析出的 URL 交給 URL 解析／建構器，或把標頭交給標頭分析器。
+
+### HAR 匯入 — 整段工作階段變成測試套件
+
+「Copy as cURL」只抓一個請求；**Save all as HAR** 則抓下整段工作階段。開啟匯出檔後，每個記錄下來的呼叫都會列出方法、路徑、狀態碼與媒體類型，頁面裝飾類資源（CSS、圖片、字型）預設會被濾掉。
+
+![HAR 匯入](../images/tool_har_import.png)
+
+選擇需要的項目——或直接取用全部列出的項目——就能用與 cURL 匯入相同的輸出目標產生一支腳本。重複的端點會得到編號過的測試名稱，不會有測試默默蓋掉另一個；HTTP/2 虛擬標頭會被移除，與記錄中 cookie 清單重複的 `Cookie` 標頭也會拿掉，讓每個值只送出一次（同名的 cookie 無法放進字典，改以標頭送出）。無法變成請求的項目，例如 URL 或方法格式錯誤的項目，會被略過，其餘照常載入。只選一個請求時，產生的結果與 cURL 匯入完全相同。HAR 是 JSON，因此只需要標準函式庫，而且不會替你重播任何請求。
+
+### Response Inspector — 貼上回應，讀出裡面的一切
+
+![Response Inspector](../images/tool_response_inspector.png)
+
+狀態碼會到 HTTP 參考表中查詢，標頭會被解析，JSON 本文會格式化顯示，文字中任何位置的 JWT（例如 `Authorization: Bearer` 標頭）都會被解碼，時間戳記類的宣告以 UTC 顯示。每項發現都能在對應的工具分頁中開啟，並預先填好內容。
+
+### HTTP 標頭分析器 — 一段標頭實際在說什麼
+
+![標頭分析器](../images/tool_header_analyzer.png)
+
+會回報：送出不只一次的名稱、缺少 `Secure`／`HttpOnly`／`SameSite` 的 `Set-Cookie` 項目、萬用字元 CORS（以及瀏覽器會直接拒絕的「萬用字元加憑證」組合）、短到撐不過重新啟動的 HSTS `max-age`、CSP 的 `unsafe-inline`／`unsafe-eval`、產品版本標語、已淘汰的標頭，以及——針對回應——缺少的安全標頭。攜帶憑證的標頭**只回報名稱**；它們的值絕不會進入報告。
+
+### 文字比對
+
+![文字比對](../images/tool_diff.png)
+
+比較兩段內容——例如預期與實際的 API 回應——得到 unified diff，以及一行新增／刪除摘要。
+
+### 日常小工具
+
+每個都是分頁或停駐面板，底部都有同樣的一排：複製／在編輯器開啟／儲存成檔案。
+
+![JWT 解碼器、正規表示式測試器、HTTP 狀態碼參考、JSON 格式化](../images/tools_montage_a.png)
+
+- **JWT 解碼器** — 標頭與酬載以格式化的 JSON 顯示，`exp`／`iat`／`nbf`／`auth_time` 轉成易讀的 UTC。只做檢視：絕不驗證簽章，也絕不信任權杖。
+- **正規表示式測試器** — 支援 `IGNORECASE`／`MULTILINE`／`DOTALL`／`VERBOSE`，列出每個比對結果的位移、編號群組與具名群組。在樣式欄按 Enter 即執行。無效的樣式會顯示友善的錯誤訊息，不會當掉。
+- **HTTP 狀態碼參考** — 以代碼前綴或關鍵字搜尋完整的狀態碼表（資料來自標準函式庫，因此會保持最新）。
+- **JSON 格式化** — 格式化或壓縮，輸入不是 JSON 時會給出清楚的驗證錯誤。
+
+![時間戳記轉換器、雜湊產生器、Query/JSON、URL 建構器](../images/tools_montage_b.png)
+
+- **時間戳記轉換器** — 輸入 Unix epoch（秒、毫秒、微秒或奈秒，自動判斷）或 ISO-8601 日期時間（可帶 `Z`、`+08`、`+0800` 或 `+08:00`，小數位數不限，基本或延伸格式皆可），輸出所有 UTC 表示法。結果固定，不受本機時區影響。
+- **雜湊產生器** — 同時計算 SHA-256、SHA-512、SHA-1 與 MD5（MD5／SHA-1 以 `usedforsecurity=False` 提供互通用途，絕不用於安全判斷）。
+- **Query ⇄ JSON** — `application/x-www-form-urlencoded` 轉成格式化的 JSON，也能轉回來；重複的鍵會變成陣列，反之亦然。
+- **URL 解析器／建構器** — 把 scheme、主機、連接埠、路徑、查詢、片段與憑證拆成可編輯的 JSON 物件，也能組回 URL。會自動為 IPv6 位址加上方括號，並重新編碼查詢參數。
+
+### 圖表編輯器 — 不離開 IDE 就能畫架構圖
+
+![匯入 Mermaid 流程圖後的圖表編輯器](../images/diagram_editor.png)
+
+*把 Mermaid `flowchart` 貼進匯入器後自動排版的結果。*
+
+以 `QGraphicsScene` 打造的所見即所得編輯器：矩形、圓角矩形、橢圓與菱形節點，可加上連線標籤的貝茲曲線連線，還有自由文字與圖片。Mermaid `flowchart`／`graph` 匯入會執行 Sugiyama 式排版（分層、減少交叉、跨軸對齊）。可儲存與開啟 `.diagram.json`，匯出為 PNG 或 SVG，並支援復原／重做、對齊、均分、格線、吸附與縮放。從 URL 下載的圖片會經過 SSRF 驗證並有大小上限。
+
+### SSH 用戶端 — 終端機與遠端檔案樹並排
+
+![SSH 用戶端](../images/ssh_client.png)
+
+支援密碼或私鑰驗證（金鑰檔以 Browse 挑選，從 `~/.ssh` 開始），具備 ANSI 處理與 keepalive 的互動式 shell，以及延遲載入的 SFTP 檔案樹，可建立資料夾／重新命名／刪除／上傳／下載。每個 SFTP 請求都在背景執行，連線卡住也不會讓 IDE 凍結。上傳時若要取代伺服器上的檔案會先詢問，傳輸也能從檔案樹的選單取消。上下傳都會先寫入暫存檔，所以連線中斷時舊的檔案仍完整無缺。未知的主機金鑰**不會**自動接受：第一次連線時會顯示 SHA256 指紋供確認（首次使用即信任），並保存到 `~/.pybreeze/ssh_known_hosts`。
+
+### 其他
+
+- **檔案樹右鍵選單** — 按右鍵即可建立、重新命名、刪除、複製絕對或相對路徑，或在系統的檔案管理員中顯示該項目（在 Explorer 與 Finder 中會選取該檔案）。重新命名或刪除已在編輯器分頁中開啟的檔案時，分頁會同步更新。
+- **套件管理員** — 從選單安裝自動化模組與建置工具，輸出顯示在執行視窗中。
+- **整合文件** — 每個模組的文件與 GitHub 頁面都以 IDE 內的瀏覽器分頁開啟。
+
+---
+
+## AI 輔助開發
+
+### AI 程式碼審查
+
+![AI 程式碼審查用戶端](../images/ai_code_review.png)
+
+*畫面為送出前的狀態。* 把選取的程式碼送到 LLM 端點，再接受或拒絕建議——統計會記錄在 `~/.pybreeze/response_stats.txt`。URL 會經過 SSRF 驗證，連線只會連到檢查過的位址，不跟隨重新導向，回應本文在送進面板前也有大小上限。
+
+### 思維鏈程式碼審查（prthinker）
+
+對正在編輯的檔案或一個 Pull Request 執行 [prthinker](https://github.com/JE-Chen/Code-Review-Framework-Combining-Large-Language-Models-and-Chain-of-Thought-Reasoning) 審查流程，輸出即時傳進執行視窗。
+
+![prthinker 設定](../images/prthinker_setting.png)
+
+一張設定表就包含推論後端（`remote`、`local`、OpenAI 相容、Anthropic、Gemini、Cohere、Mistral、`claude-cli`、`codex-cli`）、程式碼託管平台（GitHub／GitLab／Gitea）與儲存庫。**金鑰與權杖以環境變數交給審查，絕不放在命令列上**——那裡會被行程清單看到——而且在日誌中會被遮蔽。模型名稱會交給所選的後端。規則檢索（RAG）預設為 `off`，設為 `remote` 時會向 prthinker 伺服器的 `/rag` 查詢：prthinker 的本機規則索引隨它的儲存庫提供，不在由它安裝的套件裡。審查以 `Python Env` 選定的直譯器執行，因此 PyBreeze 本身可以停留在比 prthinker 所需的 3.12 更舊的 Python 上。
+
+### CoT 提示詞編輯器
+
+![CoT 提示詞編輯器](../images/cot_prompt_editor.png)
+
+建立與管理多步驟的審查鏈：初次摘要 → 初次程式碼審查 → 評審該次審查 → linter → 程式碼異味偵測 → 逐步分析 → 總結 → 評審總結。每一步都會引用它所需的前面步驟的答案。檔案受到監看，所以外部的修改會立即反映出來。
+
+從 **Tools → AI → CoT Code Review** 執行這條審查鏈（以分頁開啟，或從 Dock 選單以停駐面板開啟）：貼上程式碼、填入端點 URL，每一步的答案一到就會出現在選擇器中。
+
+### Skill 提示詞編輯器與 Skill Send
+
+| Skill 提示詞編輯器 | Skill Send |
+|---|---|
+| ![Skill 提示詞編輯器](../images/skill_prompt_editor.png) | ![Skill Send](../images/skills_send.png) |
+
+定義可重複使用的 skill 提示詞（程式碼解說、程式碼審查），再從專用的分頁或停駐面板選一個、視需要編輯，然後送到 LLM 端點。*兩者都是送出前的狀態——拍攝這些截圖時沒有連線到任何端點。*
+
+---
+
+## 插件系統
+
+PyBreeze 沿用 JEditor 的插件架構，會自動從工作目錄中的 `jeditor_plugins/` 目錄探索插件。插件可以註冊：
+
+- **語法高亮** — 任何語言的關鍵字集與規則
+- **介面翻譯** — 新的介面語言
+- **執行設定** — 為直譯式（`go run main.go`）與編譯式（`gcc main.c -o main` 後執行）語言提供「Run with…」，透過 PyBreeze 的 `FileRunnerProcess` 執行，並在結束後清掉編譯產物
+- **插件瀏覽器** — 在 IDE 內瀏覽並安裝遠端儲存庫中的插件
+
+已載入的插件會出現在它們專屬的 **Plugins** 選單下，附一個 About 項目和一個執行動作，動作名稱標示它能執行的副檔名。[PLUGIN_GUIDE.md](../PLUGIN_GUIDE.md) 說明 PyBreeze 額外提供的部分，並連到 JEditor 的指南，那裡有完整的 API 與實作範例（C、C++、Go、Java、Rust，以及法文翻譯）。
+
+---
+
+## 多語言介面
+
+- **English**（英文，預設）
+- **繁體中文**（Traditional Chinese）
+
+選單、對話框、工具拒絕輸入時說明的原因，以及執行視窗自己的訊息（`[錯誤] …`、`[執行] …`）都會跟著所選的語言顯示。兩份字典都有相同的 731 個鍵，並有測試強制兩者一致，因此新字串不可能只出現在其中一種語言。其他語言可透過翻譯插件加入。
+
+---
+
+## 架構
 
 ```mermaid
 flowchart TB
     UI["PyBreeze UI · PySide6"]
 
-    subgraph Editor["JEditor 基礎編輯器"]
+    subgraph Editor["JEditor (Base Editor)"]
         direction LR
-        E1["程式碼編輯器 + 分頁"]
-        E2["檔案樹"]
-        E3["語法高亮"]
-        E4["插件系統"]
+        E1["Code Editor + Tabs"]
+        E2["File Tree"]
+        E3["Syntax Highlighting"]
+        E4["Plugin System"]
     end
 
-    subgraph Automation["自動化選單"]
+    subgraph Automation["Automation Menu"]
         direction LR
         A1["APITestka"]
         A2["AutoControl"]
@@ -142,7 +240,7 @@ flowchart TB
         A7["TestPioneer"]
     end
 
-    subgraph Executors["子行程執行器 · TaskProcessManager"]
+    subgraph Executors["Subprocess Executors · TaskProcessManager"]
         direction LR
         X1["je_api_testka"]
         X2["je_auto_control"]
@@ -153,21 +251,20 @@ flowchart TB
         X7["test_pioneer"]
     end
 
-    subgraph Tools["工具"]
+    subgraph Tools["Tools"]
         direction LR
         T1["SSH · paramiko"]
-        T2["AI 程式碼審查"]
-        T3["CoT 提示詞編輯器"]
-        T4["Skill 提示詞編輯器"]
-        T5["Skill Send GUI"]
-        T6["架構圖編輯器"]
-        T7["JupyterLab"]
+        T2["AI Code Review"]
+        T3["Prompt Editors"]
+        T4["Diagram Editor"]
+        T5["HTTP Toolbelt"]
+        T6["JupyterLab"]
     end
 
-    subgraph Install["安裝選單"]
+    subgraph Install["Install Menu"]
         direction LR
-        I1["模組安裝器"]
-        I2["建構工具"]
+        I1["Module Installers"]
+        I2["Build Tools"]
     end
 
     UI --> Editor
@@ -184,41 +281,13 @@ flowchart TB
     A7 --> X7
 ```
 
-PyBreeze 採用模組化架構：
+**編輯器行程從不執行你的腳本。** 每個自動化模組都以 `python -m <package>` 在專案的直譯器中啟動，並使用 `shell=False`。兩條常駐執行緒把 stdout 與 stderr 讀進執行緒安全的佇列；一個 100 ms 的 `QTimer` 以有上限的批次把它們取出，送到 UI 執行緒。腳本當掉、卡住或陷入無限輸出迴圈，都不會連帶拖垮 IDE。
 
-```
-PyBreeze UI (PySide6)
-├── JEditor（基礎編輯器引擎）
-│   ├── 程式碼編輯器與分頁
-│   ├── 檔案樹瀏覽
-│   ├── 語法高亮引擎
-│   └── 插件系統
-├── 自動化選單
-│   ├── APITestka ──→ APITestka 執行器 ──→ je_api_testka
-│   ├── AutoControl ──→ AutoControl 執行器 ──→ je_auto_control
-│   ├── WebRunner ──→ WebRunner 執行器 ──→ je_web_runner
-│   ├── LoadDensity ──→ LoadDensity 執行器 ──→ je_load_density
-│   ├── FileAutomation ──→ FileAutomation 執行器 ──→ automation-file
-│   ├── MailThunder ──→ MailThunder 執行器 ──→ je-mail-thunder
-│   └── TestPioneer ──→ TestPioneer 執行器 ──→ test_pioneer
-├── 工具
-│   ├── SSH 用戶端（paramiko）
-│   ├── AI 程式碼審查用戶端
-│   ├── CoT 提示詞編輯器
-│   ├── Skill 提示詞編輯器
-│   ├── Skill Send GUI
-│   ├── 架構圖編輯器（WYSIWYG、Mermaid 匯入、PNG/SVG 匯出）
-│   └── JupyterLab 整合
-└── 安裝選單
-    ├── 自動化模組安裝器
-    └── 建構工具安裝器
-```
-
-每個自動化模組都透過 `PythonTaskProcessManager` 在獨立的子行程中執行，提供行程隔離，防止崩潰影響 IDE。
+逐一介紹各模組的程式碼導覽，請參閱 [architecture_explore.md](../architecture_explore.md)。
 
 ---
 
-## 安裝方式
+## 安裝
 
 ### 從 PyPI 安裝
 
@@ -236,103 +305,48 @@ pip install -r requirements.txt
 
 ### 系統需求
 
-- **Python**：3.10 或更高版本
+- **Python**：3.10 – 3.14
 - **作業系統**：Windows、macOS、Linux
-- **GUI 框架**：PySide6 6.11.2（自動安裝）
+- **GUI**：PySide6 6.11.2（自動安裝）
 
 ---
 
 ## 快速開始
 
-### 透過命令列執行
-
 ```bash
-python -m pybreeze
+python -m pybreeze                # 命令列
+python exe/start_pybreeze.py      # 從 exe 目錄
 ```
-
-### 透過 Python 腳本執行
 
 ```python
 from pybreeze import start_editor
 
-start_editor()
+start_editor()                              # 預設 dark_amber 主題
+start_editor(theme="dark_teal.xml")         # 任何 qt_material 主題
 ```
 
-### 從 exe 目錄執行
+啟動後：
 
-```bash
-python exe/start_pybreeze.py
-```
-
-啟動後，您可以：
-
-1. **撰寫自動化腳本** — 在編輯器中享有語法感知的自動補全
-2. **執行腳本** — 透過 `自動化` 選單，選擇目標模組（APITestka、WebRunner 等）
-3. **檢視結果** — 在整合式輸出面板中查看
-4. **生成報告** — 支援 HTML/JSON/XML 格式
-5. **寄送報告** — 使用 MailThunder 整合功能透過電子郵件發送
+1. **撰寫** — 在編輯器中撰寫自動化腳本，自動化關鍵字會隨著輸入高亮
+2. **執行** — 從 `Automation` 選單執行，選擇目標模組
+3. **觀看** — 輸出即時傳進執行視窗
+4. **產生** — HTML／JSON／XML 報告
+5. **寄送** — 透過 MailThunder 整合以電子郵件寄出
 
 ---
 
-## 整合自動化模組
+## 整合的自動化模組
 
-### APITestka — API 測試
-
-- HTTP 方法測試（GET、POST、PUT、DELETE 等）
-- 透過 httpx 支援非同步 HTTP
-- 使用 Flask 建立 Mock 伺服器
-- 報告生成（HTML、JSON、XML）
-- 基於排程器的事件觸發
-- Socket 伺服器支援
-
-### AutoControl — GUI 自動化
-
-- 滑鼠控制（點擊、拖曳、滾動、位置追蹤）
-- 鍵盤模擬（輸入、快捷鍵、按鍵按下/釋放）
-- 圖像辨識與定位點擊
-- 螢幕截圖
-- 動作錄製與重播
-- Shell 指令執行
-- 行程管理
-
-### WebRunner — Web 自動化
-
-- 瀏覽器驅動整合
-- 元素定位與互動
-- 基於 Web 的測試腳本
-- 報告生成
-
-### LoadDensity — 負載測試
-
-- 併發請求模擬
-- 效能指標收集
-- 壓力測試情境管理
-- 報告生成
-
-### MailThunder — 郵件自動化
-
-- SMTP 郵件寄送
-- HTML 報告傳遞
-- 附件支援
-- 基於環境變數的設定
-
-### TestPioneer — 測試框架
-
-- 基於 YAML 的測試定義
-- 範本生成
-- 結構化測試執行
-
-### File Automation — 檔案自動化
-
-- 自動化檔案與目錄操作
-- 批次檔案處理
-
-### prthinker — 思維鏈程式碼審查
-
-- 審查正在編輯的檔案，或審查 GitHub / GitLab / Gitea 上的 Pull Request
-- 推論後端可選：審查伺服器、OpenAI 相容端點、Anthropic，或本機模型
-- 設定存放在使用者目錄的 `~/.pybreeze/prthinker_setting.json`；金鑰以環境變數交給審查
-- 從它自己的原始碼資料夾安裝（**安裝 ▸ 自動化 ▸ 安裝 prthinker**），需要 Python 3.12 以上
+| 模組 | 功能 |
+|---|---|
+| **APITestka** | HTTP 方法、透過 httpx 的非同步請求、Flask Mock 伺服器、HTML/JSON/XML 報告、排程觸發、socket 伺服器、JSON-schema 與 JSONPath 斷言、SLA 檢查、錄製重播 cassette |
+| **AutoControl** | 滑鼠（點擊、拖曳、捲動、位置）、鍵盤（輸入、快捷鍵、按下／放開）、圖像辨識與定位點擊、螢幕截圖、錄製與播放、shell 與行程控制 |
+| **WebRunner** | 瀏覽器驅動程式整合、元素定位與互動、Web 測試腳本、報告 |
+| **LoadDensity** | 併發請求模擬、效能指標、壓力情境管理、報告 |
+| **MailThunder** | SMTP 寄信、HTML 報告寄送、附件、以環境變數設定 |
+| **TestPioneer** | YAML 測試定義、範本產生、結構化執行 |
+| **File Automation** | 自動化檔案與目錄操作、批次處理 |
+| **prthinker** | 對檔案或 Pull Request 進行思維鏈程式碼審查；設定存於 `~/.pybreeze/prthinker_setting.json`；透過 `Install ▸ Automation ▸ Install prthinker` 從它自己的原始碼資料夾安裝（需要 Python 3.12 以上） |
 
 ---
 
@@ -341,78 +355,97 @@ python exe/start_pybreeze.py
 ```
 PyBreeze/
 ├── pybreeze/
-│   ├── __init__.py                 # 公開 API（start_editor、插件 re-export）
-│   ├── __main__.py                 # 進入點（python -m pybreeze）
+│   ├── __init__.py                    # 公開 API（start_editor、插件 re-export）
+│   ├── __main__.py                    # 進入點（python -m pybreeze）
 │   ├── extend/
-│   │   ├── mail_thunder_extend/    # 測試後郵件報告寄送
-│   │   ├── process_executor/       # 各自動化模組的子行程管理器
-│   │   │   ├── api_testka/
-│   │   │   ├── auto_control/
-│   │   │   ├── file_automation/
-│   │   │   ├── load_density/
-│   │   │   ├── mail_thunder/
-│   │   │   ├── test_pioneer/
-│   │   │   └── web_runner/
-│   │   └── process_executor/python_task_process_manager.py
-│   ├── extend_multi_language/      # 內建翻譯（英文、繁體中文）
+│   │   ├── process_executor/          # 子行程隔離層
+│   │   │   ├── python_task_process_manager.py   # TaskProcessManager（核心）
+│   │   │   ├── process_executor_utils.py        # build_process / start_process
+│   │   │   ├── file_runner_process.py           # 插件執行設定（任何語言）
+│   │   │   ├── queue_pump.py                    # 共用的管線讀取器 + QTimer 取出
+│   │   │   ├── api_testka/ auto_control/ web_runner/
+│   │   │   ├── load_density/ file_automation/ mail_thunder/
+│   │   │   ├── test_pioneer/ prthinker/
+│   │   ├── mail_thunder_extend/       # 測試後郵件報告掛鉤
+│   │   └── prthinker_extend/          # prthinker 設定與參數組裝
+│   ├── extend_multi_language/         # 內建多語言（英文、繁體中文）
 │   ├── pybreeze_ui/
-│   │   ├── editor_main/            # 主視窗（擴展 JEditor）+ 檔案樹右鍵選單
-│   │   ├── connect_gui/ssh/        # SSH 用戶端元件（TOFU host key 驗證）
-│   │   ├── diagram_editor/         # WYSIWYG 架構圖編輯器
-│   │   ├── extend_ai_gui/          # AI 程式碼審查與提示詞編輯器
-│   │   ├── jupyter_lab_gui/        # JupyterLab 整合
-│   │   ├── menu/                   # 選單列建構
-│   │   ├── syntax/                 # 自動化關鍵字定義
-│   │   └── show_code_window/       # 程式碼顯示元件
-│   └── utils/                      # 日誌、例外處理、檔案處理、套件管理
-├── exe/                            # 獨立啟動器與建構設定
-├── docs/                           # Sphinx 文件原始碼
-├── test/                           # 單元測試
-├── images/                         # 截圖
-├── architecture_diagram/           # 架構圖
-├── PLUGIN_GUIDE.md                 # 插件開發文件
-├── pyproject.toml                  # 套件設定
-├── requirements.txt                # 執行階段依賴項
-└── dev_requirements.txt            # 開發依賴項
+│   │   ├── editor_main/               # 主視窗 + 檔案樹右鍵選單
+│   │   ├── menu/                      # Automation / Install / Tools / 插件選單
+│   │   ├── tools_gui/                 # cURL、HAR、JWT、diff、regex 等工具分頁
+│   │   ├── diagram_editor/            # 所見即所得圖表編輯器
+│   │   ├── extend_ai_gui/             # CoT 審查、提示詞編輯器、skill send
+│   │   ├── connect_gui/               # SSH 終端機 + SFTP 檔案樹、AI 審查用戶端
+│   │   ├── jupyter_lab_gui/           # JupyterLab 分頁
+│   │   ├── show_code_window/          # CodeWindow（執行輸出）
+│   │   ├── dialog/                    # prthinker 設定對話框
+│   │   └── syntax/                    # 自動化關鍵字定義
+│   └── utils/                         # curl/HAR 解析、標頭、JWT、雜湊、
+│                                      # URL 驗證、日誌、例外……
+├── exe/                               # 獨立啟動器與建置設定
+├── docs/                              # Sphinx 文件原始碼
+├── test/                              # 單元測試（test_utils）+ 啟動測試
+├── images/                            # 截圖
+├── architecture_explore.md            # 逐模組的架構筆記
+├── PLUGIN_GUIDE.md                    # 插件開發文件
+├── pyproject.toml                     # 套件設定（穩定版）
+├── dev.toml                           # 套件設定（開發通道）
+└── requirements.txt                   # 執行階段相依套件
 ```
 
 ---
 
-## 依賴項目
+## 相依套件
 
 ### 執行階段
 
 | 套件 | 用途 |
 |---|---|
-| `PySide6` (6.11.2) | GUI 框架（Qt for Python）|
+| `PySide6` (6.11.2) | GUI 框架（Qt for Python） |
 | `je-editor` | 基礎程式碼編輯器引擎 |
 | `je_api_testka` | API 測試自動化 |
-| `je_auto_control` | GUI/桌面自動化 |
+| `je_auto_control` | GUI／桌面自動化 |
 | `je_web_runner` | Web 瀏覽器自動化 |
 | `je_load_density` | 負載與壓力測試 |
 | `je-mail-thunder` | 郵件自動化 |
 | `automation-file` | 檔案操作自動化 |
-| `test_pioneer` | 基於 YAML 的測試框架 |
+| `test_pioneer` | 以 YAML 為基礎的測試框架 |
 | `paramiko` | SSH 用戶端支援 |
-| `jupyterlab` | 整合式筆記本環境 |
+| `jupyterlab` | 整合的筆記本環境 |
 
 ### 開發
 
-`build`、`twine`、`sphinx`、`sphinx-rtd-theme`、`auto-py-to-exe`
+`build`、`twine`、`sphinx`、`sphinx-rtd-theme`、`auto-py-to-exe`、`pytest`、`pytest-cov`、`hypothesis`、`ruff`
+
+---
+
+## 測試與 CI
+
+```bash
+python -m pip install -r dev_requirements.txt
+python -m pytest test/test_utils/ -v --tb=short
+```
+
+- **單元測試** — `test/test_utils/`，涵蓋純邏輯層（curl 與 HAR 解析、標頭分析、SSRF 驗證、JWT、雜湊、時間戳記、比對），加上透過 `QT_QPA_PLATFORM=offscreen` 的無視窗 Qt 元件測試，以及針對各解析器的 Hypothesis 性質測試
+- **啟動測試** — `test/unit_test/start_automation/` 以 debug 模式啟動 IDE，確認它能正常開啟並乾淨地結束
+- **CI** — 在 Windows 上以 GitHub Actions 跑 Python 3.10 – 3.14，每次 push 與 PR 都會執行，另外每晚執行一次
+- **靜態分析** — SonarCloud、Codacy 與 Bandit
 
 ---
 
 ## 目標使用者
 
-- **Python 開發者** — 一個輕量、專用的環境，用於構建自動化腳本，無需承受重量級通用 IDE 的負擔
-- **SDET（測試開發工程師）** — 需要在同一工具中同時維護 Web、API 和效能測試的專業人士
-- **自動化初學者** — 一個友善的 IDE，透過零設定環境降低 Python 自動化的入門門檻
-- **DevOps 團隊** — 一個在 CI/CD 流水線中快速構建和除錯整合測試套件的平台
+- **Python 開發者** — 一個輕量、專用的自動化腳本環境，沒有通用 IDE 的額外負擔
+- **SDET（測試開發工程師）** — 用同一個工具並行維護 Web、API 與效能測試
+- **自動化初學者** — 零設定的環境建置，每個模組都有選單
+- **DevOps 團隊** — 建置與除錯要送進 CI/CD 的整合測試套件的地方
 
 ---
 
 ## 授權條款
 
-本專案採用 MIT 授權條款——詳情請參閱 [LICENSE](../LICENSE) 檔案。
+MIT — 請參閱 [LICENSE](../LICENSE)。Copyright (c) 2022 JE-Chen
 
-Copyright (c) 2022 JE-Chen
+---
+
+<sub>截圖是在 Windows 11 上以預設的 `dark_amber` 主題，從實際的 PyBreeze 元件渲染而來；每個工具中的範例資料都是由實際程式路徑處理過的真實輸入。</sub>
