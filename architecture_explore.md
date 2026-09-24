@@ -239,7 +239,7 @@ call_X_multi_file_and_send()   → run_dir_files_with_package(..., True)
 
 ---
 
-## 7. `pybreeze_ui/diagram_editor/` — 架構圖編輯器（3,963 行，最大子系統）
+## 7. `pybreeze_ui/diagram_editor/` — 架構圖編輯器（3,985 行，最大子系統）
 
 | 檔案 | 職責 |
 |---|---|
@@ -294,7 +294,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 9. `pybreeze_ui/connect_gui/`
 
-### `ssh/`（2,035 行）
+### `ssh/`（2,230 行）
 
 | 檔案 | 職責 |
 |---|---|
@@ -328,7 +328,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 11. `pybreeze_ui/syntax/`
 
-- `syntax_keyword.py`（625 行）— 七份關鍵字清單，彙整成 `package_keyword_list`：
+- `syntax_keyword.py`（629 行）— 七份關鍵字清單，彙整成 `package_keyword_list`：
   `je_auto_control` / `je_load_density` / `je_api_testka` / `je_web_runner` / `automation_file` / `mail_thunder` / `test_pioneer`
 - `syntax_extend.py` — 把前六個註冊到 `.json`（黃色 `#FFFF00`），`test_pioneer` 註冊到 `TEST_PIONEER_SUFFIXES` 的每個副檔名（`.yml`、`.yaml`，橘色 `#FF9900`），然後重置當前編輯器的 highlighter
 
