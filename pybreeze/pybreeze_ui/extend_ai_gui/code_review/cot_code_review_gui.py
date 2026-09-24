@@ -8,6 +8,7 @@ from pybreeze.pybreeze_ui.extend_ai_gui.ai_gui_global_variable import COT_TEMPLA
 from pybreeze.pybreeze_ui.extend_ai_gui.code_review.code_review_thread import SenderThread
 from pybreeze.pybreeze_ui.thread_keeper import let_run_out
 from pybreeze.pybreeze_ui.exact_text import exact_text
+from pybreeze.pybreeze_ui.fixed_pitch import use_fixed_pitch_font
 
 
 class CoTCodeReviewGUI(QWidget):
@@ -31,18 +32,27 @@ class CoTCodeReviewGUI(QWidget):
 
         # 傳送資料區域
         self.code_paste_area = QTextEdit()
+        use_fixed_pitch_font(self.code_paste_area)
         self.code_paste_area.setPlaceholderText(
             language_wrapper.language_word_dict.get("cot_gui_placeholder_code_paste_area"))
         layout.addWidget(QLabel(language_wrapper.language_word_dict.get("cot_gui_label_prompt_area")))
         layout.addWidget(self.code_paste_area)
 
         # 回傳區域
-        self.response_selector = QComboBox()  # 改用 ComboBox
+        # The step whose answer is shown, labelled and at the top: alone and
+        # empty it sat halfway down the panel with nothing to say what it was
+        self.response_selector = QComboBox()
+        self.response_selector.setPlaceholderText(
+            language_wrapper.language_word_dict.get("cot_gui_placeholder_no_answers"))
         self.response_view = QTextEdit()
         self.response_view.setReadOnly(True)  # 可複製但不可編輯
 
+        step_layout = QVBoxLayout()
+        step_layout.addWidget(QLabel(language_wrapper.language_word_dict.get("cot_gui_label_step")))
+        step_layout.addWidget(self.response_selector)
+        step_layout.addStretch()
         hbox_layout = QHBoxLayout()
-        hbox_layout.addWidget(self.response_selector, 2)
+        hbox_layout.addLayout(step_layout, 2)
         hbox_layout.addWidget(self.response_view, 5)
 
         layout.addWidget(QLabel(language_wrapper.language_word_dict.get("cot_gui_label_response_area")))

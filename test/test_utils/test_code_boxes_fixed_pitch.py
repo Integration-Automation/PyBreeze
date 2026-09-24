@@ -48,12 +48,18 @@ def _ai_code_review():
     return AICodeReviewClient()
 
 
+def _cot_code_review():
+    from pybreeze.pybreeze_ui.extend_ai_gui.code_review.cot_code_review_gui import CoTCodeReviewGUI
+    return CoTCodeReviewGUI()
+
+
 CODE_BOXES = [
     (_diff, "left_edit"), (_diff, "right_edit"), (_diff, "output_edit"),
     (_curl, "input_edit"), (_curl, "output_edit"),
     (_har, "output_edit"),
     (_json_format, "input_edit"), (_json_format, "output_edit"),
     (_ai_code_review, "code_input"),
+    (_cot_code_review, "code_paste_area"),
 ]
 
 
@@ -67,4 +73,17 @@ def test_the_box_uses_the_fixed_pitch_font(app, build, box):
     assert view.font().family() == family
     # In the view's own sheet too: the theme's sheet overrides setFont
     assert family in view.styleSheet()
+    widget.close()
+
+
+def test_the_cot_step_selector_says_what_it_is_before_any_answer(app):
+    from je_editor import language_wrapper
+    from PySide6.QtWidgets import QLabel
+
+    widget = _cot_code_review()
+    words = language_wrapper.language_word_dict
+
+    # Empty and unlabelled, it sat halfway down the panel saying nothing
+    assert widget.response_selector.placeholderText() == words.get("cot_gui_placeholder_no_answers")
+    assert words.get("cot_gui_label_step") in [label.text() for label in widget.findChildren(QLabel)]
     widget.close()
