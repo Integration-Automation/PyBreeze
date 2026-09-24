@@ -3,6 +3,7 @@ from __future__ import annotations
 import codecs
 import os
 import weakref
+from dataclasses import dataclass
 
 import paramiko
 from PySide6.QtCore import QEvent, QThread, Qt, Signal
@@ -27,7 +28,9 @@ from pybreeze.pybreeze_ui.thread_keeper import if_alive, let_run_out
 from pybreeze.pybreeze_ui.error_text import error_text
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.terminal_style import PLAIN, TextStyle, split_styled
-from pybreeze.utils.terminal_text import split_unfinished_end, strip_terminal_controls, take_leading_backspaces
+from pybreeze.utils.terminal_text import (
+    FULL_RESET, split_at_screen_clear, split_unfinished_end, strip_terminal_controls, take_leading_backspaces,
+)
 
 # What closing a channel or a client can raise on a connection already broken
 CLOSE_ERRORS = (OSError, EOFError, paramiko.SSHException)
@@ -54,16 +57,32 @@ class TerminalDecoder:
         self._pending = ""
         self._style = PLAIN
 
-    def feed(self, data: bytes) -> list[tuple[TextStyle, str]]:
-        """Return the text *data* completes, in pieces with the style each is shown in.
+    def feed(self, data: bytes) -> TerminalOutput:
+        """Return what *data* completes: whether it clears the screen, and the text after.
 
-        Escape sequences are removed. Backspaces a piece starts with are kept,
-        for the view to take back what it already showed; any others are
-        applied here.
+        The text comes in pieces with the style each is shown in. Escape
+        sequences are removed. Backspaces a piece starts with are kept, for the
+        view to take back what it already showed; any others are applied here.
         """
         text, self._pending = split_unfinished_end(self._pending + self._decoder.decode(data))
+        cleared = split_at_screen_clear(text)
+        if cleared is not None:
+            before, sequence, text = cleared
+            # What it wipes is not shown, but the colours it set carry on,
+            # unless a full reset drops them
+            _, self._style = split_styled(before, self._style)
+            if sequence == FULL_RESET:
+                self._style = PLAIN
         pieces, self._style = split_styled(text, self._style)
-        return [(style, _shown(piece)) for style, piece in pieces]
+        return TerminalOutput(cleared is not None, [(style, _shown(piece)) for style, piece in pieces])
+
+
+@dataclass(frozen=True)
+class TerminalOutput:
+    """What one read shows: whether the screen is wiped first (``clear``, ``reset``), then its text."""
+
+    clears_screen: bool
+    pieces: list[tuple[TextStyle, str]]
 
 
 def _shown(text: str) -> str:
@@ -487,8 +506,13 @@ class SSHCommandWidget(QWidget):
             host=shown_host, port=port, user=user) + "\n")
 
     def _on_data(self, data: bytes):
+        output = self._decoder.feed(data)
+        if output.clears_screen:
+            # `clear` and `reset` wipe the screen; they used to leave it as it was
+            self.terminal.clear()
+            self._rewind_pending = False
         palette = self.terminal.palette()
-        for style, text in self._decoder.feed(data):
+        for style, text in output.pieces:
             self._insert_output(text, style_format(style, palette))
 
     def _on_closed(self, msg: str):

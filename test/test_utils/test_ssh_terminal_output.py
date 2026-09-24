@@ -31,9 +31,9 @@ def app():
     return instance
 
 
-def _text(pieces) -> str:
-    """What the decoder's pieces show, their styles left out."""
-    return "".join(text for _style, text in pieces)
+def _text(output) -> str:
+    """What the decoder's output shows, its styles left out."""
+    return "".join(text for _style, text in output.pieces)
 
 
 class TestTerminalDecoder:
@@ -521,7 +521,7 @@ class TestColours:
 
         decoder.reset()
 
-        assert decoder.feed(b"plain") == [(PLAIN, "plain")]
+        assert decoder.feed(b"plain").pieces == [(PLAIN, "plain")]
 
     @pytest.mark.parametrize("chunks", [
         [b"50%\r\x1b[32m60%"],

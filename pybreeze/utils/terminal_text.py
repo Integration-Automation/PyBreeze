@@ -33,6 +33,13 @@ _INCOMPLETE_ESCAPE = re.compile(r'\x1B(?:\[[0-?]*[ -/]*|[\]PX^_][^\x07\x1B]*\x1B
 # Longest such tail held back for the next read; anything longer is shown as is
 _MAX_PENDING_ESCAPE = 256
 
+# What wipes the screen: Erase in Display of all of it (2) or of it and the
+# scrollback (3), as `clear` sends, and a full reset (RIS), as `reset` sends.
+# Erasing below the cursor alone (ESC [ J) is not one: shells send it to
+# redraw a prompt.
+_SCREEN_CLEAR = re.compile(r'\x1B\[[23]J|\x1Bc')
+FULL_RESET = '\x1Bc'
+
 
 def strip_terminal_controls(text: str) -> str:
     """*text* without escape sequences, with backspaces applied and other controls dropped."""
@@ -97,3 +104,16 @@ def split_unfinished_end(text: str) -> tuple[str, str]:
     if shown.endswith("\r"):
         return shown[:-1], "\r" + held
     return shown, held
+
+
+def split_at_screen_clear(text: str) -> tuple[str, str, str] | None:
+    """*text* around its last screen clear: what comes before, the sequence, what comes after.
+
+    ``None`` when it has none. Only what follows the last clear is left on
+    the screen.
+    """
+    clears = list(_SCREEN_CLEAR.finditer(text))
+    if not clears:
+        return None
+    last = clears[-1]
+    return text[:last.start()], last.group(), text[last.end():]
