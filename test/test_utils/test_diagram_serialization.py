@@ -88,6 +88,21 @@ class TestSceneLoadRobustness:
         # Only the valid self-connection survives.
         assert len(scene.get_all_connections()) == 1
 
+    @pytest.mark.parametrize("entry", ["x", 5, None, ["x", 0]])
+    def test_an_entry_that_is_not_an_object_is_skipped(self, qt_app, entry):
+        # An image entry "x" raised AttributeError out of Open, with no message
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene
+
+        scene = DiagramScene()
+        scene.load_from_dict({
+            "nodes": [{"id": 0, "x": 0, "y": 0, "text": "Good"}, entry],
+            "connections": [entry],
+            "images": [entry],
+        })
+
+        assert [n.text() for n in scene.get_all_nodes()] == ["Good"]
+        assert scene.get_all_connections() == []
+
     @pytest.mark.parametrize("source", [5, None, ["a.png"], {"x": 1}])
     def test_an_image_source_that_is_not_text_is_dropped(self, qt_app, source):
         from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene

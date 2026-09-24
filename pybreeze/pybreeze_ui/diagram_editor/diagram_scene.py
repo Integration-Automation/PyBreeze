@@ -798,7 +798,9 @@ class DiagramScene(QGraphicsScene):
         for img_d in image_dicts:
             try:
                 img = DiagramImage.from_dict(img_d)
-            except (KeyError, ValueError, TypeError) as err:
+            # AttributeError: an entry that is not an object ("x"), which
+            # escaped Open without a message
+            except (AttributeError, KeyError, ValueError, TypeError) as err:
                 pybreeze_logger.debug("Skipping malformed diagram image %r: %s", img_d, err)
                 continue
             self.addItem(img)
