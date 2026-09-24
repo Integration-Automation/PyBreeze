@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-47 | 2026-09-25 | Re-measure the coverage the architecture map quotes | #docs #test | [2026-09-c](2026-09-c.md) |
 | U-20260925-46 | 2026-09-25 | Coverage counts what QThread workers run | #test #ci | [2026-09-c](2026-09-c.md) |
 | U-20260925-45 | 2026-09-25 | Tests of the SSH host-key store's last line and a closed panel's question | #test #ssh #security | [2026-09-c](2026-09-c.md) |
 | U-20260925-44 | 2026-09-25 | Tests that stopping a run stops what it started | #test #executor | [2026-09-c](2026-09-c.md) |
@@ -449,4 +450,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
-| [2026-09-c.md](2026-09-c.md) | 2026-09 | 46 |
+| [2026-09-c.md](2026-09-c.md) | 2026-09 | 47 |
