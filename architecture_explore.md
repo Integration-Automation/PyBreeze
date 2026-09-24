@@ -1,6 +1,6 @@
 # PyBreeze 架構探勘 / Architecture Exploration
 
-> 掃描範圍：`pybreeze/`（201 個 `.py`、約 22,200 行，不含空行與註解約 17,300 行）＋ `test/`、`exe/`、`docs/`、CI 設定
+> 掃描範圍：`pybreeze/`（208 個 `.py`、約 24,000 行，不含空行與註解約 19,400 行）＋ `test/`、`exe/`、`docs/`、CI 設定
 > 對應版本：`pyproject.toml` 1.0.21（stable）／`dev.toml` 1.0.14（dev），分支 `dev`
 
 ---
@@ -242,7 +242,7 @@ call_X_multi_file_and_send()   → run_dir_files_with_package(..., True)
 
 ---
 
-## 7. `pybreeze_ui/diagram_editor/` — 架構圖編輯器（4,018 行，最大子系統）
+## 7. `pybreeze_ui/diagram_editor/` — 架構圖編輯器（4,034 行，最大子系統）
 
 | 檔案 | 職責 |
 |---|---|
@@ -297,7 +297,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 9. `pybreeze_ui/connect_gui/`
 
-### `ssh/`（2,230 行）
+### `ssh/`（2,467 行）
 
 | 檔案 | 職責 |
 |---|---|
@@ -368,7 +368,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 13. `pybreeze/extend_multi_language/`
 
-`extend_english.py` 與 `extend_traditional_chinese.py` 各 735 個鍵，`update_language_dict()` 把它們併進 `je_editor` 的字典，並把 `application_name`（「PyBreeze」）寫進 `language_wrapper.choose_language_dict` 裡每一個語言：這是 PyBreeze 唯一覆寫而非新增的 JEditor 鍵，日文、簡中等 PyBreeze 沒翻譯的語言自帶「JEditor」，不寫的話會蓋過英文退回值。`test_language_parity.py` 守住兩邊鍵值必須對齊，也檢查每個已註冊語言都解得出程式用到的每個鍵；`test_startup_language.py` 在子行程裡用存好的繁中／日文真的啟動主視窗。
+`extend_english.py` 與 `extend_traditional_chinese.py` 各 753 個鍵，`update_language_dict()` 把它們併進 `je_editor` 的字典，並把 `application_name`（「PyBreeze」）寫進 `language_wrapper.choose_language_dict` 裡每一個語言：這是 PyBreeze 唯一覆寫而非新增的 JEditor 鍵，日文、簡中等 PyBreeze 沒翻譯的語言自帶「JEditor」，不寫的話會蓋過英文退回值。`test_language_parity.py` 守住兩邊鍵值必須對齊，也檢查每個已註冊語言都解得出程式用到的每個鍵；`test_startup_language.py` 在子行程裡用存好的繁中／日文真的啟動主視窗。
 
 ---
 

@@ -288,11 +288,13 @@ class TestEveryLanguageServesPyBreezeStrings:
 
 
 def test_the_readmes_count_the_keys_there_are():
-    # They said 735 while the dictionaries held 753: a count kept by hand drifts
+    # They said 735 while the dictionaries held 753: a count kept by hand drifts.
+    # The architecture map quotes it too
     readmes = {
         "README.md": r"the same (\d+) keys",
         "README/README_zh-TW.md": r"相同的 (\d+) 個鍵",
         "README/README_zh-CN.md": r"同样的 (\d+) 个键",
+        "architecture_explore.md": r"各 (\d+) 個鍵",
     }
     root = pathlib.Path(pybreeze.__file__).parent.parent
     for name, pattern in readmes.items():
