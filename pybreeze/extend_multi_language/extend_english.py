@@ -102,7 +102,7 @@ pybreeze_english_word_dict = {
     "install_menu_apitestka": "Install APITestka",
     "install_menu_loaddensity": "Install LoadDensity",
     "install_menu_webrunner": "Install WebRunner",
-    "install_menu_automation_file": "Install Automation File",
+    "install_menu_automation_file": "Install FileAutomation",
     "install_menu_mail_thunder": "Install MailThunder",
     "install_menu_test_pioneer": "Install TestPioneer",
     "install_menu_prthinker": "Install prthinker (code review)",

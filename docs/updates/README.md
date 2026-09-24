@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-22 | 2026-09-25 | Install FileAutomation, as the menu and the README call it | #fix #menu #i18n | [2026-09-c](2026-09-c.md) |
 | U-20260925-21 | 2026-09-25 | Menu names spelled one way, and Tools entries that say Tab or Dock | #fix #menu #i18n #readme | [2026-09-c](2026-09-c.md) |
 | U-20260925-20 | 2026-09-25 | One AI submenu in the Dock menu | #fix #menu #jeditor | [2026-09-c](2026-09-c.md) |
 | U-20260925-19 | 2026-09-25 | One space after the SSH terminal's [Error] | #fix #ssh #i18n | [2026-09-c](2026-09-c.md) |
@@ -424,4 +425,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
-| [2026-09-c.md](2026-09-c.md) | 2026-09 | 21 |
+| [2026-09-c.md](2026-09-c.md) | 2026-09 | 22 |

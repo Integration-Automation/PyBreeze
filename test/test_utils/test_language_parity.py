@@ -137,9 +137,10 @@ class TestLabelsAreTold:
 
     def test_a_name_is_spelled_one_way(self):
         # "Autocontrol" beside "AutoControl GUI" and "Install AutoControl";
-        # "Test Pioneer" beside "TestPioneer"; "Yaml" for YAML
+        # "Test Pioneer" beside "TestPioneer"; "Yaml" for YAML; "Install Automation File"
+        # beside the FileAutomation menu
         misspelt = {key: value for words in (EN, ZH) for key, value in words.items()
-                    if re.search(r"Autocontrol|Test Pioneer|Yaml|Code-Review", str(value))}
+                    if re.search(r"Autocontrol|Test Pioneer|Yaml|Code-Review|Automation File", str(value))}
         assert misspelt == {}
 
     def test_the_same_action_reads_the_same_on_every_tab(self):
