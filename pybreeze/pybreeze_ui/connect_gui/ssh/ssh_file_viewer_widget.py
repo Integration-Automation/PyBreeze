@@ -415,6 +415,7 @@ class SSHFileTreeManager(QWidget):
             handlers[cancel] = self.action_cancel_transfer
 
         chosen = menu.exec(self.tree.viewport().mapToGlobal(pos))
+        menu.deleteLater()  # a child of this widget: kept for good otherwise, one per right-click
         handler = handlers.get(chosen)
         if handler is None:
             return

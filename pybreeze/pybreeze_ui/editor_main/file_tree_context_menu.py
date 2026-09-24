@@ -122,6 +122,7 @@ def _show_context_menu(pos, tree_view: QTreeView, main_window) -> None:
     reveal_act.setEnabled(path is not None)
 
     action = menu.exec(QCursor.pos())
+    menu.deleteLater()  # a child of the tree: kept for good otherwise, one per right-click
     if action is None:
         return
 
