@@ -84,6 +84,22 @@ class TestLanguageParity:
         assert not {key: value for key, value in ZH.items() if re.search("終端(?!機)", value)}
 
 
+class TestLabelsAreTold:
+    def test_side_by_side_controls_are_named_apart(self):
+        # The diagram toolbar's Align menu and Snap box both read 對齊
+        for first, second in [("diagram_editor_action_snap", "diagram_editor_align_menu")]:
+            assert EN[first] != EN[second]
+            assert ZH[first] != ZH[second]
+
+    def test_a_dock_is_titled_like_its_tab(self):
+        # The prompt editors' docks said "CoT PromptEditor"
+        for tab, dock in [
+                ("extend_tools_menu_cot_prompt_editor_tab_label", "extend_tools_menu_cot_prompt_editor_dock_title"),
+                ("extend_tools_menu_skill_prompt_editor_tab_label", "extend_tools_menu_skill_prompt_editor_dock_title")]:
+            assert EN[dock] == EN[tab]
+            assert ZH[dock] == ZH[tab]
+
+
 class TestCodeKeysAreDefined:
     def test_every_get_key_exists_in_dict(self):
         # A typo'd key (e.g. the "cot_cot_..." double prefix) makes get() return

@@ -356,8 +356,8 @@ pybreeze_english_word_dict = {
     "extend_tools_menu_skill_prompt_editor_dock_action": "Skill Prompt Editor Dock",
     "extend_tools_menu_ssh_client_dock_title": "SSH Client",
     "extend_tools_menu_ai_code_review_dock_title": "AI Code-Review",
-    "extend_tools_menu_cot_prompt_editor_dock_title": "CoT PromptEditor",
-    "extend_tools_menu_skill_prompt_editor_dock_title": "Skill PromptEditor",
+    "extend_tools_menu_cot_prompt_editor_dock_title": "CoT Prompt Editor",
+    "extend_tools_menu_skill_prompt_editor_dock_title": "Skill Prompt Editor",
     "extend_tools_menu_skill_prompt_send_dock_action": "Skill Prompt Dock",
     "extend_tools_menu_skill_prompt_send_dock_title": "Skill Send GUI",
     # CoT code-review GUI

@@ -652,7 +652,7 @@ pybreeze_traditional_chinese_word_dict = {
     "diagram_editor_action_undo": "復原",
     "diagram_editor_action_redo": "重做",
     "diagram_editor_action_grid": "格線",
-    "diagram_editor_action_snap": "對齊",
+    "diagram_editor_action_snap": "貼齊",
     # Diagram Editor — 對齊
     "diagram_editor_align_menu": "對齊",
     "diagram_editor_align_left": "靠左對齊",

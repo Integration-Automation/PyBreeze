@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260924-315 | 2026-09-24 | Tell apart labels that read the same | #fix #i18n | [2026-09-b](2026-09-b.md) |
 | U-20260924-314 | 2026-09-24 | Code in the tool tabs in the fixed-pitch font | #feature #tools #readme | [2026-09-b](2026-09-b.md) |
 | U-20260924-313 | 2026-09-24 | Consolas before Courier New for terminal output | #fix #ui | [2026-09-b](2026-09-b.md) |
 | U-20260924-312 | 2026-09-24 | Move the fixed-pitch font helper out of terminal_view | #refactor #ui | [2026-09-b](2026-09-b.md) |
@@ -396,4 +397,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | File | Period | Entries |
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
-| [2026-09-b.md](2026-09-b.md) | 2026-09 | 112 |
+| [2026-09-b.md](2026-09-b.md) | 2026-09 | 113 |
