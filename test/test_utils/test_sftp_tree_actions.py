@@ -229,3 +229,72 @@ class TestTheNameADownloadSuggests:
 
         assert local_file_name(remote) == suggested
 
+
+
+class TestAnEntryNamedDots:
+    """The row a folder shows until expanded read "...", and was told apart by that text alone."""
+
+    def test_is_not_taken_for_the_placeholder(self, tree):
+        widget, client, root, _warnings = tree
+        client.listings["/"].append(_entry("odd", directory=True))
+        client.listings["/odd"] = [_entry("...", directory=True), _entry("b.txt")]
+        widget.action_refresh(root)
+        _wait_for(lambda: _idle(widget))
+        folder = _child(root, "odd")
+        widget.on_item_expanded(folder)
+        _wait_for(lambda: _idle(widget))
+
+        assert not widget.is_placeholder_present(folder)
+        widget.on_item_expanded(folder)  # collapsed and expanded again
+        _wait_for(lambda: _idle(widget))
+
+        assert [folder.child(i).text(0) for i in range(folder.childCount())] == ["...", "b.txt"]
+        assert _child(folder, "...").text(3) == "/odd/..."
+
+    def test_a_folder_not_yet_expanded_still_has_its_placeholder(self, tree):
+        _widget, _client, root, _warnings = tree
+        folder = _child(root, "src")
+
+        assert tree[0].is_placeholder_present(folder)
+
+
+class TestTheMenu:
+    def _open(self, widget, monkeypatch, item, choose: int | None = None) -> list[str]:
+        shown: list[str] = []
+
+        def run(menu, _pos):
+            shown.extend(action.text() for action in menu.actions())
+            return None if choose is None else menu.actions()[choose]
+
+        monkeypatch.setattr(tree_mod.QMenu, "exec_", run)
+        monkeypatch.setattr(widget.tree, "itemAt", lambda _pos: item)
+        widget.on_context_menu(widget.tree.rect().center())
+        return shown
+
+    def test_speaks_the_ide_language(self, app, monkeypatch):
+        # The menu and the column headers were English whatever the IDE spoke
+        from pybreeze.extend_multi_language.extend_traditional_chinese import (
+            pybreeze_traditional_chinese_word_dict as word,
+        )
+        monkeypatch.setattr(tree_mod.language_wrapper, "language_word_dict", word)
+        widget = tree_mod.SSHFileTreeManager()
+        try:
+            shown = self._open(widget, monkeypatch, None)
+            headers = widget.tree.headerItem()
+
+            assert shown == ["重新整理", "建立資料夾", "重新命名", "刪除", "下載", "上傳至此資料夾"]
+            assert [headers.text(i) for i in range(4)] == ["名稱", "類型", "大小", "路徑"]
+        finally:
+            widget.close()
+            widget.deleteLater()
+
+    def test_on_the_placeholder_acts_on_its_folder(self, tree, monkeypatch):
+        # It has no path: Delete asked about '' and Rename sent ("", "/name")
+        widget, _client, root, _warnings = tree
+        folder = _child(root, "src")
+        refreshed: list = []
+        monkeypatch.setattr(widget, "action_refresh", refreshed.append)
+
+        self._open(widget, monkeypatch, folder.child(0), choose=0)
+
+        assert refreshed == [folder]

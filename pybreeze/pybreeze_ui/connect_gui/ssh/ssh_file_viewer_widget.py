@@ -50,6 +50,9 @@ UPLOAD_ASKED_WAIT_MS = 1000
 
 # Item data: the serial of the listing a directory item is waiting for
 LISTING_ROLE = Qt.ItemDataRole.UserRole
+# Item data: set on the row a folder shows until it is first expanded. Told
+# apart by its text, "...", a server entry named "..." was taken for it
+PLACEHOLDER_ROLE = Qt.ItemDataRole.UserRole + 1
 
 
 # What a Windows file name cannot hold
@@ -118,7 +121,9 @@ class SSHFileTreeManager(QWidget):
 
         # UI: Tree
         self.tree = QTreeWidget()
-        self.tree.setHeaderLabels(["Name", "Type", "Size", "Path"])
+        self.tree.setHeaderLabels([
+            self.word_dict.get(f"ssh_file_viewer_tree_header_{column}")
+            for column in ("name", "type", "size", "path")])
         self.tree.itemExpanded.connect(self.on_item_expanded)
         self.tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.tree.customContextMenuRequested.connect(self.on_context_menu)
@@ -285,6 +290,7 @@ class SSHFileTreeManager(QWidget):
         加入占位子項以表示可延遲載入。
         """
         placeholder = QTreeWidgetItem(["...", "", "", ""])
+        placeholder.setData(0, PLACEHOLDER_ROLE, True)
         item.addChild(placeholder)
 
     def is_placeholder_present(self, item: QTreeWidgetItem) -> bool:
@@ -294,7 +300,7 @@ class SSHFileTreeManager(QWidget):
         """
         if item.childCount() == 0:
             return False
-        return item.child(0).text(0) == "..."
+        return item.child(0).data(0, PLACEHOLDER_ROLE) is True
 
     def on_item_expanded(self, item: QTreeWidgetItem):
         """
@@ -372,14 +378,20 @@ class SSHFileTreeManager(QWidget):
         顯示右鍵選單以進行檔案操作。
         """
         item = self.tree.itemAt(pos)
+        if item is not None and not item.text(3):
+            # The "..." or loading row: no entry of its own, so the folder it is in
+            item = item.parent()
         menu = QMenu(self)
 
-        refresh_act = menu.addAction("Refresh")
-        create_act = menu.addAction("Create folder")
-        rename_act = menu.addAction("Rename")
-        delete_act = menu.addAction("Delete")
-        download_act = menu.addAction("Download")
-        upload_act = menu.addAction("Upload to this folder")
+        def action(name: str):
+            return menu.addAction(self.word_dict.get(f"ssh_file_viewer_context_menu_action_{name}"))
+
+        refresh_act = action("refresh")
+        create_act = action("create_folder")
+        rename_act = action("rename")
+        delete_act = action("delete")
+        download_act = action("download")
+        upload_act = action("upload")
 
         action = menu.exec_(self.tree.viewport().mapToGlobal(pos))
         if action is None:
