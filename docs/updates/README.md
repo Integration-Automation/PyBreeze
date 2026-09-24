@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-64 | 2026-09-25 | The Sphinx SSH pages told right | #docs #ssh | [2026-09-c](2026-09-c.md) |
 | U-20260925-63 | 2026-09-25 | The Sphinx JupyterLab pages told right | #docs #jupyter | [2026-09-c](2026-09-c.md) |
 | U-20260925-62 | 2026-09-25 | JupyterLab runs in the interpreter a run uses | #fix #jupyter | [2026-09-c](2026-09-c.md) |
 | U-20260925-61 | 2026-09-25 | Bold and code in the Chinese Sphinx pages render, and the docs build without warnings | #fix #docs #i18n | [2026-09-c](2026-09-c.md) |
@@ -466,4 +467,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
-| [2026-09-c.md](2026-09-c.md) | 2026-09 | 63 |
+| [2026-09-c.md](2026-09-c.md) | 2026-09 | 64 |
