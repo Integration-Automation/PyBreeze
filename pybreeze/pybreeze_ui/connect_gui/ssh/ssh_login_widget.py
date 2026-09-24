@@ -26,6 +26,8 @@ class LoginWidget(QWidget):
         self.connect_btn = QPushButton(language_wrapper.language_word_dict.get("ssh_login_widget_button_connect"))
         self.disconnect_btn = QPushButton(language_wrapper.language_word_dict.get("ssh_login_widget_button_disconnect"))
         self.status_label = QLabel(language_wrapper.language_word_dict.get("ssh_login_widget_status_disconnected"))
+        # The password, or with key authentication the key's passphrase (see _name_the_secret)
+        self.pass_label = QLabel()
 
         # 初始化 UI
         self._setup_ui()
@@ -37,9 +39,9 @@ class LoginWidget(QWidget):
         self.port_spin.setValue(22)
         self.user_edit.setPlaceholderText(
             language_wrapper.language_word_dict.get("ssh_login_widget_placeholder_username"))
-        self.pass_edit.setPlaceholderText(
-            language_wrapper.language_word_dict.get("ssh_login_widget_placeholder_password"))
         self.pass_edit.setEchoMode(QLineEdit.EchoMode.Password)
+        self._name_the_secret(False)
+        self.use_key_check.toggled.connect(self._name_the_secret)
         self.key_edit.setPlaceholderText(
             language_wrapper.language_word_dict.get("ssh_login_widget_placeholder_private_key"))
         self.browse_key_btn.clicked.connect(self.choose_key_file)
@@ -61,7 +63,7 @@ class LoginWidget(QWidget):
         auth.addWidget(QLabel(language_wrapper.language_word_dict.get("ssh_login_widget_label_key")))
         auth.addWidget(self.key_edit)
         auth.addWidget(self.browse_key_btn)
-        auth.addWidget(QLabel(language_wrapper.language_word_dict.get("ssh_login_widget_label_password")))
+        auth.addWidget(self.pass_label)
         auth.addWidget(self.pass_edit)
 
         conn = QHBoxLayout()
@@ -75,6 +77,16 @@ class LoginWidget(QWidget):
         root.addLayout(conn)
 
         self.setLayout(root)
+
+    def _name_the_secret(self, key_auth: bool) -> None:
+        """Label the secret field for what it holds: the password, or with *key_auth* the key's passphrase."""
+        word = language_wrapper.language_word_dict
+        if key_auth:
+            label, placeholder = "ssh_login_widget_label_passphrase", "ssh_login_widget_placeholder_passphrase"
+        else:
+            label, placeholder = "ssh_login_widget_label_password", "ssh_login_widget_placeholder_password"
+        self.pass_label.setText(word.get(label))
+        self.pass_edit.setPlaceholderText(word.get(placeholder))
 
     def choose_key_file(self) -> None:
         """Pick the private key file in a dialog, starting in ``~/.ssh``; it also ticks key authentication."""

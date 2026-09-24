@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-30 | 2026-09-25 | The SSH login form's secret field says Passphrase for a key | #fix #ssh #i18n #readme | [2026-09-c](2026-09-c.md) |
 | U-20260925-29 | 2026-09-25 | Re-measure the counts the architecture map quotes | #docs | [2026-09-c](2026-09-c.md) |
 | U-20260925-28 | 2026-09-25 | The READMEs count the dictionary keys there are, and a test keeps them to it | #docs #i18n #readme | [2026-09-c](2026-09-c.md) |
 | U-20260925-27 | 2026-09-25 | A run window names the file it runs | #fix #executor #ui | [2026-09-c](2026-09-c.md) |
@@ -432,4 +433,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
-| [2026-09-c.md](2026-09-c.md) | 2026-09 | 29 |
+| [2026-09-c.md](2026-09-c.md) | 2026-09 | 30 |
