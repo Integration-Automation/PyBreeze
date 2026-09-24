@@ -116,6 +116,10 @@ class TestTheRequestItself:
         assert sent == [method]  # sent with the method chosen in the panel
         return answered, failed
 
+    def test_a_new_panel_sends_the_code(self, client):
+        # It started on GET, which sends no body: the code pasted went nowhere
+        assert client.method_box.currentText() in ai_code_review_gui.METHODS_WITH_A_BODY
+
     def test_an_answer_reaches_the_panel(self, app, monkeypatch):
         class Response:
             ok = True

@@ -50,6 +50,8 @@ def looks_like_a_fingerprint(line: str) -> bool:
 SUPPORTED_METHODS = ("GET", "POST", "PUT", "DELETE")
 # The methods that carry the code in a body / 會把程式碼放進 body 的方法
 METHODS_WITH_A_BODY = ("POST", "PUT")
+# What a new panel sends with: GET carries no body, so the code went nowhere
+DEFAULT_METHOD = "POST"
 # A saved count longer than this is not a count this panel wrote
 _MAX_COUNT_DIGITS = 16
 
@@ -188,6 +190,7 @@ class AICodeReviewClient(QWidget):
         method_layout.addWidget(QLabel(self.word_dict.get("ai_code_review_gui_label_method")))
         self.method_box = QComboBox()
         self.method_box.addItems(list(SUPPORTED_METHODS))
+        self.method_box.setCurrentText(DEFAULT_METHOD)
         method_layout.addWidget(self.method_box)
         top_layout.addLayout(method_layout)
         return top_layout

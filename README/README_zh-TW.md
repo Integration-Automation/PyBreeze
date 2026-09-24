@@ -165,7 +165,7 @@ PyBreeze 開箱即用，涵蓋自動化測試的完整範疇：
 
 ![AI 程式碼審查用戶端](../images/ai_code_review.png)
 
-*畫面為送出前的狀態。* 把選取的程式碼送到 LLM 端點，再接受或拒絕建議——統計會記錄在 `~/.pybreeze/response_stats.txt`。URL 會經過 SSRF 驗證，連線只會連到檢查過的位址，不跟隨重新導向，回應本文在送進面板前也有大小上限。因此本機或私有網路上的端點（例如在本機跑的模型伺服器）會被拒絕；CoT Code Review 與 Skill Send 也用同樣的方式檢查端點 URL。
+*畫面為送出前的狀態。* 把選取的程式碼送到 LLM 端點（以 POST（預設）或 PUT 送出，程式碼放在本文的表單欄位 `code`；GET 與 DELETE 只送出 URL），再接受或拒絕建議——統計會記錄在 `~/.pybreeze/response_stats.txt`。URL 會經過 SSRF 驗證，連線只會連到檢查過的位址，不跟隨重新導向，回應本文在送進面板前也有大小上限。因此本機或私有網路上的端點（例如在本機跑的模型伺服器）會被拒絕；CoT Code Review 與 Skill Send 也用同樣的方式檢查端點 URL。
 
 ### 思維鏈程式碼審查（prthinker）
 
