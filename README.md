@@ -11,7 +11,7 @@
 
 ![PyBreeze main window](images/main_window.png)
 
-*The main window: automation keywords highlighted in an APITestka action file, project tree on the left, run/format/debug/terminal panes below.*
+*The main window: an APITestka action file open in the editor, project tree on the left, run/format/debug/terminal panes below.*
 
 ---
 
