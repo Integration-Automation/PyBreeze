@@ -758,6 +758,45 @@ pybreeze_traditional_chinese_word_dict = {
     "plugin_browser_status_downloading": "正在下載 {name}...",
     "plugin_browser_status_installed": "已安裝：{path}",
     "plugin_browser_restart_hint": "插件已下載至：\n{path}\n\n請重新啟動編輯器以啟用。",
+    # 工具拒絕輸入的原因（pybreeze_ui/error_text.py）：exception_tags 各常數的翻譯
+    "error_text_cant_reformat_json_error": "無法重新格式化 JSON：型別正確嗎？",
+    "error_text_wrong_json_data_error": "無法解析 JSON",
+    "error_text_json_duplicate_key_error": "這份 JSON 在同一個物件裡給了兩次 {key} 鍵",
+    "error_text_empty_curl_command_error": "沒有提供 curl 指令",
+    "error_text_not_a_curl_command_error": "這看起來不是 curl 指令",
+    "error_text_malformed_curl_command_error": "無法解析 curl 指令：請檢查引號",
+    "error_text_no_url_in_curl_error": "curl 指令裡找不到 URL",
+    "error_text_get_with_file_body_error":
+        "-G 會把資料放進查詢字串，產生的腳本無法從檔案讀取：請把資料直接寫在指令裡",
+    "error_text_action_cannot_read_files_error":
+        "APITestka JSON 動作無法上傳檔案，也無法從檔案讀取內容或 Cookie：請選擇 Python 目標",
+    "error_text_malformed_url_error": "URL 格式錯誤（例如 [ 沒有關上，或連接埠不是數字）",
+    "error_text_invalid_http_method_error":
+        "不是 HTTP 方法：方法是由字母、數字與 !#$%&'*+.^_`|~- 組成的一個字",
+    "error_text_empty_har_error": "沒有提供 HAR 內容",
+    "error_text_invalid_har_json_error": "無法把檔案解析為 JSON：這不是有效的 HAR 匯出檔",
+    "error_text_not_a_har_document_error": "這份 JSON 沒有 log.entries 清單，不是 HAR 匯出檔",
+    "error_text_no_entries_in_har_error": "這份 HAR 匯出檔沒有任何請求",
+    "error_text_empty_jwt_error": "沒有提供權杖",
+    "error_text_malformed_jwt_error": "JWT 必須是以點分隔的三段",
+    "error_text_jwt_segment_decode_error": "無法解碼 JWT 的某一段：base64url 或 JSON 無效",
+    "error_text_empty_timestamp_error": "沒有提供數值",
+    "error_text_unrecognized_timestamp_error": "無法辨識為 epoch 數值或 ISO-8601 日期時間",
+    "error_text_invalid_json_object_error": "輸入必須是由鍵值組成的 JSON 物件",
+    "error_text_nested_query_value_error": "查詢值必須是字串、數字、true/false 或 null，或由它們組成的清單",
+    "error_text_invalid_json_for_query_error": "無法把輸入解析為 JSON",
+    "error_text_query_not_utf8_error": "查詢字串裡的百分比跳脫不是 UTF-8 文字（例如 %B0），因此沒有對應的 JSON",
+    "error_text_unencodable_text_error": "有個值含有 URL 無法表示的字元（例如 \\ud83d 這種落單的代理字元）",
+    "error_text_empty_regex_pattern_error": "沒有提供正規表示式",
+    "error_text_invalid_regex_pattern_error": "無效的正規表示式：{detail}",
+    "error_text_invalid_json_for_url_error": "無法把輸入解析為 JSON",
+    "error_text_invalid_url_components_error": "輸入必須是由 URL 各部分組成的 JSON 物件",
+    "error_text_unreadable_url_error": "輸入不是可以讀取的 URL",
+    "error_text_url_port_out_of_range_error": "連接埠必須是 0 到 65535 之間的數字",
+    "error_text_regex_timeout_error":
+        "這個正規表示式執行 {seconds} 秒後仍未結束，已被停止；(a+)+ 這類巢狀重複遇到幾乎符合的文字時，"
+        "執行時間可能呈指數成長",
+    "error_text_regex_worker_error": "無法執行這個正規表示式：{detail}",
 }
 
 

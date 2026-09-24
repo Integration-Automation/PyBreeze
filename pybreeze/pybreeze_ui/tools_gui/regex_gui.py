@@ -16,6 +16,7 @@ from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.regex_tools.regex_tester import (
     MAX_MATCHES, MatchResult, available_flags, find_matches_bounded, stop_running_workers
 )
+from pybreeze.pybreeze_ui.error_text import error_text
 
 
 class RegexMatchThread(QThread):
@@ -155,7 +156,7 @@ class RegexGUI(QWidget):
         pybreeze_logger.info("regex_gui.py test failed: %s", message)
         self._valid_output = False
         self.output_edit.setPlainText(
-            language_wrapper.language_word_dict.get("regex_error").format(error=message))
+            language_wrapper.language_word_dict.get("regex_error").format(error=error_text(message)))
 
     def closeEvent(self, event) -> None:
         """Stop a pattern still running, and let its thread run out.

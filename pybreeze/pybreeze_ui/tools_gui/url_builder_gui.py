@@ -11,6 +11,7 @@ from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.utils.exception.exceptions import UrlConvertException
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.url_tools.url_convert import json_to_url, url_to_json
+from pybreeze.pybreeze_ui.error_text import error_text
 
 
 class UrlBuilderGUI(QWidget):
@@ -73,7 +74,7 @@ class UrlBuilderGUI(QWidget):
         except UrlConvertException as error:
             pybreeze_logger.info("url_builder_gui.py to-json failed: %r", error)
             self._valid_output = False
-            self.output_edit.setPlainText(word.get("url_builder_parse_error").format(error=str(error)))
+            self.output_edit.setPlainText(word.get("url_builder_parse_error").format(error=error_text(str(error))))
             return
         self._valid_output = True
         self.output_edit.setPlainText(result)
@@ -91,7 +92,7 @@ class UrlBuilderGUI(QWidget):
         except UrlConvertException as error:
             pybreeze_logger.info("url_builder_gui.py to-url failed: %r", error)
             self._valid_output = False
-            self.output_edit.setPlainText(word.get("url_builder_error").format(error=str(error)))
+            self.output_edit.setPlainText(word.get("url_builder_error").format(error=error_text(str(error))))
             return
         self._valid_output = True
         self.output_edit.setPlainText(result)

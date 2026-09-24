@@ -24,6 +24,7 @@ from pybreeze.utils.curl_import.script_templates import TEMPLATE_TARGETS, genera
 from pybreeze.utils.exception.exceptions import CurlParseException
 from pybreeze.utils.header_tools.header_merge import stored_header_name
 from pybreeze.utils.logging.logger import pybreeze_logger
+from pybreeze.pybreeze_ui.error_text import error_text
 
 # The single target that generates JSON rather than Python
 _JSON_TARGET = "apitestka_action"
@@ -126,7 +127,7 @@ class CurlImportGUI(QWidget):
             pybreeze_logger.info("curl_import_gui.py convert failed: %r", error)
             self._clear_result()
             self.output_edit.setPlainText(
-                word.get("curl_import_error").format(error=str(error)))
+                word.get("curl_import_error").format(error=error_text(str(error))))
             return
         self._generated_code = code
         self._request = request

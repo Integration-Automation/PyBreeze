@@ -50,7 +50,7 @@ PyBreeze 是一個「自動化優先」的 Python IDE，建構在 **PySide6 + JE
    ┌─────────────────────────────────────────────────────────────────────────┐
    │ 基礎層 Foundation                                                        │
    │  pybreeze/utils/              18 個工具子套件（純邏輯，可單測）           │
-   │  pybreeze/extend_multi_language/  內建 i18n（英 / 繁中，各 646 鍵）      │
+   │  pybreeze/extend_multi_language/  內建 i18n（英 / 繁中，各 679 鍵）      │
    └─────────────────────────────────────────────────────────────────────────┘
                                     ▼
    外部子行程：python -m je_api_testka / je_auto_control / je_web_runner /
@@ -66,7 +66,7 @@ PyBreeze 是一個「自動化優先」的 Python IDE，建構在 **PySide6 + JE
 
 1. 取得（或建立）`QApplication`，裝上 `collect_garbage_on_gui_thread()`（`pybreeze_ui/gui_thread_gc.py`：關掉自動垃圾回收，改在 UI 執行緒上定時回收，見 §16）
 2. 建立 `PyBreezeMainWindow`，其 `__init__` 依序：
-   - `update_language_dict()` 併入 PyBreeze 的 646 條翻譯——**必須在 `super().__init__` 之前**：JEditor 在那裡依設定挑啟動語言，英文以外的語言讀的是當下合併出來的一份副本，之後才加進去的字串它看不到，選單拿到 `None` 標題就讓 Qt 當掉（access violation）
+   - `update_language_dict()` 併入 PyBreeze 的 679 條翻譯——**必須在 `super().__init__` 之前**：JEditor 在那裡依設定挑啟動語言，英文以外的語言讀的是當下合併出來的一份副本，之後才加進去的字串它看不到，選單拿到 `None` 標題就讓 Qt 當掉（access violation）
    - `super().__init__(..., extend=True)` — JEditor 在此已呼叫 `load_external_plugins()`，自動掃描 CWD 下的 `jeditor_plugins/`
    - 刪掉 JEditor 原本的 Help 選單
    - 設定標題、Windows AppUserModelID、圖示
@@ -342,7 +342,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 | `terminal_text.py` | 終端輸出的 escape 與控制字元：`strip_terminal_controls()`（CSI、OSC/DCS 等控制字串、nF、兩位元組 escape 剝除，backspace 套用，其餘 C0 丟掉）、`split_incomplete_escape()`（讀取切斷在 escape 中間時把尾巴留給下一次）、`split_unfinished_end()`（再加上它前面或最後的 `\r`）、`take_leading_backspaces()`（一段開頭的 backspace 留給畫面，擦掉前一段已經顯示的字，不越過行首）。SSH terminal 與執行視窗共用 |
 | `subprocess_util.py` | `utf8_subprocess_env()`（釘 `PYTHONIOENCODING`，解 Windows cp950 亂碼）、`no_window_creationflags()`（`CREATE_NO_WINDOW`，避免 GUI 程式彈出黑窗） |
 | `logging/logger.py` | `pybreeze_logger`（具名 logger，**不動 root logger**）+ `PyBreezeLogger(RotatingFileHandler)`：寫到 `~/.pybreeze/logs/PyBreeze.log`（`PYBREEZE_LOG_FILE` 可改），UTF-8、附加模式、每行帶行程編號，第一筆紀錄才開檔；只在開檔時輪替，門檻 `PYBREEZE_LOG_MAX_BYTES`（預設 100 MB）；開不了檔就改寫 `os.devnull` 並警告一次。與 JEditor、FrontEngine 同一套做法（工作區 X-6） |
-| `exception/` | `ITEException` 為根的 17 個例外類別 + `exception_tags.py` 訊息常數 |
+| `exception/` | `ITEException` 為根的 17 個例外類別 + `exception_tags.py` 訊息常數；`error_templates.py` 把名稱以 `_error` 結尾的常數變成語言字典的 `error_text_<名稱>`（英文字典直接取常數本身） |
 | `network/url_validation.py` | `validate_url()`：先拒絕 `urlparse` 與 `urllib3` 讀出不同主機的 URL（反斜線、空白、控制字元，或兩者主機不同；`_check_one_reading`），再做 scheme 白名單、私有/迴環/link-local/reserved 阻擋、額外處理 CGNAT 與 NAT64 網段、IPv6 內嵌 IPv4 的偵測 |
 | `network/public_http.py` | 只連到剛檢查過的位址（防 DNS rebinding）：`public_session()`（`_NoRedirectSession`：不跟也不準備轉址，3xx 原封不讀地回來；`PublicAddressAdapter`，連線開 socket 時把 urllib3 的 `_dns_host` 依序暫換成 `public_addresses()` 回傳的每個位址，連得上就用，全部失敗才丟最後一個錯誤）、`PublicHTTPHandler` / `PublicHTTPSHandler`（`http.client` 的 `_create_connection`）。主機名仍是連線的 host，所以 SNI、憑證檢查與 `Host` 標頭照舊；經 proxy 的連線不釘住。`overall_deadline(seconds)`：這個執行緒在區塊內的請求總共最多這麼久，釘住的連線等回應時把 socket 登記上去，時間到就 shutdown，丟 `ReadTimeout`（讀取逾時每來一個位元組就重算，慢慢送標頭的伺服器原本可以一直拖）；AI 審查、Skill、CoT 每一步都包在 `overall_deadline(DEFAULT_MAX_READ_SECONDS)` 裡。`test_http_goes_through_public_connections.py` 擋下直接呼叫 `requests.*` / `urlopen` |
 | `network/http_client.py` | `read_capped_text()`（串流讀取有上限，超出丟 `ResponseTooLargeError`；照 `Content-Type` 明寫的 charset 解碼，沒寫就 UTF-8，不用 requests 給 `text/*` 的 ISO-8859-1，`named_charset()`；整個回應最多讀 `DEFAULT_MAX_READ_SECONDS`（300 秒），時間到由 `_Watchdog` 關掉連線（urllib3 的 `HTTPResponse.shutdown()` 能中斷別的執行緒上正在等的讀取），丟 `ReadTimeout`：讀取逾時只管每一塊之間，一次送一個位元組的伺服器可以一直拖下去；狀態列與標頭由呼叫端的 `public_http.overall_deadline()` 涵蓋）、`describe_request_error()`（給使用者看的失敗原因：逾時、連不上、URL 不合法等，不含 URL；requests 的錯誤訊息會引用含 token 的完整 URL）、`succeeded()`（只有 2xx 算回答；`response.ok` 連 3xx 都算，這些請求又不跟隨轉址）、`truncate_for_display()`、`CONNECT_TIMEOUT` |
@@ -361,7 +361,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 13. `pybreeze/extend_multi_language/`
 
-`extend_english.py` 與 `extend_traditional_chinese.py` 各 646 個鍵，`update_language_dict()` 把它們併進 `je_editor` 的字典，並把 `application_name`（「PyBreeze」）寫進 `language_wrapper.choose_language_dict` 裡每一個語言：這是 PyBreeze 唯一覆寫而非新增的 JEditor 鍵，日文、簡中等 PyBreeze 沒翻譯的語言自帶「JEditor」，不寫的話會蓋過英文退回值。`test_language_parity.py` 守住兩邊鍵值必須對齊，也檢查每個已註冊語言都解得出程式用到的每個鍵；`test_startup_language.py` 在子行程裡用存好的繁中／日文真的啟動主視窗。
+`extend_english.py` 與 `extend_traditional_chinese.py` 各 679 個鍵，`update_language_dict()` 把它們併進 `je_editor` 的字典，並把 `application_name`（「PyBreeze」）寫進 `language_wrapper.choose_language_dict` 裡每一個語言：這是 PyBreeze 唯一覆寫而非新增的 JEditor 鍵，日文、簡中等 PyBreeze 沒翻譯的語言自帶「JEditor」，不寫的話會蓋過英文退回值。`test_language_parity.py` 守住兩邊鍵值必須對齊，也檢查每個已註冊語言都解得出程式用到的每個鍵；`test_startup_language.py` 在子行程裡用存好的繁中／日文真的啟動主視窗。
 
 ---
 
@@ -428,6 +428,8 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 讀使用者輸入的文字一律走 `pybreeze_ui/exact_text.exact_text()`（`document().toRawText()`，區塊分隔換回 `\n`）：`toPlainText()` 是顯示用的，會把不斷行空白（U+00A0）變成空白、U+2028 變成換行，Hash 算的是別的字串、Diff 看不出差別。
 
+工具拒絕輸入的原因：`utils` 的純邏輯用 `exception_tags` 的英文常數拋例外、原樣寫進 log；工具分頁顯示前經 `pybreeze_ui/error_text.error_text()`，它認出訊息出自哪個常數（連同填進去的值與後面附加的細節），換成語言字典裡的 `error_text_<常數名>`。新增的 `_error` 常數要在繁中字典補翻譯，`test_error_text.py` 會檢查每一個。
+
 鐵律：worker thread 一律不碰 UI。普通執行緒走 Queue + QTimer，`QThread` 走 Signal/Slot。分頁或視窗關閉時還在跑的 `QThread` 交給 `thread_keeper.let_run_out()`，不等它、也不讓它在執行中被銷毀。widget 留著的 thread（或其他物件）上接的 slot 不能抓住 widget 本身：接 bound method，或用 `thread_keeper.if_alive(weakref.ref(self), ...)`；lambda 抓 `self` 是經過 Qt 的循環參照，Python 的 GC 看不到，關掉的 widget 永遠不會釋放（`test_closed_panels_are_freed.py`）。
 
 執行器的壽命：QTimer 接到執行器的 `pull_text()` / `_pull_text()` 這條連線**不會**讓執行器活著；reader 執行緒一結束，沒人持有的執行器就會被 GC，剩下的輸出和結束那一行都不會出現。所以執行器一律掛在它寫入的 `CodeWindow.runner` 上，跟視窗同壽；視窗又掛在主視窗的 `current_run_code_window`。
@@ -452,7 +454,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 18. 測試與 CI
 
-- **單元測試** `test/test_utils/` — 122 個 `test_*.py`、2158 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
+- **單元測試** `test/test_utils/` — 123 個 `test_*.py`、2198 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
 - **整合測試** `test/unit_test/start_automation/` — 以 `debug_mode=True` 啟動 IDE，10 秒後自動關閉，驗證啟動流程與 extend tab
 - **CI** `.github/workflows/{dev,stable}.yml` — `unit-tests` job 跑 Windows runner、Python 3.10–3.14 矩陣，3.12 那一腳額外上傳 `coverage-xml` artifact；`sonarcloud` job 跑 ubuntu、`needs: unit-tests`。每日 02:00 排程 + push/PR 觸發。`stable.yml` 另有 `publish` job 負責版號遞增與 PyPI 發布
 - **覆蓋率** `.coveragerc` — `relative_files = True` 是必要的：報告在 Windows 產生、由 Linux 上的 scanner 讀取，路徑不能帶機器資訊。目前整體 60%（`utils/`、`tools_gui`、`dialog` 95–100%；`editor_main` 58%、`menu` 54%；仍低的是 `diagram_editor` 45%、`process_executor` 39%、`connect_gui` 28%）

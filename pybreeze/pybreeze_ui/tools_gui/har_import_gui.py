@@ -24,6 +24,7 @@ from pybreeze.utils.har_import.har_codegen import generate_har_script
 from pybreeze.utils.har_import.har_parser import HarEntry, api_entries, parse_har, summarize
 from pybreeze.utils.file_process.read_capped import read_text_capped
 from pybreeze.utils.logging.logger import pybreeze_logger
+from pybreeze.pybreeze_ui.error_text import error_text
 
 # The single target that generates JSON rather than Python
 _JSON_TARGET = "apitestka_action"
@@ -217,7 +218,7 @@ class HarImportGUI(QWidget):
             # A target that cannot carry a recorded file upload says so
             pybreeze_logger.info("har_import_gui.py generate failed: %r", error)
             self._generated_code = None
-            self.output_edit.setPlainText(word.get("har_import_generate_error").format(error=str(error)))
+            self.output_edit.setPlainText(word.get("har_import_generate_error").format(error=error_text(str(error))))
             return
         self._generated_code = code
         self.output_edit.setPlainText(code)

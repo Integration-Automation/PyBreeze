@@ -16,6 +16,7 @@ from pybreeze.utils.jwt_tools.jwt_decoder import (
     DecodedJwt, decode_jwt, humanized_timestamp_claims, shown_json
 )
 from pybreeze.utils.logging.logger import pybreeze_logger
+from pybreeze.pybreeze_ui.error_text import error_text
 
 
 def build_decoded_text(decoded: DecodedJwt) -> str:
@@ -95,7 +96,7 @@ class JwtDecoderGUI(QWidget):
             pybreeze_logger.info("jwt_decoder_gui.py decode failed: %r", error)
             self._valid_output = False
             self.output_edit.setPlainText(
-                word.get("jwt_decoder_error").format(error=str(error)))
+                word.get("jwt_decoder_error").format(error=error_text(str(error))))
             return
         self._valid_output = True
         self.output_edit.setPlainText(build_decoded_text(decoded))

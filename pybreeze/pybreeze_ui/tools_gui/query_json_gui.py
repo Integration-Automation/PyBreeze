@@ -11,6 +11,7 @@ from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.utils.exception.exceptions import QueryConvertException
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.query_tools.query_convert import json_to_query, query_to_json
+from pybreeze.pybreeze_ui.error_text import error_text
 
 
 class QueryJsonGUI(QWidget):
@@ -69,7 +70,7 @@ class QueryJsonGUI(QWidget):
             pybreeze_logger.info("query_json_gui.py to-json failed: %r", error)
             self._valid_output = False
             self.output_edit.setPlainText(
-                language_wrapper.language_word_dict.get("query_json_error").format(error=str(error)))
+                language_wrapper.language_word_dict.get("query_json_error").format(error=error_text(str(error))))
             return
         self._valid_output = True
         self.output_edit.setPlainText(result)
@@ -87,7 +88,7 @@ class QueryJsonGUI(QWidget):
         except QueryConvertException as error:
             pybreeze_logger.info("query_json_gui.py to-query failed: %r", error)
             self._valid_output = False
-            self.output_edit.setPlainText(word.get("query_json_error").format(error=str(error)))
+            self.output_edit.setPlainText(word.get("query_json_error").format(error=error_text(str(error))))
             return
         self._valid_output = True
         self.output_edit.setPlainText(result)

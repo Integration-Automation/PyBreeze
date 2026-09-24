@@ -211,7 +211,7 @@ Loaded plugins appear under their own **Plugins** menu with an About entry and o
 - **English** (default)
 - **Traditional Chinese** (繁體中文)
 
-Both dictionaries carry the same 646 keys, and a test enforces that parity so a new string can never land in one language only. Further languages can be added via translation plugins.
+Both dictionaries carry the same 679 keys, and a test enforces that parity so a new string can never land in one language only. Further languages can be added via translation plugins.
 
 ---
 

@@ -11,6 +11,7 @@ from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.utils.exception.exceptions import ITEJsonException
 from pybreeze.utils.json_format.json_process import minify_json, reformat_json
 from pybreeze.utils.logging.logger import pybreeze_logger
+from pybreeze.pybreeze_ui.error_text import error_text
 
 
 class JsonFormatGUI(QWidget):
@@ -75,7 +76,7 @@ class JsonFormatGUI(QWidget):
         except ITEJsonException as error:
             pybreeze_logger.info("json_format_gui.py transform failed: %r", error)
             self._valid_output = False
-            self.output_edit.setPlainText(word.get("json_format_error").format(error=str(error)))
+            self.output_edit.setPlainText(word.get("json_format_error").format(error=error_text(str(error))))
             return
         self._valid_output = True
         self.output_edit.setPlainText(result)

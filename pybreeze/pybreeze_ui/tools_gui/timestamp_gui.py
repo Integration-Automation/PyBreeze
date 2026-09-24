@@ -12,6 +12,7 @@ from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.timestamp_tools.timestamp_converter import (
     TimestampResult, convert_timestamp
 )
+from pybreeze.pybreeze_ui.error_text import error_text
 
 
 def build_result_text(result: TimestampResult) -> str:
@@ -78,7 +79,7 @@ class TimestampGUI(QWidget):
             pybreeze_logger.info("timestamp_gui.py convert failed: %r", error)
             self._valid_output = False
             self.output_edit.setPlainText(
-                word.get("timestamp_error").format(error=str(error)))
+                word.get("timestamp_error").format(error=error_text(str(error))))
             return
         self._valid_output = True
         self.output_edit.setPlainText(build_result_text(result))

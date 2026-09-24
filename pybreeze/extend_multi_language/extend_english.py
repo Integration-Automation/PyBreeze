@@ -2,6 +2,11 @@ from __future__ import annotations
 
 from je_editor import english_word_dict
 
+from pybreeze.utils.exception.error_templates import (
+    ERROR_TEXT_KEY_PREFIX,
+    error_templates,
+)
+
 _COT_PROMPT_EDITOR = "CoT Prompt Editor"
 _SKILL_PROMPT_EDITOR = "Skill Prompt Editor"
 
@@ -761,6 +766,10 @@ pybreeze_english_word_dict = {
     "plugin_browser_status_installed": "Installed: {path}",
     "plugin_browser_restart_hint": "Plugin downloaded to:\n{path}\n\nPlease restart the editor to activate.",
 }
+# Why a tool refused its input (pybreeze_ui/error_text.py): in English, the
+# constants the tools raise
+pybreeze_english_word_dict.update(
+    {ERROR_TEXT_KEY_PREFIX + name: template for name, template in error_templates().items()})
 
 
 def update_english_word_dict():
