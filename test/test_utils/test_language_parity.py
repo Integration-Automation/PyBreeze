@@ -285,3 +285,17 @@ class TestEveryLanguageServesPyBreezeStrings:
         finally:
             language_wrapper.reset_language(original)
         assert set(names.values()) == {"PyBreeze"}, names
+
+
+def test_the_readmes_count_the_keys_there_are():
+    # They said 735 while the dictionaries held 753: a count kept by hand drifts
+    readmes = {
+        "README.md": r"the same (\d+) keys",
+        "README/README_zh-TW.md": r"相同的 (\d+) 個鍵",
+        "README/README_zh-CN.md": r"同样的 (\d+) 个键",
+    }
+    root = pathlib.Path(pybreeze.__file__).parent.parent
+    for name, pattern in readmes.items():
+        found = re.search(pattern, (root / name).read_text(encoding="utf-8"))
+        assert found is not None, name
+        assert int(found.group(1)) == len(EN) == len(ZH), name
