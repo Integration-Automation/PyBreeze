@@ -813,6 +813,9 @@ class DiagramImage(QGraphicsRectItem):
         self._pix_item = QGraphicsPixmapItem(self)
         self._pix_item.setTransformationMode(Qt.TransformationMode.SmoothTransformation)
         self._pix_item.setCacheMode(QGraphicsItem.CacheMode.DeviceCoordinateCache)
+        # The image as loaded: every size is scaled from it. Scaled from the
+        # shown copy, a resize down and back up left it blurred for good
+        self._original: QPixmap | None = None
         if pixmap and not pixmap.isNull():
             self._apply_pixmap(pixmap)
 
@@ -826,6 +829,7 @@ class DiagramImage(QGraphicsRectItem):
     # --- pixmap ---
 
     def _apply_pixmap(self, pixmap: QPixmap) -> None:
+        self._original = pixmap
         scaled = pixmap.scaled(
             int(self.img_w), int(self.img_h),
             Qt.AspectRatioMode.KeepAspectRatio,
@@ -859,9 +863,8 @@ class DiagramImage(QGraphicsRectItem):
         self.prepareGeometryChange()
         self.img_w, self.img_h = w, h
         self.setRect(0, 0, w, h)
-        pix = self._pix_item.pixmap()
-        if pix and not pix.isNull():
-            self._apply_pixmap(QPixmap(pix))
+        if self._original is not None:
+            self._apply_pixmap(self._original)
         self._center_label()
         self._update_handles()
 

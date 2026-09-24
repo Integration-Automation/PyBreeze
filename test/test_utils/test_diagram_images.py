@@ -334,3 +334,22 @@ def test_an_image_resizes_by_its_corner_handle(app):
 
     assert (image.img_w, image.img_h) == (150, 130)
     assert scene.undo_stack.count() == 1
+
+
+def test_an_image_resized_down_and_back_is_as_sharp_as_before(app):
+    # Each resize scaled the copy on show: 400 -> 50 -> 400 left it blurred
+    from PySide6.QtGui import QPixmap
+
+    from pybreeze.pybreeze_ui.diagram_editor.diagram_items import DiagramImage
+
+    checkers = QImage(400, 400, QImage.Format.Format_RGB32)
+    for y in range(400):
+        for x in range(400):
+            checkers.setPixelColor(x, y, QColor("black") if (x // 20 + y // 20) % 2 else QColor("white"))
+    item = DiagramImage(0, 0, 400, 400, pixmap=QPixmap.fromImage(checkers))
+    before = item._pix_item.pixmap().toImage()
+
+    item.set_size(50, 50)
+    item.set_size(400, 400)
+
+    assert item._pix_item.pixmap().toImage() == before
