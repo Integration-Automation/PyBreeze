@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-39 | 2026-09-25 | Tests that reach every branch of the SSRF check | #test #security #network | [2026-09-c](2026-09-c.md) |
 | U-20260925-38 | 2026-09-25 | The project tree deletes to the trash | #feature #ui #readme | [2026-09-c](2026-09-c.md) |
 | U-20260925-37 | 2026-09-25 | F2 and Delete in the SFTP tree | #feature #ssh #readme | [2026-09-c](2026-09-c.md) |
 | U-20260925-36 | 2026-09-25 | Refactor: the SFTP tree's menu action runner and entry lookup | #refactor #ssh | [2026-09-c](2026-09-c.md) |
@@ -441,4 +442,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
-| [2026-09-c.md](2026-09-c.md) | 2026-09 | 38 |
+| [2026-09-c.md](2026-09-c.md) | 2026-09 | 39 |

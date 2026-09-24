@@ -86,3 +86,35 @@ def test_the_loopback_listener_is_never_reached(public_dns):
             server.join(5)
 
     assert served == []
+
+
+def test_the_two_readings_are_compared_past_the_character_check(public_dns):
+    # Every URL above stops at the character check; this one passes it, and only
+    # the comparison sees that urllib3 decodes the zone ID and urlparse does not
+    from pybreeze.utils.exception.exception_tags import url_ambiguous_host_error
+
+    with pytest.raises(UnsafeURLError) as raised:
+        validate_url("http://[fe80::1%25eth0]/")
+
+    assert str(raised.value) == url_ambiguous_host_error
+
+
+def test_a_url_only_urlparse_refuses_is_refused_without_quoting_it(public_dns, monkeypatch):
+    # No URL urllib3 takes is known to fail urlparse, but one would have escaped
+    # into the Qt slot as a ValueError quoting the whole URL
+    from pybreeze.utils.exception.exception_tags import url_unparsable_error
+
+    def refuse(url):
+        raise ValueError(f"netloc {url!r} contains invalid characters")
+
+    monkeypatch.setattr(url_validation, "urlparse", refuse)
+
+    with pytest.raises(UnsafeURLError) as raised:
+        validate_url("https://example.com/?token=sk-live-not-a-real-key")
+
+    assert str(raised.value) == url_unparsable_error
+
+
+def test_a_name_idna_cannot_encode_is_left_as_it_is():
+    # It then fails the comparison or the lookup; it is not changed into another name
+    assert url_validation._as_ascii("a☕b.com") == "a☕b.com"
