@@ -7,10 +7,12 @@ and email automation.
 
 Each automation module follows a consistent menu structure:
 
-- **RUN** submenu -- Execute scripts (single or multi-file, with or without email reporting)
-- **Help** submenu -- Links to documentation and GitHub repository
-- **Project** submenu -- Create new project templates
-- **GUI Tab** -- Open an embedded GUI widget (available for some modules)
+- **Run** submenu -- Execute scripts (single or multi-file, with or without email reporting)
+- **Help** submenu -- Links to documentation and GitHub repository, opened as browser tabs inside the IDE
+- **Project** submenu -- Create a new project template in the IDE's working directory
+- **<Module> GUI** -- Open the module's GUI as a tab (**APITestka GUI**, **AutoControl GUI**, **LoadDensity GUI**)
+
+**TestPioneer** and **Code Review (prthinker)** have menus of their own, described below.
 
 AutoControl Menu
 ----------------
@@ -18,7 +20,7 @@ AutoControl Menu
 **AutoControl** is a GUI automation module for desktop application testing.
 It can record and replay mouse/keyboard actions.
 
-RUN Submenu
+Run Submenu
 ^^^^^^^^^^^
 
 .. list-table::
@@ -29,7 +31,7 @@ RUN Submenu
      - Description
    * - **Run AutoControl Script**
      - Executes the current editor content as an AutoControl script.
-   * - **Run AutoControl Script With Send**
+   * - **Run AutoControl With Send**
      - Executes the script and sends the results via email (using MailThunder).
    * - **Run Multi AutoControl Script**
      - Runs multiple AutoControl scripts from a selected directory.
@@ -59,8 +61,8 @@ Project Submenu
 
    * - Menu Item
      - Description
-   * - **Create Project**
-     - Creates a new AutoControl project structure using ``je_auto_control``.
+   * - **Create AutoControl Project**
+     - Creates a AutoControl project template (``je_auto_control``) in the IDE's working directory, asking before it replaces one that is already there.
 
 Record Submenu
 ^^^^^^^^^^^^^^
@@ -74,13 +76,15 @@ mouse and keyboard actions for playback.
 
    * - Menu Item
      - Description
-   * - **Start Record**
+   * - **Record Start**
      - Starts recording mouse and keyboard actions.
-   * - **Stop Record**
-     - Stops recording and inserts the recorded action data into the code editor.
+   * - **Record Stop**
+     - Stops recording and inserts the recorded actions, as the JSON the AutoControl runner
+       reads, at the cursor of the editor tab in front; with no editor tab in front they are
+       copied to the clipboard. If nothing was recorded, it says so.
 
-GUI Tab
-^^^^^^^
+AutoControl GUI
+^^^^^^^^^^^^^^^
 
 Opens an embedded AutoControl GUI widget as a new tab in the editor,
 providing a visual interface for AutoControl operations.
@@ -91,7 +95,7 @@ APITestka Menu
 **APITestka** is an API testing automation module for sending HTTP requests
 and validating responses.
 
-RUN Submenu
+Run Submenu
 ^^^^^^^^^^^
 
 .. list-table::
@@ -102,7 +106,7 @@ RUN Submenu
      - Description
    * - **Run APITestka Script**
      - Executes the current editor content as an APITestka script.
-   * - **Run APITestka Script With Send**
+   * - **Run APITestka With Send**
      - Executes the script and sends results via email.
    * - **Run Multi APITestka Script**
      - Runs multiple APITestka scripts from a selected directory.
@@ -118,10 +122,10 @@ Help Submenu
 Project Submenu
 ^^^^^^^^^^^^^^^
 
-- **Create Project** -- Creates a new APITestka project structure using ``je_api_testka``.
+- **Create APITestka Project** -- Creates a APITestka project template (``je_api_testka``) in the IDE's working directory, asking before it replaces one that is already there.
 
-GUI Tab
-^^^^^^^
+APITestka GUI
+^^^^^^^^^^^^^
 
 Opens an embedded APITestka GUI widget as a new tab for visual API testing.
 
@@ -131,7 +135,7 @@ WebRunner Menu
 **WebRunner** is a web browser automation module for testing web applications
 using browser drivers (Selenium-based).
 
-RUN Submenu
+Run Submenu
 ^^^^^^^^^^^
 
 .. list-table::
@@ -142,7 +146,7 @@ RUN Submenu
      - Description
    * - **Run WebRunner Script**
      - Executes the current editor content as a WebRunner script.
-   * - **Run WebRunner Script With Send**
+   * - **Run WebRunner With Send**
      - Executes the script and sends results via email.
    * - **Run Multi WebRunner Script**
      - Runs multiple WebRunner scripts from a selected directory.
@@ -158,7 +162,7 @@ Help Submenu
 Project Submenu
 ^^^^^^^^^^^^^^^
 
-- **Create Project** -- Creates a new WebRunner project structure using ``je_web_runner``.
+- **Create WebRunner Project** -- Creates a WebRunner project template (``je_web_runner``) in the IDE's working directory, asking before it replaces one that is already there.
 
 LoadDensity Menu
 ----------------
@@ -166,7 +170,7 @@ LoadDensity Menu
 **LoadDensity** is a load/performance testing module that generates concurrent
 requests to test system capacity.
 
-RUN Submenu
+Run Submenu
 ^^^^^^^^^^^
 
 .. list-table::
@@ -177,7 +181,7 @@ RUN Submenu
      - Description
    * - **Run LoadDensity Script**
      - Executes the current editor content as a LoadDensity script.
-   * - **Run LoadDensity Script With Send**
+   * - **Run LoadDensity With Send**
      - Executes the script and sends results via email.
    * - **Run Multi LoadDensity Script**
      - Runs multiple LoadDensity scripts from a selected directory.
@@ -193,10 +197,10 @@ Help Submenu
 Project Submenu
 ^^^^^^^^^^^^^^^
 
-- **Create Project** -- Creates a new LoadDensity project structure using ``je_load_density``.
+- **Create LoadDensity Project** -- Creates a LoadDensity project template (``je_load_density``) in the IDE's working directory, asking before it replaces one that is already there.
 
-GUI Tab
-^^^^^^^
+LoadDensity GUI
+^^^^^^^^^^^^^^^
 
 Opens an embedded LoadDensity GUI widget as a new tab for visual load test configuration.
 
@@ -206,7 +210,7 @@ FileAutomation Menu
 **FileAutomation** is a file operation automation module for automating
 file system tasks such as copying, moving, renaming, and processing files.
 
-RUN Submenu
+Run Submenu
 ^^^^^^^^^^^
 
 .. list-table::
@@ -217,7 +221,7 @@ RUN Submenu
      - Description
    * - **Run FileAutomation Script**
      - Executes the current editor content as a FileAutomation script.
-   * - **Run FileAutomation Script With Send**
+   * - **Run FileAutomation With Send**
      - Executes the script and sends results via email.
    * - **Run Multi FileAutomation Script**
      - Runs multiple FileAutomation scripts from a selected directory.
@@ -233,7 +237,7 @@ Help Submenu
 Project Submenu
 ^^^^^^^^^^^^^^^
 
-- **Create Project** -- Creates a new FileAutomation project structure using ``automation_file``.
+- **Create FileAutomation Project** -- Creates a FileAutomation project template (``automation_file``) in the IDE's working directory, asking before it replaces one that is already there.
 
 MailThunder Menu
 ----------------
@@ -241,7 +245,7 @@ MailThunder Menu
 **MailThunder** is an email automation module for sending test reports
 and automated notifications.
 
-RUN Submenu
+Run Submenu
 ^^^^^^^^^^^
 
 .. list-table::
@@ -262,7 +266,7 @@ Help Submenu
 Project Submenu
 ^^^^^^^^^^^^^^^
 
-- **Create Project** -- Creates a new MailThunder project structure.
+- **Create MailThunder Project** -- Creates a MailThunder project template (``je_mail_thunder``) in the IDE's working directory, asking before it replaces one that is already there.
 
 TestPioneer Menu
 ----------------
@@ -276,10 +280,38 @@ TestPioneer Menu
    * - Menu Item
      - Description
    * - **Create TestPioneer YAML Template**
-     - Generates a YAML template file for defining test cases.
+     - Creates ``.TestPioneer/.TestPioneer.yml`` in the IDE's working directory, asking
+       before it replaces one that is already there.
    * - **Run TestPioneer YAML**
-     - Opens a file dialog to select a ``.yml`` file and executes the test
+     - Opens a file dialog to select a ``.yml`` or ``.yaml`` file and executes the test
        definitions within it.
+   * - **Help > Open TestPioneer GitHub**
+     - Opens the TestPioneer GitHub repository (its README is its manual) in a browser tab.
+
+Code Review (prthinker) Menu
+----------------------------
+
+Runs the prthinker chain-of-thought code review; output streams into a run window.
+Install prthinker first with **Install > Automation > Install prthinker (code review)**.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 40 60
+
+   * - Menu Item
+     - Description
+   * - **Review the current file**
+     - Saves the file in the editor tab in front, then reviews it.
+   * - **Review a Pull Request**
+     - Asks for the pull request number and reviews that pull request of the repository
+       set in **Settings**.
+   * - **Settings**
+     - Opens the prthinker settings: inference backend, model, code host, repository,
+       keys and tokens.
+   * - **Help > Open prthinker documentation**
+     - Opens https://code-review-framework.readthedocs.io/ in a browser tab.
+   * - **Help > Open prthinker GitHub**
+     - Opens the prthinker GitHub repository in a browser tab.
 
 Script Execution Flow
 ---------------------
@@ -289,7 +321,8 @@ When you run any automation script, the following process occurs:
 1. The current code editor content is captured.
 2. A subprocess is spawned using the ``TaskProcessManager``.
 3. The script runs in an isolated process (preventing crashes from affecting the IDE).
-4. A **Code Output Window** opens to display real-time execution output.
+4. A run window opens to display real-time execution output, titled with the package
+   and the file it runs, with a **Stop** button.
 5. If "With Send" was selected, results are sent via MailThunder email after execution.
 
 .. note::
@@ -302,10 +335,10 @@ Multi-Script Execution
 
 When using the "Run Multi" options:
 
-1. A directory selection dialog opens.
-2. All matching script files in the selected directory are collected.
-3. Each script is executed sequentially in its own subprocess.
-4. Results from all scripts are aggregated.
+1. A folder selection dialog opens.
+2. Every ``.json`` action file in the folder and its subfolders is collected; a folder with none says so.
+3. The files run one after another, each in its own subprocess and its own run window.
+4. Each run reports on its own (and, with "With Send", mails its own report); stopping one run ends the batch.
 
 Report Formats
 ^^^^^^^^^^^^^^
