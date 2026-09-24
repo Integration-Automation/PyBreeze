@@ -827,6 +827,20 @@ pybreeze_traditional_chinese_word_dict = {
     "error_text_server_error_error": "伺服器錯誤：{body}",
     "error_text_diagram_not_an_object_error": "架構圖檔案應該是一個物件，而不是 {kind}",
     "error_text_diagram_section_not_a_list_error": "架構圖的 '{section}' 應該是清單，而不是 {kind}",
+    # 執行視窗自己對這次執行的說明（extend/process_executor/run_notice.py）
+    "run_window_no_compiler": "[錯誤] 這個執行設定沒有指定編譯器",
+    "run_window_compile": "[編譯] {command}",
+    "run_window_stopped": "[已停止]",
+    "run_window_compile_failed": "[編譯失敗] 結束代碼 {code}",
+    "run_window_run": "[執行] {name}",
+    "run_window_command_not_found": "[錯誤] 找不到指令：{command}",
+    "run_window_could_not_start": "[錯誤] 無法啟動 {command}：{reason}",
+    "run_window_timed_out": "[錯誤] 超過 {seconds} 秒仍未完成",
+    "run_window_needs_editor_tab": "[錯誤] {package} 執行的是最前面那個編輯分頁裡的腳本；請先開啟腳本再試一次",
+    "run_window_mail_sent": "[郵件] 已寄出測試報告",
+    "run_window_mail_not_sent": "[郵件] 沒有寄出測試報告：{reason}",
+    "run_window_no_interpreter": "[錯誤] 找不到 Python 直譯器：{error}",
+    "run_window_package_could_not_start": "[錯誤] 無法啟動 {package}：{reason}",
 }
 
 

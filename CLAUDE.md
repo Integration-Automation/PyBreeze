@@ -34,6 +34,7 @@ pybreeze/
 │   │   ├── process_executor_utils.py       # build_process / start_process / run_dir_files_*
 │   │   ├── file_runner_process.py          # FileRunnerProcess — plugin run configs (any language)
 │   │   ├── queue_pump.py                   # Shared pipe reader + per-tick queue drain
+│   │   ├── run_notice.py                   # run_notice: a run window's own [Error]/[Run]/… lines, translated
 │   │   ├── api_testka/ auto_control/ web_runner/ load_density/
 │   │   ├── file_automation/ mail_thunder/  # Each delegates to build_process with its package name
 │   │   ├── test_pioneer/        # python -m test_pioneer -e <yaml> via start_module_process

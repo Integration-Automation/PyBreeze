@@ -771,6 +771,20 @@ pybreeze_english_word_dict = {
     "plugin_browser_status_downloading": "Downloading {name}...",
     "plugin_browser_status_installed": "Installed: {path}",
     "plugin_browser_restart_hint": "Plugin downloaded to:\n{path}\n\nPlease restart the editor to activate.",
+    # A run window's own notices about the run (extend/process_executor/run_notice.py)
+    "run_window_no_compiler": "[Error] The run config names no compiler",
+    "run_window_compile": "[Compile] {command}",
+    "run_window_stopped": "[Stopped]",
+    "run_window_compile_failed": "[Compile failed] exit code {code}",
+    "run_window_run": "[Run] {name}",
+    "run_window_command_not_found": "[Error] Command not found: {command}",
+    "run_window_could_not_start": "[Error] Could not start {command}: {reason}",
+    "run_window_timed_out": "[Error] Timed out after {seconds}s",
+    "run_window_needs_editor_tab": "[Error] {package} runs the script in the editor tab in front; open it and try again",
+    "run_window_mail_sent": "[Mail] The test report was sent",
+    "run_window_mail_not_sent": "[Mail] The test report was not sent: {reason}",
+    "run_window_no_interpreter": "[Error] No Python interpreter found: {error}",
+    "run_window_package_could_not_start": "[Error] {package} could not start: {reason}",
 }
 # Why a tool refused its input (pybreeze_ui/error_text.py): in English, the
 # constants the tools raise

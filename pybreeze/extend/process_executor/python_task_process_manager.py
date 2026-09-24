@@ -25,6 +25,7 @@ from pybreeze.extend.process_executor.queue_pump import (
     read_stream_into_queue,
 )
 from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
+from pybreeze.extend.process_executor.run_notice import run_notice
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.subprocess_util import (
     no_window_creationflags, own_session_options, stop_tree, utf8_subprocess_env,
@@ -110,7 +111,7 @@ class TaskProcessManager:
             except JEditorExecException as error:
                 pybreeze_logger.error("No Python interpreter found for run: %r", error)
                 self.main_window.append_output(
-                    f"[Error] No Python interpreter found: {error}\n", is_error=True, own_line=True)
+                    run_notice("no_interpreter", error=error), is_error=True, own_line=True)
                 self.main_window.show()
                 return False
         else:
@@ -211,7 +212,7 @@ class TaskProcessManager:
             pybreeze_logger.error("%s could not start: %r", package, error)
             self._remove_script_file()
             self.main_window.append_output(
-                f"[Error] {package} could not start: {error.strerror or error}\n",
+                run_notice("package_could_not_start", package=package, reason=error.strerror or error),
                 is_error=True, own_line=True)
             self.main_window.show()
             return
