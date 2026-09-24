@@ -85,6 +85,30 @@ class TestWhyAKeyDidNotLoad:
         assert load_private_key(path, "") is None
         assert unloadable_key_reason(path, "") == PASSPHRASE_NEEDED
 
+    def test_an_encrypted_key_paramiko_cannot_load_is_unsupported_with_the_right_passphrase(self, tmp_path):
+        # A DSA key in OpenSSH format asks for a passphrase too: the right one
+        # was reported as wrong
+        import warnings
+
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric import dsa
+
+        from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_key_loader import (
+            PASSPHRASE_WRONG, UNSUPPORTED_KEY, unloadable_key_reason
+        )
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")  # cryptography deprecates DSA
+            data = dsa.generate_private_key(1024).private_bytes(
+                serialization.Encoding.PEM, serialization.PrivateFormat.OpenSSH,
+                serialization.BestAvailableEncryption(b"right"))
+        path = tmp_path / "id_dsa"
+        path.write_bytes(data)
+
+        assert load_private_key(str(path), "right") is None
+        assert unloadable_key_reason(str(path), "right") == UNSUPPORTED_KEY
+        assert unloadable_key_reason(str(path), "wrong") == PASSPHRASE_WRONG
+
     def test_a_file_that_is_no_key_is_unsupported(self, tmp_path):
         from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_key_loader import UNSUPPORTED_KEY, unloadable_key_reason
 

@@ -6,7 +6,13 @@ loop here keeps the widgets lean and avoids duplicated fallback logic.
 """
 from __future__ import annotations
 
+import warnings
+from pathlib import Path
+
 import paramiko
+from cryptography.exceptions import UnsupportedAlgorithm
+from cryptography.hazmat.primitives import serialization
+from cryptography.utils import CryptographyDeprecationWarning
 
 from pybreeze.utils.logging.logger import pybreeze_logger
 
@@ -42,13 +48,38 @@ def unloadable_key_reason(key_path: str, password: str) -> str:
 
     A key file that is encrypted is one some key class asks a passphrase for
     when given none; then the passphrase was missing or wrong, not the key
-    unsupported, which is all the message used to say.
+    unsupported, which is all the message used to say. A passphrase given is
+    wrong only when it does not decrypt the file: an encrypted key of a type
+    paramiko cannot load (DSA, a FIDO key) asks for one too, and with the
+    right one it is still unsupported.
     """
     for key_cls in _KEY_CLASSES:
         try:
             key_cls.from_private_key_file(key_path, None)
         except paramiko.PasswordRequiredException:
-            return PASSPHRASE_WRONG if password else PASSPHRASE_NEEDED
+            if not password:
+                return PASSPHRASE_NEEDED
+            return UNSUPPORTED_KEY if _decrypts(key_path, password) else PASSPHRASE_WRONG
         except (paramiko.SSHException, ValueError, OSError) as error:
             pybreeze_logger.debug("Key type %s rejected: %s", key_cls.__name__, error)
     return UNSUPPORTED_KEY
+
+
+def _decrypts(key_path: str, password: str) -> bool:
+    """Whether *password* decrypts the private key file at *key_path*, whatever its key type."""
+    try:
+        data = Path(key_path).read_bytes()
+    except OSError:
+        return False
+    with warnings.catch_warnings():
+        # A DSA key is deprecated in cryptography, which is what is being found out
+        warnings.simplefilter("ignore", CryptographyDeprecationWarning)
+        for loader in (serialization.load_ssh_private_key, serialization.load_pem_private_key):
+            try:
+                loader(data, password.encode("utf-8"))
+                return True
+            except UnsupportedAlgorithm:
+                return True  # decrypted far enough to see a type it does not take
+            except (ValueError, TypeError) as error:
+                pybreeze_logger.debug("Key not decrypted by %s: %s", loader.__name__, type(error).__name__)
+    return False
