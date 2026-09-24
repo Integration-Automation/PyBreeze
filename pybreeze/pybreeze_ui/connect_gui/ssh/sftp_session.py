@@ -222,11 +222,16 @@ class SFTPClientWrapper:
 
     def list_dir(self, path: str):
         """
-        List directory entries with stat attributes. Worker thread.
+        List directory entries with stat attributes, a symbolic link with its
+        target's (``_follow_link``). Worker thread.
         列出目錄項目（含屬性）。
         """
         with self._session() as sftp:
-            return sftp.listdir_attr(path)
+            entries = sftp.listdir_attr(path)
+            for entry in entries:
+                if entry.st_mode is not None and stat.S_ISLNK(entry.st_mode):
+                    _follow_link(sftp, remote_join(path, entry.filename), entry)
+            return entries
 
     def mkdir(self, path: str):
         """
@@ -312,6 +317,23 @@ class SFTPClientWrapper:
                     with suppress(OSError, EOFError, paramiko.SSHException):
                         sftp.remove(partial)
         return True
+
+
+def _follow_link(sftp: paramiko.SFTPClient, path: str, entry: paramiko.SFTPAttributes) -> None:
+    """Give *entry*, a symbolic link at *path*, the type and size of what it points to.
+
+    A listing describes a link itself (the server reads it with ``lstat``), so
+    a link to a folder -- ``/bin`` and ``/lib`` on most Linux systems -- showed
+    as a file: it could not be opened, and Download fetched a folder. A link
+    that leads nowhere is left as it is.
+    """
+    try:
+        target = sftp.stat(path)
+    except OSError as error:
+        pybreeze_logger.debug("SFTP link %s leads nowhere: %r", path, error)
+        return
+    entry.st_mode = target.st_mode
+    entry.st_size = target.st_size
 
 
 def _remote_exists(sftp: paramiko.SFTPClient, path: str) -> bool:

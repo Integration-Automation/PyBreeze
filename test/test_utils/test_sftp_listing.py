@@ -148,3 +148,62 @@ class TestListing:
         assert is_kept(listing)
         client.gate("/").set()
         _wait_for(lambda: not is_kept(listing))
+
+
+class TestLinks:
+    """A listing describes a link itself: a link to a folder (``/bin`` on most Linux systems) showed as a file."""
+
+    class _Server:
+        def __init__(self) -> None:
+            link = stat.S_IFLNK | 0o777
+            self.listing = [
+                SimpleNamespace(filename="bin", st_mode=link, st_size=7),
+                SimpleNamespace(filename="latest.log", st_mode=link, st_size=9),
+                SimpleNamespace(filename="gone", st_mode=link, st_size=4),
+                SimpleNamespace(filename="etc", st_mode=stat.S_IFDIR | 0o755, st_size=4096),
+            ]
+            self.targets = {
+                "/bin": SimpleNamespace(st_mode=stat.S_IFDIR | 0o755, st_size=4096),
+                "/latest.log": SimpleNamespace(st_mode=stat.S_IFREG | 0o644, st_size=1234),
+            }
+            self.stats: list[str] = []
+
+        def listdir_attr(self, _path: str):
+            return self.listing
+
+        def stat(self, path: str):
+            self.stats.append(path)
+            if path not in self.targets:
+                raise FileNotFoundError(path)
+            return self.targets[path]
+
+    def _listed(self, server) -> dict:
+        from pybreeze.pybreeze_ui.connect_gui.ssh.sftp_session import SFTPClientWrapper
+
+        wrapper = SFTPClientWrapper()
+        wrapper._ssh = SimpleNamespace(close=lambda: None)
+        wrapper._sftp = server
+        return {entry.filename: entry for entry in wrapper.list_dir("/")}
+
+    def test_a_link_to_a_folder_is_a_folder(self, app):
+        entries = self._listed(self._Server())
+
+        assert stat.S_ISDIR(entries["bin"].st_mode)
+
+    def test_a_link_to_a_file_has_the_files_size(self, app):
+        entries = self._listed(self._Server())
+
+        assert stat.S_ISREG(entries["latest.log"].st_mode)
+        assert entries["latest.log"].st_size == 1234
+
+    def test_a_link_leading_nowhere_stays_a_link(self, app):
+        entries = self._listed(self._Server())
+
+        assert stat.S_ISLNK(entries["gone"].st_mode)
+
+    def test_only_links_are_looked_up(self, app):
+        server = self._Server()
+
+        self._listed(server)
+
+        assert sorted(server.stats) == ["/bin", "/gone", "/latest.log"]
