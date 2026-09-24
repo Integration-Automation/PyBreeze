@@ -24,7 +24,7 @@ from PySide6.QtCore import QObject, Qt, QThread, Signal, Slot
 from PySide6.QtWidgets import QMessageBox
 
 from pybreeze.utils.app_dirs import pybreeze_data_dir
-from pybreeze.utils.file_process.replace_file import replace_text
+from pybreeze.utils.file_process.replace_file import replace_written
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.pybreeze_ui.plain_text import as_text
 
@@ -114,9 +114,15 @@ def _store(hostname: str, key: paramiko.PKey) -> None:
     replaced in one step: a failure part-way lost every host trusted so far.
     """
     path = _known_hosts_path()
-    line = HostKeyEntry([hostname], key).to_line()
+    line = HostKeyEntry([hostname], key).to_line().encode("utf-8")
     try:
-        replace_text(path, "\n".join([*_file_lines(path), line.rstrip("\n")]) + "\n")
+        # As bytes: decoded and written back, a byte that is not UTF-8 (in a
+        # comment, say) became U+FFFD for good. And a file there that cannot
+        # be read is not written over with this one line
+        existing = path.read_bytes() if path.exists() else b""
+        if existing and not existing.endswith(b"\n"):
+            existing += b"\n"
+        replace_written(path, lambda target: target.write_bytes(existing + line))
     except OSError as err:
         pybreeze_logger.warning(
             "Failed to persist SSH host key for %s: %s", hostname, err
@@ -257,6 +263,7 @@ def apply_host_key_policy(client: paramiko.SSHClient, parent: QWidget | None) ->
     """Load known hosts and attach the interactive TOFU policy to *client*."""
     # Both files are read leniently into the client's own keys: a bad line in
     # either stopped paramiko's loaders with an error the Connect let escape
-    load_known_hosts(client.get_host_keys(), Path.home() / ".ssh" / "known_hosts")
+    # The system file last: for one host and key type it wins, as it did
     load_known_hosts(client.get_host_keys(), _known_hosts_path())
+    load_known_hosts(client.get_host_keys(), Path.home() / ".ssh" / "known_hosts")
     client.set_missing_host_key_policy(InteractiveHostKeyPolicy(parent))

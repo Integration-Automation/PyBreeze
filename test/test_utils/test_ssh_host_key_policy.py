@@ -194,3 +194,32 @@ def test_accepting_a_host_keeps_the_lines_paramiko_could_not_read(asked, keys, t
     lines = (tmp_path / "ssh_known_hosts").read_text(encoding="utf-8").splitlines()
     assert lines[:2] == [_BAD_LINE, _DSA_LINE]
     assert policy_mod._read_known_hosts().lookup("new.example")["ssh-rsa"] == keys[0]
+
+
+def test_accepting_a_host_keeps_bytes_that_are_not_utf8(asked, keys, tmp_path):
+    # The file was decoded with replacement and written back: \xe9 became U+FFFD
+    (tmp_path / "ssh_known_hosts").write_bytes(b"# caf\xe9\n")
+
+    _meet("new.example", keys[0])
+
+    assert (tmp_path / "ssh_known_hosts").read_bytes().startswith(b"# caf\xe9\n")
+
+
+def test_a_file_that_cannot_be_read_is_not_written_over(asked, keys, tmp_path, monkeypatch):
+    # Read as empty, it was replaced by the one new line: every host trusted so far gone
+    from pathlib import Path
+
+    known = tmp_path / "ssh_known_hosts"
+    known.write_bytes(b"trusted.example ssh-ed25519 AAAA\n")
+    real_read = Path.read_bytes
+
+    def locked(self):
+        if self == known:
+            raise PermissionError(13, "locked")
+        return real_read(self)
+
+    monkeypatch.setattr(Path, "read_bytes", locked)
+    _meet("new.example", keys[0])
+    monkeypatch.setattr(Path, "read_bytes", real_read)
+
+    assert known.read_bytes() == b"trusted.example ssh-ed25519 AAAA\n"
