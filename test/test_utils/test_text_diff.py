@@ -197,3 +197,18 @@ def test_one_changed_line_in_a_long_repetitive_text_is_one_line(left, right):
     summary = compare_texts(left, right).summary
 
     assert (summary.added, summary.removed) == (1, 1)
+
+
+def test_repetitive_text_just_under_2000_lines_is_quick():
+    # The junk heuristic was turned off below 2,000 lines left to match: 55 s here
+    import time
+
+    from pybreeze.utils.diff_tools.text_diff import compare_texts
+
+    left = "".join(f"}}\na{i}\n" for i in range(998))
+    right = "".join(f"}}\nb{i}\n" for i in range(998))
+    started = time.monotonic()
+
+    compare_texts(left, right)
+
+    assert time.monotonic() - started < 5

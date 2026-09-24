@@ -18,8 +18,6 @@ _CONTEXT_LINES = 3
 _HEADER_LINES = 2
 # diff's own note under a last line that has no newline
 _NO_NEWLINE_MARK = "\\ No newline at end of file"
-# Lines left to match past which SequenceMatcher's junk heuristic stays on
-_AUTOJUNK_FROM = 2000
 
 
 @dataclass(frozen=True)
@@ -85,9 +83,12 @@ class _TrimmedMatcher(difflib.SequenceMatcher):
     ``SequenceMatcher`` treats a line making up more than 1% of 200 or more as
     junk that cannot anchor a match, so in a long text full of ``}`` one
     changed line came out as hundreds removed and added. Trimmed, what is left
-    to match is usually short: under ``_AUTOJUNK_FROM`` lines the heuristic is
-    off, and it stays on above that, where matching without it grows with the
-    square of the lines (20,000 alike took a minute).
+    to match is usually short, under the 200 lines the heuristic starts at.
+    It is not turned off for what is left: without it, matching repetitive
+    text grows with the square of its lines (1,996 lines took 55 s).
+
+    Only the opcodes cover both texts whole; ``ratio()`` and
+    ``get_matching_blocks()`` describe what is left to match.
     """
 
     def __init__(self, left_lines: list[str], right_lines: list[str]) -> None:
@@ -103,8 +104,7 @@ class _TrimmedMatcher(difflib.SequenceMatcher):
         self._sizes = (len(left_lines), len(right_lines))
         middle_left = left_lines[head:len(left_lines) - tail]
         middle_right = right_lines[head:len(right_lines) - tail]
-        super().__init__(None, middle_left, middle_right,
-                         autojunk=max(len(middle_left), len(middle_right)) >= _AUTOJUNK_FROM)
+        super().__init__(None, middle_left, middle_right)
 
     def get_opcodes(self) -> list[tuple[str, int, int, int, int]]:
         """The opcodes over the whole two texts, the head and tail as equal blocks."""
