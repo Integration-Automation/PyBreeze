@@ -73,6 +73,48 @@ SSH_KEEPALIVE_SECONDS = 30
 # What Ctrl+C sends in a terminal (ETX): the shell's line discipline turns it into SIGINT
 INTERRUPT = b"\x03"
 
+# Lines the command line remembers for Up and Down; the oldest go first
+HISTORY_LIMIT = 500
+
+
+class CommandHistory:
+    """Lines sent from the command line, for Up and Down to bring back, as a shell does.
+
+    Walking up from a line being typed keeps it: walking down past the newest
+    line gives it back. A line sent twice in a row is remembered once.
+    """
+
+    def __init__(self, limit: int = HISTORY_LIMIT) -> None:
+        self._lines: list[str] = []
+        self._limit = limit
+        self._index = 0  # len(self._lines): at the line being typed
+        self._draft = ""
+
+    def add(self, line: str) -> None:
+        """Remember *line* (not an empty one) and go back to a new line."""
+        if line and (not self._lines or self._lines[-1] != line):
+            self._lines.append(line)
+            del self._lines[:-self._limit]
+        self._index = len(self._lines)
+        self._draft = ""
+
+    def older(self, current: str) -> str | None:
+        """The line before the one shown, or ``None`` at the oldest. *current* is what is typed."""
+        if self._index == 0:
+            return None
+        if self._index == len(self._lines):
+            self._draft = current
+        self._index -= 1
+        return self._lines[self._index]
+
+    def newer(self) -> str | None:
+        """The line after the one shown, the draft after the newest, or ``None`` at the draft."""
+        if self._index >= len(self._lines):
+            return None
+        self._index += 1
+        return self._draft if self._index == len(self._lines) else self._lines[self._index]
+
+
 # Longest a command waits for the server to take it (a full SSH window), on the UI thread
 SEND_TIMEOUT_SECONDS = 5
 
@@ -176,6 +218,8 @@ class SSHCommandWidget(QWidget):
         self._decoder = TerminalDecoder()
         # The connect in progress, if any / 正在進行的連線
         self._connecting: SshConnectThread | None = None
+        # Lines sent, for Up and Down / 送出過的指令
+        self._history = CommandHistory()
         host_key_asker()  # built here, on the UI thread, for a connect to ask through
 
         if self.add_login_widget:
@@ -234,14 +278,33 @@ class SSHCommandWidget(QWidget):
         self.command_input_edit.installEventFilter(self)
 
     def eventFilter(self, watched, event) -> bool:
-        """Ctrl+C in the command line interrupts the shell, unless it copies a selection."""
+        """Keys the command line gives to the shell rather than to its own text."""
         if (watched is self.command_input_edit and event.type() == QEvent.Type.KeyPress
-                and event.key() == Qt.Key.Key_C
-                and event.modifiers() == Qt.KeyboardModifier.ControlModifier
+                and self._command_line_key(event.key(), event.modifiers())):
+            return True
+        return super().eventFilter(watched, event)
+
+    def _command_line_key(self, key: int, modifiers) -> bool:
+        """Act on *key* in the command line; return whether it was taken.
+
+        Ctrl+C interrupts the shell, unless it copies a selection. Up and Down
+        walk through the lines sent before.
+        """
+        if (key == Qt.Key.Key_C and modifiers == Qt.KeyboardModifier.ControlModifier
                 and not self.command_input_edit.hasSelectedText()):
             self.send_interrupt()
             return True
-        return super().eventFilter(watched, event)
+        if modifiers & ~Qt.KeyboardModifier.KeypadModifier:
+            return False
+        if key == Qt.Key.Key_Up:
+            line = self._history.older(self.command_input_edit.text())
+        elif key == Qt.Key.Key_Down:
+            line = self._history.newer()
+        else:
+            return False
+        if line is not None:
+            self.command_input_edit.setText(line)
+        return True
 
     def append_text(self, text: str):
         """Add a notice of our own, starting on a line of its own."""
@@ -405,6 +468,7 @@ class SSHCommandWidget(QWidget):
         cmd = self.command_input_edit.text()
         if self._has_shell():
             if self._send((cmd + "\n").encode("utf-8")):
+                self._history.add(cmd)
                 self.command_input_edit.clear()
         elif cmd:
             QMessageBox.information(

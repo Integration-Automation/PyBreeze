@@ -14,6 +14,7 @@ from PySide6.QtWidgets import QApplication
 from pybreeze.extend_multi_language.update_language_dict import update_language_dict
 from pybreeze.pybreeze_ui.connect_gui.ssh import ssh_command_widget
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_command_widget import (
+    CommandHistory,
     SSHCommandWidget,
     SSHReaderThread,
     TerminalDecoder,
@@ -250,6 +251,25 @@ class TestSendingACommand:
         widget.shell_channel = None
         widget.close()
 
+    def test_up_and_down_bring_back_what_was_sent(self, app):
+        widget = SSHCommandWidget()
+        widget.shell_channel = PartialSendChannel()
+        line = widget.command_input_edit
+        for command in ("ls", "pwd"):
+            line.setText(command)
+            widget.send_command()
+        line.setText("half")
+
+        QTest.keyClick(line, Qt.Key.Key_Up)
+        assert line.text() == "pwd"
+        QTest.keyClick(line, Qt.Key.Key_Up)
+        assert line.text() == "ls"
+        QTest.keyClick(line, Qt.Key.Key_Down)
+        QTest.keyClick(line, Qt.Key.Key_Down)
+        assert line.text() == "half"
+        widget.shell_channel = None
+        widget.close()
+
     def test_interrupt_without_a_session_does_nothing(self, app, monkeypatch):
         widget = SSHCommandWidget()
         asked: list = []
@@ -303,3 +323,52 @@ class TestTheConnectMessage:
         assert widget.login_widget.status_label.text() == "已連線"
         widget.shell_channel = widget.reader_thread = None
         widget.close()
+
+
+class TestCommandHistory:
+    def _history(self, *lines: str) -> CommandHistory:
+        history = CommandHistory(limit=3)
+        for line in lines:
+            history.add(line)
+        return history
+
+    def test_up_goes_back_and_stops_at_the_oldest(self):
+        history = self._history("a", "b")
+
+        assert history.older("") == "b"
+        assert history.older("") == "a"
+        assert history.older("") is None
+
+    def test_down_past_the_newest_gives_back_what_was_typed(self):
+        history = self._history("a", "b")
+        history.older("typing")
+
+        assert history.newer() == "typing"
+        assert history.newer() is None
+
+    def test_nothing_sent_leaves_nothing_to_walk(self):
+        history = self._history()
+
+        assert history.older("x") is None
+        assert history.newer() is None
+
+    def test_empty_lines_and_a_repeat_are_not_remembered(self):
+        history = self._history("a", "", "a")
+
+        assert history.older("") == "a"
+        assert history.older("") is None
+
+    def test_only_the_newest_lines_are_kept(self):
+        history = self._history("1", "2", "3", "4")
+
+        assert [history.older(""), history.older(""), history.older(""), history.older("")] == ["4", "3", "2", None]
+
+    def test_sending_goes_back_to_a_new_line(self):
+        history = self._history("a", "b")
+        history.older("")
+        history.older("")
+
+        history.add("a")  # sent again from the history
+
+        assert history.older("") == "a"
+        assert history.older("") == "b"
