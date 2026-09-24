@@ -38,6 +38,28 @@ class TestBodyKind:
         request = parse_curl("curl -H 'Content-Type: application/json' -d 'not json' https://x")
         assert body_kind(request) == ("data", "not json")
 
+    @pytest.mark.parametrize("body", [
+        '{"a": 1, "a": 2}',                  # the object kept only the last
+        '{"p": 0.10000000000000000001}',     # the float wrote back 0.1
+        '{"x": 1e400}',                      # inf
+        '[NaN]',                             # not JSON
+        "[" * 5000 + "]" * 5000,             # RecursionError out of the tab
+        "[" * 102 + "]" * 102,               # too deep to write as a literal
+    ], ids=["repeated-key", "long-float", "inf", "nan", "past-the-parser", "past-a-literal"])
+    def test_a_body_the_object_would_not_send_back_as_it_was_goes_raw(self, body):
+        request = parse_curl(f"curl -H 'Content-Type: application/json' -d '{body}' https://x")
+
+        assert body_kind(request) == ("data", body)
+        for target, _label in TEMPLATE_TARGETS:
+            generate_template(target, request)
+        compile(to_requests_code(request), "generated", "exec")
+
+    def test_numbers_a_float_holds_still_go_as_json(self):
+        request = parse_curl(
+            "curl -H 'Content-Type: application/json' -d '{\"p\": 0.1, \"q\": 1E3, \"n\": 12345678901234567890}' https://x")
+
+        assert body_kind(request) == ("json", {"p": 0.1, "q": 1000.0, "n": 12345678901234567890})
+
 
 class TestFormParts:
     def test_plain_field(self):

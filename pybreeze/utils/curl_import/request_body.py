@@ -7,13 +7,20 @@ here once instead of being duplicated in each generator.
 from __future__ import annotations
 
 import json
+import math
+from decimal import Decimal
 
 from pybreeze.utils.curl_import.curl_parser import CurlRequest, add_repeated_value
+from pybreeze.utils.json_format.json_process import refuse_constant, unique_pairs
 
 # Header that carries the body's media type
 _CONTENT_TYPE_HEADER = "content-type"
 # Media type that marks a JSON request body
 _JSON_MEDIA_TYPE = "application/json"
+# Deepest nesting a JSON body is written into a script as a Python literal.
+# Writing a deeper one recursed past Python's limit (600 levels), and Python
+# refuses a script nesting brackets more than 200 deep anyway
+_MAX_LITERAL_DEPTH = 100
 
 # How a body should be sent: ("json", parsed_object) or ("data", raw_string)
 BodyKind = tuple[str, object]
@@ -23,7 +30,10 @@ def body_kind(request: CurlRequest) -> BodyKind | None:
     """Return how *request*'s body should be sent, or ``None`` when there is none.
 
     The body is treated as JSON only when the ``Content-Type`` says so **and** the
-    body actually parses as JSON; otherwise it is sent as a raw string.
+    body parses as JSON that the object sends back unchanged; otherwise it is
+    sent as the raw string curl sends. A repeated key (the object keeps the
+    last), a number a float cannot hold (``0.10000000000000000001``),
+    ``NaN`` or JSON nested deeper than the parser goes are sent raw.
 
     :param request: the parsed curl request
     :return: ``("json", obj)``, ``("data", raw)``, or ``None`` when there is no body
@@ -33,10 +43,41 @@ def body_kind(request: CurlRequest) -> BodyKind | None:
     content_type = (request.header_value(_CONTENT_TYPE_HEADER) or "").lower()
     if _JSON_MEDIA_TYPE in content_type:
         try:
-            return "json", json.loads(request.body)
-        except (ValueError, TypeError):
+            parsed = json.loads(
+                request.body, parse_float=_exact_float, parse_constant=refuse_constant,
+                object_pairs_hook=unique_pairs)
+        # RecursionError: nesting deeper than the parser goes, which escaped
+        # the cURL tab, the HAR generator and the script templates
+        except (ValueError, TypeError, RecursionError):
             return "data", request.body
+        if _depth(parsed) <= _MAX_LITERAL_DEPTH:
+            return "json", parsed
     return "data", request.body
+
+
+def _depth(value: object) -> int:
+    """How deep *value*'s lists and dicts nest, counted without recursing."""
+    deepest = 0
+    pending: list[tuple[object, int]] = [(value, 0)]
+    while pending:
+        item, level = pending.pop()
+        deepest = max(deepest, level)
+        if isinstance(item, dict):
+            pending.extend((child, level + 1) for child in item.values())
+        elif isinstance(item, list):
+            pending.extend((child, level + 1) for child in item)
+    return deepest
+
+
+def _exact_float(text: str) -> float:
+    """*text* as a float, when the float is written back as the same number.
+
+    :raises ValueError: when it is not (too many digits, or out of range)
+    """
+    value = float(text)
+    if not math.isfinite(value) or Decimal(repr(value)) != Decimal(text):
+        raise ValueError(f"{text} does not survive as a float")
+    return value
 
 
 # Multipart form split into plain fields and file uploads (field -> filename);
