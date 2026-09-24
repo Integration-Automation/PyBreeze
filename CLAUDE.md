@@ -26,6 +26,7 @@ pybreeze/
 │   ├── exact_text.py            # exact_text: a text box read as typed (toPlainText changes U+00A0, U+2028)
 │   ├── terminal_view.py         # Terminal output in a text view: fixed-pitch font, a lone \r rewinding the line
 │   ├── error_text.py            # error_text: a tool's English error (exception_tags) in the IDE language
+│   ├── code_result_logs.py      # Only warnings and errors from loggers reach the editor's Code Result panel
 │   ├── closing.py               # may_close / AskingDock: tabs and docks with unsaved work are asked first
 │   ├── dialog/                  # prthinker settings dialog
 │   └── syntax/                  # Automation keyword highlighting definitions

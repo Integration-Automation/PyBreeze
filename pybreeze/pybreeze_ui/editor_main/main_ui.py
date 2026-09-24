@@ -15,6 +15,7 @@ from je_editor.pyside_ui.main_ui.dock.destroy_dock import DestroyDock
 from qt_material import apply_stylesheet
 
 from pybreeze.extend_multi_language.update_language_dict import update_language_dict
+from pybreeze.pybreeze_ui.code_result_logs import show_only_warnings_in_code_result
 from pybreeze.pybreeze_ui.closing import AskingDock, may_close
 from pybreeze.pybreeze_ui.editor_main.file_tree_context_menu import setup_file_tree_context_menu
 from pybreeze.pybreeze_ui.gui_thread_gc import collect_garbage_on_gui_thread
@@ -54,6 +55,7 @@ class PyBreezeMainWindow(EditorMain):
         # missing from it, and a menu given a None title crashes Qt.
         update_language_dict()
         super().__init__(debug_mode, show_system_tray_ray, extend=True)
+        show_only_warnings_in_code_result()
         # Note: EditorMain.__init__ already calls load_external_plugins()
         # which auto-discovers jeditor_plugins/ in the current working directory.
         # Third-party plugins placed there will be loaded automatically.
