@@ -1,6 +1,6 @@
 # PyBreeze 架構探勘 / Architecture Exploration
 
-> 掃描範圍：`pybreeze/`（208 個 `.py`、約 24,000 行，不含空行與註解約 19,400 行）＋ `test/`、`exe/`、`docs/`、CI 設定
+> 掃描範圍：`pybreeze/`（209 個 `.py`、約 24,000 行，不含空行與註解約 19,400 行）＋ `test/`、`exe/`、`docs/`、CI 設定
 > 對應版本：`pyproject.toml` 1.0.21（stable）／`dev.toml` 1.0.14（dev），分支 `dev`
 
 ---
@@ -215,7 +215,7 @@ call_X_multi_file_and_send()   → run_dir_files_with_package(..., True)
 
 ---
 
-## 6. 工具分頁 `pybreeze_ui/tools_gui/`（13 個工具 widget + 2 個共用機制）
+## 6. 工具分頁 `pybreeze_ui/tools_gui/`（13 個工具 widget + 3 個共用機制）
 
 每個工具都是 `QWidget`，UI 極薄，真正邏輯全在 `pybreeze/utils/` 對應的純函式套件裡（所以測得動、也測了）。
 
@@ -238,6 +238,7 @@ call_X_multi_file_and_send()   → run_dir_files_with_package(..., True)
 ### 兩個橫向共用機制
 
 - **`tool_tabs.open_tool_tab()`** — 工具之間互相「轉交」：Response Inspector 把狀態碼丟給 HTTP Status、headers 丟給 Header Analyzer、JWT 丟給 JWT Decoder、JSON body 丟給 JSON Format；curl 匯入把 URL 丟給 URL Builder。開新分頁並自動聚焦。
+- **`run_shortcut.press_on_ctrl_enter()`** — 只有一個主要動作的工具（cURL、Diff、Hash、Header、JSON Format、JWT、Regex、Response）在工具裡任何地方按 Ctrl+Enter 就等於按那顆鈕（文字框裡的 Enter 是換行）；shortcut 是工具的子物件、`WidgetWithChildrenShortcut`，焦點不在工具裡時不會搶走編輯器的按鍵，按鈕停用時（還在跑）不會觸發
 - **`output_actions.OutputActions`** — 統一的「複製 / 在編輯器開啟 / 存檔」三顆按鈕，綁在工具的唯讀輸出 `QTextEdit` 上，輸出也經 `exact_text()` 讀（不讓 U+00A0、U+2028 被改掉）；副檔名與檔名可傳 callable 動態決定。存檔經 `replace_text()` 整檔替換，失敗（唯讀資料夾、被鎖住的檔案、磁碟滿）時原檔不動、會跳警告，說出檔名與原因。Qt 的文字元件留不住貼上的 CR，換行一律讀成 LF
 
 ---
@@ -461,7 +462,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 18. 測試與 CI
 
-- **單元測試** `test/test_utils/` — 140 個 `test_*.py`、2491 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
+- **單元測試** `test/test_utils/` — 141 個 `test_*.py`、2501 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
 - **整合測試** `test/unit_test/start_automation/` — 以 `debug_mode=True` 啟動 IDE，10 秒後自動關閉，驗證啟動流程與 extend tab
 - **CI** `.github/workflows/{dev,stable}.yml` — `unit-tests` job 跑 Windows runner、Python 3.10–3.14 矩陣，3.12 那一腳額外上傳 `coverage-xml` artifact；`sonarcloud` job 跑 ubuntu、`needs: unit-tests`。每日 02:00 排程 + push/PR 觸發。`stable.yml` 另有 `publish` job 負責版號遞增與 PyPI 發布
 - **覆蓋率** `.coveragerc` — `relative_files = True` 是必要的：報告在 Windows 產生、由 Linux 上的 scanner 讀取，路徑不能帶機器資訊。目前整體 89%（`utils/`、`tools_gui`、`dialog` 97–100%；`extend/` 93%、`connect_gui` 89%、`diagram_editor` 85%、`jupyter_lab_gui` 82%、`menu` 81%；最低的是 `editor_main` 71%——主視窗多半在子行程裡的啟動測試跑，那部分不算進覆蓋率）

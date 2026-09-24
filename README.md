@@ -83,6 +83,8 @@ Each module gets the same menu shape: **Run** (single script, batch directory, w
 
 ## Built-in Tools
 
+In a tool with one main button, Ctrl+Enter anywhere in it presses that button: its text boxes take Enter as a new line.
+
 ### cURL Import — a copied request becomes a runnable script
 
 Paste a `curl` command from your browser's dev tools and pick a target. The parser handles method, URL, headers, bodies, basic auth, `-G` query parameters, `-F` multipart fields (uploads become `files=open(...)`), the `--json` shortcut, `-d @file` bodies and multi-line continuations. Repeated `-H` values are combined the way HTTP combines them (`; ` for cookies, `, ` otherwise) instead of the last one silently winning. Nothing is ever executed — it is pure parsing.

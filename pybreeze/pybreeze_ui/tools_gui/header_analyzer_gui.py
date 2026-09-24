@@ -12,6 +12,7 @@ import textwrap
 from PySide6.QtWidgets import QLabel, QPushButton, QTextEdit, QVBoxLayout, QWidget
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.tools_gui.run_shortcut import press_on_ctrl_enter
 from pybreeze.pybreeze_ui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.jwt_decoder_gui import JwtDecoderGUI
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
@@ -75,6 +76,7 @@ class HeaderAnalyzerGUI(QWidget):
 
         self.analyze_button = QPushButton(word.get("header_analyzer_analyze_button"))
         self.analyze_button.clicked.connect(self.analyze)
+        press_on_ctrl_enter(self, self.analyze_button)
 
         self.output_label = QLabel(word.get("header_analyzer_output_label"))
         self.output_edit = QTextEdit()

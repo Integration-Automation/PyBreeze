@@ -9,6 +9,7 @@ from __future__ import annotations
 from PySide6.QtWidgets import QLabel, QPushButton, QTextEdit, QVBoxLayout, QWidget
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.tools_gui.run_shortcut import press_on_ctrl_enter
 from pybreeze.pybreeze_ui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.utils.exception.exceptions import JwtDecodeException
@@ -62,6 +63,7 @@ class JwtDecoderGUI(QWidget):
 
         self.decode_button = QPushButton(word.get("jwt_decoder_decode_button"))
         self.decode_button.clicked.connect(self.decode)
+        press_on_ctrl_enter(self, self.decode_button)
 
         self.output_label = QLabel(word.get("jwt_decoder_output_label"))
         self.output_edit = QTextEdit()
