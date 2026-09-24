@@ -447,10 +447,10 @@ class DiagramEditorWidget(QWidget):
 
     def _import_mermaid(self) -> None:
         dialog = MermaidImportDialog(self)
-        if dialog.exec() != QDialog.DialogCode.Accepted:
-            return
+        accepted = dialog.exec() == QDialog.DialogCode.Accepted
         text = dialog.get_text().strip()
-        if not text:
+        dialog.deleteLater()  # a child of the editor: kept for good otherwise, one per import
+        if not accepted or not text:
             return
         try:
             data = parse_mermaid(text)

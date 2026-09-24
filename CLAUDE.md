@@ -101,7 +101,7 @@ ruff check pybreeze/                              # before committing non-trivia
 - Custom exceptions inherit from `ITEException`; log via `pybreeze_logger` (lazy `%s` formatting, never `print()`)
 - Plugin API: `register_programming_language()` / `register_natural_language()` from `je_editor.plugins`
 - A QAction built for a menu must be kept alive: store it on the main window or give it the menu as its parent. A menu does not own the actions added to it, so one held only by a local variable is deleted when the builder returns and its entry disappears
-- A context menu built on each right-click with a parent (`QMenu(self)`) is deleted once `exec()` returns (`menu.deleteLater()`): its parent keeps it otherwise, one more per click
+- A context menu or dialog built on each use with a parent (`QMenu(self)`, `SomeDialog(self)`) is deleted once `exec()` returns (`deleteLater()`, or `WA_DeleteOnClose` for a message box): its parent keeps it otherwise, one more per use
 - Delete unused code immediately — no dead imports, unreachable branches, commented-out blocks, or `_old_` prefixes
 - Follow PEP 8 and standard Pythonic practice; `ruff` is the arbiter
 

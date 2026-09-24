@@ -229,3 +229,46 @@ class TestExporting:
         assert warned
         assert target.read_bytes() == b"the previous export"
         assert list(tmp_path.iterdir()) == [target], "a half-written file was left behind"
+
+
+class TestMermaidImport:
+    @staticmethod
+    def _answer(monkeypatch, text: str, accepted: bool = True) -> None:
+        """Stub the paste dialog with what the user would have pasted, and Convert or Cancel."""
+        from PySide6.QtWidgets import QDialog
+
+        from pybreeze.pybreeze_ui.diagram_editor import diagram_editor_widget
+
+        def exec_(dialog):
+            dialog._editor.setPlainText(text)
+            return QDialog.DialogCode.Accepted if accepted else QDialog.DialogCode.Rejected
+
+        monkeypatch.setattr(diagram_editor_widget.MermaidImportDialog, "exec", exec_)
+
+    @staticmethod
+    def _dialogs_left(editor) -> int:
+        from PySide6.QtCore import QCoreApplication, QEvent
+
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_editor_widget import MermaidImportDialog
+
+        QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+        return len(editor.findChildren(MermaidImportDialog))
+
+    def test_the_pasted_flowchart_becomes_the_diagram(self, editor, monkeypatch):
+        self._answer(monkeypatch, "flowchart TD\n    A[Start] --> B[End]")
+        editor._import_mermaid()
+        assert sorted(n.text() for n in editor._scene.get_all_nodes()) == ["End", "Start"]
+
+    def test_a_cancelled_import_leaves_the_canvas_alone(self, editor, monkeypatch):
+        editor._scene.load_from_dict(_A_DIAGRAM)
+        self._answer(monkeypatch, "flowchart TD\n    A[Start] --> B[End]", accepted=False)
+        editor._import_mermaid()
+        assert [n.text() for n in editor._scene.get_all_nodes()] == ["A"]
+
+    @pytest.mark.parametrize("accepted", [True, False])
+    def test_the_dialog_goes_once_closed(self, editor, monkeypatch, accepted):
+        # It was a child of the editor, kept for good: one more per import
+        self._answer(monkeypatch, "flowchart TD\n    A --> B", accepted=accepted)
+        for _ in range(3):
+            editor._import_mermaid()
+        assert self._dialogs_left(editor) == 0
