@@ -359,6 +359,17 @@ class TestWhatReachesTheGeneratedCode:
         with pytest.raises(HarParseException, match="not an HTTP method"):
             parse_har(_har(_entry(method="GET():\n    __import__('os').system('calc')\ndef t")))
 
+    @pytest.mark.parametrize("bad", [
+        {"url": "https://x/a?q=\ud800"},
+        {"url": "https://x/a", "query": [{"name": "q", "value": "\ud800"}]},
+        {"url": "https://x/a", "headers": [{"name": "X", "value": "\udfff"}]},
+    ])
+    def test_an_entry_with_half_a_character_is_skipped_and_the_rest_load(self, bad):
+        # JSON's "\ud800" escape: encoding it raised UnicodeEncodeError out of the tab
+        entries = parse_har(_har(_entry(**bad), _entry(url="https://x/b")))
+
+        assert [entry.request.url for entry in entries] == ["https://x/b"]
+
     def test_an_entry_with_a_bad_method_is_skipped_and_the_rest_load(self):
         entries = parse_har(_har(_entry(url="https://x/a", method=""), _entry(url="https://x/b")))
 

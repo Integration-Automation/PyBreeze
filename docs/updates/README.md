@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260923-235 | 2026-09-24 | Skip a HAR entry holding half a character instead of failing the whole file | #fix #har | [2026-09-b](2026-09-b.md) |
 | U-20260923-234 | 2026-09-24 | Never write a known_hosts file over when it cannot be read, and keep its bytes | #fix #ssh | [2026-09-b](2026-09-b.md) |
 | U-20260923-233 | 2026-09-24 | Round a long decimal epoch down inside the decimal arithmetic too | #fix #timestamp | [2026-09-b](2026-09-b.md) |
 | U-20260923-232 | 2026-09-24 | Call an encrypted SSH key of a type paramiko cannot load unsupported, not its passphrase wrong | #fix #ssh | [2026-09-b](2026-09-b.md) |
@@ -316,4 +317,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | File | Period | Entries |
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
-| [2026-09-b.md](2026-09-b.md) | 2026-09 | 34 |
+| [2026-09-b.md](2026-09-b.md) | 2026-09 | 35 |

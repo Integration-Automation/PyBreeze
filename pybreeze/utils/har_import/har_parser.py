@@ -259,6 +259,15 @@ def _load_entries(text: str) -> list[dict]:
     return [entry for entry in entries if isinstance(entry, dict)]
 
 
+def _is_unicode(raw_request: dict) -> bool:
+    """Whether every text in *raw_request* is whole Unicode (no lone surrogate)."""
+    try:
+        json.dumps(raw_request, ensure_ascii=False).encode("utf-8")
+    except UnicodeEncodeError:
+        return False
+    return True
+
+
 def parse_har(text: str) -> list[HarEntry]:
     """Parse a HAR export into one entry per recorded request.
 
@@ -273,6 +282,11 @@ def parse_har(text: str) -> list[HarEntry]:
     for raw_entry in _load_entries(text):
         raw_request = raw_entry.get("request")
         if not isinstance(raw_request, dict) or not raw_request.get("url"):
+            continue
+        if not _is_unicode(raw_request):
+            # A JSON escape such as "\ud800" gives half a character, which no
+            # request can carry: encoding it raised out of the tab
+            pybreeze_logger.info("HAR entry with a lone surrogate skipped")
             continue
         if not url_is_well_formed(str(raw_request["url"])):
             # Skipped, not shown: listing or generating it raised from the
