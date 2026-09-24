@@ -53,6 +53,8 @@ LISTING_ROLE = Qt.ItemDataRole.UserRole
 # Item data: set on the row a folder shows until it is first expanded. Told
 # apart by its text, "...", a server entry named "..." was taken for it
 PLACEHOLDER_ROLE = Qt.ItemDataRole.UserRole + 1
+# Item data: what an entry is, "dir" or "file"; the placeholder and loading rows have none
+KIND_ROLE = Qt.ItemDataRole.UserRole + 2
 
 
 # What a Windows file name cannot hold
@@ -72,9 +74,19 @@ def local_file_name(remote_path: str) -> str:
     return name or "download"
 
 
+def is_folder(item: QTreeWidgetItem) -> bool:
+    """Whether *item* is a remote folder."""
+    return item.data(0, KIND_ROLE) == "dir"
+
+
+def is_file(item: QTreeWidgetItem) -> bool:
+    """Whether *item* is a remote file (not a folder, a placeholder or a loading row)."""
+    return item.data(0, KIND_ROLE) == "file"
+
+
 def folder_item(item: QTreeWidgetItem | None) -> QTreeWidgetItem | None:
     """The tree item of the folder *item* is in, or *item* itself when it is a folder."""
-    if item is None or item.text(1) == "dir":
+    if item is None or is_folder(item):
         return item
     return item.parent()
 
@@ -274,6 +286,7 @@ class SSHFileTreeManager(QWidget):
         """
         size_text = "" if typ == "dir" else format_size(size)
         item = QTreeWidgetItem([name, typ, size_text, full_path])
+        item.setData(0, KIND_ROLE, typ)
         if typ == "dir":
             # Use QStyle enum for standard icons
             # 使用 QStyle 列舉取得標準資料夾圖示
@@ -424,7 +437,7 @@ class SSHFileTreeManager(QWidget):
             return
         # Clear and reload
         target.takeChildren()
-        if target.text(1) == "dir":
+        if is_folder(target):
             self.add_placeholder(target)
             self.on_item_expanded(target)
 
@@ -440,7 +453,7 @@ class SSHFileTreeManager(QWidget):
                 self.word_dict.get("ssh_file_viewer_dialog_message_select_folder_to_create"))
             return
         base_path = item.text(3)
-        if item.text(1) != "dir":
+        if not is_folder(item):
             base_path = posixpath.dirname(base_path)
         name, ok = self.get_text(
             self.word_dict.get("ssh_file_viewer_dialog_title_create_folder"),
@@ -525,7 +538,7 @@ class SSHFileTreeManager(QWidget):
         """Show *item* under its new name once the server has renamed it. UI thread."""
         item.setText(0, new_name)
         item.setText(3, new_path)
-        if item.text(1) == "dir" and item.childCount() and not self.is_placeholder_present(item):
+        if is_folder(item) and item.childCount() and not self.is_placeholder_present(item):
             # Its loaded children still carried the old path, and a download,
             # delete or rename of one went there: list them again
             self.action_refresh(item)
@@ -546,7 +559,7 @@ class SSHFileTreeManager(QWidget):
         )
         if reply != QMessageBox.StandardButton.Yes:
             return
-        remove = self.client.remove_dir if item.text(1) == "dir" else self.client.remove_file
+        remove = self.client.remove_dir if is_folder(item) else self.client.remove_file
         self._in_background(lambda: remove(path), lambda: self._removed(item))
 
     def _removed(self, item: QTreeWidgetItem) -> None:
@@ -562,7 +575,7 @@ class SSHFileTreeManager(QWidget):
         Download selected file to local.
         將選定檔案下載至本地。
         """
-        if item is None or item.text(1) != "file":
+        if item is None or not is_file(item):
             QMessageBox.information(
                 self,
                 self.word_dict.get("ssh_file_viewer_dialog_title_invalid_selection"),
@@ -588,7 +601,7 @@ class SSHFileTreeManager(QWidget):
         """
         if item is None:
             return
-        target_dir = item.text(3) if item.text(1) == "dir" else posixpath.dirname(item.text(3))
+        target_dir = item.text(3) if is_folder(item) else posixpath.dirname(item.text(3))
         local_path, _ = QFileDialog.getOpenFileName(
             self, self.word_dict.get("ssh_file_viewer_dialog_title_select_local_file"), "")
         if not local_path:
