@@ -184,6 +184,7 @@ class TestADecimalEpochRoundsTowardThePast:
         ("1700000000123.4567", "2023-11-14T22:13:20.123456+00:00"),
         ("-1e-999999999", "1969-12-31T23:59:59.999999+00:00"),
         ("0e999999999", "1970-01-01T00:00:00+00:00"),
+        ("0." + "9" * 70, "1970-01-01T00:00:00.999999+00:00"),  # rounded up to 1 s at 60 digits
     ])
     def test_it_is_cut_to_the_microsecond(self, text, iso):
         from pybreeze.utils.timestamp_tools.timestamp_converter import convert_timestamp

@@ -13,7 +13,7 @@ import math
 import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from decimal import MAX_EMAX, MIN_EMIN, Decimal, InvalidOperation, localcontext
+from decimal import MAX_EMAX, MIN_EMIN, ROUND_FLOOR, Decimal, InvalidOperation, localcontext
 
 from pybreeze.utils.exception.exception_tags import (
     empty_timestamp_error,
@@ -98,6 +98,8 @@ def _decimal_microseconds(value: Decimal) -> int:
         raise OverflowError("epoch out of range")
     with localcontext() as context:
         context.prec = _DECIMAL_PRECISION
+        # Down, as the floor after it: rounded to nearest, 0.999... (70 nines) became 1 s
+        context.rounding = ROUND_FLOOR
         # A tiny fraction (1e-999999999) is not rounded away to zero
         context.Emax, context.Emin = MAX_EMAX, MIN_EMIN
         return math.floor(value * 10 ** 6 / _PER_SECOND[detect_epoch_unit(value)])
