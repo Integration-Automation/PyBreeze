@@ -117,11 +117,13 @@ class TaskProcessManager:
             self.compiler_path = self.main_window.python_compiler
         return True
 
-    def start_test_process(self, package: str, exec_str: str):
+    def start_test_process(self, package: str, exec_str: str, subject: str = ""):
         """Run *package* on the script *exec_str*, passed on the command line.
 
         A script too long for a Windows command line goes as a file instead
         (``--execute_file``): passed as it was, the run did not start at all.
+        *subject* -- the name of the file the script came from -- goes in the
+        window's title beside the package.
         """
         if not self.renew_path():
             return
@@ -129,7 +131,7 @@ class TaskProcessManager:
         args = [str(self.compiler_path), "-m", package, "--execute_str", argument]
         if sys.platform == "win32" and len(subprocess.list2cmdline(args)) > _MAX_COMMAND_LINE:
             args[-2:] = ["--execute_file", str(self._write_script_file(exec_str))]
-        self._spawn_and_pump(package, args)
+        self._spawn_and_pump(package, args, subject=subject)
 
     def _write_script_file(self, script: str) -> Path:
         """Write *script* to a file of its own for the child to read, and return its path.
@@ -167,24 +169,25 @@ class TaskProcessManager:
             "--execute_file",
             str(file_path),
         ]
-        self._spawn_and_pump(package, args)
+        self._spawn_and_pump(package, args, subject=Path(file_path).name)
 
     def start_module_process(
-            self, package: str, arguments: list, environment: dict | None = None):
+            self, package: str, arguments: list, environment: dict | None = None, subject: str = ""):
         """Run ``python -m package`` with *arguments*, adding *environment* if given.
 
         The general form behind the two calls above, for a package driven by
         subcommands and flags rather than by a script to execute. A setting that
         would be a secret on a command line -- an API key, a forge token -- goes
         through *environment* instead, where the process list cannot show it.
+        *subject*, what the run is about (a file), goes in the window's title.
         """
         if not self.renew_path():
             return
         args = [str(self.compiler_path), "-m", package, *[str(one) for one in arguments]]
-        self._spawn_and_pump(package, args, environment)
+        self._spawn_and_pump(package, args, environment, subject)
 
     def _spawn_and_pump(
-            self, package: str, args: list, environment: dict | None = None) -> None:
+            self, package: str, args: list, environment: dict | None = None, subject: str = "") -> None:
         # Launch user-authored automation script in a child interpreter.
         # Argument list is validated upstream; shell=False, no user string ever
         # reaches a shell. nosec B603 — intentional local process execution.
@@ -228,7 +231,8 @@ class TaskProcessManager:
             daemon=True
         )
         self.read_program_error_output_from_thread.start()
-        self.main_window.setWindowTitle(package)
+        # With the file: a folder run opens a window per file, all of one package
+        self.main_window.setWindowTitle(f"{package} - {subject}" if subject else package)
         self.main_window.show()
         self.timer = QTimer(self.main_window)
         self.timer.setInterval(100)

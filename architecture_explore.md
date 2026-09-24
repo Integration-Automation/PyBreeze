@@ -102,9 +102,11 @@ Template Method 定義的子行程生命週期：
 
 三種啟動介面：
 
-- `start_test_process(package, exec_str)` — 腳本內容直接走 `--execute_str`（Windows 上先 `json.dumps` 逃逸）；Windows 上命令列超過 30,000 字元（上限 32,767）時改寫進暫存的 `pybreeze_run_*.json`、走 `--execute_file`（JSON 以全跳脫的 ASCII 寫回，套件用哪種編碼讀都一樣），執行結束或啟動失敗就刪掉
+- `start_test_process(package, exec_str, subject="")` — 腳本內容直接走 `--execute_str`（Windows 上先 `json.dumps` 逃逸）；Windows 上命令列超過 30,000 字元（上限 32,767）時改寫進暫存的 `pybreeze_run_*.json`、走 `--execute_file`（JSON 以全跳脫的 ASCII 寫回，套件用哪種編碼讀都一樣），執行結束或啟動失敗就刪掉
 - `start_test_process_file(package, file_path)` — 走 `--execute_file`，避開 Windows ~32K 命令列上限
-- `start_module_process(package, arguments, environment)` — 通用形式；**祕密（API key、token）走 environment 不走命令列**，工作管理員看不到
+- `start_module_process(package, arguments, environment, subject="")` — 通用形式；**祕密（API key、token）走 environment 不走命令列**，工作管理員看不到
+
+執行視窗的標題是 `套件 - 檔名`（`subject`：編輯器分頁的檔名、`--execute_file` 的檔案、TestPioneer 的 YAML），沒有檔案時只有套件名；一次執行整個資料夾時，每個檔案一個視窗，這樣才分得出來
 
 ### 4.2 `process_executor_utils.py` — 工廠函式
 
@@ -459,7 +461,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 18. 測試與 CI
 
-- **單元測試** `test/test_utils/` — 139 個 `test_*.py`、2483 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
+- **單元測試** `test/test_utils/` — 140 個 `test_*.py`、2487 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
 - **整合測試** `test/unit_test/start_automation/` — 以 `debug_mode=True` 啟動 IDE，10 秒後自動關閉，驗證啟動流程與 extend tab
 - **CI** `.github/workflows/{dev,stable}.yml` — `unit-tests` job 跑 Windows runner、Python 3.10–3.14 矩陣，3.12 那一腳額外上傳 `coverage-xml` artifact；`sonarcloud` job 跑 ubuntu、`needs: unit-tests`。每日 02:00 排程 + push/PR 觸發。`stable.yml` 另有 `publish` job 負責版號遞增與 PyPI 發布
 - **覆蓋率** `.coveragerc` — `relative_files = True` 是必要的：報告在 Windows 產生、由 Linux 上的 scanner 讀取，路徑不能帶機器資訊。目前整體 89%（`utils/`、`tools_gui`、`dialog` 97–100%；`extend/` 93%、`connect_gui` 89%、`diagram_editor` 85%、`jupyter_lab_gui` 82%、`menu` 81%；最低的是 `editor_main` 71%——主視窗多半在子行程裡的啟動測試跑，那部分不算進覆蓋率）

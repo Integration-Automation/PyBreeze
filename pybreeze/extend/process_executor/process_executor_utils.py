@@ -4,6 +4,7 @@ import os
 import time
 import weakref
 from collections.abc import Callable
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QCoreApplication, QObject, QTimer, Signal
@@ -36,13 +37,15 @@ def build_process(
     reports its own errors in the run window.
     """
     test_format_code = exec_str
+    subject = ""
     if test_format_code is None:
         widget = main_window.tab_widget.currentWidget()
         if not isinstance(widget, EditorWidget):
             report_no_script_tab(main_window, package, program_buffer)
             return
         test_format_code = widget.code_edit.toPlainText()
-    start_process(main_window, package, test_format_code, send_mail, program_buffer)
+        subject = Path(widget.current_file).name if widget.current_file else ""
+    start_process(main_window, package, test_format_code, send_mail, program_buffer, subject)
 
 
 def report_no_script_tab(
@@ -66,12 +69,14 @@ def start_process(
         package: str,
         test_format_code: str,
         send_mail: bool = False,
-        program_buffer: int = 1024000
+        program_buffer: int = 1024000,
+        subject: str = "",
 ):
     process = build_task_process(main_window, send_mail, program_buffer)
     process.start_test_process(
         package,
         exec_str=test_format_code,
+        subject=subject,
     )
 
 

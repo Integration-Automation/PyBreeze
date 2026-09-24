@@ -221,8 +221,8 @@ class TestTestPioneerRun:
         calls: list = []
 
         class Recorder:
-            def start_module_process(self, package, arguments, environment=None):
-                calls.append((package, list(arguments), environment))
+            def start_module_process(self, package, arguments, environment=None, subject=""):
+                calls.append((package, list(arguments), environment, subject))
 
         monkeypatch.setattr(
             test_pioneer_process_manager, "build_task_process",
@@ -231,7 +231,8 @@ class TestTestPioneerRun:
         test_pioneer_process_manager.init_and_start_test_pioneer_process(
             MainWindow(), "C:/tests/run.yml")
 
-        assert calls == [("test_pioneer", ["-e", "C:/tests/run.yml"], None)]
+        # The run window is titled with the file's name
+        assert calls == [("test_pioneer", ["-e", "C:/tests/run.yml"], None, "run.yml")]
 
     def test_no_interpreter_is_reported_not_raised(self, qt_app, monkeypatch):
         from je_editor import JEditorExecException
