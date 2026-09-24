@@ -263,6 +263,8 @@ pybreeze_traditional_chinese_word_dict = {
     "ssh_login_widget_button_use_key_auth": "使用金鑰驗證",
     "ssh_login_widget_button_connect": "連線",
     "ssh_login_widget_button_disconnect": "斷線",
+    "ssh_login_widget_button_browse_key": "瀏覽...",
+    "ssh_login_widget_dialog_title_choose_key": "選擇私密金鑰",
     "ssh_login_widget_status_disconnected": "已斷線",
     # AI Code Review GUI
     "ai_code_review_gui_window_title": "AI 程式碼審查客戶端",

@@ -265,6 +265,8 @@ pybreeze_english_word_dict = {
     "ssh_login_widget_button_use_key_auth": "Use key auth",
     "ssh_login_widget_button_connect": "Connect",
     "ssh_login_widget_button_disconnect": "Disconnect",
+    "ssh_login_widget_button_browse_key": "Browse...",
+    "ssh_login_widget_dialog_title_choose_key": "Choose a private key",
     "ssh_login_widget_status_disconnected": "Disconnected",
     # AI Code Review GUI
     "ai_code_review_gui_window_title": "AI Code-Review Client",
