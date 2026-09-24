@@ -42,12 +42,12 @@ class TestBuildTaskProcess:
         assert process.renew_path() is True
         assert process.compiler_path == "C:/envs/py312/python.exe"
 
-    def test_without_a_choice_the_working_directory_is_searched(self, qt_app, monkeypatch):
+    def test_without_a_choice_the_working_directory_is_searched(self, qt_app, monkeypatch, tmp_path):
         from pybreeze.extend.process_executor import python_task_process_manager as manager_module
         from pybreeze.extend.process_executor.process_executor_utils import build_task_process
 
         searched: list = []
-        monkeypatch.setattr(manager_module, "find_venv_path", lambda: "venv-dir")
+        monkeypatch.setattr(manager_module, "find_venv_path", lambda: tmp_path)
         monkeypatch.setattr(
             manager_module, "check_and_choose_venv",
             lambda path: searched.append(path) or "found/python")
@@ -55,8 +55,35 @@ class TestBuildTaskProcess:
         process = build_task_process(MainWindow())
 
         assert process.renew_path() is True
-        assert searched == ["venv-dir"]
+        assert searched == [tmp_path]
         assert process.compiler_path == "found/python"
+
+    def test_without_a_venv_the_ide_s_own_interpreter_runs_it(self, qt_app, monkeypatch, tmp_path):
+        # PATH came first: on Windows often the Store's python3 stub, exit 9009 and nothing said
+        import sys
+
+        from pybreeze.extend.process_executor import python_task_process_manager as manager_module
+        from pybreeze.extend.process_executor.process_executor_utils import build_task_process
+
+        monkeypatch.setattr(manager_module, "find_venv_path", lambda: tmp_path / "no-venv")
+        monkeypatch.setattr(manager_module, "check_and_choose_venv", lambda path: "from/PATH/python3")
+
+        process = build_task_process(MainWindow())
+
+        assert process.renew_path() is True
+        assert process.compiler_path == sys.executable
+
+    def test_a_packaged_ide_still_looks_on_path(self, qt_app, monkeypatch, tmp_path):
+        # Its sys.executable is the app, not a Python
+        import sys
+
+        from pybreeze.extend.process_executor import python_task_process_manager as manager_module
+
+        monkeypatch.setattr(sys, "frozen", True, raising=False)
+        monkeypatch.setattr(manager_module, "find_venv_path", lambda: tmp_path / "no-venv")
+        monkeypatch.setattr(manager_module, "check_and_choose_venv", lambda path: "from/PATH/python3")
+
+        assert manager_module.default_interpreter() == "from/PATH/python3"
 
     def test_the_run_window_is_kept_and_the_old_result_cleared(self, qt_app):
         from pybreeze.extend.process_executor.process_executor_utils import build_task_process

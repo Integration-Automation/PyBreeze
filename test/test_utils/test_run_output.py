@@ -242,6 +242,7 @@ class TestTestPioneerRun:
         def no_python(_path):
             raise JEditorExecException("no python interpreter found")
 
+        monkeypatch.setattr(sys, "frozen", True, raising=False)  # only a packaged build can find none
         monkeypatch.setattr(manager_module, "check_and_choose_venv", no_python)
         main_window = MainWindow()
 

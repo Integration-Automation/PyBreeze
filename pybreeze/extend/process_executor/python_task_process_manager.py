@@ -55,6 +55,24 @@ def find_venv_path() -> Path:
     return candidates[0]
 
 
+def default_interpreter() -> str:
+    """The interpreter a run uses when none was chosen in the IDE.
+
+    A ``venv`` or ``.venv`` in the working folder, else the IDE's own, as the
+    JupyterLab tab does (``choose_python``); only a packaged build, whose
+    ``sys.executable`` is the app, looks on PATH. PATH came before the IDE's
+    own: on Windows that is often the Microsoft Store's ``python3`` stub, which
+    exits 9009 printing nothing, and a real one there seldom has the
+    automation packages the IDE was installed with.
+
+    :raises JEditorExecException: when a packaged build finds no Python
+    """
+    venv_path = find_venv_path()
+    if venv_path.is_dir() or getattr(sys, "frozen", False):
+        return check_and_choose_venv(venv_path)
+    return sys.executable
+
+
 class TaskProcessManager:
     def __init__(
             self,
@@ -91,9 +109,8 @@ class TaskProcessManager:
         Python can be found, surfacing the error in the run window instead of
         crashing the menu callback."""
         if self.main_window.python_compiler is None:
-            venv_path = find_venv_path()
             try:
-                self.compiler_path = check_and_choose_venv(venv_path)
+                self.compiler_path = default_interpreter()
             except JEditorExecException as error:
                 pybreeze_logger.error("No Python interpreter found for run: %r", error)
                 self.main_window.append_output(
