@@ -103,12 +103,6 @@ pybreeze_traditional_chinese_word_dict = {
     "install_menu_prthinker": "安裝 prthinker（程式碼審查）",
     "install_menu_tools_install_menu_label": "工具",
     "install_menu_tools_install_build_tools": "安裝 Build Tools",
-    # Tools Menu
-    "tools_menu_re_edge_gpt_label": "ReEdgeGPT",
-    "tools_menu_re_edge_gpt_doc_label": "開啟 ReEdgeGPT 文件",
-    "tools_menu_re_edge_gpt_doc_tab_label": "ReEdgeGPT 文件",
-    "tools_menu_re_edge_gpt_github_label": "開啟 ReEdgeGPT GitHub",
-    "tools_menu_re_edge_gpt_github_tab_label": "ReEdgeGPT GitHub",
     # Test Pioneer Menu
     "test_pioneer_label": "TestPioneer",
     "test_pioneer_github_label": "開啟 TestPioneer GitHub",

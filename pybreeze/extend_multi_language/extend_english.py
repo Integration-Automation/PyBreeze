@@ -108,12 +108,6 @@ pybreeze_english_word_dict = {
     "install_menu_prthinker": "Install prthinker (code review)",
     "install_menu_tools_install_menu_label": "Tools",
     "install_menu_tools_install_build_tools": "Install Build Tools",
-    # Tools Menu
-    "tools_menu_re_edge_gpt_label": "ReEdgeGPT",
-    "tools_menu_re_edge_gpt_doc_label": "Open ReEdgeGPT Doc",
-    "tools_menu_re_edge_gpt_doc_tab_label": "ReEdgeGPT Doc",
-    "tools_menu_re_edge_gpt_github_label": "Open ReEdgeGPT GitHub",
-    "tools_menu_re_edge_gpt_github_tab_label": "ReEdgeGPT GitHub",
     # Test Pioneer Menu
     "test_pioneer_label": "TestPioneer",
     "test_pioneer_github_label": "Open TestPioneer GitHub",

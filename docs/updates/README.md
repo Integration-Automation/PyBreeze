@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260924-319 | 2026-09-24 | Drop the ReEdgeGPT words no menu asks for | #cleanup #i18n | [2026-09-b](2026-09-b.md) |
 | U-20260924-318 | 2026-09-24 | Say that the SSH terminal is line by line | #docs #ssh #readme | [2026-09-b](2026-09-b.md) |
 | U-20260924-317 | 2026-09-24 | Say what the CoT review's step selector is | #fix #ai | [2026-09-b](2026-09-b.md) |
 | U-20260924-316 | 2026-09-24 | Reword the Traditional Chinese Open in editor tab button | #fix #i18n | [2026-09-b](2026-09-b.md) |
@@ -400,4 +401,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | File | Period | Entries |
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
-| [2026-09-b.md](2026-09-b.md) | 2026-09 | 116 |
+| [2026-09-b.md](2026-09-b.md) | 2026-09 | 117 |
