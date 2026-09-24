@@ -387,10 +387,12 @@ PyBreeze/
 │   └── utils/                         # curl/HAR parsing, headers, JWT, hashing,
 │                                      # URL validation, logging, exceptions, …
 ├── exe/                               # Standalone launcher & build configs
-├── docs/                              # Sphinx documentation source
+├── docs/                              # Sphinx documentation source; updates/ is the change log
 ├── test/                              # Unit tests (test_utils) + startup tests
 ├── images/                            # Screenshots
+├── architecture.md                    # Architecture overview: layers, flows, cross-project contracts
 ├── architecture_explore.md            # Module-by-module architecture notes
+├── progress.md                        # Work still to do
 ├── PLUGIN_GUIDE.md                    # Plugin development documentation
 ├── pyproject.toml                     # Package configuration (stable)
 ├── dev.toml                           # Package configuration (dev channel)

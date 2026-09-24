@@ -387,10 +387,12 @@ PyBreeze/
 │   └── utils/                         # curl/HAR 解析、请求头、JWT、哈希、
 │                                      # URL 验证、日志、异常 ……
 ├── exe/                               # 独立启动器与构建配置
-├── docs/                              # Sphinx 文档源码
+├── docs/                              # Sphinx 文档源码；updates/ 是更新记录
 ├── test/                              # 单元测试（test_utils）+ 启动测试
 ├── images/                            # 截图
+├── architecture.md                    # 架构总览：分层、主要流程、跨项目约定
 ├── architecture_explore.md            # 逐个模块的架构说明
+├── progress.md                        # 尚未完成的工作
 ├── PLUGIN_GUIDE.md                    # 插件开发文档
 ├── pyproject.toml                     # 包配置（稳定版）
 ├── dev.toml                           # 包配置（开发通道）
