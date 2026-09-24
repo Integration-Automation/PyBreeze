@@ -8,6 +8,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 import paramiko
 import pytest
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
@@ -20,6 +21,7 @@ from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_command_widget import (
     TerminalDecoder,
 )
 from pybreeze.pybreeze_ui.terminal_view import terminal_size
+from pybreeze.utils.terminal_style import PLAIN
 
 
 @pytest.fixture(scope="module")
@@ -29,20 +31,25 @@ def app():
     return instance
 
 
+def _text(pieces) -> str:
+    """What the decoder's pieces show, their styles left out."""
+    return "".join(text for _style, text in pieces)
+
+
 class TestTerminalDecoder:
     @pytest.mark.parametrize("cut", range(1, 6))
     def test_a_character_cut_between_reads_is_joined(self, cut):
         data = "中文".encode("utf-8")  # six bytes, two characters
         decoder = TerminalDecoder()
 
-        assert decoder.feed(data[:cut]) + decoder.feed(data[cut:]) == "中文"
+        assert _text(decoder.feed(data[:cut])) + _text(decoder.feed(data[cut:])) == "中文"
 
     @pytest.mark.parametrize("cut", range(1, 5))
     def test_an_escape_cut_between_reads_is_still_removed(self, cut):
         data = b"\x1b[31mred"
         decoder = TerminalDecoder()
 
-        assert decoder.feed(data[:cut]) + decoder.feed(data[cut:]) == "red"
+        assert _text(decoder.feed(data[:cut])) + _text(decoder.feed(data[cut:])) == "red"
 
     @pytest.mark.parametrize("data", [b"\x1b(Bok", b"\x1b]0;title\x1b\\ok", b"\x1bP1$r0m\x1b\\ok"])
     def test_a_character_set_or_string_escape_cut_anywhere_is_removed(self, data):
@@ -50,13 +57,13 @@ class TestTerminalDecoder:
         for cut in range(1, len(data) - 2):
             decoder = TerminalDecoder()
 
-            assert decoder.feed(data[:cut]) + decoder.feed(data[cut:]) == "ok", cut
+            assert _text(decoder.feed(data[:cut])) + _text(decoder.feed(data[cut:])) == "ok", cut
 
     def test_text_before_an_unfinished_escape_is_shown_now(self):
         decoder = TerminalDecoder()
 
-        assert decoder.feed(b"ready \x1b[") == "ready "
-        assert decoder.feed(b"0mgo") == "go"
+        assert _text(decoder.feed(b"ready \x1b[")) == "ready "
+        assert _text(decoder.feed(b"0mgo")) == "go"
 
     def test_a_very_long_unterminated_sequence_is_not_held_forever(self):
         decoder = TerminalDecoder()
@@ -73,7 +80,7 @@ class TestTerminalDecoder:
 
         decoder.reset()
 
-        assert decoder.feed(b"plain") == "plain"
+        assert _text(decoder.feed(b"plain")) == "plain"
 
 
 class TestTheTerminal:
@@ -479,3 +486,60 @@ class TestThePtySize:
         ssh_command_widget.open_shell_channel(Client(), (77, 21))
 
         assert (options["width"], options["height"]) == (77, 21)
+
+
+def _colour_at(widget: SSHCommandWidget, position: int):
+    cursor = widget.terminal.textCursor()
+    cursor.setPosition(position + 1)  # the format of the character before the cursor
+    return cursor.charFormat().foreground().color()
+
+
+class TestColours:
+    def test_output_shows_the_colours_it_asks_for(self, app):
+        # They were removed: ls --color, git and grep came out all one colour
+        widget = SSHCommandWidget()
+
+        widget._on_data(b"\x1b[31mred\x1b[0m plain")
+
+        assert widget.terminal.toPlainText() == "red plain"
+        assert _colour_at(widget, 0) == QColor(205, 0, 0)
+        assert _colour_at(widget, 4) != QColor(205, 0, 0)
+        widget.close()
+
+    def test_a_colour_carries_over_to_the_next_read(self, app):
+        widget = SSHCommandWidget()
+
+        widget._on_data(b"\x1b[32mgr")
+        widget._on_data(b"een")
+
+        assert _colour_at(widget, 4) == QColor(0, 205, 0)
+        widget.close()
+
+    def test_a_new_session_starts_without_the_last_one_colour(self, app):
+        decoder = TerminalDecoder()
+        decoder.feed(b"\x1b[31m")
+
+        decoder.reset()
+
+        assert decoder.feed(b"plain") == [(PLAIN, "plain")]
+
+    @pytest.mark.parametrize("chunks", [
+        [b"50%\r\x1b[32m60%"],
+        [b"50%\r\x1b[32m", b"60%"],
+    ])
+    def test_a_bar_that_changes_colour_still_redraws_its_line(self, app, chunks):
+        widget = SSHCommandWidget()
+
+        for chunk in chunks:
+            widget._on_data(chunk)
+
+        assert widget.terminal.toPlainText() == "60%"
+        widget.close()
+
+    def test_a_line_ending_around_a_colour_reset_is_one_line_break(self, app):
+        widget = SSHCommandWidget()
+
+        widget._on_data(b"a\r\x1b[0m\nb")
+
+        assert widget.terminal.toPlainText() == "a\nb"
+        widget.close()

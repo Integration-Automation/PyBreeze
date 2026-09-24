@@ -4,8 +4,10 @@ Shared by the run window and the SSH terminal.
 """
 from __future__ import annotations
 
-from PySide6.QtGui import QFontDatabase, QFontMetricsF, QTextCharFormat, QTextCursor
+from PySide6.QtGui import QColor, QFont, QFontDatabase, QFontMetricsF, QPalette, QTextCharFormat, QTextCursor
 from PySide6.QtWidgets import QPlainTextEdit
+
+from pybreeze.utils.terminal_style import PLAIN, Colour, TextStyle, colour_rgb
 
 
 def use_terminal_font(view: QPlainTextEdit) -> None:
@@ -37,6 +39,33 @@ def terminal_size(view: QPlainTextEdit) -> tuple[int, int]:
     columns = int((viewport.width() - margins) // metrics.horizontalAdvance("M"))
     rows = int((viewport.height() - margins) // metrics.lineSpacing())
     return max(columns, MIN_COLUMNS), max(rows, MIN_ROWS)
+
+
+def _qcolour(colour: Colour | None) -> QColor | None:
+    return None if colour is None else QColor(*colour_rgb(colour))
+
+
+def style_format(style: TextStyle, palette: QPalette) -> QTextCharFormat:
+    """The format for text in *style*; *palette* gives the view's own colours, for inverse.
+
+    The plain style is an empty format: the view's own font and colours.
+    """
+    text_format = QTextCharFormat()
+    if style == PLAIN:
+        return text_format
+    foreground, background = _qcolour(style.foreground), _qcolour(style.background)
+    if style.inverse:
+        foreground, background = (background or palette.color(QPalette.ColorRole.Base),
+                                  foreground or palette.color(QPalette.ColorRole.Text))
+    if foreground is not None:
+        text_format.setForeground(foreground)
+    if background is not None:
+        text_format.setBackground(background)
+    if style.bold:
+        text_format.setFontWeight(QFont.Weight.Bold)
+    text_format.setFontItalic(style.italic)
+    text_format.setFontUnderline(style.underline)
+    return text_format
 
 
 def insert_rewinding(cursor: QTextCursor, text: str, text_format: QTextCharFormat) -> bool:

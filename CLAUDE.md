@@ -52,6 +52,7 @@ pybreeze/
     ├── exception/               # ITEException hierarchy
     ├── logging/ file_process/ app_dirs.py / subprocess_util.py
     ├── terminal_text.py         # Escape sequences and controls stripped from terminal output (SSH, run window)
+    ├── terminal_style.py        # SGR colours and emphasis read into a TextStyle (SSH terminal)
     └── manager/package_manager/ # PackageManager — holds syntax_check_list
 ```
 

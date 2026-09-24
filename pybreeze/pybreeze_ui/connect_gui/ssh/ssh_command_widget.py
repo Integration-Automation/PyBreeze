@@ -22,10 +22,11 @@ from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_host_key_policy import (
 )
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_key_loader import load_private_key, unloadable_key_reason
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_login_widget import LoginWidget
-from pybreeze.pybreeze_ui.terminal_view import insert_rewinding, terminal_size, use_terminal_font
+from pybreeze.pybreeze_ui.terminal_view import insert_rewinding, style_format, terminal_size, use_terminal_font
 from pybreeze.pybreeze_ui.thread_keeper import if_alive, let_run_out
 from pybreeze.pybreeze_ui.error_text import error_text
 from pybreeze.utils.logging.logger import pybreeze_logger
+from pybreeze.utils.terminal_style import PLAIN, TextStyle, split_styled
 from pybreeze.utils.terminal_text import split_unfinished_end, strip_terminal_controls, take_leading_backspaces
 
 # What closing a channel or a client can raise on a connection already broken
@@ -38,27 +39,37 @@ class TerminalDecoder:
     A read ends wherever the channel's buffer did, so it can stop inside a
     multi-byte UTF-8 character or inside an escape sequence. Decoding each read
     on its own showed the character as replacement marks and the escape's tail
-    as text; this carries the unfinished part over to the next read.
+    as text; this carries the unfinished part over to the next read. The
+    colours and emphasis SGR sequences set carry over too.
     """
 
     def __init__(self) -> None:
         self._decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
         self._pending = ""
+        self._style = PLAIN
 
     def reset(self) -> None:
         """Forget anything carried over, for a new session."""
         self._decoder.reset()
         self._pending = ""
+        self._style = PLAIN
 
-    def feed(self, data: bytes) -> str:
-        """Return the text *data* completes, escape sequences removed.
+    def feed(self, data: bytes) -> list[tuple[TextStyle, str]]:
+        """Return the text *data* completes, in pieces with the style each is shown in.
 
-        Backspaces it starts with are kept, for the view to take back what an
-        earlier read showed; any others are applied here.
+        Escape sequences are removed. Backspaces a piece starts with are kept,
+        for the view to take back what it already showed; any others are
+        applied here.
         """
         text, self._pending = split_unfinished_end(self._pending + self._decoder.decode(data))
-        backspaces, text = take_leading_backspaces(text)
-        return "\x08" * backspaces + strip_terminal_controls(text)
+        pieces, self._style = split_styled(text, self._style)
+        return [(style, _shown(piece)) for style, piece in pieces]
+
+
+def _shown(text: str) -> str:
+    """*text* as the view shows it, the backspaces it starts with kept."""
+    backspaces, text = take_leading_backspaces(text)
+    return "\x08" * backspaces + strip_terminal_controls(text)
 
 
 # Bound the terminal scrollback so an endless stream (``tail -f``, ``yes``)
@@ -225,6 +236,8 @@ class SSHCommandWidget(QWidget):
         self._history = CommandHistory()
         # The size the shell's pty was last given / pty 目前的大小
         self._pty_size: tuple[int, int] | None = None
+        # The output so far ended on a lone \r the next piece applies / 待套用的 \r
+        self._rewind_pending = False
         host_key_asker()  # built here, on the UI thread, for a connect to ask through
 
         if self.add_login_widget:
@@ -339,8 +352,8 @@ class SSHCommandWidget(QWidget):
         end.movePosition(QTextCursor.MoveOperation.End)
         self._insert_output(text if end.atBlockStart() else "\n" + text)
 
-    def _insert_output(self, text: str) -> None:
-        """Add *text* where the output ends, without starting a new line.
+    def _insert_output(self, text: str, text_format: QTextCharFormat | None = None) -> None:
+        """Add *text* where the output ends, without starting a new line, in *text_format*.
 
         ``appendPlainText`` starts a new paragraph on every call, so each read
         from the shell began on a line of its own, wherever the read happened
@@ -351,14 +364,17 @@ class SSHCommandWidget(QWidget):
         end = QTextCursor(self.terminal.document())
         end.movePosition(QTextCursor.MoveOperation.End)
         backspaces, text = take_leading_backspaces(text)
-        if backspaces:
+        if self._rewind_pending:
+            # A lone \r before a colour change ("50%\r" "\x1b[32m60%") applies here
+            text = "\r" + text
+        elif backspaces:
             # They take back what an earlier read showed, never past the line's start
             end.movePosition(QTextCursor.MoveOperation.Left, QTextCursor.MoveMode.KeepAnchor,
                              min(backspaces, end.positionInBlock()))
             end.removeSelectedText()
         # A lone \r redraws the line (a progress bar); the decoder holds one
         # that ends a read until the next shows whether "\n" follows
-        insert_rewinding(end, text, QTextCharFormat())
+        self._rewind_pending = insert_rewinding(end, text, text_format or QTextCharFormat())
         if following:
             scroll_bar.setValue(scroll_bar.maximum())
 
@@ -457,6 +473,7 @@ class SSHCommandWidget(QWidget):
         """Show *channel*'s output from now on. UI thread; nothing here waits on the network."""
         self.shell_channel = channel
         self._decoder.reset()
+        self._rewind_pending = False
         self.reader_thread = SSHReaderThread(self.shell_channel)
         self.reader_thread.data_received.connect(self._on_data)
         self.reader_thread.closed.connect(self._on_closed)
@@ -470,7 +487,9 @@ class SSHCommandWidget(QWidget):
             host=shown_host, port=port, user=user) + "\n")
 
     def _on_data(self, data: bytes):
-        self._insert_output(self._decoder.feed(data))
+        palette = self.terminal.palette()
+        for style, text in self._decoder.feed(data):
+            self._insert_output(text, style_format(style, palette))
 
     def _on_closed(self, msg: str):
         """The shell ended on the server's side (``exit``, a dropped link).
