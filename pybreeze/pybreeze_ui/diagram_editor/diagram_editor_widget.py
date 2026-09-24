@@ -399,6 +399,7 @@ class DiagramEditorWidget(QWidget):
                 _lang("diagram_editor_confirm_title", "Confirm"),
                 _lang("diagram_editor_confirm_new", "Discard current diagram?"),
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
             )
             if reply != QMessageBox.StandardButton.Yes:
                 return

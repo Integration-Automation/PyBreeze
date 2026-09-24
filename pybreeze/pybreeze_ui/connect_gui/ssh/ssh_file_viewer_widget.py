@@ -554,7 +554,8 @@ class SSHFileTreeManager(QWidget):
             self,
             self.word_dict.get("ssh_file_viewer_dialog_title_confirm_delete"),
             as_text(f"{self.word_dict.get('ssh_file_viewer_dialog_message_confirm_delete')} '{path}'?"),
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
         )
         if reply != QMessageBox.StandardButton.Yes:
             return

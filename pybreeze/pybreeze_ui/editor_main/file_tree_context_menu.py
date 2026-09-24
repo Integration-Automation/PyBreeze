@@ -355,6 +355,7 @@ def _action_delete(tree_view: QTreeView, main_window, path: Path | None) -> None
         word.get("file_tree_ctx_confirm_delete"),
         as_text(word.get("file_tree_ctx_confirm_delete_message").format(name=str(path))),
         QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        QMessageBox.StandardButton.No,
     )
     if reply != QMessageBox.StandardButton.Yes:
         return
