@@ -65,3 +65,10 @@ def test_why_a_report_mail_was_not_sent_in_chinese(monkeypatch):
     notice.tell(mail_no_user_error)
 
     assert told == [("[郵件] 沒有寄出測試報告：沒有設定郵件使用者\n", True)]
+
+
+def test_the_exit_code_and_held_output_lines_in_chinese(monkeypatch):
+    monkeypatch.setattr(run_notice_mod.language_wrapper, "language_word_dict", CHINESE)
+
+    assert run_notice("exit_code", code=0) == "執行結束，結束代碼 0\n"
+    assert run_notice("output_still_held").startswith("[這次執行啟動的某個行程仍握著輸出")

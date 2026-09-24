@@ -17,7 +17,6 @@ from je_editor import JEditorExecException
 from je_editor.utils.venv_check.check_venv import check_and_choose_venv
 
 from pybreeze.extend.process_executor.queue_pump import (
-    OUTPUT_STILL_HELD_NOTE,
     ReaderGrace,
     any_alive,
     output_queue,
@@ -282,11 +281,11 @@ class TaskProcessManager:
         self.read_program_error_output_from_thread = None
         self.drain_and_display_queue()
         if any_alive(*readers):
-            self.main_window.append_output(OUTPUT_STILL_HELD_NOTE, own_line=True)
+            self.main_window.append_output(run_notice("output_still_held"), own_line=True)
         if self.process is not None:
             self.process.terminate()
             self.main_window.append_output(
-                f"Task exit with code {self.process.returncode}\n", own_line=True)
+                run_notice("exit_code", code=self.process.returncode), own_line=True)
             self.process = None
         self._remove_script_file()
         if self.task_done_trigger_function is not None:

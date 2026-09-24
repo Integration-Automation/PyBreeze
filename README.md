@@ -211,7 +211,7 @@ Loaded plugins appear under their own **Plugins** menu with an About entry and o
 - **English** (default)
 - **Traditional Chinese** (繁體中文)
 
-Menus, dialogs, the reasons a tool refuses its input and the run window's own notices (`[Error] …`, `[Run] …`) all follow the chosen language. Both dictionaries carry the same 729 keys, and a test enforces that parity so a new string can never land in one language only. Further languages can be added via translation plugins.
+Menus, dialogs, the reasons a tool refuses its input and the run window's own notices (`[Error] …`, `[Run] …`) all follow the chosen language. Both dictionaries carry the same 731 keys, and a test enforces that parity so a new string can never land in one language only. Further languages can be added via translation plugins.
 
 ---
 

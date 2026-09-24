@@ -785,6 +785,9 @@ pybreeze_english_word_dict = {
     "run_window_mail_not_sent": "[Mail] The test report was not sent: {reason}",
     "run_window_no_interpreter": "[Error] No Python interpreter found: {error}",
     "run_window_package_could_not_start": "[Error] {package} could not start: {reason}",
+    "run_window_exit_code": "Task exit with code {code}",
+    "run_window_output_still_held":
+        "[A process started by this run still holds its output; what it writes from now on is not shown]",
 }
 # Why a tool refused its input (pybreeze_ui/error_text.py): in English, the
 # constants the tools raise

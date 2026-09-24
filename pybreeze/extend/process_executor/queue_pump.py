@@ -40,11 +40,6 @@ MAX_QUEUED_MESSAGES = 10000
 # How often a reader waiting on a full queue checks whether to give up
 _PUT_WAIT_SECONDS = 0.2
 
-# Written when a process the run started still holds its output at the end
-OUTPUT_STILL_HELD_NOTE = (
-    "[A process started by this run still holds its output; what it writes from now on is not shown]\n")
-
-
 def output_queue() -> Queue:
     """A queue for one pipe's output, holding at most ``MAX_QUEUED_MESSAGES`` pieces."""
     return Queue(maxsize=MAX_QUEUED_MESSAGES)

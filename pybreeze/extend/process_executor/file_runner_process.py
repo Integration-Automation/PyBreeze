@@ -20,7 +20,6 @@ from threading import Event, Thread
 from PySide6.QtCore import QTimer
 
 from pybreeze.extend.process_executor.queue_pump import (
-    OUTPUT_STILL_HELD_NOTE,
     ReaderGrace,
     any_alive,
     output_queue,
@@ -262,7 +261,7 @@ class FileRunnerProcess:
         # Drain remaining output directly (not via _pull_text to avoid recursion)
         self._drain_queues()
         if any_alive(*readers):
-            self.main_window.append_output(OUTPUT_STILL_HELD_NOTE, is_error=False, own_line=True)
+            self.main_window.append_output(run_notice("output_still_held"), is_error=False, own_line=True)
 
         after_exit, self._after_exit = self._after_exit, None
         if self.process is not None:
