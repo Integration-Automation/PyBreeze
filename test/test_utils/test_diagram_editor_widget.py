@@ -353,3 +353,67 @@ class TestFileDialogFilters:
 
         image_filter = self._filters(editor, monkeypatch)["image"]
         assert all(f"*{suffix}" in image_filter for suffix in IMAGE_SUFFIXES)
+
+
+class TestTheGridSwitches:
+    def test_show_grid_switches_the_view_and_snap_every_item_kind(self, editor, monkeypatch):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_items import DiagramImage, DiagramNode
+
+        # Snapping is a class setting the scene sets: put back as it was after the test
+        monkeypatch.setattr(DiagramNode, "grid_enabled", DiagramNode.grid_enabled)
+        monkeypatch.setattr(DiagramImage, "grid_enabled", DiagramImage.grid_enabled)
+
+        editor._toggle_grid(True)
+        editor._toggle_snap(True)
+
+        assert editor._view.draw_grid is True
+        assert editor._scene.grid_enabled is True
+        assert DiagramNode.grid_enabled is True
+        editor._toggle_grid(False)
+        editor._toggle_snap(False)
+        assert editor._view.draw_grid is False
+        assert DiagramImage.grid_enabled is False
+
+
+def test_save_with_no_file_yet_asks_where(editor, monkeypatch):
+    asked: list = []
+    monkeypatch.setattr(editor, "_save_as_diagram", lambda: asked.append("save as"))
+
+    editor._save_diagram()
+
+    assert asked == ["save as"]
+
+
+class TestAddingAnImageFromAFile:
+    def test_a_picture_is_added(self, editor, tmp_path, monkeypatch):
+        from PySide6.QtGui import QColor, QImage
+
+        from pybreeze.pybreeze_ui.diagram_editor import diagram_editor_widget
+
+        picture = tmp_path / "logo.png"
+        image = QImage(40, 30, QImage.Format.Format_RGB32)
+        image.fill(QColor("teal"))
+        assert image.save(str(picture))
+        monkeypatch.setattr(diagram_editor_widget.QFileDialog, "getOpenFileName",
+                            staticmethod(lambda *_args: (str(picture), "")))
+
+        editor._add_image_from_file()
+
+        (added,) = editor._scene.get_all_images()
+        assert added.to_dict(0)["source"] == str(picture)
+
+    def test_a_file_that_is_no_picture_says_so_and_adds_nothing(self, editor, tmp_path, monkeypatch):
+        from pybreeze.pybreeze_ui.diagram_editor import diagram_editor_widget
+
+        not_a_picture = tmp_path / "notes.png"
+        not_a_picture.write_text("these are notes", encoding="utf-8")
+        warned: list = []
+        monkeypatch.setattr(diagram_editor_widget.QFileDialog, "getOpenFileName",
+                            staticmethod(lambda *_args: (str(not_a_picture), "")))
+        monkeypatch.setattr(diagram_editor_widget.QMessageBox, "warning",
+                            staticmethod(lambda *args: warned.append(args)))
+
+        editor._add_image_from_file()
+
+        assert editor._scene.get_all_images() == []
+        assert len(warned) == 1
