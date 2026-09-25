@@ -471,9 +471,10 @@ class TestTheTab:
         tab.load_lab("http://localhost:58888/lab")
         tab.update_status("Loading... (3s / 60s)")  # queued before the lab was ready
         tab.show_error("too late to matter")
+        tab.load_lab("http://localhost:58888/lab")  # a second ready, with no status left to take down
 
         assert tab.status_label is None
-        assert loaded == ["http://localhost:58888/lab"]
+        assert loaded == ["http://localhost:58888/lab", "http://localhost:58888/lab"]
         assert tab.browser.isVisibleTo(tab)
         tab.close()  # deleted on close; the delete is carried out here, not at exit
         QCoreApplication.sendPostedEvents(tab, QEvent.Type.DeferredDelete)

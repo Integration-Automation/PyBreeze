@@ -40,6 +40,19 @@ def test_the_view_gets_the_fixed_pitch_font_at_its_own_size(app):
     assert view.font().pointSizeF() == 13.5
 
 
+def test_a_size_in_pixels_is_left_as_it_is(app):
+    # A style sheet giving the size in pixels leaves no point size to carry over (-1)
+    view = QPlainTextEdit()
+    font = view.font()
+    font.setPixelSize(17)
+    view.setFont(font)
+
+    use_fixed_pitch_font(view)
+
+    assert view.font().family() == _fixed_family()
+    assert view.font().pointSizeF() > 0  # the fixed-pitch font's own size, not -1
+
+
 def test_a_theme_style_sheet_does_not_take_the_font_back(app):
     # qt_material names a font for every widget ("* { font-family: Roboto }"),
     # and a style sheet's font overrides setFont: the IDE showed Roboto

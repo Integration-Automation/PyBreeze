@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-75 | 2026-09-26 | Settings JSON that is not an object, a pixel-sized font, a step answering twice and a second lab load are tested | #test | [2026-09-e](2026-09-e.md) |
 | U-20260926-74 | 2026-09-26 | A new grid cell size is tested to move the lines while the grid is shown | #test #diagram | [2026-09-e](2026-09-e.md) |
 | U-20260926-73 | 2026-09-26 | A proxy named after its host, and a 300 answer, are tested; the public_http mutation run is read to the end | #test #security #network | [2026-09-e](2026-09-e.md) |
 | U-20260926-72 | 2026-09-26 | Start the 2026-09-e batch | #docs | [2026-09-e](2026-09-e.md) |
@@ -614,4 +615,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
 | [2026-09-d.md](2026-09-d.md) | 2026-09 | 91 |
-| [2026-09-e.md](2026-09-e.md) | 2026-09 | 3 |
+| [2026-09-e.md](2026-09-e.md) | 2026-09 | 4 |

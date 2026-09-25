@@ -59,6 +59,10 @@ class TestReadingAndWritingTheSettings:
         (data_dir / "prthinker_setting.json").write_text("{ not json", encoding="utf-8")
         assert load_setting() == DEFAULT_SETTING
 
+    def test_json_that_is_not_an_object_reads_as_the_defaults(self, data_dir):
+        (data_dir / "prthinker_setting.json").write_text('["backend", "remote"]', encoding="utf-8")
+        assert load_setting() == DEFAULT_SETTING
+
     def test_saving_reports_failure_instead_of_raising(self, data_dir, monkeypatch):
         def refuse(*_args, **_kwargs):
             raise OSError("read-only")

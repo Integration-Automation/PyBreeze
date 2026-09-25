@@ -284,6 +284,17 @@ def test_sending_resolves_nothing_on_the_ui_thread(monkeypatch):
     gui.deleteLater()
 
 
+def test_a_step_answering_again_replaces_its_answer_under_one_entry(monkeypatch):
+    gui = _sending_gui(monkeypatch)
+    gui.handle_response("linter.md", "first answer")
+    gui.handle_response("linter.md", "second answer")
+
+    assert gui.response_selector.count() == 1
+    assert gui.responses == {"linter.md": "second answer"}
+    assert gui.response_view.toPlainText() == "second answer"
+    gui.deleteLater()
+
+
 def test_a_new_run_clears_the_last_runs_answers(monkeypatch):
     gui = _sending_gui(monkeypatch)
     gui.handle_response("error", "Cannot resolve hostname")
