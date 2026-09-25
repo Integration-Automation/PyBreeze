@@ -463,10 +463,12 @@ _VALUE_FLAG_HANDLERS: dict[str, Callable[[CurlRequest, str], None]] = {
 
 
 def _apply_value_flag(request: CurlRequest, kind: str, value: str) -> None:
-    """Apply one value-taking flag to *request* according to its *kind*."""
-    handler = _VALUE_FLAG_HANDLERS.get(kind)
-    if handler is not None:
-        handler(request, value)
+    """Apply one value-taking flag to *request* according to its *kind*.
+
+    Every kind in ``_VALUE_FLAGS`` has a handler (``test_curl_import.py`` checks):
+    looked up with ``.get``, a kind without one had its value vanish without a word.
+    """
+    _VALUE_FLAG_HANDLERS[kind](request, value)
 
 
 def _consume_tokens(tokens: list[str], request: CurlRequest) -> None:
