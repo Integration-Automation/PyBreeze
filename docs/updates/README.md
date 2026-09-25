@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-106 | 2026-09-25 | The packaged build's regex worker: its timeout and its errors are tested | #test #regex | [2026-09-c](2026-09-c.md) |
 | U-20260925-105 | 2026-09-25 | The main window shows PyBreeze's icon wherever the IDE starts from | #fix #packaging #ui | [2026-09-c](2026-09-c.md) |
 | U-20260925-104 | 2026-09-25 | Each entry of the project tree's right-click menu is tested | #test #file-tree | [2026-09-c](2026-09-c.md) |
 | U-20260925-103 | 2026-09-25 | Load tests the IDE starts are patched with gevent again | #fix #load-density #subprocess | [2026-09-c](2026-09-c.md) |
@@ -508,4 +509,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
-| [2026-09-c.md](2026-09-c.md) | 2026-09 | 105 |
+| [2026-09-c.md](2026-09-c.md) | 2026-09 | 106 |

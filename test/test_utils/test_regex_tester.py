@@ -206,3 +206,60 @@ class TestTheWorkerProcess:
 
         assert found == regex_tester.find_matches(r"\d+", "a1 b22")
         assert not regex_tester._RUNNING
+
+    def test_the_packaged_builds_worker_is_stopped_when_it_runs_too_long(self):
+        import time
+
+        from pybreeze.utils.exception.exceptions import RegexTesterException
+        from pybreeze.utils.regex_tools import regex_tester
+
+        started = time.monotonic()
+        with pytest.raises(RegexTesterException, match="still running"):
+            regex_tester._find_in_spawned_process("(a+)+$", "a" * 40 + "b", [], 3.0)
+
+        assert time.monotonic() - started < 20
+        assert not regex_tester._RUNNING
+
+    def test_the_packaged_builds_worker_reports_a_pattern_it_cannot_run(self):
+        from pybreeze.utils.exception.exceptions import RegexTesterException
+        from pybreeze.utils.regex_tools import regex_tester
+
+        with pytest.raises(RegexTesterException):
+            regex_tester._find_in_spawned_process("(", "abc", [], 30)
+
+        assert not regex_tester._RUNNING
+
+
+class TestWhatTheSpawnedWorkerSends:
+    """_matches_into_pipe, run here with a stand-in for its end of the pipe."""
+
+    class _Pipe:
+        def __init__(self) -> None:
+            self.sent: list = []
+            self.closed = False
+
+        def send(self, message) -> None:
+            self.sent.append(message)
+
+        def close(self) -> None:
+            self.closed = True
+
+    def test_the_matches(self):
+        from pybreeze.utils.regex_tools.regex_tester import _matches_into_pipe
+
+        pipe = self._Pipe()
+        _matches_into_pipe(pipe, r"\d+", "a1 b22", [])
+
+        assert pipe.sent == [("matches", find_matches(r"\d+", "a1 b22"))]
+        assert [match.matched_text for match in pipe.sent[0][1]] == ["1", "22"]
+        assert pipe.closed
+
+    def test_the_error_for_a_pattern_that_does_not_compile(self):
+        from pybreeze.utils.regex_tools.regex_tester import _matches_into_pipe
+
+        pipe = self._Pipe()
+        _matches_into_pipe(pipe, "(", "abc", [])
+
+        ((kind, message),) = pipe.sent
+        assert kind == "error" and message
+        assert pipe.closed
