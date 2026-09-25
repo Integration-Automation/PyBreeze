@@ -178,9 +178,28 @@ class TestTheQuestionBoxItself:
         yes_or_no = QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         assert seen == [("Unknown host", as_text(message), yes_or_no, True)]
 
+    def test_the_panel_that_asked_gets_the_box(self, app, monkeypatch):
+        # Only a panel that has been closed goes without; an open one is asked on
+        from PySide6.QtWidgets import QMessageBox, QWidget
 
-def test_a_no_is_remembered_for_ten_seconds_and_then_forgotten(asked, keys, monkeypatch):
-    now = [1000.0]
+        owners: list = []
+
+        def answer(box):
+            owners.append(box.parent())
+            return QMessageBox.StandardButton.Yes
+
+        monkeypatch.setattr(policy_mod.QMessageBox, "exec", answer)
+        panel = QWidget()
+
+        assert policy_mod.HostKeyAsker().ask(panel, "Unknown host", "message") is True
+        assert owners == [panel]
+        panel.deleteLater()
+
+
+@pytest.mark.parametrize("start", [5.0, 1000.0])
+def test_a_no_is_remembered_for_ten_seconds_and_then_forgotten(asked, keys, monkeypatch, start):
+    # From 5 as well: 1010.5 % 1000 is 10.5 too, so from 1000 alone a remainder passed for the difference
+    now = [start]
     monkeypatch.setattr(policy_mod.time, "monotonic", lambda: now[0])
     asked["answer"] = False
 
