@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-50 | 2026-09-26 | A Unicode host with an underscore label is encoded as urllib3 sends it, not refused as ambiguous | #fix #security #network | [2026-09-d](2026-09-d.md) |
 | U-20260926-49 | 2026-09-26 | python -m pybreeze is tested to start the editor only when run as the main module | #test | [2026-09-d](2026-09-d.md) |
 | U-20260926-48 | 2026-09-26 | A write-failure test that never reached its branch is fixed, and curl's $'…' edges and AI Code Review's first checks are tested | #test #ai #curl | [2026-09-d](2026-09-d.md) |
 | U-20260926-47 | 2026-09-26 | The child-IDE harness names a modal dialog instead of waiting two minutes on it | #test #ci | [2026-09-d](2026-09-d.md) |
@@ -588,4 +589,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
-| [2026-09-d.md](2026-09-d.md) | 2026-09 | 69 |
+| [2026-09-d.md](2026-09-d.md) | 2026-09 | 70 |

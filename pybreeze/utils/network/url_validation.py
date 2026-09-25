@@ -103,20 +103,19 @@ def _check_one_reading(url: str) -> None:
 def _as_ascii(host: str) -> str:
     """*host* as it goes on the wire: urllib3 IDNA-encodes a Unicode name, urlparse does not.
 
-    Encoded the way urllib3 encodes it (IDNA 2008 through the ``idna``
-    package). Python's own ``idna`` codec is IDNA 2003, which maps ``ß`` to
-    ``ss``: ``straße.de`` became ``strasse.de``, another domain, so a valid
-    name was refused as ambiguous and the check resolved a name it would not
-    connect to. A name that cannot be encoded is returned as it is, and then
-    fails the comparison or the lookup.
+    urllib3 itself encodes it, so the name checked is the name it connects to:
+    label by label, IDNA 2008 through the ``idna`` package. Python's own
+    ``idna`` codec is IDNA 2003, which maps ``ß`` to ``ss``: ``straße.de``
+    became ``strasse.de``, another domain. Encoded whole, a name with an ASCII
+    label urllib3 keeps as it is (``under_score``) failed and the URL was
+    refused as ambiguous. A name urllib3 cannot encode is returned as it is,
+    and then fails the comparison or the lookup.
     """
     if host.isascii():
         return host.lower()
     try:
-        import idna
-        return idna.encode(host.lower(), strict=True, std3_rules=True).decode("ascii")
-    except (ImportError, ValueError):
-        # idna.IDNAError is a UnicodeError, which is a ValueError
+        return (parse_url(f"http://{host}/").host or host).lower()
+    except LocationParseError:
         return host
 
 

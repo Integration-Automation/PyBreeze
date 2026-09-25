@@ -115,6 +115,20 @@ def test_a_url_only_urlparse_refuses_is_refused_without_quoting_it(public_dns, m
     assert str(raised.value) == url_unparsable_error
 
 
+@pytest.mark.parametrize("host", ["under_score.bücher.example", "bücher.example", "straße.de", "ÅNGSTRÖM.example"])
+def test_a_unicode_name_is_encoded_as_urllib3_sends_it(host):
+    # urllib3 encodes label by label: an ASCII label with an underscore stays as
+    # it is. Encoded whole under STD3 rules, the name failed, was left Unicode,
+    # and a URL urllib3 connects to was refused as ambiguous
+    from urllib3.util import parse_url
+
+    assert url_validation._as_ascii(host) == parse_url(f"https://{host}/").host
+
+
+def test_a_url_with_an_underscore_label_and_a_unicode_one_is_not_ambiguous(public_dns):
+    assert validate_url("https://under_score.bücher.example/") == "https://under_score.bücher.example/"
+
+
 def test_a_name_idna_cannot_encode_is_left_as_it_is():
     # It then fails the comparison or the lookup; it is not changed into another name
     assert url_validation._as_ascii("a☕b.com") == "a☕b.com"
