@@ -168,6 +168,41 @@ def _number(value: object, fallback: _Fallback) -> float | _Fallback:
     return number if math.isfinite(number) else fallback
 
 
+def resized_geometry(role: str, delta: QPointF, orig_rect: QRectF, orig_pos: QPointF,
+                     min_w: float, min_h: float) -> tuple[float, float, float, float]:
+    """Where an item dragged by its resize handle goes: ``(x, y, width, height)``.
+
+    :param role: the handle's sides, any of ``"l"``, ``"r"``, ``"t"``, ``"b"``; a left or top
+        handle moves the item as it resizes it
+    :param delta: how far the handle has been dragged
+    :param orig_rect: the item's rect when the drag started
+    :param orig_pos: the item's position when the drag started
+    :param min_w: the narrowest the item may become; the far side stays where it was
+    :param min_h: the lowest the item may become; the far side stays where it was
+    """
+    new_x, new_y = orig_pos.x(), orig_pos.y()
+    new_w, new_h = orig_rect.width(), orig_rect.height()
+    if "r" in role:
+        new_w = orig_rect.width() + delta.x()
+    if "l" in role:
+        new_w = orig_rect.width() - delta.x()
+        new_x = orig_pos.x() + delta.x()
+    if "b" in role:
+        new_h = orig_rect.height() + delta.y()
+    if "t" in role:
+        new_h = orig_rect.height() - delta.y()
+        new_y = orig_pos.y() + delta.y()
+    if new_w < min_w:
+        if "l" in role:
+            new_x = orig_pos.x() + orig_rect.width() - min_w
+        new_w = min_w
+    if new_h < min_h:
+        if "t" in role:
+            new_y = orig_pos.y() + orig_rect.height() - min_h
+        new_h = min_h
+    return new_x, new_y, new_w, new_h
+
+
 # How far from the origin a saved item may be placed. A file is anyone's to
 # edit: NaN (which json.loads accepts) made an item invisible and the scene's
 # bounding rect NaN, so every export failed; 1e308 overflowed the export size.
@@ -416,32 +451,8 @@ class DiagramNode(QGraphicsRectItem):
             conn.update_path()
 
     def _apply_resize(self, role: str, delta: QPointF, orig_rect: QRectF, orig_pos: QPointF) -> None:
-        new_w = orig_rect.width()
-        new_h = orig_rect.height()
-        new_x = orig_pos.x()
-        new_y = orig_pos.y()
-
-        if "r" in role:
-            new_w = orig_rect.width() + delta.x()
-        if "l" in role:
-            new_w = orig_rect.width() - delta.x()
-            new_x = orig_pos.x() + delta.x()
-        if "b" in role:
-            new_h = orig_rect.height() + delta.y()
-        if "t" in role:
-            new_h = orig_rect.height() - delta.y()
-            new_y = orig_pos.y() + delta.y()
-
-        # Clamp minimum
-        if new_w < 40:
-            if "l" in role:
-                new_x = orig_pos.x() + orig_rect.width() - 40
-            new_w = 40
-        if new_h < 20:
-            if "t" in role:
-                new_y = orig_pos.y() + orig_rect.height() - 20
-            new_h = 20
-
+        new_x, new_y, new_w, new_h = resized_geometry(
+            role, delta, orig_rect, orig_pos, _MIN_NODE_W, _MIN_NODE_H)
         self.setPos(new_x, new_y)
         self.prepareGeometryChange()
         self.node_w = new_w
@@ -872,27 +883,9 @@ class DiagramImage(QGraphicsRectItem):
         self._center_label()
         self._update_handles()
 
-    def _apply_resize(self, role, delta, orig_rect, orig_pos):
-        new_w, new_h = orig_rect.width(), orig_rect.height()
-        new_x, new_y = orig_pos.x(), orig_pos.y()
-        if "r" in role:
-            new_w = orig_rect.width() + delta.x()
-        if "l" in role:
-            new_w = orig_rect.width() - delta.x()
-            new_x = orig_pos.x() + delta.x()
-        if "b" in role:
-            new_h = orig_rect.height() + delta.y()
-        if "t" in role:
-            new_h = orig_rect.height() - delta.y()
-            new_y = orig_pos.y() + delta.y()
-        if new_w < 40:
-            if "l" in role:
-                new_x = orig_pos.x() + orig_rect.width() - 40
-            new_w = 40
-        if new_h < 40:
-            if "t" in role:
-                new_y = orig_pos.y() + orig_rect.height() - 40
-            new_h = 40
+    def _apply_resize(self, role: str, delta: QPointF, orig_rect: QRectF, orig_pos: QPointF) -> None:
+        new_x, new_y, new_w, new_h = resized_geometry(
+            role, delta, orig_rect, orig_pos, _MIN_IMAGE_SIDE, _MIN_IMAGE_SIDE)
         self.setPos(new_x, new_y)
         self.set_size(new_w, new_h)
 

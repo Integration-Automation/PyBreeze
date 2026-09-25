@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-89 | 2026-09-25 | A node and an image resize through one function | #refactor #diagram | [2026-09-c](2026-09-c.md) |
 | U-20260925-88 | 2026-09-25 | Fixture decorators without empty parentheses | #refactor #test | [2026-09-c](2026-09-c.md) |
 | U-20260925-87 | 2026-09-25 | SonarCloud's open issues in pybreeze/ dealt with | #refactor #quality | [2026-09-c](2026-09-c.md) |
 | U-20260925-86 | 2026-09-25 | An arrow's label is read in linear time | #fix #diagram | [2026-09-c](2026-09-c.md) |
@@ -491,4 +492,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
-| [2026-09-c.md](2026-09-c.md) | 2026-09 | 88 |
+| [2026-09-c.md](2026-09-c.md) | 2026-09 | 89 |
