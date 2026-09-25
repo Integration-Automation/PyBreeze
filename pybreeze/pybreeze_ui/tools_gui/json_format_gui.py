@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.busy_cursor import busy_cursor
 from pybreeze.pybreeze_ui.run_shortcut import press_on_ctrl_enter
 from pybreeze.pybreeze_ui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
@@ -70,21 +71,23 @@ class JsonFormatGUI(QWidget):
 
     def _run(self, transform) -> None:
         """Apply a JSON transform, showing the result or a friendly error."""
-        word = language_wrapper.language_word_dict
-        text = exact_text(self.input_edit).strip()
-        if not text:
-            self._valid_output = False
-            self.output_edit.setPlainText(word.get("json_format_empty_hint"))
-            return
-        try:
-            result = transform(text)
-        except ITEJsonException as error:
-            pybreeze_logger.info("json_format_gui.py transform failed: %r", error)
-            self._valid_output = False
-            self.output_edit.setPlainText(word.get("json_format_error").format(error=error_text(str(error))))
-            return
-        self._valid_output = True
-        self.output_edit.setPlainText(result)
+        # A few megabytes take seconds to lay out and show
+        with busy_cursor():
+            word = language_wrapper.language_word_dict
+            text = exact_text(self.input_edit).strip()
+            if not text:
+                self._valid_output = False
+                self.output_edit.setPlainText(word.get("json_format_empty_hint"))
+                return
+            try:
+                result = transform(text)
+            except ITEJsonException as error:
+                pybreeze_logger.info("json_format_gui.py transform failed: %r", error)
+                self._valid_output = False
+                self.output_edit.setPlainText(word.get("json_format_error").format(error=error_text(str(error))))
+                return
+            self._valid_output = True
+            self.output_edit.setPlainText(result)
 
     def format_json(self) -> None:
         """Pretty-print the input JSON."""

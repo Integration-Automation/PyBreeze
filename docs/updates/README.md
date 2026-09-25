@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-118 | 2026-09-25 | JSON Format, HAR Import and Response Inspector show the wait cursor while they work | #ux #tools | [2026-09-d](2026-09-d.md) |
 | U-20260925-117 | 2026-09-25 | busy_cursor moves out of the menus into pybreeze_ui | #refactor | [2026-09-d](2026-09-d.md) |
 | U-20260925-116 | 2026-09-25 | Start the 2026-09-d batch | #docs | [2026-09-d](2026-09-d.md) |
 | U-20260925-115 | 2026-09-25 | The JupyterLab tab opens under the wait cursor; two log calls format lazily | #ux #logging | [2026-09-c](2026-09-c.md) |
@@ -521,4 +522,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
-| [2026-09-d.md](2026-09-d.md) | 2026-09 | 2 |
+| [2026-09-d.md](2026-09-d.md) | 2026-09 | 3 |

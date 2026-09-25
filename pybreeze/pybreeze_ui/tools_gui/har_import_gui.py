@@ -24,6 +24,7 @@ from pybreeze.utils.har_import.har_codegen import generate_har_script
 from pybreeze.utils.har_import.har_parser import HarEntry, api_entries, parse_har, summarize
 from pybreeze.utils.file_process.read_capped import read_text_capped
 from pybreeze.utils.logging.logger import pybreeze_logger
+from pybreeze.pybreeze_ui.busy_cursor import busy_cursor
 from pybreeze.pybreeze_ui.error_text import error_text
 from pybreeze.pybreeze_ui.fixed_pitch import use_fixed_pitch_font
 
@@ -142,21 +143,23 @@ class HarImportGUI(QWidget):
         :param text: the contents of a ``.har`` file
         :return: whether the export parsed
         """
-        try:
-            entries = parse_har(text)
-        except HarParseException as error:
-            pybreeze_logger.info("har_import_gui.py parse failed: %r", error)
-            self._report_error(
-                language_wrapper.language_word_dict.get("har_import_error").format(
-                    error=error_text(str(error))))
-            return False
-        self._entries = entries
-        self._refresh_entry_list()
-        # The previous file's script is not this one's: Save wrote it
-        self._generated_code = None
-        self._generated_from = []
-        self.output_edit.clear()
-        return True
+        # A large export takes seconds to parse and list
+        with busy_cursor():
+            try:
+                entries = parse_har(text)
+            except HarParseException as error:
+                pybreeze_logger.info("har_import_gui.py parse failed: %r", error)
+                self._report_error(
+                    language_wrapper.language_word_dict.get("har_import_error").format(
+                        error=error_text(str(error))))
+                return False
+            self._entries = entries
+            self._refresh_entry_list()
+            # The previous file's script is not this one's: Save wrote it
+            self._generated_code = None
+            self._generated_from = []
+            self.output_edit.clear()
+            return True
 
     def _report_error(self, message: str) -> None:
         """Show *message* as the summary, with nothing listed and no output.

@@ -124,3 +124,49 @@ class TestTheEntriesThatBuildWidgets:
         assert seen == [Qt.CursorShape.WaitCursor]
         assert window.tab_widget.count() == 1
         assert _cursor_shape() is None
+
+
+class TestTheToolsThatWorkOnALargeInput:
+    """Laying out and showing a few megabytes takes seconds on the UI thread."""
+
+    def test_json_format(self, app):
+        from pybreeze.pybreeze_ui.tools_gui.json_format_gui import JsonFormatGUI
+
+        seen: list = []
+        tool = JsonFormatGUI(None)
+        tool.input_edit.setPlainText('{"a": 1}')
+
+        tool._run(lambda text: seen.append(_cursor_shape()) or text)
+
+        assert seen == [Qt.CursorShape.WaitCursor]
+        assert _cursor_shape() is None
+        tool.deleteLater()
+
+    def test_har_import(self, app, monkeypatch):
+        from pybreeze.pybreeze_ui.tools_gui import har_import_gui
+
+        seen: list = []
+        monkeypatch.setattr(har_import_gui, "parse_har", lambda text: seen.append(_cursor_shape()) or [])
+        tool = har_import_gui.HarImportGUI(None)
+
+        assert tool.load_text('{"log": {"entries": []}}')
+
+        assert seen == [Qt.CursorShape.WaitCursor]
+        assert _cursor_shape() is None
+        tool.deleteLater()
+
+    def test_response_inspector(self, app, monkeypatch):
+        from pybreeze.pybreeze_ui.tools_gui import response_inspector_gui
+
+        seen: list = []
+        real = response_inspector_gui.analyze_response
+        monkeypatch.setattr(response_inspector_gui, "analyze_response",
+                            lambda text: seen.append(_cursor_shape()) or real(text))
+        tool = response_inspector_gui.ResponseInspectorGUI(None)
+        tool.input_edit.setPlainText("HTTP/1.1 200 OK\nContent-Type: application/json\n\n{}")
+
+        tool.analyze()
+
+        assert seen == [Qt.CursorShape.WaitCursor]
+        assert _cursor_shape() is None
+        tool.deleteLater()

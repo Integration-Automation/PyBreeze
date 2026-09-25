@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.busy_cursor import busy_cursor
 from pybreeze.pybreeze_ui.run_shortcut import press_on_ctrl_enter
 from pybreeze.pybreeze_ui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.header_analyzer_gui import HeaderAnalyzerGUI
@@ -141,21 +142,23 @@ class ResponseInspectorGUI(QWidget):
 
     def analyze(self) -> None:
         """Analyse the pasted response, show the report, and enable cross-tool actions."""
-        word = language_wrapper.language_word_dict
-        text = exact_text(self.input_edit).strip()
-        if not text:
-            self._analysis = None
-            self._set_cross_tool_enabled(jwt=False, status=False, headers=False, body=False)
-            self.output_edit.setPlainText(word.get("response_empty_hint"))
-            return
-        self._analysis = analyze_response(text)
-        self._analysed_text = exact_text(self.input_edit)
-        self.output_edit.setPlainText(build_report_text(self._analysis))
-        self._set_cross_tool_enabled(
-            jwt=bool(self._analysis.jwt_findings),
-            status=self._analysis.status is not None,
-            headers=bool(self._analysis.headers),
-            body=self._analysis.is_json_body)
+        # A large JSON body takes seconds to lay out and show
+        with busy_cursor():
+            word = language_wrapper.language_word_dict
+            text = exact_text(self.input_edit).strip()
+            if not text:
+                self._analysis = None
+                self._set_cross_tool_enabled(jwt=False, status=False, headers=False, body=False)
+                self.output_edit.setPlainText(word.get("response_empty_hint"))
+                return
+            self._analysis = analyze_response(text)
+            self._analysed_text = exact_text(self.input_edit)
+            self.output_edit.setPlainText(build_report_text(self._analysis))
+            self._set_cross_tool_enabled(
+                jwt=bool(self._analysis.jwt_findings),
+                status=self._analysis.status is not None,
+                headers=bool(self._analysis.headers),
+                body=self._analysis.is_json_body)
 
     def _set_cross_tool_enabled(
             self, *, jwt: bool, status: bool, headers: bool, body: bool) -> None:
