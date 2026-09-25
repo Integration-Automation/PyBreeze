@@ -208,6 +208,50 @@ class TestRunningWithoutAScriptTab:
         assert main_window.current_run_code_window == []
 
 
+    def test_the_editor_tab_in_front_runs_with_its_file_name_in_the_title(self, qt_app, monkeypatch):
+        from PySide6.QtWidgets import QPlainTextEdit, QTabWidget, QWidget
+
+        from pybreeze.extend.process_executor import process_executor_utils
+
+        class Editor(QWidget):
+            def __init__(self) -> None:
+                super().__init__()
+                self.code_edit = QPlainTextEdit('[["AC_type_keyboard", {"text": "hi"}]]')
+                self.current_file = "D:/scripts/login_test.json"
+
+        started: list = []
+        monkeypatch.setattr(process_executor_utils, "EditorWidget", Editor)
+        monkeypatch.setattr(
+            process_executor_utils, "start_process",
+            lambda *args, **kwargs: started.append(args))
+        main_window = MainWindow()
+        main_window.tab_widget = QTabWidget()
+        main_window.tab_widget.addTab(Editor(), "login_test.json")
+
+        process_executor_utils.build_process(main_window, "je_auto_control", send_mail=True)
+
+        (args,) = started
+        assert args[1:] == ("je_auto_control", '[["AC_type_keyboard", {"text": "hi"}]]', True, 1024000,
+                            "login_test.json")
+
+
+def test_start_process_hands_the_script_and_its_subject_to_a_new_run(qt_app, monkeypatch):
+    from pybreeze.extend.process_executor import process_executor_utils
+
+    made: list = []
+
+    class Run:
+        def start_test_process(self, package, exec_str, subject=""):
+            made.append((package, exec_str, subject))
+
+    monkeypatch.setattr(process_executor_utils, "build_task_process",
+                        lambda window, send_mail, buffer: made.append((send_mail, buffer)) or Run())
+
+    process_executor_utils.start_process(MainWindow(), "je_web_runner", "[]", True, 2048, "suite.json")
+
+    assert made == [(True, 2048), ("je_web_runner", "[]", "suite.json")]
+
+
 class TestLettingGoOfARunWindow:
     """The main window holds every run window; a closed one whose run is over goes."""
 
