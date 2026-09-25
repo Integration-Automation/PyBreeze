@@ -163,8 +163,9 @@ class TestTheQuestionBoxItself:
         seen: list = []
 
         def answer(box):
+            buttons = box.standardButtons()
             no_is_the_default = box.defaultButton() is box.button(QMessageBox.StandardButton.No)
-            seen.append((box.windowTitle(), box.text(), no_is_the_default))
+            seen.append((box.windowTitle(), box.text(), buttons, no_is_the_default))
             return getattr(QMessageBox.StandardButton, pressed)
 
         monkeypatch.setattr(policy_mod.QMessageBox, "exec", answer)
@@ -173,8 +174,9 @@ class TestTheQuestionBoxItself:
 
         message = "fingerprint <b>SHA256:x</b>"
         assert policy_mod.HostKeyAsker().ask(None, "Unknown host", message) is trusted
-        # No is where the focus starts, and the message is shown as text, not markup
-        assert seen == [("Unknown host", as_text(message), True)]
+        # Yes and No only, the focus starting on No, the message shown as text, not markup
+        yes_or_no = QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        assert seen == [("Unknown host", as_text(message), yes_or_no, True)]
 
 
 def test_a_no_is_remembered_for_ten_seconds_and_then_forgotten(asked, keys, monkeypatch):
@@ -218,15 +220,25 @@ _BAD_LINE = "badhost ssh-ed25519 abc"
 _DSA_LINE = "old.example ssh-dss AAAAB3NzaC1kc3MAAACBAP=="
 
 
-def test_a_bad_line_skips_that_line_and_the_rest_still_load(asked, keys, tmp_path):
+def test_a_bad_line_skips_that_line_and_the_rest_still_load(asked, keys, tmp_path, caplog):
     good = paramiko.hostkeys.HostKeyEntry(["good.example"], keys[0]).to_line().strip()
-    (tmp_path / "ssh_known_hosts").write_text(f"{_BAD_LINE}\n{good}\n", encoding="utf-8")
+    (tmp_path / "ssh_known_hosts").write_text(f"# trusted hosts\n{_BAD_LINE}\n{good}\n", encoding="utf-8")
     client = paramiko.SSHClient()
 
-    policy_mod.apply_host_key_policy(client, None)
+    with caplog.at_level("WARNING", logger="Pybreeze"):
+        policy_mod.apply_host_key_policy(client, None)
 
     assert client.get_host_keys().lookup("good.example")["ssh-rsa"] == keys[0]
     assert client.get_host_keys().lookup("badhost") is None
+    # The log names the line as an editor numbers it, and only that line
+    skipped = [record.getMessage() for record in caplog.records if "of ssh_known_hosts" in record.getMessage()]
+    assert skipped == ["Skipping line 2 of ssh_known_hosts: InvalidHostKey"]
+
+
+def test_the_first_host_trusted_is_the_file_s_first_line(asked, keys, tmp_path):
+    _meet("host.example", keys[0])
+
+    assert (tmp_path / "ssh_known_hosts").read_bytes().startswith(b"host.example ")
 
 
 def test_accepting_a_host_keeps_the_lines_paramiko_could_not_read(asked, keys, tmp_path):

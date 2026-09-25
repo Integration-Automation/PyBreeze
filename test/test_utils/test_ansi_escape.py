@@ -102,3 +102,24 @@ def test_a_long_rub_out_is_quick():
 
     assert strip_terminal_controls("a" * 10_000 + "\x08" * 10_000 + "done") == "done"
     assert time.perf_counter() - started < 1
+
+
+class TestWhatWaitsForTheNextRead:
+    def test_a_carriage_return_at_the_end_waits(self):
+        from pybreeze.utils.terminal_text import split_unfinished_end
+
+        assert split_unfinished_end("progress 50%\r") == ("progress 50%", "\r")
+
+    def test_a_carriage_return_before_a_cut_escape_waits_with_it(self):
+        from pybreeze.utils.terminal_text import split_unfinished_end
+
+        assert split_unfinished_end("done\r\x1b[") == ("done", "\r\x1b[")
+
+    def test_an_unfinished_escape_is_held_up_to_its_length_limit(self):
+        from pybreeze.utils.terminal_text import _MAX_PENDING_ESCAPE, split_incomplete_escape
+
+        longest = "\x1b[" + "1;" * ((_MAX_PENDING_ESCAPE - 2) // 2)
+        assert len(longest) == _MAX_PENDING_ESCAPE
+        assert split_incomplete_escape("ok" + longest) == ("ok", longest)
+        # One more and it is no escape anyone is still sending: shown as it is
+        assert split_incomplete_escape("ok" + longest + "1") == ("ok" + longest + "1", "")
