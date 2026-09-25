@@ -34,6 +34,8 @@ class TestPrivateAddressBlocking:
         "http://[::1]/",              # IPv6 loopback
         "http://[fe80::1]/",          # IPv6 link-local
         "http://[fec0::1]/",          # IPv6 site-local (deprecated, still routed in places)
+        "http://[4000::1]/",          # IPv6 reserved: neither private nor non-global to Python, only reserved
+        "http://240.0.0.1/",          # IPv4 reserved (class E)
     ])
     def test_blocked(self, url):
         with pytest.raises(UnsafeURLError):
