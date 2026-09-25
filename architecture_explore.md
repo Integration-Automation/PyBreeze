@@ -1,6 +1,6 @@
 # PyBreeze 架構探勘 / Architecture Exploration
 
-> 掃描範圍：`pybreeze/`（209 個 `.py`、約 24,000 行，不含空行與註解約 19,400 行）＋ `test/`、`exe/`、`docs/`、CI 設定
+> 掃描範圍：`pybreeze/`（209 個 `.py`、約 24,200 行，不含空行與註解約 18,900 行）＋ `test/`、`exe/`、`docs/`、CI 設定
 > 對應版本：`pyproject.toml` 1.0.21（stable）／`dev.toml` 1.0.14（dev），分支 `dev`
 
 ---
@@ -243,7 +243,7 @@ call_X_multi_file_and_send()   → run_dir_files_with_package(..., True)
 
 ---
 
-## 7. `pybreeze_ui/diagram_editor/` — 架構圖編輯器（4,034 行，最大子系統）
+## 7. `pybreeze_ui/diagram_editor/` — 架構圖編輯器（4,042 行，最大子系統）
 
 | 檔案 | 職責 |
 |---|---|
@@ -298,7 +298,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 9. `pybreeze_ui/connect_gui/`
 
-### `ssh/`（2,508 行）
+### `ssh/`（2,516 行）
 
 | 檔案 | 職責 |
 |---|---|
