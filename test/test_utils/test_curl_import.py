@@ -682,6 +682,14 @@ class TestBashAnsiCQuoting:
         assert parse_curl("curl https://x -d \"a $'b'\"").body == "a $'b'"
         assert parse_curl("curl https://x -d 'a $b'").body == "a $b"
 
+    def test_an_escaped_quote_does_not_end_double_quotes_early(self):
+        # "say \"$'no'\" there": the $' after \" is still inside the double quotes
+        assert parse_curl("curl https://x -d \"say \\\"$'no'\\\" there\"").body == "say \"$'no'\" there"
+
+    def test_an_escaped_dollar_starts_no_dollar_quote(self):
+        # \$'x' in bash is a literal $ followed by the single-quoted x
+        assert parse_curl("curl https://x -d \\$'not-ansi'").body == "$not-ansi"
+
     def test_an_unterminated_one_is_refused(self):
         from pybreeze.utils.exception.exceptions import CurlParseException
 

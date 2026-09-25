@@ -258,6 +258,39 @@ class TestWhileARequestIsInFlight:
         assert thread_keeper.is_kept(thread)
         thread_keeper._OUTLIVING_THEIR_WIDGET.discard(thread)
 
+    def test_no_url_says_so_and_starts_nothing(self, client, monkeypatch):
+        monkeypatch.setattr(
+            ai_code_review_gui, "ReviewRequestThread", lambda *args: pytest.fail("a request was started"))
+
+        client.send_request()
+
+        assert client.response_panel.toPlainText() == client.word_dict.get(
+            "ai_code_review_gui_message_enter_valid_url")
+
+    def test_a_url_sent_before_is_said_to_be_known(self, client, monkeypatch):
+        class Started:
+            def __init__(self, *_args) -> None:
+                self.answered = self.failed = self.finished = self
+
+            def connect(self, _slot) -> None:
+                """Nothing arrives."""
+
+            def start(self) -> None:
+                """Nothing runs."""
+
+            @staticmethod
+            def isRunning() -> bool:
+                return False
+
+        monkeypatch.setattr(ai_code_review_gui, "ReviewRequestThread", Started)
+        client.url_input.setText(_A_URL)
+        client.method_box.setCurrentText("GET")
+        client.send_request()
+        client.send_request()
+
+        assert client.response_panel.toPlainText() == client.word_dict.get(
+            "ai_code_review_gui_message_url_already_recorded")
+
     def test_an_unsupported_method_says_so_and_starts_nothing(self, client, monkeypatch):
         started: list = []
         monkeypatch.setattr(
@@ -365,14 +398,21 @@ class TestASentUrlsFileThatCannotBeUsed:
         assert url_fingerprint(_A_URL) in stored(client)
 
     def test_a_file_that_cannot_be_written_does_not_stop_the_request(self, client, monkeypatch):
+        # The file is replaced through replace_text: stand in for that, not for
+        # Path.write_text, which record_url never calls
         from pathlib import Path
 
-        def refuse(*_args, **_kwargs):
+        attempts: list = []
+
+        def refuse(path, _text, **_kwargs):
+            attempts.append(path)
             raise PermissionError(13, "Access is denied")
 
-        monkeypatch.setattr(Path, "write_text", refuse)
+        monkeypatch.setattr(ai_code_review_gui, "replace_text", refuse)
 
         assert client.record_url(_A_URL) is True
+        assert [str(path) for path in attempts] == [str(client.url_file)]
+        assert not Path(client.url_file).exists()
 
 
 class TestTwoPanelsOpenAtOnce:
