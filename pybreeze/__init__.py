@@ -52,7 +52,7 @@ def __getattr__(name: str) -> Any:
     home = _HOMES.get(name)
     if home is None:
         raise AttributeError(f"module 'pybreeze' has no attribute {name!r}")
-    value = getattr(importlib.import_module(home), name)
+    value = getattr(importlib.import_module(home), name)  # nosemgrep — home comes from _HOMES, a fixed table
     globals()[name] = value
     return value
 

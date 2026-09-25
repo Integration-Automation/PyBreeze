@@ -25,8 +25,8 @@ _KEY_CLASSES: tuple[type[paramiko.PKey], ...] = (
 
 # Word-dict keys for why a key file could not be loaded
 UNSUPPORTED_KEY = "ssh_command_widget_error_message_unsupported_private_key"
-PASSPHRASE_NEEDED = "ssh_key_error_passphrase_needed"
-PASSPHRASE_WRONG = "ssh_key_error_passphrase_wrong"
+PASSPHRASE_NEEDED = "ssh_key_error_passphrase_needed"  # nosec B105  # NOSONAR S2068 — a word-dict key
+PASSPHRASE_WRONG = "ssh_key_error_passphrase_wrong"  # nosec B105  # NOSONAR S2068 — a word-dict key
 PUTTY_KEY = "ssh_key_error_putty_key"
 
 # A PuTTY key file (.ppk), which neither paramiko nor cryptography reads

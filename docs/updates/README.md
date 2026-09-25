@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-67 | 2026-09-26 | The eight known Codacy false positives are marked where they are, each with its reason | #quality | [2026-09-d](2026-09-d.md) |
 | U-20260926-66 | 2026-09-26 | A slow answer is tested to stop being read at the deadline, and a text at the display limit to stay whole | #test #network | [2026-09-d](2026-09-d.md) |
 | U-20260926-65 | 2026-09-26 | replace_text's private mode is tested where CI runs, and its mutation run is read | #test #security | [2026-09-d](2026-09-d.md) |
 | U-20260926-64 | 2026-09-26 | Refactor: the HAR import keeps a query that does not round-trip with a plain else | #refactor #har | [2026-09-d](2026-09-d.md) |
@@ -605,4 +606,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
-| [2026-09-d.md](2026-09-d.md) | 2026-09 | 86 |
+| [2026-09-d.md](2026-09-d.md) | 2026-09 | 87 |

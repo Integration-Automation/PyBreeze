@@ -129,7 +129,8 @@ class TaskProcessManager:
             return
         argument = json.dumps(exec_str) if sys.platform in ["win32", "cygwin", "msys"] else exec_str
         args = [str(self.compiler_path), "-m", package, "--execute_str", argument]
-        if sys.platform == "win32" and len(subprocess.list2cmdline(args)) > _MAX_COMMAND_LINE:
+        command_line = subprocess.list2cmdline(args)  # nosemgrep — measured, not run
+        if sys.platform == "win32" and len(command_line) > _MAX_COMMAND_LINE:
             args[-2:] = ["--execute_file", str(self._write_script_file(exec_str))]
         self._spawn_and_pump(package, args, subject=subject)
 

@@ -86,7 +86,7 @@ SETTING_ENVIRONMENT = {
     "platform": "PRTHINKER_PLATFORM",
     "platform_base_url": "PRTHINKER_PLATFORM_BASE_URL",
     "repository": "GITHUB_REPOSITORY",
-    "platform_token": "GITHUB_TOKEN",
+    "platform_token": "GITHUB_TOKEN",  # nosec B105  # NOSONAR S2068 — the variable's name
 }
 
 # 不能寫進紀錄的設定項 / The settings that must never reach a log
@@ -105,7 +105,7 @@ DEFAULT_SETTING: dict[str, str] = {
     "platform": "github",
     "platform_base_url": "",
     "repository": "",
-    "platform_token": "",
+    "platform_token": "",  # nosec B105  # NOSONAR S2068 — none until the user enters one
     "rag": "off",
     "extra_arguments": "",
     "source_path": "",

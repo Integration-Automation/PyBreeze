@@ -256,7 +256,7 @@ def find_matches_bounded(
 def _run_worker(job: bytes, timeout_seconds: float) -> bytes:
     """Run the worker on *job*; its output, or ``RegexTesterException`` when it ran too long or failed."""
     try:
-        process = subprocess.Popen(  # nosec B603 — fixed argument list, no shell
+        process = subprocess.Popen(  # nosec B603  # nosemgrep — fixed argument list, no shell
             [sys.executable, "-I", "-S", "-c", _WORKER_SCRIPT],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
             shell=False, env=child_environment(), creationflags=no_window_creationflags())
