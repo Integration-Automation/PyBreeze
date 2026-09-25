@@ -85,6 +85,15 @@ class TestTheGrid:
         assert image.pixelColor(20, 50).name() != background  # a minor line, drawn thinner
         assert image.pixelColor(10, 50).name() == background
 
+    def test_a_new_cell_size_moves_the_lines_while_the_grid_is_shown(self, view):
+        view.draw_grid = True
+        view.grid_size = 30
+
+        image = self._background(view, 0, 0)
+        background = view_module._BG_COLOR.name()
+        assert image.pixelColor(30, 50).name() != background
+        assert image.pixelColor(20, 50).name() == background
+
     def test_left_of_the_origin_too(self, view):
         # Scene x -30 to 70: lines at -20, 0, 20..., which are image columns 10, 30, 50...
         view.draw_grid = True
