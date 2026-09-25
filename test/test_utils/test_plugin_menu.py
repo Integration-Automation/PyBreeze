@@ -279,6 +279,21 @@ class TestThePluginMenu:
         assert "2.1" in shown[0]
         assert "someone" in shown[0]
 
+    def test_the_about_dialog_speaks_the_ide_language(self, app, monkeypatch):
+        # "Version:" and "Author:" were English whatever the IDE spoke
+        from pybreeze.extend_multi_language.extend_traditional_chinese import (
+            pybreeze_traditional_chinese_word_dict,
+        )
+        monkeypatch.setattr(plugin_menu.language_wrapper, "language_word_dict",
+                            pybreeze_traditional_chinese_word_dict)
+        shown: list[str] = []
+        monkeypatch.setattr(
+            plugin_menu.QMessageBox, "exec", lambda self: shown.append(self.text()))
+        plugin_menu._make_about_callback(None, "Go", "2.1", "someone")()
+
+        assert "版本" in shown[0] and "作者" in shown[0]
+        assert "Version" not in shown[0] and "Author" not in shown[0]
+
     def test_the_about_dialog_shows_markup_as_text(self, app, monkeypatch):
         # A plugin's name or author went to the box as markup, <img> and all
         from PySide6.QtGui import QTextDocument

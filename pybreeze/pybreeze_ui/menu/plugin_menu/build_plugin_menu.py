@@ -135,9 +135,9 @@ def _make_about_callback(parent: PyBreezeMainWindow, name: str, version: str, au
         message_box.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         message_box.setWindowTitle(name)
         message_box.setText(as_text(
-            f"{name}\n"
-            f"Version: {version}\n"
-            f"Author: {author}"
+            language_wrapper.language_word_dict.get(
+                "plugin_about_text", "{name}\nVersion: {version}\nAuthor: {author}",
+            ).format(name=name, version=version, author=author)
         ))
         message_box.exec()
     return callback

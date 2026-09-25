@@ -766,6 +766,7 @@ pybreeze_traditional_chinese_word_dict = {
     # Plugin Menu
     "plugin_menu_label": "外掛",
     "plugin_menu_about": "關於",
+    "plugin_about_text": "{name}\n版本：{version}\n作者：{author}",
     "plugin_menu_run_with": "以 {name} 執行",
     # Run with Menu
     "run_folder_title": "執行資料夾",

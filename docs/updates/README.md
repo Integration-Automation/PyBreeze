@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-82 | 2026-09-25 | A plugin's About box speaks the IDE language | #fix #i18n #plugins | [2026-09-c](2026-09-c.md) |
 | U-20260925-81 | 2026-09-25 | architecture_explore.md's line counts re-measured | #docs | [2026-09-c](2026-09-c.md) |
 | U-20260925-80 | 2026-09-25 | The variable inspector is not offered as a feature | #docs | [2026-09-c](2026-09-c.md) |
 | U-20260925-79 | 2026-09-25 | Why a key did not load, decided in one place | #refactor #ssh | [2026-09-c](2026-09-c.md) |
@@ -484,4 +485,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
-| [2026-09-c.md](2026-09-c.md) | 2026-09 | 81 |
+| [2026-09-c.md](2026-09-c.md) | 2026-09 | 82 |

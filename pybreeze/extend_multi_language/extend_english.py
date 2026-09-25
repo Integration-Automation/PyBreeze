@@ -399,6 +399,7 @@ pybreeze_english_word_dict = {
     # Plugin Menu
     "plugin_menu_label": "Plugins",
     "plugin_menu_about": "About",
+    "plugin_about_text": "{name}\nVersion: {version}\nAuthor: {author}",
     "plugin_menu_run_with": "Run with {name}",
     # Run with Menu
     "run_folder_title": "Run a folder",
