@@ -148,3 +148,26 @@ class TestLoneSurrogates:
         from pybreeze.utils.json_format.json_process import minify_json
 
         assert minify_json(r'{"a": "\ud83d", "b": "\ud83d\ude00"}') == '{"a":"\\ud83d","b":"\U0001f600"}'
+
+
+class TestWhatCannotBeWrittenBack:
+    def test_a_value_already_parsed_is_laid_out(self):
+        assert reformat_json({"b": 1, "a": [1]}) == '{\n    "a": [\n        1\n    ],\n    "b": 1\n}'
+
+    def test_a_value_json_cannot_hold_is_refused(self):
+        with pytest.raises(ITEJsonException):
+            reformat_json({1, 2})
+
+    @pytest.mark.parametrize("operation", ["reformat_json", "minify_json"])
+    def test_text_that_parses_but_is_too_deep_to_write_is_refused(self, operation, monkeypatch):
+        # On Python 3.14 a list nested ~16,000 deep parses and then cannot be
+        # written; the depth depends on the version, so the writer is made to fail
+        from pybreeze.utils.json_format import json_process
+
+        def too_deep(*_args, **_kwargs):
+            raise RecursionError("maximum recursion depth exceeded")
+
+        monkeypatch.setattr(json_process, "dumps", too_deep)
+
+        with pytest.raises(ITEJsonException):
+            getattr(json_process, operation)("[[1]]")
