@@ -40,6 +40,10 @@ EDITOR_EXTEND_TAB: dict[str, type[QWidget]] = {
 # The theme until one is picked from UI Style, as JEditor has it
 DEFAULT_THEME = "dark_amber.xml"
 
+# Shipped beside this module (package data): it was read from the working
+# folder, which a started IDE never has, and the window had no icon
+_ICON_PATH = Path(__file__).with_name("pybreeze_icon.ico")
+
 
 def _close_guarded(widget: QWidget, *steps) -> None:
     """Run *widget*'s closing *steps*, logging a failure instead of raising it.
@@ -92,7 +96,7 @@ class PyBreezeMainWindow(EditorMain):
 
         # Icon
         if not extend:
-            self.icon_path = Path(os.getcwd()) / "pybreeze_icon.ico"
+            self.icon_path = _ICON_PATH
             self.icon = QIcon(str(self.icon_path))
             if not self.icon.isNull():
                 self.setWindowIcon(self.icon)
