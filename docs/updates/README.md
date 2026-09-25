@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-80 | 2026-09-26 | A trusted host that comes back with another key is refused without a question, tested against a real server | #test #ssh #security | [2026-09-e](2026-09-e.md) |
 | U-20260926-79 | 2026-09-26 | What a terminal read holds back, and the host-key question's buttons, file and log line, are tested | #test #ssh #security | [2026-09-e](2026-09-e.md) |
 | U-20260926-78 | 2026-09-26 | A refused host key is asked about again ten seconds after the user's No, however often Connect was clicked | #fix #ssh #security | [2026-09-e](2026-09-e.md) |
 | U-20260926-77 | 2026-09-26 | The host-key question box's answer, and a No forgotten after ten seconds, are tested | #test #security #ssh | [2026-09-e](2026-09-e.md) |
@@ -619,4 +620,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
 | [2026-09-d.md](2026-09-d.md) | 2026-09 | 91 |
-| [2026-09-e.md](2026-09-e.md) | 2026-09 | 8 |
+| [2026-09-e.md](2026-09-e.md) | 2026-09 | 9 |

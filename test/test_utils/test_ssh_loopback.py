@@ -113,6 +113,24 @@ def test_the_host_key_is_asked_about_once_and_kept(asked, server):
     assert known.lookup(f"[127.0.0.1]:{server.port}") is not None
 
 
+def test_a_host_whose_key_changed_is_refused_without_asking(asked, server):
+    # Trusted once, then another key on the same address: someone in between,
+    # or a server rebuilt. Either way it is no new host to ask about.
+    client = SFTPClientWrapper()
+    client.connect("127.0.0.1", server.port, USER, PASSWORD)
+    client.close()
+    known_hosts = policy_mod._known_hosts_path().read_bytes()
+    server.host_key = paramiko.RSAKey.generate(2048)
+
+    client = SFTPClientWrapper()
+    with pytest.raises(paramiko.BadHostKeyException):
+        client.connect("127.0.0.1", server.port, USER, PASSWORD)
+
+    assert not client.connected
+    assert asked["count"] == 1  # the first connect's question only
+    assert policy_mod._known_hosts_path().read_bytes() == known_hosts
+
+
 def test_a_key_file_that_cannot_be_loaded_says_why_before_connecting(asked, server, tmp_path):
     from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_key_loader import UNSUPPORTED_KEY
 

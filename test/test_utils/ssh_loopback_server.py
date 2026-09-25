@@ -234,8 +234,8 @@ class LoopbackServer:
             self._transports.append(transport)
             try:
                 transport.start_server(server=_Server(self.public_keys, self.events))
-            except paramiko.SSHException:
-                continue  # the client gave up on the handshake
+            except (paramiko.SSHException, OSError, EOFError):
+                continue  # the client gave up on the handshake, or hung up in it (refusing the host key)
 
     def stop(self) -> None:
         self._listener.close()
