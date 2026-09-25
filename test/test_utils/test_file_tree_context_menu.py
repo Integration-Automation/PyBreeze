@@ -696,3 +696,60 @@ class TestRevealing:
         ctx._action_reveal_in_explorer(tree, tmp_path)
 
         assert len(warnings) == 1 and "xdg-open" in warnings[0]
+
+
+class TestTheMenuEntries:
+    """Each entry of the right-click menu does its own action, and those that need an item wait for one."""
+
+    _HANDLERS = ("_action_new_file", "_action_new_folder", "_action_rename", "_action_delete",
+                 "_action_copy_path", "_action_reveal_in_explorer")
+
+    @staticmethod
+    def _open(tree, monkeypatch, *, under_the_cursor: Path | None, choose: str | None) -> tuple[list, dict]:
+        """Open the menu over *under_the_cursor* and pick the entry reading *choose*."""
+        from PySide6.QtWidgets import QMenu
+
+        calls: list = []
+        enabled: dict[str, bool] = {}
+
+        class ChoosingMenu(QMenu):
+            def exec(self, *args):
+                enabled.update({action.text(): action.isEnabled() for action in self.actions() if action.text()})
+                return next((action for action in self.actions() if action.text() == choose), None)
+
+        monkeypatch.setattr(ctx, "QMenu", ChoosingMenu)
+        monkeypatch.setattr(ctx, "_get_path_from_index", lambda _tree, _index: under_the_cursor)
+        for name in TestTheMenuEntries._HANDLERS:
+            monkeypatch.setattr(ctx, name, lambda *args, _name=name, **kwargs: calls.append((_name, args, kwargs)))
+        ctx._show_context_menu(QPoint(1, 1), tree, "the window")
+        return calls, enabled
+
+    @pytest.mark.parametrize("key, handler, arguments, keywords", [
+        ("file_tree_ctx_new_file", "_action_new_file", ("path",), {}),
+        ("file_tree_ctx_new_folder", "_action_new_folder", ("path",), {}),
+        ("file_tree_ctx_rename", "_action_rename", ("window", "path"), {}),
+        ("file_tree_ctx_delete", "_action_delete", ("window", "path"), {}),
+        ("file_tree_ctx_copy_path", "_action_copy_path", ("path",), {"relative": False}),
+        ("file_tree_ctx_copy_relative_path", "_action_copy_path", ("path",), {"relative": True}),
+        ("file_tree_ctx_reveal_in_explorer", "_action_reveal_in_explorer", ("path",), {}),
+    ])
+    def test_an_entry_does_its_own_action(self, tree, tmp_path, monkeypatch, key, handler, arguments, keywords):
+        from je_editor import language_wrapper
+
+        item = tmp_path / "a.py"
+        calls, _enabled = self._open(tree, monkeypatch, under_the_cursor=item,
+                                     choose=language_wrapper.language_word_dict.get(key))
+
+        given = {"path": item, "window": "the window"}
+        assert calls == [(handler, (tree, *(given[name] for name in arguments)), keywords)]
+
+    def test_on_empty_space_only_new_entries_can_be_chosen(self, tree, monkeypatch):
+        from je_editor import language_wrapper
+
+        words = language_wrapper.language_word_dict
+        calls, enabled = self._open(tree, monkeypatch, under_the_cursor=None, choose=None)
+
+        assert calls == []
+        assert {text for text, on in enabled.items() if on} == {
+            words.get("file_tree_ctx_new_file"), words.get("file_tree_ctx_new_folder")}
+        assert len(enabled) == 7
