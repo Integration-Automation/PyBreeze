@@ -57,6 +57,18 @@ class TestBusyCursor:
         assert inside == Qt.CursorShape.WaitCursor
         assert _cursor_shape() is None
 
+    def test_the_events_waiting_are_handled_before_the_block(self, app):
+        # So the cursor change reaches the screen first where the event loop applies it
+        from PySide6.QtCore import QTimer
+
+        fired: list = []
+        QTimer.singleShot(0, lambda: fired.append(True))
+
+        with busy_cursor():
+            inside = list(fired)
+
+        assert inside == [True]
+
     def test_the_cursor_goes_back_when_the_block_fails(self, app):
         with pytest.raises(RuntimeError), busy_cursor():
             raise RuntimeError("the widget could not be built")

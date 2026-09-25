@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-127 | 2026-09-25 | The wait cursor shows before the work starts; HAR Import's file read is under it too | #ux #tools | [2026-09-d](2026-09-d.md) |
 | U-20260925-126 | 2026-09-25 | The three tools take the wait cursor as a decorator; Response Inspector reads its input once | #refactor #tools | [2026-09-d](2026-09-d.md) |
 | U-20260925-125 | 2026-09-25 | The report-mail timeout is tested against MailThunder's own client; the packaging test reads the table | #test #mail #packaging | [2026-09-d](2026-09-d.md) |
 | U-20260925-124 | 2026-09-25 | A report mail gives up on a silent mail server after 30 s (progress #102) | #done #fix #mail | [2026-09-d](2026-09-d.md) |
@@ -530,4 +531,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
-| [2026-09-d.md](2026-09-d.md) | 2026-09 | 11 |
+| [2026-09-d.md](2026-09-d.md) | 2026-09 | 12 |

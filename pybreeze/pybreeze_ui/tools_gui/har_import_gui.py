@@ -125,7 +125,8 @@ class HarImportGUI(QWidget):
         try:
             # utf-8-sig: an export saved with a byte-order mark is still JSON
             # Size-checked first: a multi-GB export froze the IDE while read here
-            text = read_text_capped(Path(path), encoding="utf-8-sig")
+            with busy_cursor():  # a large export, or a slow drive
+                text = read_text_capped(Path(path), encoding="utf-8-sig")
         except (OSError, UnicodeDecodeError) as error:
             pybreeze_logger.info("har_import_gui.py read failed: %r", error)
             # The reason without the path: str(OSError) carries the file's full
