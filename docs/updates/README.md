@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-85 | 2026-09-26 | A JWT without its signature part, stray characters that leave the padding alone, the first of two tokens and the fallback layout are tested | #test #tools | [2026-09-e](2026-09-e.md) |
 | U-20260926-84 | 2026-09-26 | The automation menus' Run entries come from one function; the six copied executor modules are gone | #refactor #menu #docs | [2026-09-e](2026-09-e.md) |
 | U-20260926-83 | 2026-09-26 | The one host-key asker, made on first use on the UI thread, is tested; the host-key mutation run is read to its end | #test #ssh | [2026-09-e](2026-09-e.md) |
 | U-20260926-82 | 2026-09-26 | The host-key question is tested with an open panel, and the ten-second No from a clock starting at 5 | #test #ssh #security | [2026-09-e](2026-09-e.md) |
@@ -624,4 +625,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
 | [2026-09-d.md](2026-09-d.md) | 2026-09 | 91 |
-| [2026-09-e.md](2026-09-e.md) | 2026-09 | 13 |
+| [2026-09-e.md](2026-09-e.md) | 2026-09 | 14 |

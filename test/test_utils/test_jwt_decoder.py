@@ -6,6 +6,7 @@ import json
 
 import pytest
 
+from pybreeze.utils.exception.exception_tags import malformed_jwt_error
 from pybreeze.utils.exception.exceptions import JwtDecodeException
 from pybreeze.utils.jwt_tools.jwt_decoder import (
     decode_jwt,
@@ -54,8 +55,15 @@ class TestDecodeJwt:
             decode_jwt("   ")
 
     def test_wrong_segment_count_raises(self):
-        with pytest.raises(JwtDecodeException):
+        with pytest.raises(JwtDecodeException, match=malformed_jwt_error):
             decode_jwt("only.two")
+
+    def test_a_token_without_its_signature_part_is_refused_as_malformed(self):
+        # Both parts decode; taken as three, the signature was read past the end
+        header, payload, _signature = _make_jwt({"alg": "HS256"}, {"sub": "1"}).split(".")
+
+        with pytest.raises(JwtDecodeException, match=malformed_jwt_error):
+            decode_jwt(f"{header}.{payload}")
 
     def test_invalid_base64_raises(self):
         with pytest.raises(JwtDecodeException):
@@ -147,13 +155,21 @@ class TestATokenPastedWithSomethingAroundIt:
 
         assert decoded.payload == {"sub": "1", "name": "a long enough name"}
 
-    def test_a_segment_with_characters_outside_base64url_is_refused(self):
-        # Non-strict decoding dropped them and decoded what was left
+    @pytest.mark.parametrize("stray", ["!", "!!!!"])
+    def test_a_segment_with_characters_outside_base64url_is_refused(self, stray):
+        # Non-strict decoding dropped them and decoded what was left; four of
+        # them leave the padding as it was, so only strict decoding refuses them
         token = _make_jwt({"alg": "HS256"}, {"sub": "1"})
         header, payload, signature = token.split(".")
 
         with pytest.raises(JwtDecodeException):
-            decode_jwt(f"{header[:4]}!{header[4:]}.{payload}.{signature}")
+            decode_jwt(f"{header[:4]}{stray}{header[4:]}.{payload}.{signature}")
+
+    def test_of_two_tokens_the_first_is_decoded(self):
+        first = _make_jwt({"alg": "HS256"}, {"sub": "first"})
+        second = _make_jwt({"alg": "HS256"}, {"sub": "second"})
+
+        assert decode_jwt(f"Bearer {first}, then {second}").payload == {"sub": "first"}
 
 
 class TestTheSegmentsAsShown:
@@ -179,7 +195,8 @@ class TestTheSegmentsAsShown:
 
         decoded = decode_jwt(self._raw_jwt('{"a": 1, "a": 2}'))
 
-        assert json.loads(shown_json(decoded.payload_json, decoded.payload)) == {"a": 2}
+        # Laid out as the text is when it is shown as written: four spaces a level
+        assert shown_json(decoded.payload_json, decoded.payload) == '{\n    "a": 2\n}'
 
     def test_the_keys_are_sorted_unless_asked_not_to(self):
         from pybreeze.utils.jwt_tools.jwt_decoder import shown_json
