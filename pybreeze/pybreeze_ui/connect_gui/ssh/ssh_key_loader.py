@@ -105,20 +105,28 @@ def unloadable_key_reason(key_path: str, password: str) -> str:
     """
     if _key_file_data(key_path, _PUTTY_HEADER) is not None:
         return PUTTY_KEY
-    if _key_file_data(key_path, _PKCS8_ENCRYPTED) is not None:
-        if not password:
-            return PASSPHRASE_NEEDED
-        return UNSUPPORTED_KEY if _decrypts(key_path, password) else PASSPHRASE_WRONG
+    if _key_file_data(key_path, _PKCS8_ENCRYPTED) is not None or _asks_for_passphrase(key_path):
+        return _encrypted_key_reason(key_path, password)
+    return UNSUPPORTED_KEY
+
+
+def _asks_for_passphrase(key_path: str) -> bool:
+    """Whether some key class asks for a passphrase to load *key_path*: the file is encrypted."""
     for key_cls in _KEY_CLASSES:
         try:
             key_cls.from_private_key_file(key_path, None)
         except paramiko.PasswordRequiredException:
-            if not password:
-                return PASSPHRASE_NEEDED
-            return UNSUPPORTED_KEY if _decrypts(key_path, password) else PASSPHRASE_WRONG
+            return True
         except (paramiko.SSHException, ValueError, OSError) as error:
             pybreeze_logger.debug("Key type %s rejected: %s", key_cls.__name__, error)
-    return UNSUPPORTED_KEY
+    return False
+
+
+def _encrypted_key_reason(key_path: str, password: str) -> str:
+    """Why an encrypted key file did not load: no passphrase, a wrong one, or a type paramiko cannot use."""
+    if not password:
+        return PASSPHRASE_NEEDED
+    return UNSUPPORTED_KEY if _decrypts(key_path, password) else PASSPHRASE_WRONG
 
 
 def _decrypts(key_path: str, password: str) -> bool:

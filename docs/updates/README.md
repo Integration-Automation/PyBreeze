@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-79 | 2026-09-25 | Why a key did not load, decided in one place | #refactor #ssh | [2026-09-c](2026-09-c.md) |
 | U-20260925-78 | 2026-09-25 | The Sphinx pages say what a tree click does to a tab's text | #docs | [2026-09-c](2026-09-c.md) |
 | U-20260925-77 | 2026-09-25 | Stop All Program stops PyBreeze's runs too | #fix #run | [2026-09-c](2026-09-c.md) |
 | U-20260925-76 | 2026-09-25 | The Sphinx overview, getting-started and base-menu pages told right | #docs | [2026-09-c](2026-09-c.md) |
@@ -481,4 +482,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
-| [2026-09-c.md](2026-09-c.md) | 2026-09 | 78 |
+| [2026-09-c.md](2026-09-c.md) | 2026-09 | 79 |
