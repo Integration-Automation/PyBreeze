@@ -43,7 +43,11 @@ The login widget provides fields for SSH connection:
 
 After entering your credentials, click **Connect** (or press Enter in any field) to establish
 the SSH session. An unknown host key is not accepted silently: its SHA256 fingerprint is shown
-for confirmation on the first connection and kept in ``~/.pybreeze/ssh_known_hosts``.
+for confirmation on the first connection and kept in ``~/.pybreeze/ssh_known_hosts``. Hosts in
+``~/.ssh/known_hosts`` are trusted as well. A host trusted before that shows another key is
+refused without a question: someone may be intercepting the connection. The message gives both
+SHA256 fingerprints and the file holding the trusted one; if the server's key was changed on
+purpose, remove the host's line from that file and connect again.
 
 Remote File Browser
 -------------------

@@ -187,6 +187,54 @@ def terminal(app, asked, server):
     widget.deleteLater()
 
 
+class TestTheTerminalWithAKey:
+    """What the shell tab says when a connect with a key file fails, and why."""
+
+    def _connect(self, app, server, key_path: str):
+        from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_command_widget import SSHCommandWidget
+
+        widget = SSHCommandWidget()
+        widget.login_widget.host_edit.setText("127.0.0.1")
+        widget.login_widget.port_spin.setValue(server.port)
+        widget.login_widget.user_edit.setText(USER)
+        widget.login_widget.use_key_check.setChecked(True)
+        widget.login_widget.key_edit.setText(key_path)
+        widget.login_widget.pass_edit.setText(_PASSPHRASE)
+        widget.connect_ssh()
+        wait_until(app, lambda: not widget._connecting.isRunning())
+        app.processEvents()
+        return widget
+
+    def test_a_key_the_server_refuses_is_a_failed_key_authentication(self, app, asked, server, tmp_path):
+        key_path = _key_file(tmp_path, "ed25519_openssh", server)
+        server.public_keys.clear()  # not a key this server takes
+
+        widget = self._connect(app, server, key_path)
+
+        shown = widget.terminal.toPlainText()
+        assert widget.word_dict.get("ssh_command_widget_error_message_key_auth_failed") in shown
+        widget.close()
+        widget.deleteLater()
+
+    def test_a_changed_host_key_is_said_so_not_as_a_failed_key_authentication(
+            self, app, asked, server, tmp_path):
+        key_path = _key_file(tmp_path, "ed25519_openssh", server)
+        self._connect(app, server, key_path).close()  # the host key is trusted
+        trusted = policy_mod._fingerprint_sha256(server.host_key)
+        server.host_key = paramiko.RSAKey.generate(2048)
+
+        widget = self._connect(app, server, key_path)
+
+        shown = widget.terminal.toPlainText()
+        assert widget.word_dict.get("ssh_command_widget_error_message_key_auth_failed") not in shown
+        assert f"has changed: it is now {policy_mod._fingerprint_sha256(server.host_key)}" in shown
+        assert f"not the {trusted} trusted before" in shown
+        assert str(policy_mod._known_hosts_path()) in shown
+        assert not widget.is_connected()
+        widget.close()
+        widget.deleteLater()
+
+
 class TestTheTerminal:
     """The shell tab against a real shell channel: the other terminal tests stub the channel."""
 

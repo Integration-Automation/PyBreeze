@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
 from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_connect_thread import (
-    CONNECT_ERRORS, SHA1_ALGORITHMS, SshConnectThread
+    SHA1_ALGORITHMS, SshConnectThread
 )
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_host_key_policy import (
     apply_host_key_policy, host_key_asker
@@ -459,16 +459,22 @@ class SSHCommandWidget(QWidget):
 
     def _connect_with_key(self, client: paramiko.SSHClient, host: str, port: int, user: str,
                           key_path: str, password: str) -> None:
-        """Key-based auth, on the connecting thread. Raises what the connect raises."""
+        """Key-based auth, on the connecting thread. Raises what the connect raises.
+
+        Only a key that cannot be read or that the server refuses is a failed key
+        authentication. Everything the connect raised used to be one: a host key
+        declined or changed, or a host that could not be reached, read "Key auth
+        failed", and the declined host key's message was never translated.
+        """
+        failed = self.word_dict.get("ssh_command_widget_error_message_key_auth_failed")
+        pkey = load_private_key(key_path, password, context="SSH")
+        if pkey is None:
+            raise ValueError(f"{failed} {self.word_dict.get(unloadable_key_reason(key_path, password))}")
         try:
-            pkey = load_private_key(key_path, password, context="SSH")
-            if pkey is None:
-                raise ValueError(self.word_dict.get(unloadable_key_reason(key_path, password)))
             client.connect(hostname=host, port=port, username=user, pkey=pkey, timeout=10,
                            disabled_algorithms=SHA1_ALGORITHMS)
-        except CONNECT_ERRORS as e:
-            raise RuntimeError(
-                f"{self.word_dict.get('ssh_command_widget_error_message_key_auth_failed')} {e}") from e
+        except paramiko.AuthenticationException as e:
+            raise RuntimeError(f"{failed} {e}") from e
 
     def _on_connected(self, client: paramiko.SSHClient, channel: paramiko.Channel,
                       host: str, port: int, user: str) -> None:

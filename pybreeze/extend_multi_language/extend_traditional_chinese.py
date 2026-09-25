@@ -851,6 +851,10 @@ pybreeze_traditional_chinese_word_dict = {
     "error_text_image_declared_too_large_error": "圖片太大（{size} 位元組，上限 {limit}）。",
     "error_text_image_too_large_error": "圖片超過 {megabytes} MB 的上限。",
     "error_text_host_key_rejected_error": "已拒絕 {hostname} 的主機金鑰。",
+    "error_text_host_key_changed_error": (
+        "{hostname} 的主機金鑰變了：現在是 {fingerprint}，不是先前信任的 {trusted}。"
+        "可能有人在攔截這條連線。如果伺服器的金鑰是刻意更換的，請從 {known_hosts} 刪掉它那一行，再重新連線。"
+    ),
     "error_text_redirect_not_followed_error": "重新導向（未跟隨）至 {where}",
     "error_text_redirect_same_server_error": "重新導向（未跟隨）至這台伺服器上的另一個路徑",
     "error_text_redirect_nowhere_error": "重新導向（未跟隨），但沒有指出目的地",

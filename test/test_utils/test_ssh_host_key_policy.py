@@ -293,6 +293,45 @@ def test_a_file_without_a_last_newline_keeps_its_last_host(asked, keys):
     assert known.lookup("second.example")["ssh-rsa"] == keys[1]
 
 
+class TestAKeyOtherThanTheTrustedOne:
+    """paramiko refuses it on its own; the message says what it may mean and where the trust is kept."""
+
+    def test_trusted_here_names_pybreeze_s_file(self, asked, keys):
+        _meet("host.example", keys[0])
+
+        message = policy_mod.changed_host_key_message(
+            paramiko.BadHostKeyException("host.example", keys[1], keys[0]))
+
+        assert message == policy_mod.host_key_changed_error.format(
+            hostname="host.example", fingerprint=policy_mod._fingerprint_sha256(keys[1]),
+            trusted=policy_mod._fingerprint_sha256(keys[0]), known_hosts=policy_mod._known_hosts_path())
+        assert "AAAA" not in message  # no key in base64, as paramiko gave them
+
+    def test_trusted_on_another_port_names_pybreeze_s_file(self, asked, keys):
+        _meet("[host.example]:2222", keys[0])
+
+        message = policy_mod.changed_host_key_message(
+            paramiko.BadHostKeyException("host.example", keys[1], keys[0]))
+
+        assert message.endswith(f"remove its line from {policy_mod._known_hosts_path()} and connect again.")
+
+    @pytest.mark.parametrize("trusted_here", [
+        [],  # PyBreeze's file holds nothing for the host
+        [("host.example.org", 0)],  # the same key, but for another name
+        [("host.example", 1)],  # another key for the host (an older one, not the one it failed)
+    ])
+    def test_trusted_elsewhere_names_the_system_file(self, asked, keys, trusted_here):
+        from pathlib import Path
+
+        for name, key in trusted_here:
+            _meet(name, keys[key])
+
+        message = policy_mod.changed_host_key_message(
+            paramiko.BadHostKeyException("host.example", keys[1], keys[0]))
+
+        assert message.endswith(f"remove its line from {Path.home() / '.ssh' / 'known_hosts'} and connect again.")
+
+
 class TestThePanelThatAsked:
     def test_its_question_carries_the_panel(self, asked, keys, monkeypatch):
         from PySide6.QtWidgets import QWidget

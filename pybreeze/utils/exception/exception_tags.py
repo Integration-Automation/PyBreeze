@@ -93,6 +93,11 @@ image_too_large_error: str = "Image exceeds {megabytes} MB limit."
 
 # SSH
 host_key_rejected_error: str = "Host key for {hostname} rejected by user."
+host_key_changed_error: str = (
+    "The host key of {hostname} has changed: it is now {fingerprint}, not the {trusted} trusted before. "
+    "Someone may be intercepting the connection. If the server's key was changed on purpose, "
+    "remove its line from {known_hosts} and connect again."
+)
 
 # An answer the Skills panel got that is not 2xx
 redirect_not_followed_error: str = "Redirect (not followed) to {where}"
