@@ -106,7 +106,7 @@ class SSHFileTreeManager(QWidget):
     # Emitted when the session comes up or goes down, for the tab's status label
     state_changed = Signal()
 
-    def __init__(self, external_login_widget: LoginWidget = None, add_login_widget: bool = True):
+    def __init__(self, external_login_widget: LoginWidget | None = None, add_login_widget: bool = True):
         super().__init__()
         self.word_dict = language_wrapper.language_word_dict
         self.setWindowTitle(
