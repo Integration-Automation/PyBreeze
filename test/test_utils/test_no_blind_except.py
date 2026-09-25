@@ -44,7 +44,7 @@ def test_every_blind_catch_re_raises_or_says_why():
 
 
 def test_no_noqa_reason_has_a_comma():
-    # SonarCloud reads what follows a comma in "# noqa: CODE — reason" as more
+    # SonarCloud reads what follows a comma in a noqa comment's reason as more
     # rule codes, and reports the comment as a malformed suppression (S7632)
     offenders = []
     for path in sorted(PACKAGE.rglob("*.py")):
