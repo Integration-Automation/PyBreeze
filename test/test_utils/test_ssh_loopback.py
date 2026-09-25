@@ -11,10 +11,6 @@ import os
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-import socket
-import stat
-import threading
-
 import paramiko
 import pytest
 from cryptography.hazmat.primitives import serialization
@@ -24,11 +20,9 @@ from PySide6.QtWidgets import QApplication
 from pybreeze.extend_multi_language.update_language_dict import update_language_dict
 from pybreeze.pybreeze_ui.connect_gui.ssh import ssh_host_key_policy as policy_mod
 from pybreeze.pybreeze_ui.connect_gui.ssh.sftp_session import SFTPClientWrapper
+from test_utils.ssh_loopback_server import ONE_ENTRY, PASSWORD, USER, LoopbackServer
 
-_USER = "tester"
-_PASSWORD = "the password"
 _PASSPHRASE = "the passphrase"
-_ENTRY = "only_entry"
 _OpenSSH = serialization.PrivateFormat.OpenSSH
 _PKCS8 = serialization.PrivateFormat.PKCS8
 _PEM = serialization.PrivateFormat.TraditionalOpenSSL
@@ -40,104 +34,6 @@ _KEY_FILES = {
     "ecdsa_pem": (lambda: ec.generate_private_key(ec.SECP256R1()), _PEM, False),
     "rsa_pkcs8_encrypted": (lambda: rsa.generate_private_key(65537, 2048), _PKCS8, True),
 }
-
-
-def _echo_shell(channel: paramiko.Channel, events: list) -> None:
-    """A shell that greets, answers each line with ``got: <line>``, and ends on ``exit``."""
-    channel.sendall("welcome\r\n$ ".encode("utf-8"))
-    received = b""
-    while True:
-        data = channel.recv(1024)
-        if not data:
-            return
-        events.append(("received", data))
-        received += data
-        while b"\n" in received:
-            line, received = received.split(b"\n", 1)
-            text = line.decode("utf-8").replace("\x03", "")
-            if text == "exit":
-                channel.sendall(b"bye\r\n")
-                channel.send_exit_status(0)
-                channel.close()
-                return
-            channel.sendall(f"got: {text}\r\n$ ".encode("utf-8"))
-
-
-class _Server(paramiko.ServerInterface):
-    def __init__(self, public_keys: set[str], events: list | None = None) -> None:
-        self.public_keys = public_keys
-        self.events = events if events is not None else []
-
-    def check_channel_pty_request(self, channel, term, width, height, pixelwidth, pixelheight, modes):
-        self.events.append(("pty", term, width, height))
-        return True
-
-    def check_channel_shell_request(self, channel):
-        threading.Thread(target=_echo_shell, args=(channel, self.events), daemon=True).start()
-        return True
-
-    def check_channel_window_change_request(self, channel, width, height, pixelwidth, pixelheight):
-        self.events.append(("resize", width, height))
-        return True
-
-    def check_auth_password(self, username, password):
-        return paramiko.AUTH_SUCCESSFUL if (username, password) == (_USER, _PASSWORD) else paramiko.AUTH_FAILED
-
-    def check_auth_publickey(self, username, key):
-        return paramiko.AUTH_SUCCESSFUL if key.get_base64() in self.public_keys else paramiko.AUTH_FAILED
-
-    def get_allowed_auths(self, username):
-        return "password,publickey"
-
-    def check_channel_request(self, kind, chanid):
-        if kind == "session":
-            return paramiko.OPEN_SUCCEEDED
-        return paramiko.OPEN_FAILED_ADMINISTRATIVELY_PROHIBITED
-
-
-class _OneEntryFolder(paramiko.SFTPServerInterface):
-    def list_folder(self, path):
-        entry = paramiko.SFTPAttributes()
-        entry.filename = _ENTRY
-        entry.st_mode = stat.S_IFREG | 0o644
-        entry.st_size = 0
-        return [entry]
-
-
-class _LoopbackServer:
-    """Accepts SSH connections on 127.0.0.1 on its own thread until stopped."""
-
-    def __init__(self, disabled_algorithms: dict | None = None) -> None:
-        self.host_key = paramiko.RSAKey.generate(2048)
-        self.public_keys: set[str] = set()
-        self.events: list = []  # what the shells were asked: ("pty", ...), ("received", bytes), ("resize", ...)
-        self._disabled_algorithms = disabled_algorithms
-        self._listener = socket.create_server(("127.0.0.1", 0))
-        self.port = self._listener.getsockname()[1]
-        self._transports: list[paramiko.Transport] = []
-        self._thread = threading.Thread(target=self._serve, daemon=True)
-        self._thread.start()
-
-    def _serve(self) -> None:
-        while True:
-            try:
-                connection, _address = self._listener.accept()
-            except OSError:
-                return  # stopped
-            transport = paramiko.Transport(connection, disabled_algorithms=self._disabled_algorithms)
-            transport.add_server_key(self.host_key)
-            transport.set_subsystem_handler("sftp", paramiko.SFTPServer, _OneEntryFolder)
-            self._transports.append(transport)
-            try:
-                transport.start_server(server=_Server(self.public_keys, self.events))
-            except paramiko.SSHException:
-                continue  # the client gave up on the handshake
-
-    def stop(self) -> None:
-        self._listener.close()
-        self._thread.join(timeout=5)
-        for transport in self._transports:
-            transport.close()
 
 
 @pytest.fixture(scope="module")
@@ -165,12 +61,12 @@ def asked(app, tmp_path, monkeypatch):
 
 @pytest.fixture
 def server():
-    started = _LoopbackServer()
+    started = LoopbackServer()
     yield started
     started.stop()
 
 
-def _key_file(tmp_path, kind: str, server: _LoopbackServer) -> str:
+def _key_file(tmp_path, kind: str, server: LoopbackServer) -> str:
     """Write a key file of *kind* the server accepts; its path."""
     make, private_format, encrypted = _KEY_FILES[kind]
     key = make()
@@ -190,13 +86,13 @@ def _listing(client: SFTPClientWrapper) -> list[str]:
 def test_a_password_logs_in_and_lists_the_folder(asked, server):
     client = SFTPClientWrapper()
     try:
-        client.connect("127.0.0.1", server.port, _USER, _PASSWORD)
+        client.connect("127.0.0.1", server.port, USER, PASSWORD)
         listed = _listing(client)
         host_key_type = client._ssh.get_transport().host_key_type
     finally:
         client.close()
 
-    assert listed == [_ENTRY]
+    assert listed == [ONE_ENTRY]
     assert host_key_type in ("rsa-sha2-256", "rsa-sha2-512")  # never "ssh-rsa", RSA signed with SHA-1
 
 
@@ -206,18 +102,18 @@ def test_each_kind_of_key_file_logs_in(asked, server, tmp_path, kind):
     client = SFTPClientWrapper()
     try:
         # With a key the password field holds its passphrase; a key that is not encrypted ignores it
-        client.connect("127.0.0.1", server.port, _USER, _PASSPHRASE, use_key=True, key_path=key_path)
+        client.connect("127.0.0.1", server.port, USER, _PASSPHRASE, use_key=True, key_path=key_path)
         listed = _listing(client)
     finally:
         client.close()
 
-    assert listed == [_ENTRY]
+    assert listed == [ONE_ENTRY]
 
 
 def test_the_host_key_is_asked_about_once_and_kept(asked, server):
     for _ in range(2):
         client = SFTPClientWrapper()
-        client.connect("127.0.0.1", server.port, _USER, _PASSWORD)
+        client.connect("127.0.0.1", server.port, USER, PASSWORD)
         client.close()
 
     assert asked["count"] == 1
@@ -229,7 +125,7 @@ def test_a_wrong_password_is_refused_and_leaves_no_session(asked, server):
     client = SFTPClientWrapper()
 
     with pytest.raises(paramiko.AuthenticationException):
-        client.connect("127.0.0.1", server.port, _USER, "not the password")
+        client.connect("127.0.0.1", server.port, USER, "not the password")
 
     assert not client.connected
 
@@ -237,11 +133,11 @@ def test_a_wrong_password_is_refused_and_leaves_no_session(asked, server):
 def test_a_server_that_signs_only_with_sha1_is_refused(asked):
     # Its RSA host key offered as "ssh-rsa" alone: paramiko 4 would take it
     # without SHA1_ALGORITHMS; paramiko 5 has no such signature to offer.
-    sha1_only = _LoopbackServer(disabled_algorithms={"keys": ("rsa-sha2-256", "rsa-sha2-512")})
+    sha1_only = LoopbackServer(disabled_algorithms={"keys": ("rsa-sha2-256", "rsa-sha2-512")})
     client = SFTPClientWrapper()
     try:
         with pytest.raises(paramiko.SSHException):
-            client.connect("127.0.0.1", sha1_only.port, _USER, _PASSWORD)
+            client.connect("127.0.0.1", sha1_only.port, USER, PASSWORD)
     finally:
         sha1_only.stop()
 
@@ -270,8 +166,8 @@ def terminal(app, asked, server):
     widget.resize(800, 500)
     widget.login_widget.host_edit.setText("127.0.0.1")
     widget.login_widget.port_spin.setValue(server.port)
-    widget.login_widget.user_edit.setText(_USER)
-    widget.login_widget.pass_edit.setText(_PASSWORD)
+    widget.login_widget.user_edit.setText(USER)
+    widget.login_widget.pass_edit.setText(PASSWORD)
     widget.connect_ssh()
     _wait_until(app, lambda: "welcome" in widget.terminal.toPlainText())
     yield widget
