@@ -25,6 +25,13 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
+        # Downloads are cached (PySide6 alone is hundreds of MB); pip still
+        # resolves the newest versions from PyPI, so the run tests what a user
+        # would install today
+        cache: pip
+        cache-dependency-path: |
+          requirements.txt
+          dev_requirements.txt
     - name: Update pip wheel setuptools
       run: python -m pip install --upgrade pip setuptools wheel
     - name: Install dev dependencies
