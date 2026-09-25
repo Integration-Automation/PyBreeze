@@ -337,6 +337,15 @@ start_editor(theme="dark_teal.xml")         # 任意 qt_material 主题；它会
 4. **生成** — 生成 HTML / JSON / XML 报告
 5. **发送** — 通过 MailThunder 集成以电子邮件发送报告
 
+### 日志文件
+
+PyBreeze 的日志写在 `~/.pybreeze/logs/PyBreeze.log`：UTF-8，每次运行都追加在后面，每行带有进程号。只有警告和错误也会出现在编辑器的 Code Result 面板。两个环境变量可以改变这些：
+
+| 变量 | 作用 |
+|---|---|
+| `PYBREEZE_LOG_FILE` | 改写到这个文件 |
+| `PYBREEZE_LOG_MAX_BYTES` | PyBreeze 进程第一次写日志时，文件若大于这个字节数，先重命名为原文件名加上 `.1`，替换上一份（默认 104857600，即 100 MB；`0` 表示不重命名） |
+
 ---
 
 ## 集成自动化模块

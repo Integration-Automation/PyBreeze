@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-09 | 2026-09-26 | The READMEs and the guide say where the log is and how to move or cap it | #docs #logging | [2026-09-d](2026-09-d.md) |
 | U-20260926-08 | 2026-09-26 | The log file's rotation when a process opens it is tested | #test #logging | [2026-09-d](2026-09-d.md) |
 | U-20260926-07 | 2026-09-26 | The prompt editor's Create, and Save with no file shown, are tested | #test #ai | [2026-09-d](2026-09-d.md) |
 | U-20260926-06 | 2026-09-26 | Refactor: the CoT global rules lose the RAG rules section nothing filled in | #refactor #ai | [2026-09-d](2026-09-d.md) |
@@ -547,4 +548,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
-| [2026-09-d.md](2026-09-d.md) | 2026-09 | 28 |
+| [2026-09-d.md](2026-09-d.md) | 2026-09 | 29 |

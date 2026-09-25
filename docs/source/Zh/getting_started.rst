@@ -99,3 +99,14 @@ PyBreeze 啟動後，主視窗會以最大化方式開啟，包含：
 4. **輸出面板** -- 位於編輯器下方，其中的 **Code result** 分頁顯示 **Run Program** 與 **Run On Shell** 的輸出
 
 PyBreeze 繼承了 **JEditor** 的核心編輯器功能，並擴充了自動化專用的選單、工具和整合功能。
+
+日誌檔
+------
+
+PyBreeze 的日誌寫在 ``~/.pybreeze/logs/PyBreeze.log``：UTF-8，每次執行都接在後面，每行帶著行程編號。只有警告與錯誤也會出現在 **Code result** 分頁。兩個環境變數可以改變這些：
+
+``PYBREEZE_LOG_FILE``
+   改寫到這個檔案。
+
+``PYBREEZE_LOG_MAX_BYTES``
+   PyBreeze 行程第一次寫日誌時，檔案若大於這個位元組數，先改名為原檔名加上 ``.1``\ ，取代上一份。預設 104857600（100 MB）；``0`` 表示不改名。

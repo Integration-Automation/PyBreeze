@@ -337,6 +337,15 @@ Once launched:
 4. **Generate** an HTML / JSON / XML report
 5. **Send** it by email through the MailThunder integration
 
+### Log file
+
+PyBreeze writes its log to `~/.pybreeze/logs/PyBreeze.log`: UTF-8, appended to by every run, each line carrying the process ID. Only warnings and errors also appear in the editor's Code Result panel. Two environment variables change this:
+
+| Variable | Effect |
+|---|---|
+| `PYBREEZE_LOG_FILE` | The log file to write instead |
+| `PYBREEZE_LOG_MAX_BYTES` | When a PyBreeze process first writes to the log and the file is larger than this many bytes, the file is first renamed with `.1` appended, replacing the previous one (default 104857600, 100 MB; `0` never renames it) |
+
 ---
 
 ## Integrated Automation Modules

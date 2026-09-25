@@ -337,6 +337,15 @@ start_editor(theme="dark_teal.xml")         # 任何 qt_material 主題；它會
 4. **產生** — HTML／JSON／XML 報告
 5. **寄送** — 透過 MailThunder 整合以電子郵件寄出
 
+### 日誌檔
+
+PyBreeze 的日誌寫在 `~/.pybreeze/logs/PyBreeze.log`：UTF-8，每次執行都接在後面，每行帶著行程編號。只有警告與錯誤也會出現在編輯器的 Code Result 面板。兩個環境變數可以改變這些：
+
+| 變數 | 作用 |
+|---|---|
+| `PYBREEZE_LOG_FILE` | 改寫到這個檔案 |
+| `PYBREEZE_LOG_MAX_BYTES` | PyBreeze 行程第一次寫日誌時，檔案若大於這個位元組數，先改名為原檔名加上 `.1`，取代上一份（預設 104857600，即 100 MB；`0` 表示不改名） |
+
 ---
 
 ## 整合的自動化模組
