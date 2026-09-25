@@ -418,3 +418,10 @@ def test_json_nested_too_deep_is_reported_not_raised_out_of_the_tab():
     # json.loads raises RecursionError, which the tab did not catch
     with pytest.raises(HarParseException):
         parse_har("[" * 100000)
+
+
+def test_a_header_entry_that_is_not_an_object_is_skipped():
+    # A HAR another tool wrote with a stray string among the headers
+    entry = parse_har(_har(_entry(headers=["X-Stray", {"name": "Accept", "value": "text/plain"}])))[0]
+
+    assert entry.request.headers == {"Accept": "text/plain"}

@@ -171,6 +171,11 @@ class TestHeadersAsHttpDefinesThem:
         assert analysis.headers["X-Long"] == "a b"
         assert analysis.is_json_body
 
+    def test_a_folded_line_after_a_repeated_header_continues_its_last_value(self):
+        analysis = analyze_response("HTTP/1.1 200 OK\nSet-Cookie: a=1\nSet-Cookie: b=2\n path=/\n\n")
+
+        assert analysis.headers == {"Set-Cookie": ["a=1", "b=2 path=/"]}
+
     def test_names_differing_only_in_case_are_one_header(self):
         analysis = analyze_response("HTTP/1.1 200 OK\nSet-Cookie: a=1\nset-cookie: b=2\n\n")
 

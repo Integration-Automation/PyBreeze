@@ -224,3 +224,12 @@ def test_a_form_string_without_an_equals_sign_is_left_out_too():
 
     # --form-string takes the value as it is: an @ there names no file
     assert form_parts(request) == ({"kept": "@not-a-file"}, {})
+
+
+def test_the_json_action_keeps_every_value_of_a_form_field_given_twice():
+    # As a dict the second -F tag replaced the first, and one tag was sent
+    from pybreeze.utils.curl_import.script_templates import to_apitestka_action
+
+    action = to_apitestka_action(parse_curl("curl https://x/api -F tag=a -F tag=b"))
+
+    assert action[1]["files"] == [["tag", [None, "a"]], ["tag", [None, "b"]]]
