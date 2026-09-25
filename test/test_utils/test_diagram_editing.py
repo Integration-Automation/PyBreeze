@@ -89,6 +89,26 @@ class TestTheContextMenu:
         assert scene.get_all_nodes() == []
 
 
+    def test_a_click_on_the_empty_canvas_can_paste_what_was_copied(self, app, monkeypatch):
+        scene = DiagramScene()
+        node = _node(scene, 0, "copied")
+        node.setSelected(True)
+        scene.copy_selected()
+
+        _right_click_and_choose(scene, monkeypatch, QPointF(600, 400), "Paste")
+
+        assert sorted(item.text() for item in scene.get_all_nodes()) == ["copied", "copied"]
+        scene.deleteLater()
+
+    def test_with_nothing_copied_the_empty_canvas_offers_no_paste(self, app, monkeypatch):
+        scene = DiagramScene()
+        _node(scene, 0, "only")
+
+        with pytest.raises(KeyError):  # the menu has no Paste entry to choose
+            _right_click_and_choose(scene, monkeypatch, QPointF(600, 400), "Paste")
+        scene.deleteLater()
+
+
 class TestStacking:
     def test_bring_to_front_goes_above_every_other_node(self, app):
         scene = DiagramScene()
@@ -111,6 +131,27 @@ class TestStacking:
         scene._change_z(-1)
 
         assert first.zValue() < second.zValue() < -3
+
+    @pytest.mark.parametrize("direction", [1, -1], ids=["front", "back"])
+    def test_a_node_alone_on_the_canvas_stays_and_leaves_no_undo_step(self, app, direction):
+        scene = DiagramScene()
+        node = _node(scene, 0, "alone", z=3)
+        node.setSelected(True)
+
+        scene._change_z(direction)
+
+        assert node.zValue() == 3
+        assert not scene.undo_stack.canUndo()
+        scene.deleteLater()
+
+    def test_pasting_with_nothing_copied_does_nothing(self, app):
+        scene = DiagramScene()
+
+        scene.paste_clipboard()
+
+        assert scene.get_all_nodes() == []
+        assert not scene.undo_stack.canUndo()
+        scene.deleteLater()
 
     def test_undo_keeps_overlapping_nodes_of_equal_z_the_same_way_up(self, app):
         scene = DiagramScene()

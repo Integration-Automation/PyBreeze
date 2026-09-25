@@ -94,7 +94,10 @@ def test_one_undo_takes_the_whole_alignment_back(scene):
     assert not scene.undo_stack.canUndo()
 
 
-@pytest.mark.parametrize("operation", ["align_left", "align_center_v", "distribute_h", "distribute_v"])
+@pytest.mark.parametrize("operation", [
+    "align_left", "align_right", "align_top", "align_bottom", "align_center_h", "align_center_v",
+    "distribute_h", "distribute_v",
+])
 def test_too_few_nodes_changes_nothing_and_leaves_no_undo_step(scene, operation):
     nodes = _nodes(scene, (0, 0, 100, 40), (300, 100, 50, 20))[: 1 if operation.startswith("align") else 2]
     for extra in scene.selectedItems():
