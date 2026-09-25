@@ -72,7 +72,7 @@ The layers are presentation (`pybreeze_ui/`), then execution (`extend/`), then f
 **Startup**
 
 ```
-python -m pybreeze → start_editor() → QApplication → PyBreezeMainWindow()
+python -m pybreeze → start_editor() → QApplication → open_main_window() → PyBreezeMainWindow()
   → update_language_dict()             [before JEditor picks the startup language]
   → EditorMain.__init__(extend=True)   [JEditor builds the editor, loads jeditor_plugins/]
   → drop JEditor Help menu → add_menu_to_menubar()

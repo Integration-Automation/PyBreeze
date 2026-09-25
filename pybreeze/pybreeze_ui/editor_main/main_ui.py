@@ -201,8 +201,23 @@ def start_editor(debug_mode: bool = False, theme: str = "dark_amber.xml", **kwar
     # Workers allocate enough to trigger a collection, which then destroyed
     # Qt objects on the worker and crashed the IDE later
     collect_garbage_on_gui_thread(new_ide)
+    # Held until the application ends: the window is nobody else's
+    _window = open_main_window(new_ide, debug_mode=debug_mode, theme=theme, **kwargs)
+    ret = new_ide.exec()
+    os._exit(ret)
+
+
+def open_main_window(app: QApplication, debug_mode: bool = False, theme: str = "dark_amber.xml",
+                     **kwargs) -> PyBreezeMainWindow:
+    """Build the main window, style it, show it and apply the saved settings.
+
+    :param app: the running application, which the theme is applied to
+    :param debug_mode: close by itself after a while, as the startup tests need
+    :param theme: qt_material theme name
+    :return: the window, which the caller keeps for as long as the IDE runs
+    """
     window = PyBreezeMainWindow(debug_mode=debug_mode, **kwargs)
-    apply_stylesheet(new_ide, theme=theme)
+    apply_stylesheet(app, theme=theme)
     window.showMaximized()
     try:
         window.startup_setting()
@@ -210,5 +225,4 @@ def start_editor(debug_mode: bool = False, theme: str = "dark_amber.xml", **kwar
     # a bad one is logged and the IDE starts without it.
     except (OSError, ValueError, TypeError, KeyError, RuntimeError) as error:
         pybreeze_logger.error("Startup setting error: %r", error)
-    ret = new_ide.exec()
-    os._exit(ret)
+    return window
