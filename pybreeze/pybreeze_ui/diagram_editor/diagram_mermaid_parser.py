@@ -78,6 +78,10 @@ _ARROW_SPLIT_RE = re.compile(
 
 _LABEL_MAX = 200  # bound non-greedy match to prevent polynomial backtracking on pathological input
 
+# An arrow's |label|: quoted (which may hold a "|"), or anything up to the next "|"
+_QUOTED_ARROW_LABEL_RE = re.compile(r'\|\s*("[^"]*")\s*\|')
+_PLAIN_ARROW_LABEL_RE = re.compile(r"\|([^|]*)\|")
+
 
 def _normalize_inline_labels(line: str) -> str:
     """Convert ``-- label -->`` style to ``-->|label|`` pipe style.
@@ -250,13 +254,25 @@ def _parse_node_group(raw: str, nodes: dict[str, _NodeInfo]) -> list[str]:
     return ids
 
 
+def _arrow_label(token: str) -> str:
+    """The ``|label|`` of an arrow token, as written; ``""`` when it has none.
+
+    A quoted label is taken whole: '|"a|b"|' stopped at the "|" inside it. The
+    two patterns share no characters between neighbouring parts, so each reads
+    its input once: one pattern for both, spaces allowed on either side of an
+    unquoted label, backtracked in cubic time.
+    """
+    quoted = _QUOTED_ARROW_LABEL_RE.search(token)
+    plain = _PLAIN_ARROW_LABEL_RE.search(token)
+    # The leftmost, and the quoted one where both start at the same "|"
+    if quoted and (plain is None or quoted.start() <= plain.start()):
+        return quoted.group(1)
+    return plain.group(1).strip() if plain else ""
+
+
 def _parse_arrow(token: str) -> tuple[str, ConnectionStyle, float]:
     """Return ``(label, style, line_width)`` from an arrow token."""
-    label = ""
-    # A quoted label is taken whole: '|"a|b"|' stopped at the "|" inside it
-    lm = re.search(r'\|\s*("[^"]*"|[^|]*)\s*\|', token)
-    if lm:
-        label = _unquote(lm.group(1).strip())
+    label = _unquote(_arrow_label(token))
 
     if "==" in token:
         return label, ConnectionStyle.SOLID, 3.5  # thick link
