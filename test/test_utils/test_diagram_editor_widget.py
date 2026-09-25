@@ -267,6 +267,40 @@ class TestMermaidImport:
         editor._import_mermaid()
         assert [n.text() for n in editor._scene.get_all_nodes()] == ["A"]
 
+    def test_text_with_no_nodes_says_so_and_leaves_the_canvas(self, editor, monkeypatch):
+        from PySide6.QtWidgets import QMessageBox
+
+        told: list = []
+        monkeypatch.setattr(QMessageBox, "information", lambda *args: told.append(args[2]))
+        editor._scene.load_from_dict(_A_DIAGRAM)
+        self._answer(monkeypatch, "flowchart TD\n    %% nothing drawn yet")
+
+        editor._import_mermaid()
+
+        assert len(told) == 1
+        assert [n.text() for n in editor._scene.get_all_nodes()] == ["A"]
+
+    def test_text_that_cannot_be_read_is_reported_and_leaves_the_canvas(self, editor, monkeypatch):
+        from PySide6.QtWidgets import QMessageBox
+
+        from pybreeze.pybreeze_ui.diagram_editor import diagram_editor_widget
+
+        told: list = []
+        monkeypatch.setattr(QMessageBox, "warning", lambda *args: told.append(args[2]))
+
+        def unreadable(_text):
+            raise ValueError("unexpected <b>token</b>")
+
+        monkeypatch.setattr(diagram_editor_widget, "parse_mermaid", unreadable)
+        editor._scene.load_from_dict(_A_DIAGRAM)
+        self._answer(monkeypatch, "flowchart TD\n    A -->")
+
+        editor._import_mermaid()
+
+        (message,) = told
+        assert "&lt;b&gt;token&lt;/b&gt;" in message, "the reason is shown as text, its markup escaped"
+        assert [n.text() for n in editor._scene.get_all_nodes()] == ["A"]
+
     @pytest.mark.parametrize("accepted", [True, False])
     def test_the_dialog_goes_once_closed(self, editor, monkeypatch, accepted):
         # It was a child of the editor, kept for good: one more per import

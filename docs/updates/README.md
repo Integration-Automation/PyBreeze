@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-135 | 2026-09-25 | The diagram editor's Mermaid import without nodes, and with text it cannot read, is tested | #test #diagram | [2026-09-d](2026-09-d.md) |
 | U-20260925-134 | 2026-09-25 | A test keeps unused keys out of PyBreeze's dictionaries | #test #i18n | [2026-09-d](2026-09-d.md) |
 | U-20260925-133 | 2026-09-25 | The diagram editor's New asks only about unsaved changes, as Open and Close do | #fix #diagram | [2026-09-d](2026-09-d.md) |
 | U-20260925-132 | 2026-09-25 | The SFTP tree's connect: missing input and a root it cannot list are tested | #test #ssh | [2026-09-d](2026-09-d.md) |
@@ -538,4 +539,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
-| [2026-09-d.md](2026-09-d.md) | 2026-09 | 19 |
+| [2026-09-d.md](2026-09-d.md) | 2026-09 | 20 |
