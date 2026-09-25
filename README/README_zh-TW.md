@@ -376,8 +376,6 @@ PyBreeze/
 │   │   │   ├── process_executor_utils.py        # build_process / start_process
 │   │   │   ├── file_runner_process.py           # 外掛執行設定（任何語言）
 │   │   │   ├── queue_pump.py                    # 共用的管線讀取器 + QTimer 取出
-│   │   │   ├── api_testka/ auto_control/ web_runner/
-│   │   │   ├── load_density/ file_automation/ mail_thunder/
 │   │   │   ├── test_pioneer/ prthinker/
 │   │   ├── mail_thunder_extend/       # 測試後郵件報告掛鉤
 │   │   └── prthinker_extend/          # prthinker 設定與參數組裝

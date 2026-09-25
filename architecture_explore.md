@@ -42,7 +42,7 @@ PyBreeze 是一個「自動化優先」的 Python IDE，建構在 **PySide6 + JE
                                     ▼
    ┌─────────────────────────────────────────────────────────────────────────┐
    │ 執行層 Execution  pybreeze/extend/                                      │
-   │  process_executor/  子行程隔離層（Strategy + Template Method）           │
+   │  process_executor/  子行程隔離層（Template Method）                      │
    │  mail_thunder_extend/  測試後寄報告 hook（mail_thunder_setting.py）      │
    │  prthinker_extend/     prthinker 設定與指令組裝（純邏輯）                │
    └────────────────────────────────┬────────────────────────────────────────┘
@@ -119,25 +119,27 @@ Template Method 定義的子行程生命週期：
 | `open_run_window()` | 開一個執行視窗、掛進 `main_window.current_run_code_window`，並接上 `finished_and_closed`：使用者關掉一個已經跑完的執行視窗時主視窗就放掉它（以前這份清單只增不減，每次執行都留下一個視窗、一個執行器、兩個 queue 和一個 timer）；執行中被關掉的視窗記下 `_closed_while_running`，等執行器在結束路徑尾端呼叫 `CodeWindow.run_ended()` 時才放掉（排到 timer 的 slot 回來之後才發，視窗是 timer 的 parent）。插件執行也走這裡 |
 | `build_task_process()` | 共用建構：`open_run_window()` 並帶上主視窗選定的直譯器、決定要不要接寄報告的 hook（`report_mail_hook(code_window)`：建立時記下子行程工作目錄裡 `default_name.html` 的絕對路徑與開始時間，比這次執行還舊的報告不寄；寄送結果經無 parent 的 `_MailNotice` 以 queued signal 回到執行視窗，寫出寄到了或沒寄的原因）。建好的 `TaskProcessManager` 掛在執行視窗的 `runner` 上，所以呼叫端可以不留參考。prthinker 審查也走這裡 |
 
-### 4.3 各自動化模組（Strategy）
+### 4.3 各自動化套件的執行項目
 
-`api_testka/`、`auto_control/`、`web_runner/`、`load_density/`、`file_automation/` 五個模組**結構完全一致** — 只有 `_PACKAGE` 常數不同，各提供 4 個函式：
+五個套件的 Run 子選單都是同樣四項，由 `automation_menu_factory.package_run_actions(ui, label_prefix, package)` 產生（標籤鍵是前綴加 `RUN_ENTRY_LABEL_SUFFIXES`）：
 
 ```
-call_X()                       → build_process(..., send_mail=False)
-call_X_with_send()             → build_process(..., send_mail=True)
-call_X_multi_file()            → run_dir_files_with_package(..., False)
-call_X_multi_file_and_send()   → run_dir_files_with_package(..., True)
+<prefix>_run_script_label                   → build_process(ui, package, send_mail=False)
+<prefix>_run_script_with_send_label         → build_process(ui, package, send_mail=True)
+<prefix>_run_multi_script_label             → run_dir_files_with_package(ui, package, send_mail=False)
+<prefix>_run_multi_script_with_send_label   → run_dir_files_with_package(ui, package, send_mail=True)
 ```
 
-| 模組 | `_PACKAGE` |
-|---|---|
-| `api_testka` | `je_api_testka` |
-| `auto_control` | `je_auto_control` |
-| `web_runner` | `je_web_runner` |
-| `load_density` | `je_load_density` |
-| `file_automation` | `automation_file` |
-| `mail_thunder` | `je_mail_thunder`（只有單一 `call_mail_thunder()`） |
+| 選單 | 標籤前綴 | 套件 |
+|---|---|---|
+| APITestka | `apitestka` | `je_api_testka` |
+| AutoControl | `autocontrol` | `je_auto_control` |
+| WebRunner | `web_runner` | `je_web_runner` |
+| LoadDensity | `load_density` | `je_load_density` |
+| FileAutomation | `file_automation` | `automation_file` |
+| MailThunder | — | `je_mail_thunder`（只有一項，選單直接呼叫 `build_process(..., send_mail=False)`） |
+
+以前每個套件在 `extend/process_executor/` 下各有一個結構完全相同的模組（只差 `_PACKAGE`），各轉呼叫這兩個函式。
 
 `test_pioneer/test_pioneer_process_manager.py` 只剩 `init_and_start_test_pioneer_process()`：經 `build_task_process()` 開執行視窗，再用 `start_module_process("test_pioneer", ["-e", <yaml>])` 跑，跟其他套件走同一個 `TaskProcessManager`（找不到直譯器時一樣寫進執行視窗，不會從選單 callback 拋出）。
 
@@ -173,7 +175,7 @@ call_X_multi_file_and_send()   → run_dir_files_with_package(..., True)
 
 ### 5.1 `automation_menu_factory.py` — 選單工廠
 
-`build_automation_menu(ui, spec)` 依一份 `AutomationMenu` 描述組出標準自動化子選單：`Run` 子選單（`RunAction` 列表）/ `Help`（`HelpLink` 列表，文件＋GitHub，開內嵌瀏覽器分頁）/ `Project`（建立範本目錄）/ GUI 分頁（`gui_widget_factory`，選到才呼叫，套件可以到那時才 import 它的 GUI），每一段各由一個小函式建（`_add_run_menu` 等），沒有項目的段落不建。三個描述都是 frozen dataclass。六個自動化模組全部靠它，`build_*_menu.py` 只剩一份 `AutomationMenu(...)`。每個 QAction 都以它所在的選單為 parent，由 Qt 持有；AutoControl 額外的 `Record` 子選單也一樣；它的停止錄製不論前面是哪個分頁都會停，把動作以 AutoControl 執行器讀的 JSON 插在編輯分頁的游標處（沒有編輯分頁就放剪貼簿），沒錄到東西就告知。`je_auto_control` 一 import 就把行程設成 system DPI aware，所以這個模組只在用到時才 import 它（`_auto_control()`、`_autocontrol_gui()`）：跟著選單在應用程式建立前 import，Qt 就設不成 per-monitor v2（每次啟動都警告 `SetProcessDpiAwarenessContext() failed`），在縮放比例跟主螢幕不同的螢幕上，Windows 把整個 IDE 當點陣圖拉伸。`test_startup_imports.py` 守著這點，也守著三個 GUI 與 SSH 用到時才 import：跟著選單一起 import 時，光是 import 主視窗模組就要 6.45 秒（中位數），現在 4.65 秒。
+`build_automation_menu(ui, spec)` 依一份 `AutomationMenu` 描述組出標準自動化子選單：`Run` 子選單（`RunAction` 列表）/ `Help`（`HelpLink` 列表，文件＋GitHub，開內嵌瀏覽器分頁）/ `Project`（建立範本目錄）/ GUI 分頁（`gui_widget_factory`，選到才呼叫，套件可以到那時才 import 它的 GUI），每一段各由一個小函式建（`_add_run_menu` 等），沒有項目的段落不建。三個描述都是 frozen dataclass。六個自動化模組全部靠它，`build_*_menu.py` 只剩一份 `AutomationMenu(...)`；Run 子選單的四項由 `package_run_actions()` 產生（§4.3）。每個 QAction 都以它所在的選單為 parent，由 Qt 持有；AutoControl 額外的 `Record` 子選單也一樣；它的停止錄製不論前面是哪個分頁都會停，把動作以 AutoControl 執行器讀的 JSON 插在編輯分頁的游標處（沒有編輯分頁就放剪貼簿），沒錄到東西就告知。`je_auto_control` 一 import 就把行程設成 system DPI aware，所以這個模組只在用到時才 import 它（`_auto_control()`、`_autocontrol_gui()`）：跟著選單在應用程式建立前 import，Qt 就設不成 per-monitor v2（每次啟動都警告 `SetProcessDpiAwarenessContext() failed`），在縮放比例跟主螢幕不同的螢幕上，Windows 把整個 IDE 當點陣圖拉伸。`test_startup_imports.py` 守著這點，也守著三個 GUI 與 SSH 用到時才 import：跟著選單一起 import 時，光是 import 主視窗模組就要 6.45 秒（中位數），現在 4.65 秒。
 
 `safe_create_project(ui, import_name)` 回傳延遲 import 的 closure：專案建在 IDE 開著的資料夾（`working_dir`，沒開就用行程的工作目錄）；套件的資料夾（`create_project_dir` 的 `parent_name` 預設值）已存在時先問（預設否），因為各套件一律覆寫範本檔；模組沒裝、寫入失敗都跳警告並記 log，成功時說出建在哪裡。
 
@@ -395,7 +397,6 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 | 模式 | 落點 |
 |---|---|
 | **Facade** | `pybreeze/__init__.py` — 對外只暴露 `start_editor`、`PyBreezeMainWindow`、`EDITOR_EXTEND_TAB` 與轉出的插件 API；第一次用到才 import（PEP 562 `__getattr__`），所以 `import pybreeze.utils.*` 不會連帶載入 PySide6 與 JEditor |
-| **Strategy** | 六個自動化模組共用 `build_process()`，差別只在 `_PACKAGE` |
 | **Template Method** | `TaskProcessManager` 固定 spawn → read threads → QTimer poll → drain → exit 的骨架 |
 | **Observer** | Queue + QTimer 把子行程輸出橋接到 UI 執行緒；Qt Signal/Slot（`SenderThread.update_response`、`JupyterLauncherThread.server_ready`） |
 | **Factory** | `build_automation_menu()`；`tools_menu._WIDGET_FACTORIES` |

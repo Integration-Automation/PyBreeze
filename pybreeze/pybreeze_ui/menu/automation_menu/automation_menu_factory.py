@@ -11,6 +11,7 @@ from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QMenu, QMessageBox, QWidget
 from je_editor import language_wrapper
 
+from pybreeze.extend.process_executor.process_executor_utils import build_process, run_dir_files_with_package
 from pybreeze.pybreeze_ui.busy_cursor import busy_cursor
 from pybreeze.pybreeze_ui.menu.menu_utils import open_web_browser
 from pybreeze.utils.logging.logger import pybreeze_logger
@@ -25,6 +26,30 @@ class RunAction:
     """One entry of the Run submenu: a language key for its label and what it runs."""
     label_key: str
     callback: Callable[[], None]
+
+
+# The label keys of a package's four Run entries, after its prefix, in menu order
+RUN_ENTRY_LABEL_SUFFIXES = (
+    "_run_script_label", "_run_script_with_send_label",
+    "_run_multi_script_label", "_run_multi_script_with_send_label",
+)
+
+
+def package_run_actions(ui: PyBreezeMainWindow, label_prefix: str, package: str) -> tuple[RunAction, ...]:
+    """The four Run entries of an automation *package*, labelled *label_prefix* + ``RUN_ENTRY_LABEL_SUFFIXES``.
+
+    In order: the script in the tab in front, the same with the report mailed,
+    every ``.json`` in a folder the user picks, and the folder with the report
+    mailed. Each starts *package* in a run window of its own.
+    """
+    starts = (
+        lambda: build_process(ui, package, send_mail=False),
+        lambda: build_process(ui, package, send_mail=True),
+        lambda: run_dir_files_with_package(ui, package, send_mail=False),
+        lambda: run_dir_files_with_package(ui, package, send_mail=True),
+    )
+    return tuple(RunAction(label_prefix + suffix, start)
+                 for suffix, start in zip(RUN_ENTRY_LABEL_SUFFIXES, starts, strict=True))
 
 
 @dataclass(frozen=True)

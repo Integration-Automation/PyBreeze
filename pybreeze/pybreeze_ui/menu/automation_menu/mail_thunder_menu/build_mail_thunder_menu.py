@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from pybreeze.extend.process_executor.process_executor_utils import build_process
 from pybreeze.pybreeze_ui.menu.automation_menu.automation_menu_factory import (
     AutomationMenu, HelpLink, RunAction, build_automation_menu, safe_create_project
 )
@@ -9,15 +10,13 @@ from pybreeze.pybreeze_ui.menu.automation_menu.automation_menu_factory import (
 if TYPE_CHECKING:
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
 
-from pybreeze.extend.process_executor.mail_thunder.mail_thunder_process import call_mail_thunder
-
 
 def set_mail_thunder_menu(ui_we_want_to_set: PyBreezeMainWindow):
     build_automation_menu(ui_we_want_to_set, AutomationMenu(
         label_key="mail_thunder_menu_label",
         run_actions=(
             RunAction("mail_thunder_run_script_label",
-                      lambda: call_mail_thunder(ui_we_want_to_set)),
+                      lambda: build_process(ui_we_want_to_set, "je_mail_thunder", send_mail=False)),
         ),
         help_links=(
             HelpLink("https://mailthunder.readthedocs.io/en/latest/",

@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 
 from pybreeze.extend_multi_language.extend_english import pybreeze_english_word_dict
+from pybreeze.pybreeze_ui.menu.automation_menu.automation_menu_factory import RUN_ENTRY_LABEL_SUFFIXES
 
 PACKAGE = Path(__file__).resolve().parents[2] / "pybreeze"
 
@@ -31,11 +32,21 @@ def _source_outside_the_dictionaries() -> str:
     )
 
 
+def _used(key: str, source: str) -> bool:
+    """Whether *source* names *key*, or a menu builds it: package_run_actions(ui, "<prefix>", ...)."""
+    if re.search(rf"[\"']{re.escape(key)}[\"']", source):
+        return True
+    return any(
+        key.endswith(suffix)
+        and re.search(rf"package_run_actions\([^)]*[\"']{re.escape(key.removesuffix(suffix))}[\"']", source)
+        for suffix in RUN_ENTRY_LABEL_SUFFIXES
+    )
+
+
 def test_no_word_is_left_unused():
     source = _source_outside_the_dictionaries()
     unused = [
         key for key in pybreeze_english_word_dict
-        if not key.startswith(BUILT_OR_READ_ELSEWHERE)
-        and not re.search(rf"[\"']{re.escape(key)}[\"']", source)
+        if not key.startswith(BUILT_OR_READ_ELSEWHERE) and not _used(key, source)
     ]
     assert unused == []

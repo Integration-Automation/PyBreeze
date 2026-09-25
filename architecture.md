@@ -34,7 +34,7 @@ their output reaches the UI through Queue + QTimer.
 | `pybreeze/pybreeze_ui/jupyter_lab_gui/`, `show_code_window/`, `syntax/` | JupyterLab tab; `CodeWindow` subprocess output window; automation keyword highlighting |
 | `pybreeze/pybreeze_ui/thread_keeper.py` | `let_run_out()`: a worker `QThread` whose widget closed is kept until it ends instead of being waited for |
 | `pybreeze/pybreeze_ui/gui_thread_gc.py` | `GuiThreadGarbageCollector`: automatic garbage collection off, collected on a GUI-thread timer instead (installed by `start_editor()`) |
-| `pybreeze/extend/process_executor/` | Subprocess isolation layer: `TaskProcessManager`, `process_executor_utils.py`, `FileRunnerProcess`, `queue_pump.py`, one sub-package per automation package, plus `test_pioneer/` and `prthinker/` |
+| `pybreeze/extend/process_executor/` | Subprocess isolation layer: `TaskProcessManager`, `process_executor_utils.py`, `FileRunnerProcess`, `queue_pump.py`, `run_notice.py`, and `test_pioneer/` and `prthinker/` (the other automation packages run through `build_process()` from their menus) |
 | `pybreeze/extend/mail_thunder_extend/`, `prthinker_extend/` | Post-test email hook; prthinker settings and argument assembly (pure logic) |
 | `pybreeze/extend_multi_language/` | PyBreeze's English and Traditional Chinese strings, merged into JEditor's dictionaries |
 | `pybreeze/utils/` | Pure logic, no Qt or JEditor (`test_utils_has_no_qt.py` guards it): request parsing and codegen, HTTP tools, `network/` SSRF validation, pinned connections and capped reads, exceptions, logging, `app_dirs.py`, `subprocess_util.py`, `terminal_text.py` (terminal escapes stripped for the SSH terminal and the run window), `terminal_style.py` (SGR colours read for the SSH terminal) |
@@ -91,8 +91,8 @@ set it) to keep locust's gevent patching away from Qt. The processes the IDE sta
 **Run an automation script**
 
 ```
-Automation menu (automation_menu_factory.build_automation_menu) → call_<pkg>() in
-extend/process_executor/<pkg>/ → build_process() (process_executor_utils.py)
+Automation menu (automation_menu_factory.build_automation_menu; the Run entries from
+package_run_actions) → build_process() / run_dir_files_with_package() (process_executor_utils.py)
   → CodeWindow + TaskProcessManager → python -m <package> --execute_str | --execute_file
   → stdout/stderr reader threads → Queue → QTimer → pump_message_queue() → CodeWindow.append_output()
   → optional report_mail_hook() → send_after_test() (mail_thunder_extend; mails this run's report on a
@@ -118,11 +118,11 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
   Plugins menus and execute via `FileRunnerProcess`. The plugin browser tab reuses JEditor's
   `PluginBrowserWidget`. See `PLUGIN_GUIDE.md`.
 - **New automation package**:
-  - add a sub-package under `extend/process_executor/` with a `_PACKAGE` constant that calls
-    `build_process()`;
   - add a menu: one `AutomationMenu(...)` passed to `build_automation_menu()`
     (`pybreeze_ui/menu/automation_menu/automation_menu_factory.py`), wired in
-    `menu/build_menubar.py`;
+    `menu/build_menubar.py`; its Run entries are `package_run_actions(ui, "<label prefix>", "<package>")`,
+    which start the package through `build_process()` and `run_dir_files_with_package()`, and need the four
+    `<label prefix>` + `RUN_ENTRY_LABEL_SUFFIXES` keys in both language dictionaries;
   - add an installer in `menu/install_menu/automation_menu/`;
   - add keywords in `pybreeze_ui/syntax/syntax_keyword.py`.
 - **New tool tab or dock**: a widget in `pybreeze_ui/tools_gui/`, its logic in `pybreeze/utils/`, and

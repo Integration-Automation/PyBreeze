@@ -34,14 +34,12 @@ pybreeze/
 │   ├── dialog/                  # prthinker settings dialog
 │   └── syntax/                  # Automation keyword highlighting definitions
 ├── extend/
-│   ├── process_executor/        # Process isolation layer (Strategy)
+│   ├── process_executor/        # Process isolation layer
 │   │   ├── python_task_process_manager.py  # TaskProcessManager (subprocess + threads + QTimer)
 │   │   ├── process_executor_utils.py       # build_process / start_process / run_dir_files_*
 │   │   ├── file_runner_process.py          # FileRunnerProcess — plugin run configs (any language)
 │   │   ├── queue_pump.py                   # Shared pipe reader + per-tick queue drain
 │   │   ├── run_notice.py                   # run_notice: a run window's own [Error]/[Run]/… lines, translated
-│   │   ├── api_testka/ auto_control/ web_runner/ load_density/
-│   │   ├── file_automation/ mail_thunder/  # Each delegates to build_process with its package name
 │   │   ├── test_pioneer/        # python -m test_pioneer -e <yaml> via start_module_process
 │   │   └── prthinker/           # Code review via start_module_process (secrets via env)
 │   ├── mail_thunder_extend/     # Post-test email report hook
@@ -60,7 +58,7 @@ pybreeze/
     └── manager/package_manager/ # PackageManager — holds syntax_check_list
 ```
 
-**Patterns:** Facade (`__init__.py`) · Strategy (automation modules → `build_process`) · Template Method (`TaskProcessManager` lifecycle) · Observer (Queue + QTimer → UI thread) · Factory (`build_automation_menu`, `_WIDGET_FACTORIES`) · State (`DiagramScene.ToolMode`) · Command (`DiagramSnapshotCommand`) · Plugin (auto-discovery from `jeditor_plugins/`)
+**Patterns:** Facade (`__init__.py`) · Template Method (`TaskProcessManager` lifecycle) · Observer (Queue + QTimer → UI thread) · Factory (`build_automation_menu`, `package_run_actions`, `_WIDGET_FACTORIES`) · State (`DiagramScene.ToolMode`) · Command (`DiagramSnapshotCommand`) · Plugin (auto-discovery from `jeditor_plugins/`)
 
 **Keep `architecture_explore.md` current (mandatory).** It is the module-by-module map. Update it *in the same change* that makes it stale — whenever a module/package/class is added, removed, renamed or moved; a layer boundary, executor or threading flow changes; a menu, tool tab or dock is added or removed; persisted data or the test/CI layout changes; or one of its listed observations is fixed. Re-measure any line counts it quotes, and mirror structural edits into the tree above.
 

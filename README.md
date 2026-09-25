@@ -376,8 +376,6 @@ PyBreeze/
 │   │   │   ├── process_executor_utils.py        # build_process / start_process
 │   │   │   ├── file_runner_process.py           # Plugin run configs (any language)
 │   │   │   ├── queue_pump.py                    # Shared pipe reader + QTimer drain
-│   │   │   ├── api_testka/ auto_control/ web_runner/
-│   │   │   ├── load_density/ file_automation/ mail_thunder/
 │   │   │   ├── test_pioneer/ prthinker/
 │   │   ├── mail_thunder_extend/       # Post-test email report hook
 │   │   └── prthinker_extend/          # prthinker settings & argument assembly
