@@ -412,3 +412,88 @@ class TestTheKeys:
         self._shortcut(widget, "Del").activated.emit()
 
         assert reported and "Socket is closed" in reported[0]
+
+
+class TestDownloadAndUpload:
+    """The dialogs in front of a transfer, and what the transfer is then asked to do."""
+
+    @staticmethod
+    def _transfers(widget, monkeypatch) -> list[dict]:
+        started: list[dict] = []
+        monkeypatch.setattr(widget, "_start_transfer", lambda **kwargs: started.append(kwargs) or True)
+        return started
+
+    @staticmethod
+    def _informed(monkeypatch) -> list:
+        told: list = []
+        monkeypatch.setattr(tree_mod.QMessageBox, "information", lambda *args: told.append(args[2]))
+        return told
+
+    def test_a_file_downloads_to_where_it_is_saved(self, tree, monkeypatch, tmp_path):
+        widget, _client, root, _warnings = tree
+        started = self._transfers(widget, monkeypatch)
+        offered: list = []
+        target = str(tmp_path / "copy.txt")
+        monkeypatch.setattr(tree_mod.QFileDialog, "getSaveFileName",
+                            staticmethod(lambda _parent, _title, name: offered.append(name) or (target, "")))
+
+        widget.action_download(_child(root, "notes.txt"))
+
+        assert offered == ["notes.txt"]
+        assert [(s["downloading"], s["remote_path"], s["local_path"]) for s in started] == [
+            (True, "/notes.txt", target)]
+
+    def test_a_cancelled_save_downloads_nothing(self, tree, monkeypatch):
+        widget, _client, root, _warnings = tree
+        started = self._transfers(widget, monkeypatch)
+        monkeypatch.setattr(tree_mod.QFileDialog, "getSaveFileName", staticmethod(lambda *args: ("", "")))
+
+        widget.action_download(_child(root, "notes.txt"))
+
+        assert started == []
+
+    def test_a_folder_is_not_downloaded(self, tree, monkeypatch):
+        widget, _client, root, _warnings = tree
+        started = self._transfers(widget, monkeypatch)
+        told = self._informed(monkeypatch)
+
+        widget.action_download(_child(root, "src"))
+
+        assert started == []
+        assert len(told) == 1
+
+    @pytest.mark.parametrize(("name", "remote"), [("src", "/src/upload.bin"), ("notes.txt", "/upload.bin")])
+    def test_an_upload_goes_into_the_folder_chosen(self, tree, monkeypatch, tmp_path, name, remote):
+        # A file chosen in the tree stands for the folder it is in
+        widget, _client, root, _warnings = tree
+        started = self._transfers(widget, monkeypatch)
+        local = tmp_path / "upload.bin"
+        local.write_bytes(b"x")
+        monkeypatch.setattr(tree_mod.QFileDialog, "getOpenFileName", staticmethod(lambda *args: (str(local), "")))
+        refreshed: list = []
+        monkeypatch.setattr(widget, "action_refresh", lambda item: refreshed.append(item.text(3)))
+
+        widget.action_upload(_child(root, name))
+        started[0]["after"]()
+
+        assert [(s["downloading"], s["remote_path"], s["local_path"]) for s in started] == [
+            (False, remote, str(local))]
+        assert refreshed == [remote.rsplit("/", 1)[0] or "/"]
+
+    def test_a_cancelled_choice_uploads_nothing(self, tree, monkeypatch):
+        widget, _client, root, _warnings = tree
+        started = self._transfers(widget, monkeypatch)
+        monkeypatch.setattr(tree_mod.QFileDialog, "getOpenFileName", staticmethod(lambda *args: ("", "")))
+
+        widget.action_upload(_child(root, "src"))
+
+        assert started == []
+
+    def test_a_folder_needs_a_place_to_be_created_in(self, tree, monkeypatch):
+        widget, client, _root, _warnings = tree
+        told = self._informed(monkeypatch)
+
+        widget.action_create_folder(None)
+
+        assert len(told) == 1
+        assert client.made == []

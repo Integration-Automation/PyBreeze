@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-96 | 2026-09-25 | The SFTP tree's download and upload dialogs are tested | #test #ssh | [2026-09-c](2026-09-c.md) |
 | U-20260925-95 | 2026-09-25 | architecture.md's custom-tab extension point is complete | #docs | [2026-09-c](2026-09-c.md) |
 | U-20260925-94 | 2026-09-25 | Every Tools tab entry is opened in a test | #test #menu | [2026-09-c](2026-09-c.md) |
 | U-20260925-93 | 2026-09-25 | The prthinker menu is tested beyond reviewing a file | #test #prthinker | [2026-09-c](2026-09-c.md) |
@@ -498,4 +499,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
-| [2026-09-c.md](2026-09-c.md) | 2026-09 | 95 |
+| [2026-09-c.md](2026-09-c.md) | 2026-09 | 96 |
