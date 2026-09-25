@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-103 | 2026-09-25 | Load tests the IDE starts are patched with gevent again | #fix #load-density #subprocess | [2026-09-c](2026-09-c.md) |
 | U-20260925-102 | 2026-09-25 | The IDE starts about 1.8 s sooner: the automation GUIs and SSH load when opened | #perf #startup | [2026-09-c](2026-09-c.md) |
 | U-20260925-101 | 2026-09-25 | The IDE is per-monitor DPI aware again: AutoControl is imported when used | #fix #startup #autocontrol | [2026-09-c](2026-09-c.md) |
 | U-20260925-100 | 2026-09-25 | Coverage counts the tests that start the real main window in a child | #ci #test #coverage | [2026-09-c](2026-09-c.md) |
@@ -505,4 +506,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
-| [2026-09-c.md](2026-09-c.md) | 2026-09 | 102 |
+| [2026-09-c.md](2026-09-c.md) | 2026-09 | 103 |

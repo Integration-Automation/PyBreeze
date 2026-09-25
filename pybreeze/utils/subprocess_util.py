@@ -11,16 +11,31 @@ from pybreeze.utils.logging.logger import pybreeze_logger
 # How long ending a process tree may take on the UI thread
 _TREE_KILL_SECONDS = 10
 
+# The value of an environment variable the IDE sets for its own process only;
+# child_environment() leaves every variable with this value out
+IDE_ONLY = "pybreeze-ide-only"
+
+
+def child_environment() -> dict[str, str]:
+    """Return a copy of ``os.environ`` for a process the IDE starts.
+
+    A variable the IDE set for itself alone (its value is ``IDE_ONLY``) is left
+    out: the IDE keeps locust from patching it with gevent
+    (``LOCUST_SKIP_MONKEY_PATCH``), and a load test it starts needs that
+    patching to run its users at once.
+    """
+    return {name: value for name, value in os.environ.items() if value != IDE_ONLY}
+
 
 def utf8_subprocess_env(encoding: str = "utf-8") -> dict[str, str]:
-    """Return a copy of ``os.environ`` forcing a child Python's stdio *encoding*.
+    """Return the environment for a child (``child_environment()``) forcing a child Python's stdio *encoding*.
 
     On Windows a child's piped stdout defaults to the console code page (e.g.
     cp950 / cp1252), so non-ASCII output would be mis-decoded by the utf-8 reader
     in the process managers and show up garbled. Pinning ``PYTHONIOENCODING``
     makes the child emit the same encoding the manager decodes with.
     """
-    env = os.environ.copy()
+    env = child_environment()
     env["PYTHONIOENCODING"] = encoding
     return env
 

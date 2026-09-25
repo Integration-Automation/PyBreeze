@@ -5,7 +5,9 @@ import sys
 
 import pytest
 
-from pybreeze.utils.subprocess_util import no_window_creationflags, utf8_subprocess_env
+from pybreeze.utils.subprocess_util import (
+    IDE_ONLY, child_environment, no_window_creationflags, utf8_subprocess_env,
+)
 
 
 class TestUtf8SubprocessEnv:
@@ -28,6 +30,35 @@ class TestUtf8SubprocessEnv:
             capture_output=True, text=True, env=utf8_subprocess_env("utf-8"),
         )
         assert result.stdout.strip().replace("-", "").lower() == "utf8"
+
+
+class TestWhatTheIdeSetsForItself:
+    """A variable the IDE sets for its own process only stays out of the processes it starts."""
+
+    @staticmethod
+    def _set_for_the_ide(monkeypatch, name: str) -> None:
+        monkeypatch.setenv(name, IDE_ONLY)  # restored when the test ends
+
+    def test_a_child_does_not_get_it(self, monkeypatch):
+        self._set_for_the_ide(monkeypatch, "PYBREEZE_TEST_IDE_ONLY")
+
+        assert "PYBREEZE_TEST_IDE_ONLY" not in child_environment()
+        assert "PYBREEZE_TEST_IDE_ONLY" not in utf8_subprocess_env()
+
+    def test_one_the_user_set_is_passed_on(self, monkeypatch):
+        monkeypatch.setenv("PYBREEZE_TEST_IDE_ONLY", "1")
+
+        assert child_environment()["PYBREEZE_TEST_IDE_ONLY"] == "1"
+
+    def test_a_real_child_runs_without_it(self, monkeypatch):
+        self._set_for_the_ide(monkeypatch, "PYBREEZE_TEST_IDE_ONLY")
+
+        result = subprocess.run(
+            [sys.executable, "-c", "import os; print(os.environ.get('PYBREEZE_TEST_IDE_ONLY'))"],
+            capture_output=True, text=True, env=utf8_subprocess_env(), timeout=60, check=True,
+        )
+
+        assert result.stdout.strip() == "None"
 
 
 class TestNoWindowCreationflags:

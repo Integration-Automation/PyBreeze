@@ -81,7 +81,7 @@ PyBreeze 是一個「自動化優先」的 Python IDE，建構在 **PySide6 + JE
 4. `showMaximized()` → `startup_setting()` → `app.exec()`
 5. 離開時以 `os._exit(ret)` 硬退出（避開 Qt 拆解殘留執行緒）
 
-模組層級有一個副作用：`main_ui.py:8` 在匯入 PySide6 之前就設定 `LOCUST_SKIP_MONKEY_PATCH=1`，避免 LoadDensity 的 gevent monkey patch 破壞 Qt。
+模組層級有一個副作用：`main_ui.py` 在匯入 PySide6 之前就設定 `LOCUST_SKIP_MONKEY_PATCH`（值是 `subprocess_util.IDE_ONLY`；使用者自己設過就沿用），避免 locust 一 import 就對整個行程做的 gevent monkey patch 破壞 Qt（Load Density GUI、JEditor 行程內的 IPython console 都可能 import 它）。IDE 啟動的行程拿到的是 `child_environment()`，不帶這個值：負載測試要靠 patch 才能讓使用者同時跑，帶著它時 HttpUser 一個接一個跑，3 秒的測試跑了三分多鐘。
 
 ---
 
@@ -348,7 +348,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 | `app_dirs.py` | `pybreeze_data_dir()` → `~/.pybreeze`，所有持久化資料的單一位置，建立時為 `0700`（`DATA_DIR_MODE`）；`pybreeze_data_path()` 只給路徑、不建立 |
 | `terminal_text.py` | 終端輸出的 escape 與控制字元：`strip_terminal_controls()`（CSI、OSC/DCS 等控制字串、nF、兩位元組 escape 剝除，backspace 套用，其餘 C0 丟掉）、`split_incomplete_escape()`（讀取切斷在 escape 中間時把尾巴留給下一次）、`split_unfinished_end()`（再加上它前面或最後的 `\r`）、`take_leading_backspaces()`（一段開頭的 backspace 留給畫面，擦掉前一段已經顯示的字，不越過行首）、`split_at_screen_clear()`（最後一個清除整個畫面的序列：`ESC [ 2J`、`ESC [ 3J`、`ESC c`，前後切開；`ESC [ J` 只清游標以下，shell 重畫提示字元時會送，不算）。SSH terminal 與執行視窗共用 |
 | `terminal_style.py` | SGR（`ESC [ … m`）讀成 `TextStyle`（frozen dataclass：前景、背景、粗體、斜體、底線、反白）：`apply_sgr()`（16 色與亮色、`38;5;n` 256 色、`38;2;r;g;b` 24 位元色、各開關與 39/49 預設、0 重設；看不懂或格式錯的參數不改任何東西，超過 5 位數的參數略過，`int()` 不收超過 4300 位數）、`split_styled()`（文字在 SGR 處切段，每段帶它的樣式，其餘 escape 留給 `strip_terminal_controls()`）、`colour_rgb(colour, on_dark=)`（前 16 色用 VS Code 終端機的預設值，深色與淺色主題各一組，`terminal_view.style_format()` 依 view 背景的亮度挑；256 色的色塊、灰階與 24 位元色照 xterm）。只有 SSH terminal 用：執行視窗的程式寫到 pipe，不會上色 |
-| `subprocess_util.py` | `utf8_subprocess_env()`（釘 `PYTHONIOENCODING`，解 Windows cp950 亂碼）、`no_window_creationflags()`（`CREATE_NO_WINDOW`，避免 GUI 程式彈出黑窗） |
+| `subprocess_util.py` | `child_environment()`（`os.environ` 去掉值為 `IDE_ONLY` 的變數：IDE 只給自己設的）、`utf8_subprocess_env()`（以它為底再釘 `PYTHONIOENCODING`，解 Windows cp950 亂碼）、`no_window_creationflags()`（`CREATE_NO_WINDOW`，避免 GUI 程式彈出黑窗） |
 | `logging/logger.py` | `pybreeze_logger`（具名 logger，**不動 root logger**）+ `PyBreezeLogger(RotatingFileHandler)`：寫到 `~/.pybreeze/logs/PyBreeze.log`（`PYBREEZE_LOG_FILE` 可改），UTF-8、附加模式、每行帶行程編號，第一筆紀錄才開檔；只在開檔時輪替，門檻 `PYBREEZE_LOG_MAX_BYTES`（預設 100 MB）；開不了檔就改寫 `os.devnull` 並警告一次。與 JEditor、FrontEngine 同一套做法（工作區 X-6） |
 | `exception/` | `ITEException` 為根的 17 個例外類別 + `exception_tags.py` 訊息常數；`error_templates.py` 把名稱以 `_error` 結尾的常數變成語言字典的 `error_text_<名稱>`（英文字典直接取常數本身） |
 | `network/url_validation.py` | `validate_url()`：先拒絕 `urlparse` 與 `urllib3` 讀出不同主機的 URL（反斜線、空白、控制字元，或兩者主機不同；`_check_one_reading`），再做 scheme 白名單、私有/迴環/link-local/reserved 阻擋、額外處理 CGNAT 與 NAT64 網段、IPv6 內嵌 IPv4 的偵測 |
@@ -462,7 +462,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 18. 測試與 CI
 
-- **單元測試** `test/test_utils/` — 148 個 `test_*.py`、2688 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
+- **單元測試** `test/test_utils/` — 148 個 `test_*.py`、2693 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
 - **整合測試** `test/unit_test/start_automation/` — 以 `debug_mode=True` 啟動 IDE，10 秒後自動關閉，驗證啟動流程與 extend tab
 - **CI** `.github/workflows/{dev,stable}.yml` — `unit-tests` job 跑 Windows runner、Python 3.10–3.14 矩陣，3.12 那一腳額外上傳 `coverage-xml` artifact；`sonarcloud` job 跑 ubuntu、`needs: unit-tests`。每日 02:00 排程 + push/PR 觸發。`stable.yml` 另有 `publish` job 負責版號遞增與 PyPI 發布
 - **覆蓋率** `.coveragerc` — `relative_files = True` 是必要的：報告在 Windows 產生、由 Linux 上的 scanner 讀取，路徑不能帶機器資訊。`patch = subprocess` 也是必要的：pytest-cov 7 不再量測子行程，沒有它，測試在子直譯器裡建出的真主視窗（`started_window.py`）一行都不算。目前整體語句 96%、連分支 95%（`tools_gui` 99%、`utils/` 98%、`dialog` 100%；`menu` 97%、`connect_gui` 96%、`diagram_editor` 96%、`extend_ai_gui` 95%、`extend/` 94%、`jupyter_lab_gui` 92%；最低的是 `editor_main` 90%）。coverage 只追蹤 Python 自己開的執行緒，`test/test_utils/conftest.py` 讓每個 `QThread` 子類別的 `run` 在 Qt 的執行緒上裝上 coverage 的 tracer，否則沒有一個 `QThread.run` 算得到

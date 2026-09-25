@@ -75,6 +75,19 @@ class TestHowTheServerIsStarted:
         assert not [arg for arg in argv if arg.startswith("--ServerApp.allow_origin")]
         thread.stop()
 
+    def test_it_runs_without_what_the_ide_set_for_itself(self, app, launched, monkeypatch):
+        # The IDE keeps locust from patching it with gevent; a notebook's kernel
+        # running a load test needs the patching
+        from pybreeze.utils.subprocess_util import IDE_ONLY
+
+        monkeypatch.setenv("LOCUST_SKIP_MONKEY_PATCH", IDE_ONLY)
+        thread = jupyter_lab_thread.JupyterLauncherThread()
+
+        thread.run()
+
+        assert "LOCUST_SKIP_MONKEY_PATCH" not in launched[0].options["env"]
+        thread.stop()
+
     def test_its_output_goes_to_a_file_not_a_pipe_nobody_reads(self, app, launched):
         import subprocess
 

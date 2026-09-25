@@ -81,8 +81,9 @@ python -m pybreeze → start_editor() → QApplication → open_main_window() �
   → apply_stylesheet(theme) → showMaximized() → startup_setting() → exec() → os._exit()
 ```
 
-Before PySide6 is imported, `main_ui.py` sets `LOCUST_SKIP_MONKEY_PATCH=1` to keep LoadDensity's
-gevent patching away from Qt.
+Before PySide6 is imported, `main_ui.py` sets `LOCUST_SKIP_MONKEY_PATCH` (to `IDE_ONLY`, unless the user
+set it) to keep locust's gevent patching away from Qt. The processes the IDE starts get
+`subprocess_util.child_environment()`, which leaves it out: a load test needs the patching.
 
 **Run an automation script**
 

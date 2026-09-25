@@ -12,7 +12,7 @@ from je_editor import JEditorExecException, language_wrapper
 
 from pybreeze.extend.process_executor.python_task_process_manager import default_interpreter
 from pybreeze.utils.logging.logger import pybreeze_logger
-from pybreeze.utils.subprocess_util import no_window_creationflags
+from pybreeze.utils.subprocess_util import child_environment, no_window_creationflags
 
 JUPYTER_STARTUP_TIMEOUT = 60
 # How much of a failure's reason the tab shows: pip's stderr can run long
@@ -159,7 +159,7 @@ class JupyterLauncherThread(QThread):
             "--ServerApp.password=",
             "--ServerApp.disable_check_xsrf=True",
         ], stdout=self._output, stderr=subprocess.STDOUT, text=True,
-            creationflags=no_window_creationflags())
+            env=child_environment(), creationflags=no_window_creationflags())
 
     @staticmethod
     def _port_open(port: int) -> bool:

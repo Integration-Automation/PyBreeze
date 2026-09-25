@@ -5,7 +5,14 @@ import sys
 from os import environ
 from pathlib import Path
 
-environ["LOCUST_SKIP_MONKEY_PATCH"] = "1"
+from pybreeze.utils.subprocess_util import IDE_ONLY
+
+# locust patches the whole process with gevent as it imports unless this is set,
+# and the IDE imports it: the Load Density GUI, or a user in JEditor's
+# in-process console. IDE_ONLY keeps it out of the processes the IDE starts (a
+# load test needs the patching to run its users at once); a value the user set
+# is kept, for both.
+environ["LOCUST_SKIP_MONKEY_PATCH"] = environ.get("LOCUST_SKIP_MONKEY_PATCH") or IDE_ONLY
 
 from PySide6.QtCore import QTimer, QCoreApplication
 from PySide6.QtGui import QIcon

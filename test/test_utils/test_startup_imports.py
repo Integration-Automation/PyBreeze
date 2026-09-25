@@ -14,6 +14,8 @@ _UNUSED_YET = ("je_auto_control", "je_load_density", "locust", "je_api_testka", 
 
 _WHAT_THE_START_LOADED = f"UNUSED_YET = {_UNUSED_YET!r}\n" + """
 import ctypes
+import os
+from pybreeze.utils.subprocess_util import utf8_subprocess_env
 awareness = None
 if sys.platform == "win32":
     user32 = ctypes.windll.user32
@@ -23,13 +25,21 @@ if sys.platform == "win32":
 result = {
     "awareness": awareness,
     "loaded": sorted(name for name in UNUSED_YET if name in sys.modules),
+    "locust_patching": {
+        "ide": os.environ.get("LOCUST_SKIP_MONKEY_PATCH"),
+        "child": utf8_subprocess_env().get("LOCUST_SKIP_MONKEY_PATCH"),
+    },
 }
 """
 
 
 @pytest.fixture(scope="module")
 def started(tmp_path_factory) -> dict:
-    return run_started_window(tmp_path_factory.mktemp("started"), _WHAT_THE_START_LOADED)
+    with pytest.MonkeyPatch.context() as patch:
+        # As a user starts it: an earlier test here may have imported the IDE,
+        # which sets this in this process
+        patch.delenv("LOCUST_SKIP_MONKEY_PATCH", raising=False)
+        return run_started_window(tmp_path_factory.mktemp("started"), _WHAT_THE_START_LOADED)
 
 
 @pytest.mark.skipif(sys.platform != "win32", reason="DPI awareness is a Windows process setting")
@@ -45,3 +55,12 @@ def test_the_dpi_awareness_is_left_to_qt(started):
 
 def test_the_automation_packages_and_ssh_are_loaded_when_used(started):
     assert started["loaded"] == []
+
+
+def test_locust_leaves_the_ide_unpatched_and_the_processes_it_starts_patched(started):
+    # locust patches a process with gevent as it imports unless this is set. The
+    # IDE sets it for itself (the Load Density GUI imports locust there), and it
+    # went on to every process the IDE started: a load test of HttpUser users
+    # then ran them one at a time, and a 3 s test took over three minutes.
+    assert started["locust_patching"]["ide"]
+    assert started["locust_patching"]["child"] is None
