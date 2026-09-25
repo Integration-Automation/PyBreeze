@@ -442,6 +442,36 @@ class TestSwitchingTemplatesWithUnsavedEdits:
         editor.close()
         editor.deleteLater()
 
+    def test_reload_answered_yes_shows_the_file_again(self, prompts, monkeypatch):
+        from PySide6.QtWidgets import QMessageBox
+
+        write(prompts, "linter.md", "on disk")
+        editor = _cot_editor(monkeypatch)
+        editor.file_selector.setCurrentIndex(editor.prompt_files.index("linter.md"))
+        self._typed(editor, "MY EDITS")
+        monkeypatch.setattr(
+            QMessageBox, "question",
+            staticmethod(lambda *a, **k: QMessageBox.StandardButton.Yes))
+
+        editor.reload_button.click()
+
+        assert editor.middle_editor.toPlainText() == "on disk"
+        editor.close()
+        editor.deleteLater()
+
+    def test_picking_the_template_already_shown_asks_nothing(self, prompts, monkeypatch):
+        from PySide6.QtWidgets import QMessageBox
+
+        editor = _cot_editor(monkeypatch)
+        self._typed(editor, "MY EDITS")
+        monkeypatch.setattr(QMessageBox, "question", staticmethod(lambda *a, **k: pytest.fail("asked")))
+
+        editor._on_template_chosen(editor.file_selector.currentIndex())
+
+        assert editor.middle_editor.toPlainText() == "MY EDITS"
+        editor.close()
+        editor.deleteLater()
+
 
 class TestAnEditedPromptThatReachesIntoAPlaceholder:
     @pytest.mark.parametrize("edited", [
@@ -535,6 +565,22 @@ class TestThePromptEditorKeepsWhatWasTyped:
 
 
 class TestCreatingAPromptFile:
+    def test_a_create_whose_save_fails_watches_nothing_and_says_no_success(self, prompts, monkeypatch):
+        # save_prompt_text has already said why; there is no file to watch
+        from pybreeze.pybreeze_ui.extend_ai_gui.prompt_edit_gui import prompt_editor_widget
+
+        editor = _cot_editor(monkeypatch)
+        editor.file_selector.setCurrentIndex(editor.prompt_files.index("linter.md"))
+        watched_before = list(editor.watcher.files())
+        monkeypatch.setattr(prompt_editor_widget, "save_prompt_text", lambda *args: False)
+
+        editor.create_file()
+
+        assert editor.watcher.files() == watched_before
+        assert editor.shown == []  # no "created" message
+        editor.close()
+        editor.deleteLater()
+
     def test_create_writes_the_built_in_and_watches_it(self, prompts, monkeypatch):
         editor = _cot_editor(monkeypatch)
         editor.file_selector.setCurrentIndex(editor.prompt_files.index("linter.md"))
