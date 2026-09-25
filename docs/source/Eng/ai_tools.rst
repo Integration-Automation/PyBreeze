@@ -1,155 +1,180 @@
 AI Tools
 ========
 
-PyBreeze integrates several AI-powered tools for code review, prompt engineering,
-and LLM interaction. All AI tools are accessible from the **Tools** menu and can
-be opened as either tabs or dock widgets.
+PyBreeze has five tools for AI-assisted code review and prompt work. Each opens as a
+tab from **Tools > AI** or as a dock from **Dock > AI**. The code review of a file or a
+pull request by prthinker is in the **Automation** menu instead (see
+:doc:`menu_automation`).
 
-AI Code Review Client
----------------------
+.. list-table::
+   :header-rows: 1
+   :widths: 30 70
 
-**Menu:** Tools > AI Code Review Tab / AI Code Review Dock
+   * - Tool
+     - What it does
+   * - **AI Code Review**
+     - Sends code to an endpoint in one request; accept or reject the answer.
+   * - **CoT Code Review**
+     - Runs the eight-step Chain-of-Thought (CoT) review: one request per step.
+   * - **CoT Prompt Editor**
+     - Edits the eight CoT prompts.
+   * - **Skill Prompt Editor**
+     - Edits the two skill prompts (code review, code explanation).
+   * - **Skill Send**
+     - Sends one skill prompt, with your code in it, and shows the answer.
 
-A client for sending code to an AI API endpoint for automated code review.
+In AI Code Review, CoT Code Review and Skill Send, **Ctrl+Enter** anywhere in the panel
+presses its send button. The request runs in the background, and the send button stays
+greyed out until it ends.
+
+.. note::
+
+   The endpoint URL must be a public ``http`` / ``https`` address. It is checked before
+   anything is sent, and the connection goes only to the address checked: an endpoint on
+   this machine or on a private network, such as a local model server, is refused.
+   Redirects are not followed, the answer is capped at 16 MB, and a request that runs
+   past five minutes is stopped. Only AI Code Review records the URLs it used, and only as
+   fingerprints (see below), since an API URL can carry a token.
+
+AI Code Review
+--------------
+
+**Menu:** Tools > AI > AI Code Review Tab / Dock > AI > AI Code Review Dock
 
 Interface Layout
 ^^^^^^^^^^^^^^^^
 
-- **URL Input** -- Enter the API endpoint URL
-- **Method Selector** -- Choose HTTP method (GET, POST, PUT, DELETE)
-- **Code Input** (left panel) -- Paste or write code to be reviewed
-- **Response Display** (right panel, read-only) -- Shows the AI review response
-- **Send Request** button -- Sends the code to the API endpoint
-
-Features
-^^^^^^^^
-
-- Tracks accept/reject statistics for AI responses
-- Records which endpoints have been used in ``.pybreeze/urls.txt``, as fingerprints:
-  an API URL can carry a token, so the URL itself is never written to disk
-- Stores response statistics in ``.pybreeze/response_stats.txt``
+- **URL** -- the endpoint URL
+- **Method** -- ``GET``, ``POST`` (the default), ``PUT`` or ``DELETE``
+- **Code to Send** (left) -- the code to review
+- **Response** (right, read-only) -- the answer, or why there is none
+- **Send Request** -- sends the request
+- **Accept Response** / **Reject Response** -- your verdict on the answer
 
 Usage
 ^^^^^
 
-1. Enter your AI API endpoint URL in the URL input field
-2. Select the HTTP method (typically POST)
-3. Paste the code you want reviewed in the left panel
-4. Click **Send Request**
-5. Review the AI's response in the right panel
+1. Enter the endpoint URL and choose the method. ``POST`` and ``PUT`` send the code as
+   the form field ``code`` in the body; ``GET`` and ``DELETE`` send the URL alone.
+2. Paste the code to review on the left (``POST`` and ``PUT`` need some).
+3. Click **Send Request**. The response panel first says whether this URL has been used
+   before, then shows the answer when it arrives. An answer that is not a success (an
+   HTTP error, or a redirect, which is not followed) is shown as an error with its status.
+4. Click **Accept Response** or **Reject Response**. They are enabled once an answer has
+   arrived, and take one verdict per answer.
 
-CoT Code Review GUI
---------------------
+Files
+^^^^^
 
-**Menu:** Tools > AI Code Review Tab / Dock
+- ``~/.pybreeze/response_stats.txt`` -- the running totals of accepted and rejected
+  answers, shared by every AI Code Review panel
+- ``~/.pybreeze/urls.txt`` -- the URLs used, as SHA-256 fingerprints: the URL itself is
+  never written to disk
 
-An advanced code review tool using Chain-of-Thought (CoT) prompting for
-more structured and detailed reviews.
+CoT Code Review
+---------------
+
+**Menu:** Tools > AI > CoT Code Review Tab / Dock > AI > CoT Code Review Dock
 
 Interface Layout
 ^^^^^^^^^^^^^^^^
 
-- **API URL Input** -- Enter the API endpoint URL
-- **Code Area** -- Paste code for review
-- **Response Selector** (ComboBox) -- Browse through multiple review responses
-- **Response Viewer** (read-only) -- Displays the selected review response
-- **Send Button** -- Sends code for review
+- **API URL** -- the endpoint URL
+- **Code to Review** -- the code the review is about
+- **Response Area** -- **Step** selector (each step whose answer has arrived) beside the
+  selected step's answer (read-only)
+- **Start Sending** -- runs the review
 
-Features
-^^^^^^^^
+How a review runs
+^^^^^^^^^^^^^^^^^
 
-- Supports reviewing multiple files at once via ``SenderThread``
-- Background threading prevents UI freezing during API calls
-- Multiple responses can be stored and browsed
+The eight steps run in this order, because each may quote the answers of the steps
+before it:
+
+1. ``first_summary_prompt.md`` -- a first summary of the code
+2. ``first_code_review.md`` -- a first review
+3. ``judge_single_review.md`` -- a judge of that review
+4. ``linter.md`` -- lint findings
+5. ``code_smell_detector.md`` -- code smells
+6. ``step_by_step_analysis.md`` -- each lint finding and code smell walked through
+7. ``total_summary.md`` -- the summary of everything above
+8. ``judge.md`` -- a judge of the summary
+
+Each step's prompt, wrapped in the global review rules, is sent as a ``POST`` of the JSON
+``{"prompt": "..."}``, and the response body, as text, is that step's answer. It appears
+under **Step** as it arrives and is shown at once. A step that fails shows why, and the
+steps after it do not quote the failure. **Start Sending** clears the previous run's
+answers, and closing the panel stops the review after the request in flight.
+
+The prompts are the CoT Prompt Editor's: an edited prompt is used in place of the
+built-in one.
 
 CoT Prompt Editor
 -----------------
 
-**Menu:** Tools > CoT Prompt Editor Tab / CoT Prompt Editor Dock
-
-A template-based editor for creating and managing Chain-of-Thought prompt templates.
+**Menu:** Tools > AI > CoT Prompt Editor Tab / Dock > AI > CoT Prompt Editor Dock
 
 Interface Layout
 ^^^^^^^^^^^^^^^^
 
-- **File Selector** (ComboBox) -- Select from available prompt template files
-- **Edit Panel** (QTextEdit) -- Edit the selected prompt template
-- **Create** button -- Creates a new prompt template file
-- **Save** button -- Saves changes to the current template
-- **Reload** button -- Reloads the template from disk
+- **Edit File Content** -- the text of the prompt chosen below
+- The folder the prompt files are kept in, ``~/.pybreeze/prompts/``
+- The prompt selector (one entry per step, as listed above)
+- **Reload** -- reads the file again from disk
+- **Save** -- writes the text to the file
+- **Create File** -- creates the file from the built-in prompt
 
-Features
-^^^^^^^^
+How prompts are kept
+^^^^^^^^^^^^^^^^^^^^
 
-- Template-based file management with ``COT_TEMPLATE_RELATION`` mapping
-- File system watcher for detecting external changes
-- Auto-reloads templates when modified outside the editor
-- Pre-configured templates for common CoT review patterns
+Every prompt is built in. A file of the same name in ``~/.pybreeze/prompts/`` replaces it
+while that file has content, so a review sends what you saved. Until the file exists, the
+edit area is empty and says so; **Create File** writes the built-in prompt into it as a
+starting point.
 
-Usage
-^^^^^
+A prompt's placeholders, such as ``{code_diff}``, are filled in when the review runs. An
+edited prompt that names a placeholder the step cannot fill falls back to the built-in
+one for that run.
 
-1. Select a template from the dropdown or create a new one
-2. Edit the prompt template in the text area
-3. Click **Save** to persist your changes
-4. The template can then be used in the CoT Code Review GUI
+The files are watched: an edit made outside the editor shows up at once. Whenever
+showing another text would lose unsaved edits -- choosing another prompt, **Reload**,
+**Create File**, an outside change, or closing the tab, the dock or the IDE -- the editor
+asks first, with **No** as the default. A file that is not UTF-8 is shown with what cannot
+be read replaced, and says so; saving writes it back as UTF-8.
 
 Skill Prompt Editor
 -------------------
 
-**Menu:** Tools > Skill Prompt Editor Tab / Skill Prompt Editor Dock
+**Menu:** Tools > AI > Skill Prompt Editor Tab / Dock > AI > Skill Prompt Editor Dock
 
-Similar to the CoT Prompt Editor, but specialized for skill-based prompt templates
-such as code review and code explanation prompts.
+The same editor as the CoT Prompt Editor, for the two skill prompts:
+``code_review_skill.md`` (a code review) and ``code_explainer_skill.md`` (a code
+explanation). Its files are kept in the same folder and work the same way.
 
-Interface Layout
-^^^^^^^^^^^^^^^^
+Skill Send
+----------
 
-- **File Selector** (ComboBox) -- Select from available skill prompt templates
-- **Edit Panel** (QTextEdit) -- Edit the selected skill prompt
-- **Create** button -- Creates a new skill prompt template
-- **Save** button -- Saves changes
-- **Reload** button -- Reloads from disk
-
-Pre-built Skill Templates
-^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-- Code Review prompts
-- Code Explanation prompts
-
-Skills Send GUI
----------------
-
-**Menu:** Tools > Skill Send Tab / Skill Send Dock
-
-An interface for sending skill-based prompts to an LLM API and viewing responses.
+**Menu:** Tools > AI > Skill Send Tab / Dock > AI > Skill Send Dock
 
 Interface Layout
 ^^^^^^^^^^^^^^^^
 
-- **API URL Input** -- Enter the LLM API endpoint URL
-- **Prompt Template Selector** (ComboBox) -- Choose a pre-defined skill prompt template
-- **Prompt Text Area** -- Edit or customize the prompt before sending
-- **Send Button** -- Sends the prompt to the API (runs in background thread)
-- **Response Display** (read-only) -- Shows the LLM response
-
-Features
-^^^^^^^^
-
-- Background threading via ``RequestThread`` prevents UI freezing
-- Error handling with specific HTTP status code messages
-- Prompt templates are loaded from the Skill Prompt Editor's template files
+- **LLM API URL** -- the endpoint URL
+- **Select Prompt Template** -- the skill prompt to start from
+- **Prompt** -- the prompt that is sent, editable
+- **Send** -- sends it
+- **Response** (read-only) -- the answer, or why there is none
 
 Usage
 ^^^^^
 
-1. Enter your LLM API endpoint URL
-2. Select a prompt template from the dropdown
-3. Customize the prompt text if needed (e.g., paste code to review)
-4. Click **Send**
-5. Wait for the response to appear in the response display area
-
-.. note::
-
-   All AI tools require a compatible API endpoint. Configure your API URL
-   to point to your LLM service (e.g., OpenAI-compatible API, local LLM server, etc.).
+1. Enter the endpoint URL.
+2. Choose a template. Its text (the edited file if there is one, otherwise the built-in
+   prompt) fills **Prompt**. Choosing another template after editing the prompt asks
+   first.
+3. Put your code in place of ``{code_diff}`` in the prompt. The prompt is not sent while
+   ``{code_diff}`` is still in it.
+4. Click **Send**. The prompt goes as a ``POST`` of the JSON ``{"code": "..."}``, and the
+   response body is shown as it is. A refused request (401, 403) and a server error are
+   shown as errors; a redirect is not followed and says where it pointed (its scheme and
+   host only).
