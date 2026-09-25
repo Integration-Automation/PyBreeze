@@ -588,6 +588,56 @@ class TestRunningAFolder:
 
         assert len(main_window.current_run_code_window) == 1
 
+    def test_a_file_whose_run_cannot_start_is_passed_over(self, qt_app, tmp_path, monkeypatch):
+        # A run that never starts never ends: the next file is taken from the event loop
+        from types import SimpleNamespace
+
+        from pybreeze.extend.process_executor import process_executor_utils
+
+        tried: list[str] = []
+
+        def cannot_start(_window, _package, file, *_args, **_kwargs):
+            tried.append(file)
+            return SimpleNamespace(process=None, was_stopped=False)
+
+        monkeypatch.setattr(process_executor_utils, "build_process_from_file", cannot_start)
+        files = self._files(tmp_path, 3)
+
+        process_executor_utils.run_one_after_another(MainWindow(sys.executable), "fakepkg", files)
+        _run_events_until(qt_app, lambda: len(tried) == 3)
+
+        assert tried == files
+
+    def test_the_folder_entry_runs_what_was_picked_and_nothing_when_nothing_was(self, qt_app, tmp_path, monkeypatch):
+        from pybreeze.extend.process_executor import process_executor_utils
+
+        batches: list = []
+        monkeypatch.setattr(process_executor_utils, "run_one_after_another",
+                            lambda _window, package, files, *_args: batches.append((package, files)))
+        files = self._files(tmp_path, 2)
+        monkeypatch.setattr(process_executor_utils, "_ask_for_action_files", lambda _window: files)
+        process_executor_utils.run_dir_files_with_package(MainWindow(), "fakepkg")
+        monkeypatch.setattr(process_executor_utils, "_ask_for_action_files", lambda _window: [])
+        process_executor_utils.run_dir_files_with_package(MainWindow(), "fakepkg")
+
+        assert batches == [("fakepkg", files)]
+
+    def test_a_folder_that_cannot_be_read_is_logged_not_raised(self, qt_app, monkeypatch):
+        from pybreeze.extend.process_executor import process_executor_utils
+
+        logged: list = []
+
+        def unreadable(_window):
+            raise OSError("the folder went away")
+
+        monkeypatch.setattr(process_executor_utils, "_ask_for_action_files", unreadable)
+        monkeypatch.setattr(process_executor_utils.pybreeze_logger, "error", lambda *args: logged.append(args))
+
+        process_executor_utils.run_dir_files_with_package(MainWindow(), "fakepkg")
+
+        (entry,) = logged
+        assert "fakepkg" in entry
+
 
 def _is_running(pid: int) -> bool:
     """Whether a process with *pid* is still there (not os.kill: on Windows that ends it)."""
