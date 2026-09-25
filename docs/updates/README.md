@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-72 | 2026-09-26 | Start the 2026-09-e batch | #docs | [2026-09-e](2026-09-e.md) |
 | U-20260926-71 | 2026-09-26 | The prompt editor's Reload answered yes, the template already shown picked again, and a Create whose save fails are tested | #test #ai | [2026-09-d](2026-09-d.md) |
 | U-20260926-70 | 2026-09-26 | An answer one byte over the cap, and a failure before the deadline, are tested | #test #network | [2026-09-d](2026-09-d.md) |
 | U-20260926-69 | 2026-09-26 | Test pressed again during a regex run, and the Diff tab closed mid-comparison, are tested | #test #threads | [2026-09-d](2026-09-d.md) |
@@ -611,3 +612,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
 | [2026-09-d.md](2026-09-d.md) | 2026-09 | 91 |
+| [2026-09-e.md](2026-09-e.md) | 2026-09 | 1 |
