@@ -219,7 +219,8 @@ class TestThePropertyPanelAndTheCanvas:
         assert panel._node_w.value() == 340  # the panel follows the canvas
         panel._node_h.setValue(80)
 
-        assert (node.node_w, node.node_h) == (340, 80)
+        size = (node.node_w, node.node_h)
+        assert size == (340, 80)
 
     def test_steps_on_one_property_are_one_undo_step(self, app):
         # Every arrow click was its own step, each with two whole-scene snapshots
@@ -341,7 +342,8 @@ class TestResizeFromAHandle:
         node = DiagramNode(x=10, y=10, w=140, h=60, text="A")
         node._apply_resize(role, QPointF(dx, dy), QRectF(0, 0, 140, 60), QPointF(10, 10))
 
-        assert (node.pos().x(), node.pos().y(), node.node_w, node.node_h) == expected
+        geometry = (node.pos().x(), node.pos().y(), node.node_w, node.node_h)
+        assert geometry == expected
 
     @pytest.mark.parametrize("role,dx,dy,expected", [
         ("r", 60, 0, (10, 10, 200, 60)),
@@ -355,4 +357,5 @@ class TestResizeFromAHandle:
         image = DiagramImage(x=10, y=10, w=140, h=60)
         image._apply_resize(role, QPointF(dx, dy), QRectF(0, 0, 140, 60), QPointF(10, 10))
 
-        assert (image.pos().x(), image.pos().y(), image.img_w, image.img_h) == expected
+        geometry = (image.pos().x(), image.pos().y(), image.img_w, image.img_h)
+        assert geometry == expected

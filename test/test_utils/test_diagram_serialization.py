@@ -282,7 +282,7 @@ class TestMermaidImportEndToEnd:
         assert len(scene.get_all_nodes()) == 4
         assert len(scene.get_all_connections()) == 3
         texts = {n.text() for n in scene.get_all_nodes()}
-        assert {"DB", "B", "C", "Decision"} == texts
+        assert texts == {"DB", "B", "C", "Decision"}
         styles = sorted(c._style.name for c in scene.get_all_connections())
         assert styles == ["DOTTED", "DOTTED", "SOLID"]  # two dotted fan-out, one thick
 
