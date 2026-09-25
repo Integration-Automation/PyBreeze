@@ -261,3 +261,30 @@ def test_the_pump_says_how_many_it_took():
         target.put(message)
 
     assert pump_message_queue(target, lambda _text, _is_error: None, is_error=False) == 3
+
+
+class TestAQueueNobodyEmpties:
+    def test_the_reader_stops_waiting_once_it_is_told_to(self):
+        # The run window gone, the queue full: the reader must not wait for room for ever
+        import threading
+
+        full: Queue = Queue(maxsize=1)
+        full.put("already there")
+        asked = {"count": 0}
+
+        def keep_reading() -> bool:
+            asked["count"] += 1
+            return asked["count"] < 3  # a check to start reading, then a wait or two for room
+
+        reader = threading.Thread(target=read_stream_into_queue, args=(io.BytesIO(b"one\ntwo\n"), full), kwargs={
+            "buffer_size": 1024, "encoding": "utf-8", "keep_reading": keep_reading}, daemon=True)
+        reader.start()
+        reader.join(10)
+
+        assert not reader.is_alive()
+        assert list(full.queue) == ["already there"]
+
+
+def test_an_escape_cut_off_by_the_end_of_the_output_is_still_passed_on():
+    # Held for the rest that never comes: at the end it goes out as it is
+    assert "".join(_read_all(b"done \x1b[3")) == "done \x1b[3"
