@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-41 | 2026-09-26 | The READMEs say the SSH terminal and SFTP tree are tested against a real SSH server | #docs #ssh | [2026-09-d](2026-09-d.md) |
 | U-20260926-40 | 2026-09-26 | Each diagram node shape is tested by rendering the canvas and reading its pixels | #test #diagram | [2026-09-d](2026-09-d.md) |
 | U-20260926-39 | 2026-09-26 | Two tests that read PyBreeze's own source now check what the code does | #test | [2026-09-d](2026-09-d.md) |
 | U-20260926-38 | 2026-09-26 | start_editor's order of steps is tested by running it, not by reading its source | #test #gc | [2026-09-d](2026-09-d.md) |
@@ -579,4 +580,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
-| [2026-09-d.md](2026-09-d.md) | 2026-09 | 60 |
+| [2026-09-d.md](2026-09-d.md) | 2026-09 | 61 |

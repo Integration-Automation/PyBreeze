@@ -441,7 +441,7 @@ python -m pip install -r dev_requirements.txt
 python -m pytest test/test_utils/ -v --tb=short
 ```
 
-- **单元测试** — `test/test_utils/`，覆盖纯逻辑层（curl 与 HAR 解析、请求头分析、SSRF 验证、JWT、哈希、时间戳、差异比较），加上通过 `QT_QPA_PLATFORM=offscreen` 进行的无界面 Qt 组件测试，以及针对解析器的 Hypothesis 属性测试
+- **单元测试** — `test/test_utils/`，覆盖纯逻辑层（curl 与 HAR 解析、请求头分析、SSRF 验证、JWT、哈希、时间戳、差异比较），加上通过 `QT_QPA_PLATFORM=offscreen` 进行的无界面 Qt 组件测试，以及针对解析器的 Hypothesis 属性测试。SSH 终端与 SFTP 文件树还会实际登录测试在本机回环地址启动的 SSH 服务器，它通过 SFTP 提供一个临时文件夹
 - **启动测试** — `test/unit_test/start_automation/` 以调试模式启动 IDE，验证它能正常启动并干净地退出
 - **CI** — GitHub Actions 在 Windows 上跑 Python 3.10 – 3.14，每次 push 与 PR 都会运行，另有每晚一次的运行
 - **静态分析** — SonarCloud、Codacy 与 Bandit
