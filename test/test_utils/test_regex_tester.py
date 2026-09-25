@@ -114,6 +114,26 @@ class TestABoundedRun:
         with pytest.raises(RegexTesterException):
             regex_tester.find_matches_bounded("(", "abc")
 
+    def test_a_worker_that_cannot_start_is_reported(self, monkeypatch):
+        from pybreeze.utils.regex_tools import regex_tester
+
+        def cannot_start(*_args, **_kwargs):
+            raise OSError(24, "Too many open files")
+
+        monkeypatch.setattr(regex_tester.subprocess, "Popen", cannot_start)
+
+        with pytest.raises(RegexTesterException):
+            regex_tester.find_matches_bounded(r"\d+", "a1")
+
+    def test_a_worker_that_died_part_way_is_reported(self, monkeypatch):
+        # Killed, or out of memory: what it wrote stops mid-way
+        from pybreeze.utils.regex_tools import regex_tester
+
+        monkeypatch.setattr(regex_tester, "_run_worker", lambda _job, _timeout: b'[["1", 1')
+
+        with pytest.raises(RegexTesterException):
+            regex_tester.find_matches_bounded(r"\d+", "a1")
+
     def test_catastrophic_backtracking_is_stopped(self):
         import time
 
@@ -143,6 +163,19 @@ class TestPatternsTheCompilerCannotTake:
 
         with pytest.raises(RegexTesterException):
             compile_pattern("(" * 5000 + "a" + ")" * 5000)
+
+    def test_a_parenthesis_in_a_character_class_or_escaped_opens_no_group(self):
+        from pybreeze.utils.regex_tools.regex_tester import MAX_GROUP_NESTING, _group_nesting_too_deep
+
+        many = MAX_GROUP_NESTING + 1
+        assert not _group_nesting_too_deep("[" + "(" * many + "]")
+        assert not _group_nesting_too_deep("\\(" * many)
+        assert compile_pattern("[" + "(" * many + "]").match("(")
+
+    def test_groups_after_a_character_class_are_counted_again(self):
+        from pybreeze.utils.regex_tools.regex_tester import MAX_GROUP_NESTING, _group_nesting_too_deep
+
+        assert _group_nesting_too_deep("[(]" + "(" * (MAX_GROUP_NESTING + 1))
 
 
 class TestTheWorkerProcess:
