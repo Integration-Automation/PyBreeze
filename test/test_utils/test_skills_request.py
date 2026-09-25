@@ -134,3 +134,15 @@ def test_a_failed_request_does_not_log_the_url(monkeypatch):
 
     assert logged
     assert all("not-a-real-token" not in line for line in logged)
+
+
+@pytest.mark.parametrize(("location", "shown"), [
+    ("https://elsewhere.example:notaport/api?key=secret", "https://elsewhere.example"),
+    ("https://elsewhere.example:8443/api?key=secret", "https://elsewhere.example:8443"),
+])
+def test_a_redirect_names_the_port_only_when_it_is_a_number(location, shown):
+    text = skills_send_gui._redirect_text(location)
+
+    assert shown in text
+    assert "secret" not in text
+    assert ":notaport" not in text

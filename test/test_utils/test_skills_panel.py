@@ -119,3 +119,47 @@ class TestSending:
 
         assert len(sent) == 1
         assert _PASTED.strip() in sent[0]
+
+    @pytest.mark.parametrize(("url", "prompt"), [("", _PASTED), ("https://skills.example/api", "   ")])
+    def test_a_missing_url_or_prompt_is_asked_for(self, panel, monkeypatch, url, prompt):
+        monkeypatch.setattr(skills_send_gui, "RequestThread", lambda *args: pytest.fail("a request was sent"))
+        panel.api_url_input.setText(url)
+        _type(panel, prompt)
+
+        panel.send_prompt()
+
+        assert panel.response_output.toPlainText() == skills_send_gui.language_wrapper.language_word_dict.get(
+            "skills_missing_input")
+
+    def test_a_second_send_while_one_is_running_is_ignored(self, panel, monkeypatch):
+        class Running:
+            @staticmethod
+            def isRunning() -> bool:
+                return True
+
+        running = Running()
+        panel.request_thread = running
+        monkeypatch.setattr(skills_send_gui, "RequestThread", lambda *args: pytest.fail("a second request"))
+        panel.api_url_input.setText("https://skills.example/api")
+        _type(panel, _PASTED)
+
+        panel.send_prompt()
+
+        assert panel.request_thread is running
+        panel.request_thread = None
+
+    def test_the_answer_is_shown_and_send_is_offered_again(self, panel):
+        panel.send_button.setEnabled(False)
+
+        panel.on_finished("the review")
+
+        assert panel.response_output.toPlainText() == "the review"
+        assert panel.send_button.isEnabled()
+
+
+def test_a_template_it_does_not_know_changes_nothing(panel):
+    before = panel.prompt_input.toPlainText()
+
+    panel.load_selected_prompt("no_such_template.md")
+
+    assert panel.prompt_input.toPlainText() == before

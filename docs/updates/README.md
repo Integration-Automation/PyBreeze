@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-29 | 2026-09-26 | Skill Send's missing input, a second send, its answer, an unknown template and a redirect's port are tested | #test #ai | [2026-09-d](2026-09-d.md) |
 | U-20260926-28 | 2026-09-26 | The diagram canvas's Paste entry, and the commands that have nothing to act on, are tested | #test #diagram | [2026-09-d](2026-09-d.md) |
 | U-20260926-27 | 2026-09-26 | Adding a shape or a text box with a click on the diagram canvas is tested | #test #diagram | [2026-09-d](2026-09-d.md) |
 | U-20260926-26 | 2026-09-26 | The SFTP file tree is tested end to end against a real folder over SFTP | #test #ssh #sftp | [2026-09-d](2026-09-d.md) |
@@ -567,4 +568,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
-| [2026-09-d.md](2026-09-d.md) | 2026-09 | 48 |
+| [2026-09-d.md](2026-09-d.md) | 2026-09 | 49 |
