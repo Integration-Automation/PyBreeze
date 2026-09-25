@@ -19,7 +19,7 @@ def app():
     return instance
 
 
-@pytest.fixture()
+@pytest.fixture
 def editor(app):
     from pybreeze.pybreeze_ui.diagram_editor.diagram_editor_widget import DiagramEditorWidget
 

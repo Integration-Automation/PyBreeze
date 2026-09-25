@@ -51,7 +51,7 @@ class MailThunderException(Exception):
     pass
 
 
-@pytest.fixture()
+@pytest.fixture
 def mail_thunder(monkeypatch):
     """A stand-in je_mail_thunder with a user in its content file."""
     FakeSmtp.instances = []
@@ -69,14 +69,14 @@ def mail_thunder(monkeypatch):
     return package
 
 
-@pytest.fixture()
+@pytest.fixture
 def logger(monkeypatch) -> MagicMock:
     fake = MagicMock()
     monkeypatch.setattr(mail, "pybreeze_logger", fake)
     return fake
 
 
-@pytest.fixture()
+@pytest.fixture
 def report(tmp_path) -> str:
     path = tmp_path / "report.html"
     path.write_text("<html>ok</html>", encoding="utf-8")

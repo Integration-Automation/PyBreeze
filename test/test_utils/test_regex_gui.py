@@ -26,7 +26,7 @@ def run(widget) -> None:
     QApplication.processEvents()
 
 
-@pytest.fixture()
+@pytest.fixture
 def widget(app):
     from pybreeze.pybreeze_ui.tools_gui.regex_gui import RegexGUI
     gui = RegexGUI()

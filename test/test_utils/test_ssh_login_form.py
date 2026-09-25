@@ -19,7 +19,7 @@ def app():
     return instance
 
 
-@pytest.fixture()
+@pytest.fixture
 def form(app):
     widget = login_mod.LoginWidget()
     yield widget

@@ -44,7 +44,7 @@ class FakeServer:
         return self.returncode
 
 
-@pytest.fixture()
+@pytest.fixture
 def launched(monkeypatch) -> list:
     """Start the launcher's run() against a fake server and collect what it started."""
     started: list = []

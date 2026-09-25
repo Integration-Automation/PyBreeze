@@ -18,7 +18,7 @@ from pybreeze.utils.network.url_validation import UnsafeURLError, validate_url
 _PUBLIC = [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.215.14", 0))]
 
 
-@pytest.fixture()
+@pytest.fixture
 def public_dns(monkeypatch):
     """Every name resolves to a public address, so only the parsing decides."""
     monkeypatch.setattr(url_validation.socket, "getaddrinfo", lambda *_a, **_k: _PUBLIC)

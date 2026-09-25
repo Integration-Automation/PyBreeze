@@ -27,14 +27,14 @@ def app():
     return instance
 
 
-@pytest.fixture()
+@pytest.fixture
 def data_dir(tmp_path, monkeypatch):
     """Point the settings file at a temporary directory, never the real home."""
     monkeypatch.setattr(prthinker_setting, "pybreeze_data_path", lambda: tmp_path)
     return tmp_path
 
 
-@pytest.fixture()
+@pytest.fixture
 def dialog(app, data_dir):
     made = PRThinkerSettingDialog()
     yield made

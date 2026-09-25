@@ -31,7 +31,7 @@ class Process:
         self.runs.append((package, list(arguments)))
 
 
-@pytest.fixture()
+@pytest.fixture
 def processes(monkeypatch) -> list:
     started: list = []
 

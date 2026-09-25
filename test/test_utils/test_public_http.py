@@ -35,7 +35,7 @@ def _answer(ip: str, port) -> list:
     return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (ip, int(port or 0)))]
 
 
-@pytest.fixture()
+@pytest.fixture
 def dns(monkeypatch):
     """Names ending in ``.test`` answer from a table; ``rebind.test`` public first, then loopback."""
     rebind_answers = [_PUBLIC_IP]
@@ -51,7 +51,7 @@ def dns(monkeypatch):
     monkeypatch.setattr(socket, "getaddrinfo", getaddrinfo)
 
 
-@pytest.fixture()
+@pytest.fixture
 def loopback_allowed(monkeypatch):
     """Let the checks pass loopback, so a local server can stand in for a public one."""
     monkeypatch.setattr(url_validation, "_is_blocked_ip", lambda _ip: False)
@@ -110,7 +110,7 @@ def _session() -> requests.Session:
     return session
 
 
-@pytest.fixture()
+@pytest.fixture
 def listener():
     server = _Listener()
     yield server
@@ -216,7 +216,7 @@ class TestUrllibOpener:
         assert listener.received[0].startswith(b"CONNECT rebind.test:443 HTTP/1.")
 
 
-@pytest.fixture()
+@pytest.fixture
 def two_addresses(monkeypatch):
     """``two.test`` answers an address nothing listens on first, then loopback."""
     def getaddrinfo(host, port=None, *args, **kwargs):

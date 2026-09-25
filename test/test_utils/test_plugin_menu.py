@@ -48,7 +48,7 @@ class FakeWindow(QMainWindow):
         self.encoding = "utf-8"
 
 
-@pytest.fixture()
+@pytest.fixture
 def window(app):
     made = FakeWindow()
     yield made
@@ -346,7 +346,7 @@ class EditorTab(QWidget):
         self.events.append("saved")
 
 
-@pytest.fixture()
+@pytest.fixture
 def editor_tab(window, monkeypatch):
     """Put an editor tab in the window; the helper recognises it by type."""
     monkeypatch.setattr(run_with, "EditorWidget", EditorTab)

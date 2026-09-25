@@ -15,7 +15,7 @@ class EditorTab(QWidget):
     """Stands in for a JEditor editor tab."""
 
 
-@pytest.fixture()
+@pytest.fixture
 def window(monkeypatch):
     QApplication.instance() or QApplication([])
     monkeypatch.setattr(menu, "EditorWidget", EditorTab)

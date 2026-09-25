@@ -34,7 +34,7 @@ def app():
     return QApplication.instance() or QApplication([])
 
 
-@pytest.fixture()
+@pytest.fixture
 def reporter(tmp_path, monkeypatch):
     """A package that says which flag it was given and what it read, in ASCII."""
     (tmp_path / "report_args.py").write_text(_REPORTER, encoding="utf-8")

@@ -27,7 +27,7 @@ def keys():
     return paramiko.RSAKey.generate(1024), paramiko.RSAKey.generate(1024)
 
 
-@pytest.fixture()
+@pytest.fixture
 def asked(app, tmp_path, monkeypatch):
     """Answers every question with ``asked["answer"]`` and counts them."""
     state = {"answer": True, "count": 0}

@@ -24,7 +24,7 @@ def app():
     return instance
 
 
-@pytest.fixture()
+@pytest.fixture
 def connection(app):
     scene = DiagramScene()
     source, target = DiagramNode(x=0, y=0, text="A"), DiagramNode(x=300, y=0, text="B")
@@ -39,7 +39,7 @@ def connection(app):
     scene.deleteLater()
 
 
-@pytest.fixture()
+@pytest.fixture
 def image(app):
     scene = DiagramScene()
     picture = DiagramImage(x=0, y=0, w=120, h=80)

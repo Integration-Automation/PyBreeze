@@ -29,7 +29,7 @@ class DismissedMenu(QMenu):
         return None
 
 
-@pytest.fixture()
+@pytest.fixture
 def menus_dismissed(monkeypatch):
     # Setting exec on PySide's QMenu itself does not reach the call
     for module in (file_tree_context_menu, ssh_file_viewer_widget):

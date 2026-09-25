@@ -31,7 +31,7 @@ def app():
     return instance
 
 
-@pytest.fixture()
+@pytest.fixture
 def window(app, monkeypatch):
     monkeypatch.setattr(record_menu, "EditorWidget", EditorTab)
     made = QMainWindow()

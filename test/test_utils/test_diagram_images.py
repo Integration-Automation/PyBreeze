@@ -50,7 +50,7 @@ def an_image() -> bytes:
     return bytes(data.data())
 
 
-@pytest.fixture()
+@pytest.fixture
 def downloads(monkeypatch) -> list:
     """Record every fetch, and answer each with a real image."""
     asked: list = []
@@ -161,7 +161,7 @@ def _wait_until(app, condition) -> None:
         time.sleep(0.01)
 
 
-@pytest.fixture()
+@pytest.fixture
 def slow_host(monkeypatch) -> threading.Event:
     """A host that answers with an image once the returned event is set."""
     answering = threading.Event()

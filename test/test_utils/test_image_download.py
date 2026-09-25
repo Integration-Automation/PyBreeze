@@ -55,14 +55,14 @@ class _Server:
         self._httpd.server_close()
 
 
-@pytest.fixture()
+@pytest.fixture
 def loopback_only(monkeypatch):
     """127.0.0.1 may stand in for a public server; every other private address stays refused."""
     blocked = url_validation._is_blocked_ip
     monkeypatch.setattr(url_validation, "_is_blocked_ip", lambda ip: ip != _LOOPBACK and blocked(ip))
 
 
-@pytest.fixture()
+@pytest.fixture
 def serve():
     servers: list[_Server] = []
 

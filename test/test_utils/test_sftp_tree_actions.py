@@ -66,7 +66,7 @@ class FakeClient:
         """Nothing to close."""
 
 
-@pytest.fixture()
+@pytest.fixture
 def tree(app, monkeypatch):
     client = FakeClient({
         "/": [_entry("src", directory=True), _entry("notes.txt")],

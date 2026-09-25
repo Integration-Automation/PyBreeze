@@ -18,7 +18,7 @@ def app():
     return instance
 
 
-@pytest.fixture()
+@pytest.fixture
 def widget(app):
     from pybreeze.pybreeze_ui.tools_gui.http_status_gui import HttpStatusGUI
     gui = HttpStatusGUI()
@@ -75,7 +75,7 @@ class TestHttpStatusGUI:
 class TestTheCategoryInTheIdeLanguage:
     """The class of a status ([Client Error]) was English in the Traditional Chinese IDE."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def chinese(self, app, monkeypatch):
         from je_editor import language_wrapper
 

@@ -34,7 +34,7 @@ def app():
     return instance
 
 
-@pytest.fixture()
+@pytest.fixture
 def tree(app, tmp_path):
     """A tree view rooted at *tmp_path*, as the project tree would be."""
     view = QTreeView()
@@ -82,7 +82,7 @@ def trash(tmp_path_factory, monkeypatch):
     return trashed
 
 
-@pytest.fixture()
+@pytest.fixture
 def warnings(monkeypatch):
     """Collect the warning dialogs an action raises instead of showing them."""
     shown: list[str] = []

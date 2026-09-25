@@ -77,7 +77,7 @@ class TestWaitUntilReady:
 class TestTheReasonIsInTheIdeLanguage:
     """A start that timed out or a server that exited read in English whatever the IDE spoke."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def chinese(self, monkeypatch):
         from pybreeze.extend_multi_language.extend_traditional_chinese import (
             pybreeze_traditional_chinese_word_dict as word,

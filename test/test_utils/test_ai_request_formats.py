@@ -45,7 +45,7 @@ class _Session:
         return self.request("POST", url, **kwargs)
 
 
-@pytest.fixture()
+@pytest.fixture
 def session(monkeypatch):
     recorder = _Session()
     for module in (ai_code_review_gui, skills_send_gui):

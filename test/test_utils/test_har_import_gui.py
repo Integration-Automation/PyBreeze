@@ -46,7 +46,7 @@ def app():
     return instance
 
 
-@pytest.fixture()
+@pytest.fixture
 def widget(app):
     from pybreeze.pybreeze_ui.tools_gui.har_import_gui import HarImportGUI
     gui = HarImportGUI()
@@ -55,7 +55,7 @@ def widget(app):
     gui.deleteLater()
 
 
-@pytest.fixture()
+@pytest.fixture
 def loaded(widget):
     widget.load_text(_HAR)
     return widget

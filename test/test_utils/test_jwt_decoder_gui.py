@@ -27,7 +27,7 @@ def app():
     return instance
 
 
-@pytest.fixture()
+@pytest.fixture
 def widget(app):
     from pybreeze.pybreeze_ui.tools_gui.jwt_decoder_gui import JwtDecoderGUI
     gui = JwtDecoderGUI()

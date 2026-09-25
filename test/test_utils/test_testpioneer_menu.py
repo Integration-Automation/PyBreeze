@@ -19,7 +19,7 @@ def app():
     return instance
 
 
-@pytest.fixture()
+@pytest.fixture
 def chosen(monkeypatch) -> dict:
     """Answer the file dialog with ``chosen["path"]``; record the filter and what ran."""
     state: dict = {"path": "", "ran": [], "filter": None, "told": 0}

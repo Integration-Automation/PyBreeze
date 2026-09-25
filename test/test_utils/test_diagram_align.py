@@ -20,7 +20,7 @@ def app():
     return instance
 
 
-@pytest.fixture()
+@pytest.fixture
 def scene(app):
     diagram = DiagramScene()
     yield diagram

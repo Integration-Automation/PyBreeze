@@ -22,7 +22,7 @@ def app():
     return instance
 
 
-@pytest.fixture()
+@pytest.fixture
 def answers(monkeypatch):
     """Answer every question with ``answers["reply"]`` and count them."""
     state = {"reply": QMessageBox.StandardButton.No, "asked": 0}

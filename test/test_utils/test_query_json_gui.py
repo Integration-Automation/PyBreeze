@@ -19,7 +19,7 @@ def app():
     return instance
 
 
-@pytest.fixture()
+@pytest.fixture
 def widget(app):
     from pybreeze.pybreeze_ui.tools_gui.query_json_gui import QueryJsonGUI
     gui = QueryJsonGUI()

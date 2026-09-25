@@ -27,7 +27,7 @@ def app():
     return instance
 
 
-@pytest.fixture()
+@pytest.fixture
 def widget(app):
     from pybreeze.pybreeze_ui.tools_gui.response_inspector_gui import ResponseInspectorGUI
     gui = ResponseInspectorGUI()
@@ -94,7 +94,7 @@ class _FakeMainWindow:
         self.tab_widget = _FakeTabWidget()
 
 
-@pytest.fixture()
+@pytest.fixture
 def widget_with_window(app):
     from pybreeze.pybreeze_ui.tools_gui.response_inspector_gui import ResponseInspectorGUI
     window = _FakeMainWindow()

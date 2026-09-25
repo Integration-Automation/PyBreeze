@@ -61,7 +61,7 @@ class RecordingProcess:
         RecordingProcess.calls.append((package, list(arguments), dict(environment or {})))
 
 
-@pytest.fixture()
+@pytest.fixture
 def recorded(monkeypatch):
     """Catch the review before it reaches a real process or a real window."""
     RecordingProcess.calls = []
@@ -72,7 +72,7 @@ def recorded(monkeypatch):
     return RecordingProcess.calls
 
 
-@pytest.fixture()
+@pytest.fixture
 def settings(monkeypatch):
     """Let each test decide what the settings hold."""
     stored = dict(DEFAULT_SETTING)

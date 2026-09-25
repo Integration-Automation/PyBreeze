@@ -18,7 +18,7 @@ def app():
     return instance
 
 
-@pytest.fixture()
+@pytest.fixture
 def widget(app):
     from pybreeze.pybreeze_ui.tools_gui.diff_gui import DiffGUI
     gui = DiffGUI()

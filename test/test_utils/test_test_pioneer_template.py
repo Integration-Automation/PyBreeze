@@ -19,7 +19,7 @@ def app():
     return instance
 
 
-@pytest.fixture()
+@pytest.fixture
 def window(app, tmp_path, monkeypatch):
     made = QMainWindow()
     made.working_dir = str(tmp_path / "project")

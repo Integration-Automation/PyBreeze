@@ -27,7 +27,7 @@ def app():
     return instance
 
 
-@pytest.fixture()
+@pytest.fixture
 def chinese(app, monkeypatch):
     from je_editor import language_wrapper
 
@@ -35,7 +35,7 @@ def chinese(app, monkeypatch):
     monkeypatch.setattr(language_wrapper, "language_word_dict", pybreeze_traditional_chinese_word_dict)
 
 
-@pytest.fixture()
+@pytest.fixture
 def english(app, monkeypatch):
     from je_editor import language_wrapper
 

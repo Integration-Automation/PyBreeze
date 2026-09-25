@@ -25,7 +25,7 @@ def app():
     return QApplication.instance() or QApplication([])
 
 
-@pytest.fixture()
+@pytest.fixture
 def manager(app):
     from pybreeze.extend.process_executor.python_task_process_manager import TaskProcessManager
     from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow

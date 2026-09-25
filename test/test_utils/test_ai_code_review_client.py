@@ -29,7 +29,7 @@ def app():
     return instance
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(app, tmp_path, monkeypatch):
     monkeypatch.setattr(ai_code_review_gui, "pybreeze_data_dir", lambda: tmp_path)
     made = AICodeReviewClient()

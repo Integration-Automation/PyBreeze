@@ -22,7 +22,7 @@ def app():
     return instance
 
 
-@pytest.fixture()
+@pytest.fixture
 def widget(app):
     from pybreeze.pybreeze_ui.tools_gui.curl_import_gui import CurlImportGUI
     gui = CurlImportGUI()
@@ -128,7 +128,7 @@ class _FakeEditor:
         self.code_edit = type("CodeEdit", (), {"setPlainText": lambda self, t: setattr(self, "text", t)})()
 
 
-@pytest.fixture()
+@pytest.fixture
 def widget_with_window(app):
     from pybreeze.pybreeze_ui.tools_gui.curl_import_gui import CurlImportGUI
     window = _FakeMainWindow()
