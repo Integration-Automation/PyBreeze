@@ -38,15 +38,16 @@ class AutomationMenu:
     """Everything one automation package's menu holds.
 
     A submenu is built only when it has entries; the project entry needs both
-    ``create_project`` and its label key, and the GUI entry both the widget
-    class and its label.
+    ``create_project`` and its label key, and the GUI entry both
+    ``gui_widget_factory`` (called each time the entry is chosen, so a package
+    can import its GUI only then) and its label.
     """
     label_key: str
     run_actions: tuple[RunAction, ...] = ()
     help_links: tuple[HelpLink, ...] = ()
     create_project: Callable[[], None] | None = None
     create_project_label_key: str | None = None
-    gui_widget_class: type[QWidget] | None = None
+    gui_widget_factory: Callable[[], QWidget] | None = None
     gui_label: str | None = None
 
 
@@ -70,8 +71,8 @@ def build_automation_menu(ui: PyBreezeMainWindow, spec: AutomationMenu) -> QMenu
         add_help_menu(ui, menu, spec.help_links)
     if spec.create_project and spec.create_project_label_key:
         _add_project_menu(menu, spec.create_project, spec.create_project_label_key)
-    if spec.gui_widget_class and spec.gui_label:
-        _add_gui_action(ui, menu, spec.gui_widget_class, spec.gui_label)
+    if spec.gui_widget_factory and spec.gui_label:
+        _add_gui_action(ui, menu, spec.gui_widget_factory, spec.gui_label)
     return menu
 
 
@@ -106,10 +107,10 @@ def _add_project_menu(menu: QMenu, create_project: Callable[[], None], label_key
 
 
 def _add_gui_action(
-        ui: PyBreezeMainWindow, menu: QMenu, widget_class: type[QWidget], label: str) -> None:
+        ui: PyBreezeMainWindow, menu: QMenu, widget_factory: Callable[[], QWidget], label: str) -> None:
     action = QAction(label, menu)
     action.triggered.connect(
-        lambda checked=False: ui.tab_widget.addTab(widget_class(), label)
+        lambda checked=False: ui.tab_widget.addTab(widget_factory(), label)
     )
     menu.addAction(action)
 

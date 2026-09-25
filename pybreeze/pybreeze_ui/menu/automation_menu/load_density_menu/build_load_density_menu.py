@@ -38,6 +38,6 @@ def set_load_density_menu(ui_we_want_to_set: PyBreezeMainWindow):
         ),
         create_project=safe_create_project(ui_we_want_to_set, "je_load_density"),
         create_project_label_key="load_density_create_project_label",
-        gui_widget_class=LoadDensityWidget,
+        gui_widget_factory=LoadDensityWidget,
         gui_label="LoadDensity GUI",
     ))

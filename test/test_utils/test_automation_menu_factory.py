@@ -96,7 +96,7 @@ def test_project_and_gui_actions_survive_and_answer(window):
         "run_label",
         create_project=lambda: created.append(True),
         create_project_label_key="project_label",
-        gui_widget_class=QWidget, gui_label="GUI",
+        gui_widget_factory=QWidget, gui_label="GUI",
     ))
     gc.collect()
 

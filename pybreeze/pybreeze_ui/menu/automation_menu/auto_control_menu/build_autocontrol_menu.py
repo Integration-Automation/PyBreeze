@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import json
+from types import ModuleType
 from typing import TYPE_CHECKING
 
-import je_auto_control
 from PySide6.QtGui import QAction, QGuiApplication, QTextCharFormat
-from PySide6.QtWidgets import QMessageBox
-from je_auto_control.gui.main_widget import AutoControlGUIWidget
+from PySide6.QtWidgets import QMessageBox, QWidget
 from je_editor import EditorWidget, language_wrapper
 from je_editor.pyside_ui.main_ui.save_settings.user_color_setting_file import actually_color_dict
 
@@ -21,6 +20,27 @@ from pybreeze.extend.process_executor.auto_control.auto_control_process import (
     call_auto_control, call_auto_control_with_send,
     call_auto_control_multi_file, call_auto_control_multi_file_and_send,
 )
+
+
+def _auto_control() -> ModuleType:
+    """The ``je_auto_control`` package, imported the first time it is used.
+
+    It makes the process system DPI aware as it imports. Imported with the
+    menus, before the application existed, it kept Qt from making the IDE
+    per-monitor aware, and Windows stretched the window as a bitmap on a screen
+    scaled differently from the main one.
+    """
+    import je_auto_control
+    return je_auto_control
+
+
+def _autocontrol_gui() -> QWidget:
+    from je_auto_control.gui.main_widget import AutoControlGUIWidget
+    return AutoControlGUIWidget()
+
+
+def _start_recording() -> None:
+    _auto_control().record()
 
 
 def set_autocontrol_menu(ui_we_want_to_set: PyBreezeMainWindow):
@@ -43,7 +63,7 @@ def set_autocontrol_menu(ui_we_want_to_set: PyBreezeMainWindow):
         ),
         create_project=safe_create_project(ui_we_want_to_set, "je_auto_control"),
         create_project_label_key="autocontrol_create_project_label",
-        gui_widget_class=AutoControlGUIWidget,
+        gui_widget_factory=_autocontrol_gui,
         gui_label="AutoControl GUI",
     ))
 
@@ -52,7 +72,7 @@ def set_autocontrol_menu(ui_we_want_to_set: PyBreezeMainWindow):
     record_menu = menu.addMenu(lang.get("autocontrol_record_menu_label"))
 
     record_action = QAction(lang.get("autocontrol_record_start_label"), record_menu)
-    record_action.triggered.connect(je_auto_control.record)
+    record_action.triggered.connect(_start_recording)
     record_menu.addAction(record_action)
 
     stop_record_action = QAction(lang.get("autocontrol_record_stop_label"), record_menu)
@@ -70,7 +90,7 @@ def stop_record(editor_instance: PyBreezeMainWindow) -> None:
     or on the clipboard when there is none. When nothing was recorded -- or
     recording was never started -- the user is told, instead of getting "None".
     """
-    actions = je_auto_control.stop_record()
+    actions = _auto_control().stop_record()
     lang = language_wrapper.language_word_dict
     title = lang.get("autocontrol_record_menu_label")
     if not actions:
