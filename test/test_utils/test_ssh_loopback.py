@@ -113,6 +113,20 @@ def test_the_host_key_is_asked_about_once_and_kept(asked, server):
     assert known.lookup(f"[127.0.0.1]:{server.port}") is not None
 
 
+def test_a_key_file_that_cannot_be_loaded_says_why_before_connecting(asked, server, tmp_path):
+    from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_key_loader import UNSUPPORTED_KEY
+
+    not_a_key = tmp_path / "notes.txt"
+    not_a_key.write_text("these are notes, not a key", encoding="utf-8")
+    client = SFTPClientWrapper()
+
+    with pytest.raises(ValueError) as refused:
+        client.connect("127.0.0.1", server.port, USER, "", use_key=True, key_path=str(not_a_key))
+
+    assert str(refused.value) == client.word_dict.get(UNSUPPORTED_KEY)
+    assert not client.connected
+
+
 def test_a_wrong_password_is_refused_and_leaves_no_session(asked, server):
     client = SFTPClientWrapper()
 
