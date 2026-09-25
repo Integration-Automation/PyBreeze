@@ -93,6 +93,10 @@ class TestTruncateForDisplay:
     def test_short_text_unchanged(self):
         assert truncate_for_display("short", limit=100) == "short"
 
+    def test_text_exactly_at_the_limit_is_unchanged_and_one_more_is_cut(self):
+        assert truncate_for_display("x" * 100, limit=100) == "x" * 100
+        assert truncate_for_display("x" * 101, limit=100).startswith("x" * 100 + "…")
+
     def test_long_text_truncated_with_marker(self):
         result = truncate_for_display("x" * 5000, limit=100)
         assert result.startswith("x" * 100)
@@ -153,6 +157,28 @@ class TestHowLongAnAnswerMayTake:
         with pytest.raises(requests.exceptions.ReadTimeout):
             read_capped_text(resp, max_seconds=300)
         assert resp.closed
+
+    def test_reading_stops_at_the_first_chunk_past_the_deadline(self, monkeypatch):
+        # Not only the timeout at the end: the rest of a slow answer is not read.
+        # The clock never lands on the deadline itself, as a real one does not.
+        import requests
+
+        from pybreeze.utils.network import http_client
+
+        clock = iter(range(0, 10_000, 7))
+        monkeypatch.setattr(http_client.time, "monotonic", lambda: next(clock))
+        read: list = []
+
+        class Counted(FakeResponse):
+            def iter_content(self, chunk_size: int = 65536):
+                for piece in super().iter_content(chunk_size):
+                    read.append(piece)
+                    yield piece
+
+        with pytest.raises(requests.exceptions.ReadTimeout):
+            read_capped_text(Counted(b"x" * 100, chunk=1), max_seconds=300)
+        # 7 s a chunk: 300 s is passed around the 43rd of the 100
+        assert len(read) < 50
 
     def test_a_byte_now_and_then_inside_one_chunk_is_cut_off_too(self):
         # A server announcing a long body and sending a byte every so often held
