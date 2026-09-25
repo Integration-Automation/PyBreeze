@@ -696,3 +696,24 @@ class TestBashAnsiCQuoting:
         with pytest.raises(CurlParseException):
             parse_curl("curl https://x -d $'open")
 
+
+
+class TestTheRestOfTheFlags:
+    def test_every_value_flag_kind_has_a_handler(self):
+        # A kind without one was silently ignored: its value simply vanished
+        from pybreeze.utils.curl_import import curl_parser
+
+        kinds = set(curl_parser._VALUE_FLAGS.values())
+        assert kinds - set(curl_parser._VALUE_FLAG_HANDLERS) == set()
+
+    def test_plain_binary_data_is_the_body_and_names_no_file(self):
+        request = parse_curl("curl https://x/ --data-binary raw")
+
+        assert request.body == "raw"
+        assert request.binary_data_files == set()
+
+    def test_cookie_segments_without_a_name_or_an_equals_sign_are_left_out(self):
+        assert parse_curl("curl https://x/ -b 'a=1; junk; =x; b=2'").cookies == {"a": "1", "b": "2"}
+
+    def test_a_query_parameter_given_three_times_keeps_all_three(self):
+        assert parse_curl("curl 'https://x/?a=1&a=2&a=3'").params == {"a": ["1", "2", "3"]}

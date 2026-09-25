@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-61 | 2026-09-26 | The cURL parser's value flags, plain --data-binary, junk cookie segments and a thrice-given parameter are tested | #test #curl | [2026-09-d](2026-09-d.md) |
 | U-20260926-60 | 2026-09-26 | The five minutes the guide promises for an AI answer are tested, and the URL-check mutation run is read to the end | #test #network | [2026-09-d](2026-09-d.md) |
 | U-20260926-59 | 2026-09-26 | A folded line after a repeated header, a form field given twice in the JSON action, and a stray HAR header are tested | #test #curl #har | [2026-09-d](2026-09-d.md) |
 | U-20260926-58 | 2026-09-26 | A --form-string without = is tested to be left out, and its @ to name no file | #test #curl | [2026-09-d](2026-09-d.md) |
@@ -599,4 +600,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
-| [2026-09-d.md](2026-09-d.md) | 2026-09 | 80 |
+| [2026-09-d.md](2026-09-d.md) | 2026-09 | 81 |
