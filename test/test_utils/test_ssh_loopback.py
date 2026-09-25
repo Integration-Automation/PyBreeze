@@ -42,9 +42,43 @@ _KEY_FILES = {
 }
 
 
+def _echo_shell(channel: paramiko.Channel, events: list) -> None:
+    """A shell that greets, answers each line with ``got: <line>``, and ends on ``exit``."""
+    channel.sendall("welcome\r\n$ ".encode("utf-8"))
+    received = b""
+    while True:
+        data = channel.recv(1024)
+        if not data:
+            return
+        events.append(("received", data))
+        received += data
+        while b"\n" in received:
+            line, received = received.split(b"\n", 1)
+            text = line.decode("utf-8").replace("\x03", "")
+            if text == "exit":
+                channel.sendall(b"bye\r\n")
+                channel.send_exit_status(0)
+                channel.close()
+                return
+            channel.sendall(f"got: {text}\r\n$ ".encode("utf-8"))
+
+
 class _Server(paramiko.ServerInterface):
-    def __init__(self, public_keys: set[str]) -> None:
+    def __init__(self, public_keys: set[str], events: list | None = None) -> None:
         self.public_keys = public_keys
+        self.events = events if events is not None else []
+
+    def check_channel_pty_request(self, channel, term, width, height, pixelwidth, pixelheight, modes):
+        self.events.append(("pty", term, width, height))
+        return True
+
+    def check_channel_shell_request(self, channel):
+        threading.Thread(target=_echo_shell, args=(channel, self.events), daemon=True).start()
+        return True
+
+    def check_channel_window_change_request(self, channel, width, height, pixelwidth, pixelheight):
+        self.events.append(("resize", width, height))
+        return True
 
     def check_auth_password(self, username, password):
         return paramiko.AUTH_SUCCESSFUL if (username, password) == (_USER, _PASSWORD) else paramiko.AUTH_FAILED
@@ -76,6 +110,7 @@ class _LoopbackServer:
     def __init__(self, disabled_algorithms: dict | None = None) -> None:
         self.host_key = paramiko.RSAKey.generate(2048)
         self.public_keys: set[str] = set()
+        self.events: list = []  # what the shells were asked: ("pty", ...), ("received", bytes), ("resize", ...)
         self._disabled_algorithms = disabled_algorithms
         self._listener = socket.create_server(("127.0.0.1", 0))
         self.port = self._listener.getsockname()[1]
@@ -94,7 +129,7 @@ class _LoopbackServer:
             transport.set_subsystem_handler("sftp", paramiko.SFTPServer, _OneEntryFolder)
             self._transports.append(transport)
             try:
-                transport.start_server(server=_Server(self.public_keys))
+                transport.start_server(server=_Server(self.public_keys, self.events))
             except paramiko.SSHException:
                 continue  # the client gave up on the handshake
 
@@ -212,3 +247,72 @@ def test_a_server_that_signs_only_with_sha1_is_refused(asked):
 
     assert not client.connected
     assert asked["count"] == 0
+
+
+def _wait_until(app, condition, seconds: float = 20) -> None:
+    """Process events until *condition* holds; fail after *seconds*."""
+    import time
+
+    deadline = time.monotonic() + seconds
+    while not condition():
+        if time.monotonic() > deadline:
+            pytest.fail("timed out waiting")
+        app.processEvents()
+        time.sleep(0.02)
+
+
+@pytest.fixture
+def terminal(app, asked, server):
+    """The SSH terminal logged in to the loopback server's shell with a password."""
+    from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_command_widget import SSHCommandWidget
+
+    widget = SSHCommandWidget()
+    widget.resize(800, 500)
+    widget.login_widget.host_edit.setText("127.0.0.1")
+    widget.login_widget.port_spin.setValue(server.port)
+    widget.login_widget.user_edit.setText(_USER)
+    widget.login_widget.pass_edit.setText(_PASSWORD)
+    widget.connect_ssh()
+    _wait_until(app, lambda: "welcome" in widget.terminal.toPlainText())
+    yield widget
+    widget.close()
+    widget.deleteLater()
+
+
+class TestTheTerminal:
+    """The shell tab against a real shell channel: the other terminal tests stub the channel."""
+
+    def test_it_opens_a_shell_with_a_pty_the_size_it_measured(self, app, terminal, server):
+        (pty,) = [event for event in server.events if event[0] == "pty"]
+        assert pty[1] in (b"xterm", "xterm")  # bytes from paramiko 4's server side
+        assert terminal.is_connected()
+        # The last size the server was told is the one the widget holds (terminal_size: at least 20 by 5)
+        _wait_until(app, lambda: terminal._pty_size in [
+            (event[-2], event[-1]) for event in server.events if event[0] in ("pty", "resize")][-1:])
+        assert terminal._pty_size[0] >= 20
+        assert terminal._pty_size[1] >= 5
+
+    def test_a_command_is_sent_and_its_output_shown(self, app, terminal):
+        terminal.command_input_edit.setText("echo 中文")
+        terminal.send_command()
+
+        _wait_until(app, lambda: "got: echo 中文" in terminal.terminal.toPlainText())
+        assert terminal.command_input_edit.text() == ""
+
+    def test_interrupt_sends_ctrl_c(self, app, terminal, server):
+        terminal.send_interrupt()
+
+        _wait_until(app, lambda: ("received", b"\x03") in server.events)
+
+    def test_a_shell_the_server_ends_ends_the_session(self, app, terminal):
+        terminal.command_input_edit.setText("exit")
+        terminal.send_command()
+
+        _wait_until(app, lambda: not terminal.is_connected() and terminal.ssh_client is None)
+        assert "bye" in terminal.terminal.toPlainText()
+
+    def test_disconnect_closes_the_shell(self, app, terminal):
+        terminal.disconnect_ssh()
+
+        assert not terminal.is_connected()
+        assert terminal.ssh_client is None

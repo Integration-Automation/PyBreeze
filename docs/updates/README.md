@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-24 | 2026-09-26 | The SSH terminal is tested against a real shell channel on the loopback server | #test #ssh | [2026-09-d](2026-09-d.md) |
 | U-20260926-23 | 2026-09-26 | A run with no interpreter found, a tick after the run, and the POSIX venv lookup are tested | #test #run | [2026-09-d](2026-09-d.md) |
 | U-20260926-22 | 2026-09-26 | The AI panels' response cap is tested against compressed bombs, and CVE-2026-44432 found not to reach it | #test #security #network | [2026-09-d](2026-09-d.md) |
 | U-20260926-21 | 2026-09-26 | The regex tester's group-nesting scan and a worker that cannot start or dies part-way are tested | #test #regex | [2026-09-d](2026-09-d.md) |
@@ -562,4 +563,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
-| [2026-09-d.md](2026-09-d.md) | 2026-09 | 43 |
+| [2026-09-d.md](2026-09-d.md) | 2026-09 | 44 |
