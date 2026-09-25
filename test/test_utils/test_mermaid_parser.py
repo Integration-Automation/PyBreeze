@@ -230,6 +230,14 @@ class TestCyclesTerminate:
         r = parse_mermaid("graph TD\nA-->B\nB-->C\nC-->B\nC-->D")
         assert len(r["nodes"]) == 4
 
+    def test_a_cycle_no_root_reaches_gets_layers_of_its_own(self):
+        # C and D point only at each other: nothing leads to them from A, so the
+        # layering never reaches them. They go below, each on a layer of its own,
+        # rather than all landing on the first layer on top of A
+        r = parse_mermaid("graph TD\nA-->B\nC-->D\nD-->C")
+        ys = {n["text"]: n["y"] for n in r["nodes"]}
+        assert ys["A"] < ys["B"] < ys["C"] < ys["D"]
+
 
 class TestLayout:
     def test_layers_separate_chain_nodes(self):
