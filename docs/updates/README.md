@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-07 | 2026-09-26 | The prompt editor's Create, and Save with no file shown, are tested | #test #ai | [2026-09-d](2026-09-d.md) |
 | U-20260926-06 | 2026-09-26 | Refactor: the CoT global rules lose the RAG rules section nothing filled in | #refactor #ai | [2026-09-d](2026-09-d.md) |
 | U-20260926-05 | 2026-09-26 | Each automation menu's Run entries are followed to the run they start | #test #menu #run | [2026-09-d](2026-09-d.md) |
 | U-20260926-04 | 2026-09-26 | The SFTP connect is tested against a real SSH server on the loopback address, on paramiko 4 and 5 | #test #ssh #security | [2026-09-d](2026-09-d.md) |
@@ -545,4 +546,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
-| [2026-09-d.md](2026-09-d.md) | 2026-09 | 26 |
+| [2026-09-d.md](2026-09-d.md) | 2026-09 | 27 |

@@ -532,3 +532,73 @@ class TestThePromptEditorKeepsWhatWasTyped:
         editor.close()
         editor.deleteLater()
 
+
+
+class TestCreatingAPromptFile:
+    def test_create_writes_the_built_in_and_watches_it(self, prompts, monkeypatch):
+        editor = _cot_editor(monkeypatch)
+        editor.file_selector.setCurrentIndex(editor.prompt_files.index("linter.md"))
+
+        editor.create_file()
+
+        built_in = editor.templates["linter.md"]
+        assert (prompts / "linter.md").read_text(encoding="utf-8") == built_in
+        assert editor.middle_editor.toPlainText() == built_in
+        assert not editor.middle_editor.document().isModified()
+        assert str(prompts / "linter.md") in editor.watcher.files()
+        assert len(editor.shown) == 1  # the file was created
+        editor.close()
+        editor.deleteLater()
+
+    def test_a_file_already_there_is_left_as_it_is(self, prompts, monkeypatch):
+        write(prompts, "linter.md", "my own linter prompt")
+        editor = _cot_editor(monkeypatch)
+        editor.file_selector.setCurrentIndex(editor.prompt_files.index("linter.md"))
+
+        editor.create_file()
+
+        assert (prompts / "linter.md").read_text(encoding="utf-8") == "my own linter prompt"
+        assert len(editor.shown) == 1
+        assert "linter.md" in editor.shown[0][2]  # it says which file is already there
+        editor.close()
+        editor.deleteLater()
+
+
+class TestWithNoFileShown:
+    # As after a prompt file that could not be read: nothing was shown, so
+    # nothing may be written back or created in its place.
+    def test_save_says_no_file_is_selected_and_writes_nothing(self, prompts, monkeypatch):
+        editor = _cot_editor(monkeypatch)
+        editor.current_file = None
+        editor.middle_editor.setPlainText("typed with no file")
+
+        editor.save_file()
+
+        assert len(editor.shown) == 1
+        assert not prompts.exists() or list(prompts.iterdir()) == []
+        editor.close()
+        editor.deleteLater()
+
+    def test_create_does_nothing(self, prompts, monkeypatch):
+        editor = _cot_editor(monkeypatch)
+        editor.current_file = None
+
+        editor.create_file()
+
+        assert editor.shown == []
+        assert not prompts.exists()
+        editor.close()
+        editor.deleteLater()
+
+    def test_a_change_to_another_file_is_not_reloaded(self, prompts, monkeypatch):
+        write(prompts, "linter.md", "the linter prompt")
+        editor = _cot_editor(monkeypatch)
+        editor.file_selector.setCurrentIndex(editor.prompt_files.index("linter.md"))
+        editor.middle_editor.setPlainText("typed")
+        editor.middle_editor.document().setModified(True)
+
+        editor.on_file_changed(str(prompts / "judge.md"))
+
+        assert editor.middle_editor.toPlainText() == "typed"
+        editor.close()
+        editor.deleteLater()
