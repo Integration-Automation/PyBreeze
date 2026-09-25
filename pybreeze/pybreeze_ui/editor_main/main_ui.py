@@ -93,6 +93,8 @@ class PyBreezeMainWindow(EditorMain):
         # Menu
         add_menu_to_menubar(self)
         syntax_extend_package(self)
+        # JEditor's Stop All Program stops what its own menus started; PyBreeze's runs join it
+        self.run_menu.stop_all_program_action.triggered.connect(self.stop_all_runs)
 
         # Tab
         self._add_extend_tabs()
@@ -150,6 +152,17 @@ class PyBreezeMainWindow(EditorMain):
             for dock in self.findChildren(AskingDock):
                 dock.already_asked = True
         return agreed
+
+    def stop_all_runs(self) -> None:
+        """Stop the run in every run window: an automation script, a package install, a Run with... run.
+
+        Connected to Run > Stop All Program, which stopped only the programs
+        JEditor's own menus started. The windows stay open with their output;
+        one whose stop fails is logged and the others are still stopped.
+        """
+        # Over a copy: a window that ends its run may drop itself from the list
+        for run_window in tuple(self.current_run_code_window):
+            _close_guarded(run_window, run_window.stop_runner)
 
     def closeEvent(self, event) -> None:
         # Asked before anything is stopped: a No keeps the IDE open as it was

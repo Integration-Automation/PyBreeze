@@ -88,6 +88,11 @@ class TestTheShapesPyBreezeCalls:
         assert callable(EditorMain.clear_code_result)
         assert callable(EditorMain.startup_setting)
 
+    def test_the_run_menu_keeps_its_stop_all_action(self):
+        # PyBreezeMainWindow connects its run windows' stop to this action.
+        build = importlib.import_module("je_editor.pyside_ui.main_ui.menu.run_menu.build_run_menu")
+        assert "run_menu.stop_all_program_action" in inspect.getsource(build)
+
     def test_the_startup_applies_the_saved_theme(self):
         from je_editor import EditorMain
 

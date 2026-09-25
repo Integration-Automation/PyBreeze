@@ -63,8 +63,8 @@ Run 選單
    * - **Stop current program**
      - 停止分頁的程式、Shell 指令與除錯器。
    * - **Stop All Program**
-     - 停止從這些選單啟動、在任何分頁中執行的程式、Shell 指令、除錯器與 ``pip``。
-       PyBreeze 自己的執行由執行視窗的 **Stop** 按鈕停止。
+     - 停止從這些選單啟動、在任何分頁中執行的程式、Shell 指令、除錯器與 ``pip``，以及每個 PyBreeze
+       執行視窗中的執行（自動化腳本、安裝、**Run with...**）；執行視窗與輸出會留著。
    * - **Run Help > Run Help** / **Shell Help**
      - 提示：確認直譯器，並讓編碼與 Shell 的一致。
    * - **Run with...**

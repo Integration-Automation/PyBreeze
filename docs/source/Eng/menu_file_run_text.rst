@@ -70,7 +70,8 @@ Run Menu
      - Stops the tab's program, shell command and debugger.
    * - **Stop All Program**
      - Stops every program, shell command, debugger and ``pip`` run started from these
-       menus, in any tab. PyBreeze's own runs have their run window's **Stop** button.
+       menus, in any tab, and the run in every PyBreeze run window (automation scripts,
+       installs, **Run with...**); the run windows stay open with their output.
    * - **Run Help > Run Help** / **Shell Help**
      - Tips: check the interpreter, and match the encoding to the shell's.
    * - **Run with...**
