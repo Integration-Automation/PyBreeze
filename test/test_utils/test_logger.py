@@ -148,3 +148,79 @@ class TestWhereTheLogGoes:
             test_logger.error("goes nowhere")
         handler.close()
         test_logger.removeHandler(handler)
+
+
+def _log_once(log_file, message: str) -> None:
+    """Open a handler on *log_file* as a new process would, log *message*, close it."""
+    handler = PyBreezeLogger(filename=str(log_file))
+    test_logger = logging.getLogger("test_pybreeze_rotation")
+    test_logger.addHandler(handler)
+    test_logger.setLevel(logging.DEBUG)
+    try:
+        test_logger.info(message)
+    finally:
+        handler.close()
+        test_logger.removeHandler(handler)
+
+
+class TestRotatingOnOpen:
+    # A process moves a file past PYBREEZE_LOG_MAX_BYTES to <name>.1 as it
+    # opens it: the log is appended to by every run and would grow for ever.
+    def test_a_file_past_the_size_is_moved_aside(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("PYBREEZE_LOG_MAX_BYTES", "10")
+        log_file = tmp_path / "PyBreeze.log"
+        log_file.write_text("an old run, longer than ten bytes\n", encoding="utf-8")
+        (tmp_path / "PyBreeze.log.1").write_text("the run before that\n", encoding="utf-8")
+
+        _log_once(log_file, "this run")
+
+        assert (tmp_path / "PyBreeze.log.1").read_text(encoding="utf-8") == "an old run, longer than ten bytes\n"
+        assert "this run" in log_file.read_text(encoding="utf-8")
+        assert "an old run" not in log_file.read_text(encoding="utf-8")
+
+    def test_a_file_within_the_size_is_appended_to(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("PYBREEZE_LOG_MAX_BYTES", "1000")
+        log_file = tmp_path / "PyBreeze.log"
+        log_file.write_text("an old run\n", encoding="utf-8")
+
+        _log_once(log_file, "this run")
+
+        assert log_file.read_text(encoding="utf-8").startswith("an old run\n")
+        assert not (tmp_path / "PyBreeze.log.1").exists()
+
+    def test_a_size_of_zero_turns_it_off(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("PYBREEZE_LOG_MAX_BYTES", "0")
+        log_file = tmp_path / "PyBreeze.log"
+        log_file.write_text("an old run\n", encoding="utf-8")
+
+        _log_once(log_file, "this run")
+
+        assert not (tmp_path / "PyBreeze.log.1").exists()
+
+    def test_a_size_that_is_not_a_number_is_the_default(self, monkeypatch):
+        from pybreeze.utils.logging import logger
+
+        monkeypatch.setenv("PYBREEZE_LOG_MAX_BYTES", "100MB")
+
+        assert logger._rotate_at_bytes() == logger.DEFAULT_MAX_LOG_BYTES
+
+    def test_a_file_that_cannot_be_moved_is_still_logged_to(self, tmp_path, monkeypatch):
+        # Windows refuses the rename while another process holds the file
+        import pytest
+
+        from pybreeze.utils.logging import logger
+
+        def refused(_source, _target):
+            raise PermissionError(13, "The file is in use")
+
+        monkeypatch.setenv("PYBREEZE_LOG_MAX_BYTES", "10")
+        monkeypatch.setattr(logger.os, "replace", refused)
+        log_file = tmp_path / "PyBreeze.log"
+        log_file.write_text("an old run, longer than ten bytes\n", encoding="utf-8")
+
+        with pytest.warns(RuntimeWarning, match="not rotated"):
+            _log_once(log_file, "this run")
+
+        text = log_file.read_text(encoding="utf-8")
+        assert text.startswith("an old run")
+        assert "this run" in text
