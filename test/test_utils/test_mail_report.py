@@ -281,3 +281,54 @@ class TestAMailSettingsFileThatCannotBeRead:
             "the mail settings file (mail_thunder_content.json) could not be read")
         assert FakeSmtp.instances == []
         assert "could not be read" in _logged(logger)
+
+
+class TestAServerThatStopsAnswering:
+    """MailThunder's SMTPWrapper passes no timeout on: a server that took the connection and fell silent held the thread."""
+
+    @staticmethod
+    def _silent_server():
+        import socket
+
+        listener = socket.socket()
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(1)
+        held: list = []
+
+        def accept() -> None:
+            try:
+                connection, _address = listener.accept()
+                held.append(connection)  # never says a word
+            except OSError:
+                return
+
+        threading.Thread(target=accept, daemon=True).start()
+        return listener, held
+
+    def test_the_report_gives_up_on_it(self, mail_thunder, logger, report, monkeypatch):
+        import smtplib
+
+        listener, held = self._silent_server()
+        port = listener.getsockname()[1]
+
+        class SilentServerWrapper(smtplib.SMTP_SSL):
+            """MailThunder's SMTPWrapper as it is, pointed at the silent server."""
+
+            def __init__(self) -> None:
+                super().__init__("127.0.0.1", port)
+                self.login_state = False
+
+        mail_thunder.SMTPWrapper = SilentServerWrapper
+        monkeypatch.setattr(mail, "_SMTP_TIMEOUT_SECONDS", 1)
+        outcome: list = []
+        started = time.monotonic()
+        sender = threading.Thread(target=lambda: outcome.append(mail.send_report(report)), daemon=True)
+        sender.start()
+        sender.join(15)
+        try:
+            assert outcome == ["sending failed (TimeoutError)"]
+            assert time.monotonic() - started < 15
+        finally:
+            listener.close()
+            for connection in held:
+                connection.close()

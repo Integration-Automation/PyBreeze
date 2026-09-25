@@ -184,6 +184,10 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
   (`extend/process_executor/python_task_process_manager.py`). TestPioneer runs as
   `python -m test_pioneer -e <yaml>` through the same manager's `start_module_process`
   (`extend/process_executor/test_pioneer/`).
+- **MailThunder, in process**: the report mail (`extend/mail_thunder_extend/mail_thunder_setting.py`) imports
+  `SMTPWrapper`, `read_output_content` and `get_mail_thunder_os_environ` from `je_mail_thunder`, and relies on
+  `SMTPWrapper()` being an `smtplib.SMTP_SSL`: `_with_timeout()` overrides its `_get_socket(host, port,
+  timeout)` to give every step 30 s, a timeout `SMTPWrapper` does not pass on.
 - **prthinker**: runs as `python -m prthinker review-file <path>` or
   `review-pr --pr-number <n>` via `TaskProcessManager.start_module_process`
   (`extend/process_executor/prthinker/`), with the interpreter chosen in the IDE, which needs Python
