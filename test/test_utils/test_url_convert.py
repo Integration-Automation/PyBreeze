@@ -52,6 +52,12 @@ class TestUrlToJson:
         assert data["host"] == "x"
         assert data["query"] == {"a": "1"}
 
+    def test_laid_out_by_four(self):
+        shown = url_to_json("https://x/p?a=1")
+
+        assert shown.startswith('{\n    "scheme": "https",\n')
+        assert '\n    "query": {\n        "a": "1"\n    },\n' in shown
+
 
 class TestBuildUrl:
     def test_full_components(self):
@@ -103,6 +109,10 @@ class TestRoundTrip:
     def test_a_path_starting_with_two_slashes_does_not_become_the_host(self, url):
         # http:////x came back as http://x: the path's "x" was now the host
         assert build_url(parse_url(url)) == url
+
+    def test_a_host_keeps_a_path_that_starts_with_two_slashes(self):
+        # With a host the authority is written, and the path follows it as it is
+        assert build_url({"scheme": "http", "host": "a", "path": "//x"}) == "http://a//x"
 
 
 class TestJsonToUrl:
@@ -191,14 +201,15 @@ class TestPartsThatAreNotText:
         with pytest.raises(UrlConvertException):
             json_to_url('{"scheme": "http", "host": "h", "query": {"b": {"x": 1}}}')
 
-    @pytest.mark.parametrize("port", ['"abc"', "70000", "-1", "true", "8.5"])
+    @pytest.mark.parametrize("port", ['"abc"', "70000", "65536", "-1", "true", "8.5"])
     def test_a_port_that_is_no_port_is_refused(self, port):
         # "abc" went into the URL as h:abc
         with pytest.raises(UrlConvertException):
             json_to_url(f'{{"scheme": "http", "host": "h", "port": {port}}}')
 
     @pytest.mark.parametrize(("port", "expected"), [("8080", "http://h:8080"), ('"8080"', "http://h:8080"),
-                                                    ("null", "http://h"), ('""', "http://h")])
+                                                    ("null", "http://h"), ('""', "http://h"),
+                                                    ("0", "http://h:0"), ("65535", "http://h:65535")])
     def test_a_port_given_as_text_or_left_out_still_builds(self, port, expected):
         assert json_to_url(f'{{"scheme": "http", "host": "h", "port": {port}}}') == expected
 
