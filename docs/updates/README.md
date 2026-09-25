@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-133 | 2026-09-25 | The diagram editor's New asks only about unsaved changes, as Open and Close do | #fix #diagram | [2026-09-d](2026-09-d.md) |
 | U-20260925-132 | 2026-09-25 | The SFTP tree's connect: missing input and a root it cannot list are tested | #test #ssh | [2026-09-d](2026-09-d.md) |
 | U-20260925-131 | 2026-09-25 | The SSH terminal's error stream, a failed send, Disconnect and the shell's opening are tested | #test #ssh | [2026-09-d](2026-09-d.md) |
 | U-20260925-130 | 2026-09-25 | The JupyterLab tab passes its empty token under jupyter_server 2's names too | #fix #jupyter | [2026-09-d](2026-09-d.md) |
@@ -536,4 +537,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
-| [2026-09-d.md](2026-09-d.md) | 2026-09 | 17 |
+| [2026-09-d.md](2026-09-d.md) | 2026-09 | 18 |

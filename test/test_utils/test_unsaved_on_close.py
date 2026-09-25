@@ -120,6 +120,32 @@ class TestTheDiagramEditor:
         assert editor._current_path == other
 
 
+    def test_a_new_diagram_after_a_save_starts_unasked(self, app, answers, tmp_path):
+        # New asked "Discard current diagram?" whenever the canvas had anything
+        # on it, a diagram just saved included, where Open and Close ask only
+        # about unsaved changes
+        editor = self._editor()
+        editor._write_json(tmp_path / "saved.diagram.json")
+
+        editor._new_diagram()
+
+        assert answers["asked"] == 0
+        assert editor._scene.get_all_nodes() == []
+        assert editor._current_path is None
+
+    def test_a_new_diagram_asks_before_unsaved_changes_go(self, app, answers):
+        editor = self._editor()
+
+        editor._new_diagram()
+
+        assert answers["asked"] == 1
+        assert len(editor._scene.get_all_nodes()) == 1, "the edits were dropped after No"
+        answers["reply"] = QMessageBox.StandardButton.Yes
+        editor._new_diagram()
+        assert editor._scene.get_all_nodes() == []
+        assert editor._scene.undo_stack.isClean()
+
+
 class TestThePromptEditor:
     def test_unsaved_edits_are_asked_about(self, app, answers, tmp_path, monkeypatch):
         from pybreeze.pybreeze_ui.extend_ai_gui import prompt_store

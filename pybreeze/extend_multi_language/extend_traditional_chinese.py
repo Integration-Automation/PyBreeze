@@ -682,8 +682,7 @@ pybreeze_traditional_chinese_word_dict = {
     "diagram_editor_distribute_h": "水平均分",
     "diagram_editor_distribute_v": "垂直均分",
     # Diagram Editor — 對話框
-    "diagram_editor_confirm_title": "確認",
-    "diagram_editor_confirm_new": "是否捨棄目前的架構圖？",
+    "diagram_editor_confirm_new": "架構圖還有沒存的變更。要新建一個並捨棄它們嗎？",
     "diagram_editor_dialog_open": "開啟架構圖",
     "diagram_editor_filter_diagram": "架構圖 JSON (*.diagram.json)",
     "diagram_editor_filter_png": "PNG 圖片 (*.png)",

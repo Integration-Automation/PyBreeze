@@ -720,8 +720,8 @@ pybreeze_english_word_dict = {
     "diagram_editor_distribute_h": "Distribute Horizontal",
     "diagram_editor_distribute_v": "Distribute Vertical",
     # Diagram Editor — Dialogs
-    "diagram_editor_confirm_title": "Confirm",
-    "diagram_editor_confirm_new": "Discard current diagram?",
+    "diagram_editor_confirm_new":
+        "The diagram has changes that are not saved. Start a new one and lose them?",
     "diagram_editor_dialog_open": "Open Diagram",
     "diagram_editor_filter_diagram": "Diagram JSON (*.diagram.json)",
     "diagram_editor_filter_png": "PNG Image (*.png)",

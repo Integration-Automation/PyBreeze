@@ -406,16 +406,12 @@ class DiagramEditorWidget(QWidget):
     # ------------------------------------------------------------------
 
     def _new_diagram(self) -> None:
-        if self._scene.items():
-            reply = QMessageBox.question(
-                self,
-                _lang("diagram_editor_confirm_title", "Confirm"),
-                _lang("diagram_editor_confirm_new", "Discard current diagram?"),
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.No,
-            )
-            if reply != QMessageBox.StandardButton.Yes:
-                return
+        # Asked only about unsaved changes, as Open and Close are: a diagram
+        # just saved was asked about too
+        if not self._may_discard_edits(
+                "diagram_editor_confirm_new",
+                "The diagram has changes that are not saved. Start a new one and lose them?"):
+            return
         self._scene._clear_items()
         self._scene.undo_stack.clear()
         self._scene.item_count_changed.emit()

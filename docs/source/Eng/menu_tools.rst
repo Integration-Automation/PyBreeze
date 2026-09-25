@@ -147,7 +147,7 @@ The second row starts with the file buttons:
    * - Button
      - Description
    * - **New**
-     - Clears the canvas, asking first when anything is on it.
+     - Clears the canvas, asking first when it has changes that are not saved.
    * - **Open**
      - Loads a previously saved ``.diagram.json`` file, asking first when the diagram
        has changes that are not saved. A file that is not a diagram changes nothing.
