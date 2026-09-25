@@ -43,6 +43,10 @@ content-type = "text/markdown"
 [tool.setuptools.packages]
 find = { namespaces = false }
 
+# The main window's icon, loaded from beside main_ui.py
+[tool.setuptools.package-data]
+"pybreeze.pybreeze_ui.editor_main" = ["pybreeze_icon.ico"]
+
 [tool.bandit]
 # Codacy / SonarCloud run Bandit across the tree; tests use `assert` intentionally
 # (pytest relies on it), and subprocess is a required dependency of the IDE's

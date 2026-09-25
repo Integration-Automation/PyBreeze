@@ -29,7 +29,7 @@ def app():
     return instance
 
 
-@pytest.fixture()
+@pytest.fixture
 def package(monkeypatch):
     """A package whose create_project_dir writes one template file, as the real ones do."""
     fake = types.ModuleType(_PACKAGE)
@@ -48,7 +48,7 @@ def package(monkeypatch):
     return fake
 
 
-@pytest.fixture()
+@pytest.fixture
 def dialogs(monkeypatch):
     """Record every message box; ``answer`` is what a question gets."""
     shown: dict = {"question": [], "warning": [], "information": [], "answer": QMessageBox.StandardButton.No}

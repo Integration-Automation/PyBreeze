@@ -79,3 +79,57 @@ class TestHostnamesThatCannotBeLookedUp:
     def test_an_impossible_hostname_is_refused_like_any_other(self, url):
         with pytest.raises(UnsafeURLError):
             validate_url(url)
+
+
+class TestTheAddressesOfAName:
+    @staticmethod
+    def _resolving(monkeypatch, *addresses):
+        import socket
+
+        from pybreeze.utils.network import url_validation
+
+        answer = [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (address, 0)) for address in addresses]
+        monkeypatch.setattr(url_validation.socket, "getaddrinfo", lambda *_a, **_k: answer)
+
+    def test_a_name_with_no_address_is_refused(self, monkeypatch):
+        from pybreeze.utils.network.url_validation import public_addresses
+
+        self._resolving(monkeypatch)
+        with pytest.raises(UnsafeURLError, match="Cannot resolve hostname 'example.com'"):
+            public_addresses("example.com")
+
+    def test_each_address_comes_once_in_the_resolvers_order(self, monkeypatch):
+        # The resolver repeats an address once per socket type it was not asked to filter
+        from pybreeze.utils.network.url_validation import public_addresses
+
+        self._resolving(monkeypatch, "93.184.215.14", "93.184.215.14", "8.8.8.8", "93.184.215.14")
+        assert public_addresses("example.com") == ["93.184.215.14", "8.8.8.8"]
+
+
+class TestTheIPv4InsideAnIPv6Wrapper:
+    """The standard library already refuses Teredo (private) and NAT64 (reserved) addresses.
+
+    ``_embedded_ipv4`` is the check behind that, should a Python version class
+    them otherwise, as 3.12 and 3.13 reclassified other ranges: it must find
+    the IPv4 each wrapper routes to, and the suite never reached it.
+    """
+
+    @pytest.mark.parametrize(("wrapped", "inside"), [
+        ("::ffff:169.254.169.254", "169.254.169.254"),                  # IPv4-mapped
+        ("2002:a9fe:a9fe::1", "169.254.169.254"),                       # 6to4
+        ("2001:0:0:0:0:0:5601:5601", "169.254.169.254"),                # Teredo: the client, inverted
+        ("64:ff9b::a9fe:a9fe", "169.254.169.254"),                      # NAT64 well-known prefix
+    ])
+    def test_the_address_it_routes_to_is_found(self, wrapped, inside):
+        import ipaddress
+
+        from pybreeze.utils.network.url_validation import _embedded_ipv4
+
+        assert ipaddress.ip_address(inside) in _embedded_ipv4(ipaddress.ip_address(wrapped))
+
+    def test_a_plain_ipv6_address_wraps_nothing(self):
+        import ipaddress
+
+        from pybreeze.utils.network.url_validation import _embedded_ipv4
+
+        assert _embedded_ipv4(ipaddress.ip_address("2606:4700:4700::1111")) == []

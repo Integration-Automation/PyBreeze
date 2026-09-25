@@ -125,8 +125,95 @@ class TestWhyAKeyDidNotLoad:
         )
         from pybreeze.pybreeze_ui.connect_gui.ssh import ssh_key_loader
 
-        for key in (ssh_key_loader.UNSUPPORTED_KEY, ssh_key_loader.PASSPHRASE_NEEDED, ssh_key_loader.PASSPHRASE_WRONG):
+        for key in (ssh_key_loader.UNSUPPORTED_KEY, ssh_key_loader.PASSPHRASE_NEEDED, ssh_key_loader.PASSPHRASE_WRONG,
+                    ssh_key_loader.PUTTY_KEY):
             assert english_word_dict.get(key) and traditional_chinese_word_dict.get(key)
+
+
+def _pkcs8_key_file(tmp_path, kind: str, passphrase: bytes | None):
+    """A PKCS#8 key file (BEGIN PRIVATE KEY / BEGIN ENCRYPTED PRIVATE KEY) and its public key."""
+    import warnings
+
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import dsa, ec, ed25519, rsa
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")  # cryptography deprecates DSA
+        key = {
+            "rsa": lambda: rsa.generate_private_key(65537, 2048),
+            "ed25519": ed25519.Ed25519PrivateKey.generate,
+            "ecdsa": lambda: ec.generate_private_key(ec.SECP256R1()),
+            "dsa": lambda: dsa.generate_private_key(1024),
+        }[kind]()
+        public = key.public_key().public_bytes(serialization.Encoding.OpenSSH, serialization.PublicFormat.OpenSSH)
+    encryption = (serialization.BestAvailableEncryption(passphrase) if passphrase
+                  else serialization.NoEncryption())
+    path = tmp_path / f"{kind}.pem"
+    path.write_bytes(key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, encryption))
+    return str(path), public.split()[1].decode("ascii")
+
+
+class TestPkcs8Keys:
+    """openssl genpkey and ssh-keygen -m PKCS8 write PKCS#8, which paramiko does not read."""
+
+    @pytest.mark.parametrize("kind", ["rsa", "ed25519", "ecdsa"])
+    @pytest.mark.parametrize("passphrase", [None, b"right"], ids=["plain", "encrypted"])
+    def test_the_key_loads(self, tmp_path, kind, passphrase):
+        path, public = _pkcs8_key_file(tmp_path, kind, passphrase)
+        loaded = load_private_key(path, passphrase.decode() if passphrase else "")
+        assert loaded is not None
+        assert loaded.get_base64() == public
+
+    def test_a_passphrase_given_for_a_plain_key_is_ignored(self, tmp_path):
+        # as paramiko ignores it for a plain OpenSSH key
+        path, public = _pkcs8_key_file(tmp_path, "rsa", None)
+        assert load_private_key(path, "typed anyway").get_base64() == public
+
+    def test_the_passphrase_is_named(self, tmp_path):
+        from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_key_loader import (
+            PASSPHRASE_NEEDED, PASSPHRASE_WRONG, unloadable_key_reason
+        )
+
+        path, _public = _pkcs8_key_file(tmp_path, "ed25519", b"right")
+        assert load_private_key(path, "wrong") is None
+        assert unloadable_key_reason(path, "wrong") == PASSPHRASE_WRONG
+        assert load_private_key(path, "") is None
+        assert unloadable_key_reason(path, "") == PASSPHRASE_NEEDED
+
+    @pytest.mark.parametrize("passphrase", [None, b"right"], ids=["plain", "encrypted"])
+    def test_a_type_paramiko_cannot_use_is_still_unsupported(self, tmp_path, passphrase):
+        from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_key_loader import UNSUPPORTED_KEY, unloadable_key_reason
+
+        path, _public = _pkcs8_key_file(tmp_path, "dsa", passphrase)
+        typed = passphrase.decode() if passphrase else ""
+        assert load_private_key(path, typed) is None
+        assert unloadable_key_reason(path, typed) == UNSUPPORTED_KEY
+
+
+class TestPuttyKeys:
+    """paramiko reads no PuTTY key; the login form offered .ppk and then called it invalid."""
+
+    _PPK = ("PuTTY-User-Key-File-3: ssh-ed25519\nEncryption: none\nComment: laptop\n"
+            "Public-Lines: 1\nAAAAC3NzaC1lZDI1NTE5AAAAIA==\nPrivate-Lines: 1\nAAAAIA==\n"
+            "Private-MAC: 00\n")
+
+    @pytest.mark.parametrize("typed", ["", "a passphrase"])
+    def test_the_user_is_told_to_export_it_as_openssh(self, tmp_path, typed):
+        from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_key_loader import PUTTY_KEY, unloadable_key_reason
+
+        path = tmp_path / "laptop.ppk"
+        path.write_text(self._PPK, encoding="ascii")
+        assert load_private_key(str(path), typed) is None
+        assert unloadable_key_reason(str(path), typed) == PUTTY_KEY
+
+    def test_the_login_form_does_not_offer_it(self):
+        from pybreeze.extend_multi_language.extend_english import pybreeze_english_word_dict
+        from pybreeze.extend_multi_language.extend_traditional_chinese import (
+            pybreeze_traditional_chinese_word_dict,
+        )
+
+        for words in (pybreeze_english_word_dict, pybreeze_traditional_chinese_word_dict):
+            assert ".ppk" not in words["ssh_login_widget_placeholder_private_key"]
 
 
 class TestSha1Algorithms:

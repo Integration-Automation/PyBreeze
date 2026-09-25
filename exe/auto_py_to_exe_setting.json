@@ -19,7 +19,11 @@
   },
   {
    "optionDest": "icon_file",
-   "value": "D:\\Codes/PyBreeze/exe/pybreeze_icon.ico"
+   "value": "D:\\Codes/PyBreeze/pybreeze/pybreeze_ui/editor_main/pybreeze_icon.ico"
+  },
+  {
+   "optionDest": "datas",
+   "value": "D:/Codes/PyBreeze/pybreeze/pybreeze_ui/editor_main/pybreeze_icon.ico;pybreeze/pybreeze_ui/editor_main"
   },
   {
    "optionDest": "name",

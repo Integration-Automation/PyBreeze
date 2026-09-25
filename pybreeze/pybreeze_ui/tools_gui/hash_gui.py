@@ -4,6 +4,7 @@ from __future__ import annotations
 from PySide6.QtWidgets import QLabel, QPushButton, QTextEdit, QVBoxLayout, QWidget
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.run_shortcut import press_on_ctrl_enter
 from pybreeze.pybreeze_ui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.utils.hash_tools.hash_text import hash_all
@@ -35,12 +36,13 @@ class HashGUI(QWidget):
 
         self.hash_button = QPushButton(word.get("hash_button"))
         self.hash_button.clicked.connect(self.compute)
+        press_on_ctrl_enter(self, self.hash_button)
 
         self.output_label = QLabel(word.get("hash_output_label"))
         self.output_edit = QTextEdit()
         self.output_edit.setReadOnly(True)
 
-        self.actions = OutputActions(
+        self.output_actions = OutputActions(
             self, self.output_edit, main_window=main_window,
             basename="hashes", extension="txt")
 
@@ -50,7 +52,7 @@ class HashGUI(QWidget):
             self.output_label, self.output_edit,
         ):
             layout.addWidget(widget)
-        layout.addLayout(self.actions.button_row())
+        layout.addLayout(self.output_actions.button_row())
         self.setLayout(layout)
 
     def compute(self) -> None:

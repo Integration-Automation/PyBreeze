@@ -19,7 +19,7 @@ def app():
     return instance
 
 
-@pytest.fixture()
+@pytest.fixture
 def widget(app):
     from pybreeze.pybreeze_ui.tools_gui.json_format_gui import JsonFormatGUI
     gui = JsonFormatGUI()
@@ -54,5 +54,5 @@ class TestJsonFormatGUI:
     def test_copy_output(self, app, widget):
         widget.input_edit.setPlainText('{"a":1}')
         widget.minify()
-        widget.actions.copy()
+        widget.output_actions.copy()
         assert '{"a":1}' in QApplication.clipboard().text()

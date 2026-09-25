@@ -19,7 +19,7 @@ def app():
     return instance
 
 
-@pytest.fixture()
+@pytest.fixture
 def form(app):
     widget = login_mod.LoginWidget()
     yield widget
@@ -71,3 +71,25 @@ class TestChoosingTheKey:
 
         assert form.key_edit.text() == "typed"
         assert not form.use_key_check.isChecked()
+
+
+class TestTheSecretField:
+    """With key authentication the password field holds the key's passphrase, and says so."""
+
+    def _words(self):
+        from je_editor import language_wrapper
+        return language_wrapper.language_word_dict
+
+    def test_it_asks_for_the_password_at_first(self, form):
+        assert form.pass_label.text() == self._words().get("ssh_login_widget_label_password")
+
+    def test_key_authentication_makes_it_the_passphrase(self, form):
+        form.use_key_check.setChecked(True)
+        assert form.pass_label.text() == self._words().get("ssh_login_widget_label_passphrase")
+        assert form.pass_edit.placeholderText() == self._words().get("ssh_login_widget_placeholder_passphrase")
+
+    def test_unticking_it_gives_the_password_back(self, form):
+        form.use_key_check.setChecked(True)
+        form.use_key_check.setChecked(False)
+        assert form.pass_label.text() == self._words().get("ssh_login_widget_label_password")
+        assert form.pass_edit.placeholderText() == self._words().get("ssh_login_widget_placeholder_password")

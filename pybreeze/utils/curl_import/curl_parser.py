@@ -401,10 +401,12 @@ def _apply_cookie(request: CurlRequest, value: str) -> None:
 
     ``curl -b 'a=1; b=2'`` yields inline cookies; a value with no ``=`` is a
     cookie *file* curl reads. It was sent as the header ``Cookie: cookies.txt``;
-    it is kept in ``cookie_files`` for the generators to say so.
+    it is kept in ``cookie_files`` for the generators to say so. An empty one
+    (``-b ''``) only switches curl's cookie engine on and reads no file.
     """
     if "=" not in value:
-        request.cookie_files.append(value)
+        if value:
+            request.cookie_files.append(value)
         return
     for segment in value.split(";"):
         name, separator, cookie_value = segment.strip().partition("=")

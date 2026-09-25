@@ -4,10 +4,12 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEd
     QMessageBox
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.run_shortcut import press_on_ctrl_enter
 from pybreeze.pybreeze_ui.extend_ai_gui.ai_gui_global_variable import COT_TEMPLATE_FILES
 from pybreeze.pybreeze_ui.extend_ai_gui.code_review.code_review_thread import SenderThread
 from pybreeze.pybreeze_ui.thread_keeper import let_run_out
 from pybreeze.pybreeze_ui.exact_text import exact_text
+from pybreeze.pybreeze_ui.fixed_pitch import use_fixed_pitch_font
 
 
 class CoTCodeReviewGUI(QWidget):
@@ -29,20 +31,29 @@ class CoTCodeReviewGUI(QWidget):
         url_layout.addWidget(self.url_input)
         layout.addLayout(url_layout)
 
-        # 傳送資料區域
+        # 要審查的程式碼 / The code to review; each step's prompt quotes it
         self.code_paste_area = QTextEdit()
+        use_fixed_pitch_font(self.code_paste_area)
         self.code_paste_area.setPlaceholderText(
             language_wrapper.language_word_dict.get("cot_gui_placeholder_code_paste_area"))
         layout.addWidget(QLabel(language_wrapper.language_word_dict.get("cot_gui_label_prompt_area")))
         layout.addWidget(self.code_paste_area)
 
         # 回傳區域
-        self.response_selector = QComboBox()  # 改用 ComboBox
+        # The step whose answer is shown, labelled and at the top: alone and
+        # empty it sat halfway down the panel with nothing to say what it was
+        self.response_selector = QComboBox()
+        self.response_selector.setPlaceholderText(
+            language_wrapper.language_word_dict.get("cot_gui_placeholder_no_answers"))
         self.response_view = QTextEdit()
         self.response_view.setReadOnly(True)  # 可複製但不可編輯
 
+        step_layout = QVBoxLayout()
+        step_layout.addWidget(QLabel(language_wrapper.language_word_dict.get("cot_gui_label_step")))
+        step_layout.addWidget(self.response_selector)
+        step_layout.addStretch()
         hbox_layout = QHBoxLayout()
-        hbox_layout.addWidget(self.response_selector, 2)
+        hbox_layout.addLayout(step_layout, 2)
         hbox_layout.addWidget(self.response_view, 5)
 
         layout.addWidget(QLabel(language_wrapper.language_word_dict.get("cot_gui_label_response_area")))
@@ -57,10 +68,11 @@ class CoTCodeReviewGUI(QWidget):
         # 綁定事件
         self.response_selector.currentTextChanged.connect(self.show_response)
         self.send_button.clicked.connect(self.start_sending)
+        press_on_ctrl_enter(self, self.send_button)
 
         # 儲存回覆
         self.responses = {}
-        self.thread = None
+        self.request_thread = None
 
     def show_response(self, filename):
         if filename in self.responses:
@@ -73,12 +85,18 @@ class CoTCodeReviewGUI(QWidget):
             word = language_wrapper.language_word_dict
             QMessageBox.warning(self, word.get("cot_gui_warning_title"), word.get("cot_gui_error_no_url"))
             return
+        code = exact_text(self.code_paste_area)
+        if not code.strip():
+            # Every step of the chain would have gone out about no code at all
+            word = language_wrapper.language_word_dict
+            QMessageBox.warning(self, word.get("cot_gui_warning_title"), word.get("cot_gui_error_no_code"))
+            return
         # The URL is checked by the worker, which reports a refusal as the
         # "error" answer: checked here too, its DNS lookup froze the IDE.
 
         # Ignore re-submits while a run is in flight so we never drop a running
         # QThread or interleave two review passes into the same response store.
-        if self.thread is not None and self.thread.isRunning():
+        if self.request_thread is not None and self.request_thread.isRunning():
             return
 
         # A new run starts from nothing: answers about the previous code, or its
@@ -89,10 +107,10 @@ class CoTCodeReviewGUI(QWidget):
 
         # 啟動傳送 Thread
         self.send_button.setEnabled(False)
-        self.thread = SenderThread(files=self.files, code=exact_text(self.code_paste_area), url=url)
-        self.thread.update_response.connect(self.handle_response)
-        self.thread.finished.connect(self._enable_send)
-        self.thread.start()
+        self.request_thread = SenderThread(files=self.files, code=code, url=url)
+        self.request_thread.update_response.connect(self.handle_response)
+        self.request_thread.finished.connect(self._enable_send)
+        self.request_thread.start()
 
     def _enable_send(self) -> None:
         """Let the next request be sent, however this one ended.
@@ -118,7 +136,7 @@ class CoTCodeReviewGUI(QWidget):
         that long. The thread is cut off from this widget and kept until it
         ends: a QThread destroyed while running aborts the process.
         """
-        thread = self.thread
+        thread = self.request_thread
         if thread is not None and thread.isRunning():
             thread.requestInterruption()
             let_run_out(thread, thread.update_response)

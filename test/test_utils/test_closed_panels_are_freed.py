@@ -102,13 +102,13 @@ def _diff(widget) -> None:
 def test_the_cot_review_panel(app):
     from pybreeze.pybreeze_ui.extend_ai_gui.code_review.cot_code_review_gui import CoTCodeReviewGUI
 
-    assert _freed_after_a_run(app, CoTCodeReviewGUI, _cot, lambda widget: widget.thread)
+    assert _freed_after_a_run(app, CoTCodeReviewGUI, _cot, lambda widget: widget.request_thread)
 
 
 def test_the_skill_send_panel(app):
     from pybreeze.pybreeze_ui.extend_ai_gui.skills.skills_send_gui import SkillsSendGUI
 
-    assert _freed_after_a_run(app, SkillsSendGUI, _skills, lambda widget: widget.thread)
+    assert _freed_after_a_run(app, SkillsSendGUI, _skills, lambda widget: widget.request_thread)
 
 
 def test_the_diff_tab(app):

@@ -49,3 +49,42 @@ def test_every_automation_package_gets_json_keywords(registered):
     groups = get_programming_language_plugin(".json")["syntax_words"]
 
     assert set(groups) == set(package_manager.syntax_check_list)
+
+
+class _File:
+    def __init__(self, name: str) -> None:
+        self.current_file = name
+
+
+def _keyword_colour(suffix: str, keyword: str):
+    from je_editor.pyside_ui.code.syntax.python_syntax import PythonHighlighter
+    from PySide6.QtCore import QRegularExpression
+    from PySide6.QtWidgets import QApplication
+
+    QApplication.instance() or QApplication([])
+    highlighter = PythonHighlighter(main_window=_File(f"script{suffix}"))
+    pattern = QRegularExpression(rf"\b{keyword}\b").pattern()
+    return next(fmt.foreground().color() for rule, fmt in highlighter.highlight_rules if rule.pattern() == pattern)
+
+
+@pytest.mark.parametrize(("suffix", "package", "key"), [
+    (".json", "je_auto_control", "warning_output_color"),
+    (".yaml", "test_pioneer", "diff_modified_marker_color"),
+])
+def test_keywords_take_the_theme_colour_and_follow_a_light_theme(registered, suffix, package, key):
+    # Fixed pure yellow keywords could not be read on a light theme
+    from je_editor.pyside_ui.main_ui.save_settings.user_color_setting_file import (
+        actually_color_dict, apply_theme_colors,
+    )
+
+    keyword = sorted(package_keyword_list[package])[0]
+    try:
+        apply_theme_colors("dark_amber.xml")
+        on_dark = _keyword_colour(suffix, keyword)
+        apply_theme_colors("light_blue.xml")
+        on_light = _keyword_colour(suffix, keyword)
+        assert on_light == actually_color_dict[key]
+    finally:
+        apply_theme_colors("dark_amber.xml")
+
+    assert on_dark != on_light

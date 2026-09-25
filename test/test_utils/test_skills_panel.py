@@ -29,7 +29,7 @@ def app():
     return instance
 
 
-@pytest.fixture()
+@pytest.fixture
 def panel(tmp_path, monkeypatch):
     # The built-in prompts, never the user's own
     monkeypatch.setattr(prompt_store, "pybreeze_data_path", lambda: tmp_path)
@@ -38,7 +38,7 @@ def panel(tmp_path, monkeypatch):
     widget.deleteLater()
 
 
-@pytest.fixture()
+@pytest.fixture
 def answer(monkeypatch):
     """What the replace question gets, and how often it was asked."""
     state = {"reply": QMessageBox.StandardButton.No, "asked": 0}

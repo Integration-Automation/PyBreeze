@@ -6,10 +6,16 @@ from je_editor import EditorWidget, register_programming_language
 
 if TYPE_CHECKING:
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
-from PySide6.QtGui import QColor
 
 from pybreeze.pybreeze_ui.syntax.syntax_keyword import TEST_PIONEER_SUFFIXES, package_keyword_list
 from pybreeze.utils.manager.package_manager.package_manager_class import package_manager
+
+# Keyword colours as keys into JEditor's theme colours, which have a dark and a
+# light set: fixed yellow (255, 255, 0) keywords could not be read on a light
+# theme. The highlighter looks the key up each time it is built, so the
+# colours follow a theme change.
+JSON_KEYWORD_COLOUR = "warning_output_color"         # yellow; dark yellow on light
+YAML_KEYWORD_COLOUR = "diff_modified_marker_color"   # orange
 
 
 def syntax_extend_package(main_window: PyBreezeMainWindow) -> None:
@@ -20,7 +26,7 @@ def syntax_extend_package(main_window: PyBreezeMainWindow) -> None:
         # no words instead of crashing syntax setup with set(None).
         json_syntax_words[package] = {
             "words": set(package_keyword_list.get(package, [])),
-            "color": QColor(255, 255, 0),
+            "color": JSON_KEYWORD_COLOUR,
         }
     register_programming_language(".json", json_syntax_words)
 
@@ -29,7 +35,7 @@ def syntax_extend_package(main_window: PyBreezeMainWindow) -> None:
     yml_syntax_words = {
         "test_pioneer": {
             "words": set(package_keyword_list.get("test_pioneer", [])),
-            "color": QColor(255, 153, 0),
+            "color": YAML_KEYWORD_COLOUR,
         }
     }
     for suffix in TEST_PIONEER_SUFFIXES:

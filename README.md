@@ -1,6 +1,6 @@
 # PyBreeze: The Automation-First IDE
 
-[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.10–3.14](https://img.shields.io/badge/python-3.10--3.14-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![PySide6](https://img.shields.io/badge/GUI-PySide6-green.svg)](https://doc.qt.io/qtforpython/)
 [![Documentation](https://readthedocs.org/projects/pybreeze/badge/?version=latest)](https://pybreeze.readthedocs.io/en/latest/index.html)
@@ -11,7 +11,7 @@
 
 ![PyBreeze main window](images/main_window.png)
 
-*The main window: automation keywords highlighted in an APITestka action file, project tree on the left, run/format/debug/terminal panes below.*
+*The main window: an APITestka action file open in the editor, project tree on the left, run/format/debug/terminal panes below.*
 
 ---
 
@@ -72,16 +72,18 @@ Each module gets the same menu shape: **Run** (single script, batch directory, w
 
 ### IDE core
 
-- **Automation-aware syntax highlighting** — the `AT_*` / GUI / Web / Load keyword sets are registered for `.json`, and TestPioneer's schema for `.yml` and `.yaml`, on top of JEditor's language support
-- **Code editor** — built on [JEditor](https://github.com/Integration-Automation/JEDITOR): tabs, project tree, format checker, debugger, terminal, variable inspector and a git client pane
-- **Script execution** — single or batch, each run in a window of its own with a Stop button; action files are passed by path, and a script from the tab in front that is too long for a Windows command line (~32 KB) goes through a temporary file
+- **Automation keyword sets** — the `AT_*` / GUI / Web / Load keyword sets are registered for `.json`, and TestPioneer's schema for `.yml` and `.yaml`, on top of JEditor's language support. JEditor does not colour them yet: it highlights those files with its own rules for the suffix, which leave registered keywords out
+- **Code editor** — built on [JEditor](https://github.com/Integration-Automation/JEDITOR): tabs, project tree, format checker, debugger, terminal and a git client pane
+- **Script execution** — single or batch, each run in a window of its own with a Stop button (Run ▸ Stop All Program stops them all); action files are passed by path, and a script from the tab in front that is too long for a Windows command line (~32 KB) goes through a temporary file
 - **Report generation** — HTML / JSON / XML after a run, with optional email delivery
-- **Integrated JupyterLab** — launches as a tab, installing JupyterLab into the project venv if it is missing
-- **Virtual environment awareness** — `venv/` and `.venv/` are detected and used automatically; without one, scripts run on the interpreter the IDE runs on
+- **Integrated JupyterLab** — launches as a tab, in the same interpreter a run would use, installing JupyterLab there if it is missing
+- **Virtual environment awareness** — a run uses the interpreter chosen under **Python Env**; with none chosen, a `venv/` or `.venv/` in the working folder is detected and used, and without one, the interpreter the IDE runs on
 
 ---
 
 ## Built-in Tools
+
+In a tool with one main button, Ctrl+Enter anywhere in it presses that button: its text boxes take Enter as a new line. In Query ↔ JSON and the URL parser/builder, which convert both ways, it goes the way the input reads: from JSON when the input is a JSON object.
 
 ### cURL Import — a copied request becomes a runnable script
 
@@ -117,7 +119,7 @@ Reports names sent more than once, `Set-Cookie` entries missing `Secure` / `Http
 
 ![Text Diff](images/tool_diff.png)
 
-Compare two payloads — an expected vs. actual API response, say — and get a unified diff plus a one-line added/removed summary.
+Compare two payloads — an expected vs. actual API response, say — and get a unified diff, its added and removed lines in the theme's colours, plus a one-line added/removed summary.
 
 ### The everyday utilities
 
@@ -149,23 +151,25 @@ A WYSIWYG `QGraphicsScene` editor: rectangle, rounded, ellipse and diamond nodes
 
 ![SSH client](images/ssh_client.png)
 
-Password or private-key authentication (the key file picked with Browse, starting in `~/.ssh`), an interactive shell with ANSI handling and keepalive, and a lazy-loading SFTP tree with create-folder / rename / delete / upload / download. Every SFTP request runs in the background, so a stalled link never freezes the IDE. An upload asks before it replaces a file on the server, and a transfer can be cancelled from the tree's menu. Both directions write to a temporary file first, so a dropped link leaves the old copy whole. Unknown host keys are **not** auto-accepted: the SHA256 fingerprint is shown for confirmation on first connection (trust on first use) and persisted to `~/.pybreeze/ssh_known_hosts`.
+Password or private-key authentication (the key file picked with Browse, starting in `~/.ssh`: an RSA, Ed25519 or ECDSA key in OpenSSH or PEM format, PKCS#8 included; a PuTTY `.ppk` key is exported from PuTTYgen as an OpenSSH key first, as the error message says; with key authentication the password field reads Passphrase and takes the key's passphrase), an interactive shell with keepalive that shows ANSI colours, in a fixed-pitch font, whose width and height the shell is told as the view is resized (Up and Down bring back earlier commands, Enter on an empty line reaches the shell, `clear` and `reset` wipe the view, and **Interrupt**, or Ctrl+C in the command line with nothing selected, stops what runs in it; the view shows output line by line, so programs that draw on the whole screen by moving the cursor, such as `vim` or `htop`, come out garbled), and a lazy-loading SFTP tree with create-folder / rename / delete / upload / download (F2 renames and Delete deletes the entry in focus, as in the project tree). Every SFTP request runs in the background, so a stalled link never freezes the IDE. An upload asks before it replaces a file on the server, and a transfer can be cancelled from the tree's menu. Both directions write to a temporary file first, so a dropped link leaves the old copy whole. Unknown host keys are **not** auto-accepted: the SHA256 fingerprint is shown for confirmation on first connection (trust on first use) and persisted to `~/.pybreeze/ssh_known_hosts`.
 
 ### And also
 
-- **File Tree Context Menu** — right-click to create, rename, delete, copy absolute or relative paths, or reveal the item in your platform file manager (a file shown selected in Explorer and Finder). Renaming or deleting a file open in an editor tab keeps the tab in sync.
+- **File Tree Context Menu** — right-click to create, rename, delete, copy absolute or relative paths, or reveal the item in your platform file manager (a file shown selected in Explorer and Finder). F2 renames and Delete deletes the item in focus while the tree has the focus. A delete asks first, with No as the default, and moves the item to the trash (the Recycle Bin on Windows); where there is none, as on some network drives, it asks again before deleting for good. Renaming or deleting a file open in an editor tab keeps the tab in sync.
 - **Package Manager** — install automation modules and build tools from the menu, output in a run window.
-- **Integrated Documentation** — each module's docs and GitHub page open as in-IDE browser tabs.
+- **Integrated Documentation** — each module's docs and GitHub page open as in-IDE browser tabs (TestPioneer's documentation is its GitHub README).
 
 ---
 
 ## AI-Assisted Development
 
+As in the tools, Ctrl+Enter in AI Code Review, CoT Code Review or Skill Send presses its send button.
+
 ### AI Code Review
 
 ![AI code review client](images/ai_code_review.png)
 
-*Shown in the pre-send state.* Send a selection to an LLM endpoint, then accept or reject the suggestion — the tally is kept in `~/.pybreeze/response_stats.txt`. The URL is SSRF-validated, the connection goes only to the address that was checked, redirects are not followed, and the response body is size-capped before it reaches the panel.
+*Shown in the pre-send state.* Send a selection to an LLM endpoint (as the form field `code` in the body of a POST, the default, or a PUT; GET and DELETE send the URL alone), then accept or reject the suggestion — the tally is kept in `~/.pybreeze/response_stats.txt`. The URL is SSRF-validated, the connection goes only to the address that was checked, redirects are not followed, and the response body is size-capped before it reaches the panel. An endpoint on this machine or on a private network, such as a local model server, is therefore refused; CoT Code Review and Skill Send check their endpoint URL the same way.
 
 ### Chain-of-Thought Code Review (prthinker)
 
@@ -181,7 +185,7 @@ One settings form holds the inference backend (`remote`, `local`, OpenAI-compati
 
 Create and manage the multi-step review chain: first summary → first code review → a judge of that review → linter → code smell detector → step-by-step analysis → total summary → a judge of the summary. Each step quotes the answers it needs from the steps before it. Files are watched, so an external edit shows up immediately.
 
-Run the chain from **Tools → AI → CoT Code Review** (a tab, or a dock from the Dock menu): paste the code, give the endpoint URL, and each step's answer appears in the selector as it arrives.
+Run the chain from **Tools → AI → CoT Code Review** (a tab, or a dock from the Dock menu): paste the code, give the endpoint URL, and each step's answer appears in the selector as it arrives. Each step is a POST of the JSON `{"prompt": "..."}`, and the response body, as text, is that step's answer.
 
 ### Skill Prompt Editor & Skill Send
 
@@ -189,7 +193,7 @@ Run the chain from **Tools → AI → CoT Code Review** (a tab, or a dock from t
 |---|---|
 | ![Skill prompt editor](images/skill_prompt_editor.png) | ![Skill send](images/skills_send.png) |
 
-Define reusable skill prompts (code explanation, code review), then pick one, edit it if needed, and send it to an LLM endpoint from a dedicated tab or dock. *Both shown in the pre-send state — no endpoint was contacted for these screenshots.*
+Define reusable skill prompts (code explanation, code review), then pick one, edit it if needed, and send it to an LLM endpoint from a dedicated tab or dock: a POST of the JSON `{"code": "..."}` holding the prompt, whose response body is shown as it is. *Both shown in the pre-send state — no endpoint was contacted for these screenshots.*
 
 ---
 
@@ -197,10 +201,10 @@ Define reusable skill prompts (code explanation, code review), then pick one, ed
 
 PyBreeze inherits JEditor's plugin architecture, auto-discovered from a `jeditor_plugins/` directory in the working directory. A plugin can register:
 
-- **Syntax highlighting** — keyword sets and rules for any language
+- **Syntax highlighting** — keyword sets and rules for a file suffix JEditor does not colour itself (for `.c`, `.cpp`, `.go`, `.java`, `.js`, `.json`, `.rs`, `.sh`, `.sql`, `.toml`, `.ts`, `.yaml` and the other suffixes it colours, its own rules are used)
 - **UI translations** — new interface languages
 - **Run configurations** — "Run with…" for interpreted (`go run main.go`) and compiled (`gcc main.c -o main` then run) languages, executed through PyBreeze's `FileRunnerProcess` with the compiled artifact cleaned up afterwards
-- **Plugin Browser** — browse and install plugins from remote repositories inside the IDE
+- **Plugin Browser** — browse and install plugins from remote repositories inside the IDE, from **Plugins → Plugin Browser**, which is there before any plugin is installed; an installed plugin loads at the next start
 
 Loaded plugins appear under their own **Plugins** menu with an About entry and one run action, labelled with the suffixes it runs. [PLUGIN_GUIDE.md](PLUGIN_GUIDE.md) covers what PyBreeze adds and links JEditor's guide, which has the full API and worked examples (C, C++, Go, Java, Rust, and a French translation).
 
@@ -211,7 +215,7 @@ Loaded plugins appear under their own **Plugins** menu with an About entry and o
 - **English** (default)
 - **Traditional Chinese** (繁體中文)
 
-Both dictionaries carry the same 708 keys, and a test enforces that parity so a new string can never land in one language only. Further languages can be added via translation plugins.
+Menus, dialogs, the reasons a tool refuses its input and the run window's own notices (`[Error] …`, `[Run] …`) all follow the chosen language. Both dictionaries carry the same 760 keys, and a test enforces that parity so a new string can never land in one language only. The Language menu also lists JEditor's Japanese and Simplified Chinese: picked, JEditor's own menus change and PyBreeze's strings stay in English. Further languages can be added via translation plugins.
 
 ---
 
@@ -321,13 +325,13 @@ python exe/start_pybreeze.py      # from the exe directory
 ```python
 from pybreeze import start_editor
 
-start_editor()                              # default dark_amber theme
-start_editor(theme="dark_teal.xml")         # any qt_material theme
+start_editor()                              # the theme picked from UI Style (dark_amber until one is)
+start_editor(theme="dark_teal.xml")         # any qt_material theme; it becomes the picked one
 ```
 
 Once launched:
 
-1. **Write** an automation script in the editor — automation keywords highlight as you type
+1. **Write** an automation script in the editor
 2. **Run** it from the `Automation` menu, picking the target module
 3. **Watch** the output stream into the run window
 4. **Generate** an HTML / JSON / XML report
@@ -344,7 +348,7 @@ Once launched:
 | **WebRunner** | Browser driver integration, element location and interaction, web test scripting, reports |
 | **LoadDensity** | Concurrent request simulation, performance metrics, stress scenario management, reports |
 | **MailThunder** | SMTP sending, HTML report delivery, attachments, environment-variable configuration |
-| **TestPioneer** | YAML test definitions, template generation, structured execution |
+| **TestPioneer** | YAML test definitions, template generation, structured execution; `Install ▸ Automation ▸ Install TestPioneer` installs or upgrades it (0.1.34 and later read a YAML file as UTF-8 whatever the system locale) |
 | **File Automation** | Automated file and directory operations, batch processing |
 | **prthinker** | Chain-of-thought code review of a file or a Pull Request; settings in `~/.pybreeze/prthinker_setting.json`; installed from its own source folder via `Install ▸ Automation ▸ Install prthinker` (needs Python 3.12+) |
 
@@ -383,10 +387,12 @@ PyBreeze/
 │   └── utils/                         # curl/HAR parsing, headers, JWT, hashing,
 │                                      # URL validation, logging, exceptions, …
 ├── exe/                               # Standalone launcher & build configs
-├── docs/                              # Sphinx documentation source
+├── docs/                              # Sphinx documentation source; updates/ is the change log
 ├── test/                              # Unit tests (test_utils) + startup tests
 ├── images/                            # Screenshots
+├── architecture.md                    # Architecture overview: layers, flows, cross-project contracts
 ├── architecture_explore.md            # Module-by-module architecture notes
+├── progress.md                        # Work still to do
 ├── PLUGIN_GUIDE.md                    # Plugin development documentation
 ├── pyproject.toml                     # Package configuration (stable)
 ├── dev.toml                           # Package configuration (dev channel)

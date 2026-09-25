@@ -5,16 +5,25 @@ import sys
 from os import environ
 from pathlib import Path
 
-environ["LOCUST_SKIP_MONKEY_PATCH"] = "1"
+from pybreeze.utils.subprocess_util import IDE_ONLY
+
+# locust patches the whole process with gevent as it imports unless this is set,
+# and the IDE imports it: the Load Density GUI, or a user in JEditor's
+# in-process console. IDE_ONLY keeps it out of the processes the IDE starts (a
+# load test needs the patching to run its users at once); a value the user set
+# is kept, for both.
+environ["LOCUST_SKIP_MONKEY_PATCH"] = environ.get("LOCUST_SKIP_MONKEY_PATCH") or IDE_ONLY
 
 from PySide6.QtCore import QTimer, QCoreApplication
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QWidget
 from je_editor import EditorMain, EditorWidget, language_wrapper
 from je_editor.pyside_ui.main_ui.dock.destroy_dock import DestroyDock
+from je_editor.pyside_ui.main_ui.save_settings.user_setting_file import user_setting_dict
 from qt_material import apply_stylesheet
 
 from pybreeze.extend_multi_language.update_language_dict import update_language_dict
+from pybreeze.pybreeze_ui.code_result_logs import show_only_warnings_in_code_result
 from pybreeze.pybreeze_ui.closing import AskingDock, may_close
 from pybreeze.pybreeze_ui.editor_main.file_tree_context_menu import setup_file_tree_context_menu
 from pybreeze.pybreeze_ui.gui_thread_gc import collect_garbage_on_gui_thread
@@ -27,6 +36,10 @@ from pybreeze.utils.logging.logger import pybreeze_logger
 
 EDITOR_EXTEND_TAB: dict[str, type[QWidget]] = {
 }
+
+# Shipped beside this module (package data): it was read from the working
+# folder, which a started IDE never has, and the window had no icon
+_ICON_PATH = Path(__file__).with_name("pybreeze_icon.ico")
 
 
 def _close_guarded(widget: QWidget, *steps) -> None:
@@ -54,6 +67,7 @@ class PyBreezeMainWindow(EditorMain):
         # missing from it, and a menu given a None title crashes Qt.
         update_language_dict()
         super().__init__(debug_mode, show_system_tray_ray, extend=True)
+        show_only_warnings_in_code_result()
         # Note: EditorMain.__init__ already calls load_external_plugins()
         # which auto-discovers jeditor_plugins/ in the current working directory.
         # Third-party plugins placed there will be loaded automatically.
@@ -79,7 +93,7 @@ class PyBreezeMainWindow(EditorMain):
 
         # Icon
         if not extend:
-            self.icon_path = Path(os.getcwd()) / "pybreeze_icon.ico"
+            self.icon_path = _ICON_PATH
             self.icon = QIcon(str(self.icon_path))
             if not self.icon.isNull():
                 self.setWindowIcon(self.icon)
@@ -87,6 +101,8 @@ class PyBreezeMainWindow(EditorMain):
         # Menu
         add_menu_to_menubar(self)
         syntax_extend_package(self)
+        # JEditor's Stop All Program stops what its own menus started; PyBreeze's runs join it
+        self.run_menu.stop_all_program_action.triggered.connect(self.stop_all_runs)
 
         # Tab
         self._add_extend_tabs()
@@ -145,6 +161,17 @@ class PyBreezeMainWindow(EditorMain):
                 dock.already_asked = True
         return agreed
 
+    def stop_all_runs(self) -> None:
+        """Stop the run in every run window: an automation script, a package install, a Run with... run.
+
+        Connected to Run > Stop All Program, which stopped only the programs
+        JEditor's own menus started. The windows stay open with their output;
+        one whose stop fails is logged and the others are still stopped.
+        """
+        # Over a copy: a window that ends its run may drop itself from the list
+        for run_window in tuple(self.current_run_code_window):
+            _close_guarded(run_window, run_window.stop_runner)
+
     def closeEvent(self, event) -> None:
         # Asked before anything is stopped: a No keeps the IDE open as it was
         if not self._tool_tabs_may_close():
@@ -186,11 +213,13 @@ class PyBreezeMainWindow(EditorMain):
             app.quit()
 
 
-def start_editor(debug_mode: bool = False, theme: str = "dark_amber.xml", **kwargs) -> None:
+def start_editor(debug_mode: bool = False, theme: str | None = None, **kwargs) -> None:
     """
     Start editor instance
     :param debug_mode: enable debug mode with auto-close timer
-    :param theme: qt_material theme name (e.g. "dark_amber.xml", "dark_teal.xml", "light_blue.xml")
+    :param theme: qt_material theme name (e.g. "dark_teal.xml", "light_blue.xml"). It replaces
+        the theme picked from UI Style, and is kept as the picked one. ``None`` starts with the
+        picked theme, ``dark_amber.xml`` until one is picked
     :return: None
     """
     new_ide = QCoreApplication.instance()
@@ -199,14 +228,47 @@ def start_editor(debug_mode: bool = False, theme: str = "dark_amber.xml", **kwar
     # Workers allocate enough to trigger a collection, which then destroyed
     # Qt objects on the worker and crashed the IDE later
     collect_garbage_on_gui_thread(new_ide)
+    # Held until the application ends: the window is nobody else's
+    window = open_main_window(new_ide, debug_mode=debug_mode, theme=theme, **kwargs)
+    ret = new_ide.exec()
+    del window
+    os._exit(ret)
+
+
+def open_main_window(app: QApplication, debug_mode: bool = False, theme: str | None = None,
+                     **kwargs) -> PyBreezeMainWindow:
+    """Build the main window, apply a theme given here, and show it.
+
+    JEditor's constructor applies the saved settings, the theme picked from UI
+    Style among them (``startup_setting()``). They are applied again only for a
+    theme given here, which becomes the picked one: applying a theme takes most
+    of a second, and the start applied the same one three times.
+
+    :param app: the running application, which the theme is applied to
+    :param debug_mode: close by itself after a while, as the startup tests need
+    :param theme: qt_material theme name, which replaces the one picked from UI Style and is
+        kept as the picked one; ``None`` keeps the picked one
+    :return: the window, which the caller keeps for as long as the IDE runs
+    """
     window = PyBreezeMainWindow(debug_mode=debug_mode, **kwargs)
-    apply_stylesheet(new_ide, theme=theme)
+    if theme is not None:
+        _apply_given_theme(app, window, theme)
+    else:
+        # startup_setting() sets the window's font style sheet before the
+        # application's theme; set again after it, as a second run of it did,
+        # the toolbar keeps the height it has with a theme given (4 px less)
+        window.setStyleSheet(window.styleSheet())
     window.showMaximized()
+    return window
+
+
+def _apply_given_theme(app: QApplication, window: PyBreezeMainWindow, theme: str) -> None:
+    """Make *theme* the picked one and apply the settings with it (``startup_setting()``)."""
+    user_setting_dict["ui_style"] = theme
     try:
         window.startup_setting()
     # The user's saved settings, and the files they reopen, can be anything:
-    # a bad one is logged and the IDE starts without it.
+    # a bad one is logged, and the theme is still applied.
     except (OSError, ValueError, TypeError, KeyError, RuntimeError) as error:
         pybreeze_logger.error("Startup setting error: %r", error)
-    ret = new_ide.exec()
-    os._exit(ret)
+        apply_stylesheet(app, theme=theme)

@@ -84,3 +84,32 @@ def test_every_tool_widget_has_a_tab_a_dock_and_a_dock_title():
     assert {entry[0] for entry in tools_menu._TAB_ACTIONS} == factories
     assert {entry[0] for entry in tools_menu._DOCK_ACTIONS} == factories
     assert set(tools_menu._DOCK_TITLES) == factories
+
+
+def test_every_tools_tab_entry_opens_its_widget_under_its_label(app, tmp_path, monkeypatch):
+    # The docks are checked above; the tab entries were only built, never opened
+    from je_editor import language_wrapper
+    from PySide6.QtWidgets import QTabWidget
+
+    monkeypatch.setenv("USERPROFILE", str(tmp_path))  # the prompt editors and review stats live under ~
+    monkeypatch.setenv("HOME", str(tmp_path))
+    window = QMainWindow()
+    window.menu = window.menuBar()
+    window.tab_widget = QTabWidget()
+    try:
+        tools_menu.build_tools_menu(window)
+        for widget_key, attribute, menu_attribute, action_key, label_key in tools_menu._TAB_ACTIONS:
+            action = getattr(window, attribute)
+            assert action in getattr(window, menu_attribute).actions()
+            assert action.text() == language_wrapper.language_word_dict.get(action_key)
+
+            action.trigger()
+
+            index = window.tab_widget.count() - 1
+            assert window.tab_widget.tabText(index) == language_wrapper.language_word_dict.get(label_key), widget_key
+            assert window.tab_widget.widget(index) is not None
+        assert window.tab_widget.count() == len(tools_menu._TAB_ACTIONS)
+    finally:
+        for index in range(window.tab_widget.count()):
+            window.tab_widget.widget(index).close()
+        window.deleteLater()

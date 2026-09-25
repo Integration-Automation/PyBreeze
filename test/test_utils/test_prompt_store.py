@@ -20,7 +20,7 @@ from pybreeze.pybreeze_ui.extend_ai_gui.prompt_store import (
 CODE = "def f():\n    pass\n"
 
 
-@pytest.fixture()
+@pytest.fixture
 def prompts(tmp_path, monkeypatch):
     """Point the prompt directory at a temporary one, never the real home."""
     monkeypatch.setattr(prompt_store, "pybreeze_data_path", lambda: tmp_path)

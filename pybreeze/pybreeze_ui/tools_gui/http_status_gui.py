@@ -7,6 +7,23 @@ from je_editor import language_wrapper
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.utils.http_reference.status_codes import StatusInfo, search
 
+# A status class's word-dict key: this and the class in lower case, underscored
+CATEGORY_KEY_PREFIX = "http_status_category_"
+
+
+def category_key(info: StatusInfo) -> str:
+    """The word-dict key of *info*'s class (``http_status_category_client_error``)."""
+    return CATEGORY_KEY_PREFIX + info.category.lower().replace(" ", "_")
+
+
+def status_heading(info: StatusInfo) -> str:
+    """``404 Not Found  [Client Error]``, the class in the IDE's language.
+
+    The phrase and the description stay as the standard library words them.
+    """
+    category = language_wrapper.language_word_dict.get(category_key(info), info.category)
+    return f"{info.code} {info.phrase}  [{category}]"
+
 
 def build_status_text(statuses: list[StatusInfo], empty_message: str) -> str:
     """Render a list of statuses into a readable block.
@@ -19,7 +36,7 @@ def build_status_text(statuses: list[StatusInfo], empty_message: str) -> str:
         return empty_message
     lines: list[str] = []
     for info in statuses:
-        lines.append(f"{info.code} {info.phrase}  [{info.category}]")
+        lines.append(status_heading(info))
         if info.description:
             lines.append(f"    {info.description}")
     return "\n".join(lines)
@@ -44,7 +61,7 @@ class HttpStatusGUI(QWidget):
         self.output_edit = QTextEdit()
         self.output_edit.setReadOnly(True)
 
-        self.actions = OutputActions(
+        self.output_actions = OutputActions(
             self, self.output_edit, main_window=main_window,
             basename="http_status", extension="txt")
 
@@ -52,7 +69,7 @@ class HttpStatusGUI(QWidget):
         layout.addWidget(self.search_label)
         layout.addWidget(self.search_edit)
         layout.addWidget(self.output_edit)
-        layout.addLayout(self.actions.button_row())
+        layout.addLayout(self.output_actions.button_row())
         self.setLayout(layout)
 
         # Setting the text triggers refresh; an empty value shows the whole table.

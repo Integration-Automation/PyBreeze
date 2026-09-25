@@ -6,12 +6,14 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.run_shortcut import act_on_ctrl_enter
 from pybreeze.pybreeze_ui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.utils.exception.exceptions import QueryConvertException
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.query_tools.query_convert import json_to_query, query_to_json
 from pybreeze.pybreeze_ui.error_text import error_text
+from pybreeze.pybreeze_ui.fixed_pitch import use_fixed_pitch_font
 
 
 class QueryJsonGUI(QWidget):
@@ -29,11 +31,16 @@ class QueryJsonGUI(QWidget):
         self.input_edit = QTextEdit()
         self.input_edit.setPlaceholderText(word.get("query_json_input_placeholder"))
         self.input_edit.setAcceptRichText(False)
+        use_fixed_pitch_font(self.input_edit)
 
         self.to_json_button = QPushButton(word.get("query_json_to_json_button"))
         self.to_json_button.clicked.connect(self.convert_to_json)
         self.to_query_button = QPushButton(word.get("query_json_to_query_button"))
         self.to_query_button.clicked.connect(self.convert_to_query)
+        # Ctrl+Enter goes the way the input reads: from JSON for a JSON object
+        self.to_json_button.setToolTip(word.get("ctrl_enter_when_not_json"))
+        self.to_query_button.setToolTip(word.get("ctrl_enter_when_json"))
+        act_on_ctrl_enter(self, self.convert_as_pasted)
 
         buttons = QHBoxLayout()
         buttons.addWidget(self.to_json_button)
@@ -42,8 +49,9 @@ class QueryJsonGUI(QWidget):
         self.output_label = QLabel(word.get("query_json_output_label"))
         self.output_edit = QTextEdit()
         self.output_edit.setReadOnly(True)
+        use_fixed_pitch_font(self.output_edit)
 
-        self.actions = OutputActions(
+        self.output_actions = OutputActions(
             self, self.output_edit, main_window=main_window,
             basename="query", extension="txt", is_valid=lambda: self._valid_output)
 
@@ -53,8 +61,13 @@ class QueryJsonGUI(QWidget):
         layout.addLayout(buttons)
         layout.addWidget(self.output_label)
         layout.addWidget(self.output_edit)
-        layout.addLayout(self.actions.button_row())
+        layout.addLayout(self.output_actions.button_row())
         self.setLayout(layout)
+
+    def convert_as_pasted(self) -> None:
+        """Ctrl+Enter: JSON → query for a JSON object, query → JSON otherwise."""
+        pasted_json = exact_text(self.input_edit).lstrip().startswith("{")
+        (self.to_query_button if pasted_json else self.to_json_button).click()
 
     def convert_to_json(self) -> None:
         """Convert the input query string to JSON."""

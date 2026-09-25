@@ -23,7 +23,7 @@ _ALLOWED_SCHEMES = frozenset({"http", "https"})
 # RFC 6598 shared address space (Carrier-Grade NAT). Not covered by
 # ``is_private`` / ``is_reserved`` yet routinely abused for SSRF in cloud
 # environments, so it is blocked explicitly.
-_CGNAT_NETWORK = ipaddress.ip_network("100.64.0.0/10")
+_CGNAT_NETWORK = ipaddress.ip_network("100.64.0.0/10")  # NOSONAR S1313 — a range refused, not an address connected to
 
 # RFC 6052 NAT64 well-known prefix. The trailing 32 bits embed an IPv4 target
 # that a NAT64 gateway routes to, so it must be decoded and re-checked.
@@ -115,8 +115,8 @@ def _as_ascii(host: str) -> str:
     try:
         import idna
         return idna.encode(host.lower(), strict=True, std3_rules=True).decode("ascii")
-    except (ImportError, UnicodeError, ValueError):
-        # idna.IDNAError is a UnicodeError
+    except (ImportError, ValueError):
+        # idna.IDNAError is a UnicodeError, which is a ValueError
         return host
 
 

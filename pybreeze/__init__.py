@@ -24,14 +24,17 @@ if TYPE_CHECKING:
         start_editor,
     )
 
+_MAIN_UI = "pybreeze.pybreeze_ui.editor_main.main_ui"
+_JEDITOR = "je_editor"
+
 # Where each public name lives; JEditor's plugin API is re-exported for convenience
 _HOMES = {
-    "EDITOR_EXTEND_TAB": "pybreeze.pybreeze_ui.editor_main.main_ui",
-    "PyBreezeMainWindow": "pybreeze.pybreeze_ui.editor_main.main_ui",
-    "start_editor": "pybreeze.pybreeze_ui.editor_main.main_ui",
-    "load_external_plugins": "je_editor",
-    "register_natural_language": "je_editor",
-    "register_programming_language": "je_editor",
+    "EDITOR_EXTEND_TAB": _MAIN_UI,
+    "PyBreezeMainWindow": _MAIN_UI,
+    "start_editor": _MAIN_UI,
+    "load_external_plugins": _JEDITOR,
+    "register_natural_language": _JEDITOR,
+    "register_programming_language": _JEDITOR,
 }
 
 __all__ = [

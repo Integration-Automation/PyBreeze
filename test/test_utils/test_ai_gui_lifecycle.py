@@ -35,7 +35,7 @@ class TestCoTCloseEvent:
 
         gui = CoTCodeReviewGUI.__new__(CoTCodeReviewGUI)
         thread = _running_thread()
-        gui.thread = thread
+        gui.request_thread = thread
         event = MagicMock()
 
         CoTCodeReviewGUI.closeEvent(gui, event)
@@ -49,7 +49,7 @@ class TestCoTCloseEvent:
 
     def test_no_thread_just_accepts(self):
         gui = CoTCodeReviewGUI.__new__(CoTCodeReviewGUI)
-        gui.thread = None
+        gui.request_thread = None
         event = MagicMock()
 
         CoTCodeReviewGUI.closeEvent(gui, event)
@@ -60,7 +60,7 @@ class TestCoTCloseEvent:
         gui = CoTCodeReviewGUI.__new__(CoTCodeReviewGUI)
         thread = MagicMock()
         thread.isRunning.return_value = False
-        gui.thread = thread
+        gui.request_thread = thread
         event = MagicMock()
 
         CoTCodeReviewGUI.closeEvent(gui, event)
@@ -78,7 +78,7 @@ class TestSkillsCloseEvent:
 
         gui = SkillsSendGUI.__new__(SkillsSendGUI)
         thread = _running_thread()
-        gui.thread = thread
+        gui.request_thread = thread
         event = MagicMock()
 
         SkillsSendGUI.closeEvent(gui, event)
@@ -115,7 +115,7 @@ class TestSkillsCloseEvent:
 
     def test_no_thread_just_accepts(self):
         gui = SkillsSendGUI.__new__(SkillsSendGUI)
-        gui.thread = None
+        gui.request_thread = None
         event = MagicMock()
 
         SkillsSendGUI.closeEvent(gui, event)
@@ -138,4 +138,45 @@ class TestCoTWithoutAUrl:
         gui.start_sending()
 
         assert shown == [("警告", "請先輸入 API URL！")]
+        gui.deleteLater()
+
+
+class TestCoTLabels:
+    @pytest.mark.parametrize("language", ["English", "Traditional_Chinese"])
+    def test_the_box_for_the_code_is_labelled_as_the_code(self, qapp, monkeypatch, language):
+        # It read "Prompt Area": the prompts are the templates; this box holds
+        # the code each of them quotes
+        from pybreeze.extend_multi_language.extend_english import pybreeze_english_word_dict
+        from pybreeze.extend_multi_language.extend_traditional_chinese import (
+            pybreeze_traditional_chinese_word_dict,
+        )
+        from pybreeze.pybreeze_ui.extend_ai_gui.code_review import cot_code_review_gui as cot_mod
+        from PySide6.QtWidgets import QLabel
+
+        word = {"English": pybreeze_english_word_dict,
+                "Traditional_Chinese": pybreeze_traditional_chinese_word_dict}[language]
+        monkeypatch.setattr(cot_mod.language_wrapper, "language_word_dict", word)
+        gui = CoTCodeReviewGUI()
+
+        labels = [label.text() for label in gui.findChildren(QLabel)]
+
+        assert {"English": "Code to Review", "Traditional_Chinese": "要審查的程式碼"}[language] in labels
+        assert not any("Prompt" in text or "傳送資料" in text for text in labels)
+        gui.deleteLater()
+
+
+class TestCoTWithoutCode:
+    def test_nothing_is_sent_and_the_user_is_told(self, qapp, monkeypatch):
+        # The whole chain, eight requests, ran on an empty box
+        from pybreeze.pybreeze_ui.extend_ai_gui.code_review import cot_code_review_gui as cot_mod
+        shown: list = []
+        monkeypatch.setattr(cot_mod.QMessageBox, "warning", lambda *args: shown.append(args[2]))
+        gui = CoTCodeReviewGUI()
+        gui.url_input.setText("https://llm.example.com/api")
+        gui.code_paste_area.setPlainText("  \n\t\n")
+
+        gui.start_sending()
+
+        assert gui.request_thread is None
+        assert shown == [cot_mod.language_wrapper.language_word_dict.get("cot_gui_error_no_code")]
         gui.deleteLater()

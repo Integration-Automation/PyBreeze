@@ -221,8 +221,8 @@ class TestTestPioneerRun:
         calls: list = []
 
         class Recorder:
-            def start_module_process(self, package, arguments, environment=None):
-                calls.append((package, list(arguments), environment))
+            def start_module_process(self, package, arguments, environment=None, subject=""):
+                calls.append((package, list(arguments), environment, subject))
 
         monkeypatch.setattr(
             test_pioneer_process_manager, "build_task_process",
@@ -231,7 +231,8 @@ class TestTestPioneerRun:
         test_pioneer_process_manager.init_and_start_test_pioneer_process(
             MainWindow(), "C:/tests/run.yml")
 
-        assert calls == [("test_pioneer", ["-e", "C:/tests/run.yml"], None)]
+        # The run window is titled with the file's name
+        assert calls == [("test_pioneer", ["-e", "C:/tests/run.yml"], None, "run.yml")]
 
     def test_no_interpreter_is_reported_not_raised(self, qt_app, monkeypatch):
         from je_editor import JEditorExecException
@@ -623,3 +624,49 @@ def test_stop_ends_what_the_run_started_too(qt_app, tmp_path):
     finally:
         _stop_grandchild(run_window.code_result.toPlainText())
 
+
+
+class TestTextInAnyLanguage:
+    """A folder and output in Chinese, and a character outside the BMP, reach the run window intact."""
+
+    _TEXT = "你好，世界 🙂 naïve"
+
+    def test_a_package_run(self, qt_app, tmp_path):
+        from pybreeze.extend.process_executor.process_executor_utils import build_task_process
+
+        folder = tmp_path / "中文資料夾"
+        folder.mkdir()
+        data = folder / "資料.json"
+        data.write_text(json.dumps({"問候": self._TEXT}, ensure_ascii=False), encoding="utf-8")
+        process = build_task_process(MainWindow(sys.executable))
+
+        process.start_module_process("json.tool", ["--no-ensure-ascii", str(data)])
+        _run_events_until(qt_app, lambda: process.process is None)
+
+        text = process.main_window.code_result.toPlainText()
+        assert f'"問候": "{self._TEXT}"' in text
+        assert text.endswith("Task exit with code 0\n")
+
+    def test_a_run_with_run(self, qt_app, tmp_path):
+        from pybreeze.extend.process_executor.file_runner_process import FileRunnerProcess
+        from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
+
+        folder = tmp_path / "中文資料夾"
+        folder.mkdir()
+        script = folder / "腳本.py"
+        script.write_text(
+            "import sys\n"
+            f"print({self._TEXT!r})\n"
+            f"print('錯誤：' + {self._TEXT!r}, file=sys.stderr)\n",
+            encoding="utf-8",
+        )
+        window = CodeWindow()
+        runner = FileRunnerProcess(window)
+
+        runner.run_file({"name": "Python", "compiler": sys.executable}, str(script))
+        _run_events_until(qt_app, lambda: runner.process is None)
+
+        text = window.code_result.toPlainText()
+        assert f"{self._TEXT}\n" in text
+        assert f"錯誤：{self._TEXT}\n" in text
+        assert text.endswith("[Process exited with code 0]\n")

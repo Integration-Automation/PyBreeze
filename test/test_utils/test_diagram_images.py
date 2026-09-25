@@ -50,7 +50,7 @@ def an_image() -> bytes:
     return bytes(data.data())
 
 
-@pytest.fixture()
+@pytest.fixture
 def downloads(monkeypatch) -> list:
     """Record every fetch, and answer each with a real image."""
     asked: list = []
@@ -161,7 +161,7 @@ def _wait_until(app, condition) -> None:
         time.sleep(0.01)
 
 
-@pytest.fixture()
+@pytest.fixture
 def slow_host(monkeypatch) -> threading.Event:
     """A host that answers with an image once the returned event is set."""
     answering = threading.Event()
@@ -353,3 +353,31 @@ def test_an_image_resized_down_and_back_is_as_sharp_as_before(app):
     item.set_size(400, 400)
 
     assert item._pix_item.pixmap().toImage() == before
+
+
+class TestAnImageOnThisMachine:
+    """A saved diagram is untrusted: only an image file here, of a kind it may name, is read."""
+
+    @staticmethod
+    def _loaded(app, source: str, downloads: list) -> bool:
+        scene = DiagramScene()
+        scene.load_from_dict({"nodes": [], "connections": [],
+                              "images": [{"x": 0, "y": 0, "w": 4, "h": 4, "source": source}]})
+        app.processEvents()
+        loaded = not scene.get_all_images()[0]._pix_item.pixmap().isNull()
+        assert downloads == []  # a path is never fetched
+        return loaded
+
+    def test_an_image_file_is_shown(self, app, tmp_path, downloads):
+        picture = tmp_path / "logo.png"
+        picture.write_bytes(an_image())
+        assert self._loaded(app, str(picture), downloads)
+
+    def test_a_file_of_another_kind_is_not_read(self, app, tmp_path, downloads):
+        # A PNG it is, but named .txt: the extension is checked before the file is touched
+        disguised = tmp_path / "notes.txt"
+        disguised.write_bytes(an_image())
+        assert not self._loaded(app, str(disguised), downloads)
+
+    def test_a_file_that_is_not_there_is_left_empty(self, app, tmp_path, downloads):
+        assert not self._loaded(app, str(tmp_path / "gone.png"), downloads)

@@ -44,7 +44,7 @@ class FakeServer:
         return self.returncode
 
 
-@pytest.fixture()
+@pytest.fixture
 def launched(monkeypatch) -> list:
     """Start the launcher's run() against a fake server and collect what it started."""
     started: list = []
@@ -54,7 +54,7 @@ def launched(monkeypatch) -> list:
         started.append(server)
         return server
 
-    monkeypatch.setattr(jupyter_lab_thread, "get_venv_python", lambda: "python")
+    monkeypatch.setattr(jupyter_lab_thread, "default_interpreter", lambda: "python")
     monkeypatch.setattr(jupyter_lab_thread, "is_jupyter_installed", lambda _python: True)
     monkeypatch.setattr(jupyter_lab_thread.subprocess, "Popen", popen)
     monkeypatch.setattr(
@@ -73,6 +73,19 @@ class TestHowTheServerIsStarted:
         # With no token, a wildcard origin would let any page the user visits
         # drive this server's API and kernel sockets.
         assert not [arg for arg in argv if arg.startswith("--ServerApp.allow_origin")]
+        thread.stop()
+
+    def test_it_runs_without_what_the_ide_set_for_itself(self, app, launched, monkeypatch):
+        # The IDE keeps locust from patching it with gevent; a notebook's kernel
+        # running a load test needs the patching
+        from pybreeze.utils.subprocess_util import IDE_ONLY
+
+        monkeypatch.setenv("LOCUST_SKIP_MONKEY_PATCH", IDE_ONLY)
+        thread = jupyter_lab_thread.JupyterLauncherThread()
+
+        thread.run()
+
+        assert "LOCUST_SKIP_MONKEY_PATCH" not in launched[0].options["env"]
         thread.stop()
 
     def test_its_output_goes_to_a_file_not_a_pipe_nobody_reads(self, app, launched):
@@ -144,7 +157,7 @@ class TestClosingTheTab:
 
         tab.close()
 
-        assert tab.thread.stopped
+        assert tab.launcher.stopped
 
 
 _CLOSE_WITH_A_TOOL_TAB_AND_DOCK = """
@@ -203,7 +216,7 @@ class TestStoppingBeforeTheServerStarts:
         monkeypatch.setattr(
             jupyter_lab_thread.JupyterLauncherThread, "run", lambda self: installing.wait(5))
         tab = jupyter_lab_widget.JupyterLabWidget()
-        launcher = tab.thread
+        launcher = tab.launcher
 
         tab.close()  # returns with the install still going
 

@@ -1,4 +1,4 @@
-"""Closing a tab or the IDE asks before unsaved prompt or diagram edits are lost.
+"""Closing a tab or the IDE, or opening another diagram, asks before unsaved edits are lost.
 
 JEditor's close_tab asked about its own editor tabs only and closed every other
 tab whatever it said, so a prompt or a diagram being edited was lost unasked.
@@ -22,7 +22,7 @@ def app():
     return instance
 
 
-@pytest.fixture()
+@pytest.fixture
 def answers(monkeypatch):
     """Answer every question with ``answers["reply"]`` and count them."""
     state = {"reply": QMessageBox.StandardButton.No, "asked": 0}
@@ -65,6 +65,59 @@ class TestTheDiagramEditor:
 
         assert editor.may_close() is True
         assert answers["asked"] == 0
+
+    @staticmethod
+    def _offer(monkeypatch, path):
+        from pybreeze.pybreeze_ui.diagram_editor import diagram_editor_widget
+
+        chosen: list = []
+
+        def dialog(*_args, **_kwargs):
+            chosen.append(path)
+            return str(path), ""
+
+        monkeypatch.setattr(diagram_editor_widget.QFileDialog, "getOpenFileName", staticmethod(dialog))
+        return chosen
+
+    def test_opening_another_diagram_asks_before_unsaved_changes_go(self, app, answers, tmp_path, monkeypatch):
+        # Open replaced the canvas and cleared the undo history: the edits were
+        # gone without a word and could not be undone.
+        other = tmp_path / "other.diagram.json"
+        self._editor()._write_json(other)
+        editor = self._editor()
+        editor._current_path = tmp_path / "work.diagram.json"
+        chosen = self._offer(monkeypatch, other)
+
+        editor._open_diagram()
+
+        assert answers["asked"] == 1
+        assert chosen == [], "the file dialog opened after No"
+        assert editor._current_path == tmp_path / "work.diagram.json"
+        assert not editor._scene.undo_stack.isClean(), "the edits were dropped"
+
+    def test_yes_lets_the_other_diagram_open(self, app, answers, tmp_path, monkeypatch):
+        other = tmp_path / "other.diagram.json"
+        self._editor()._write_json(other)
+        editor = self._editor()
+        answers["reply"] = QMessageBox.StandardButton.Yes
+        self._offer(monkeypatch, other)
+
+        editor._open_diagram()
+
+        assert answers["asked"] == 1
+        assert editor._current_path == other
+
+    def test_a_diagram_with_nothing_unsaved_opens_another_unasked(self, app, answers, tmp_path, monkeypatch):
+        other = tmp_path / "other.diagram.json"
+        self._editor()._write_json(other)
+        editor = self._editor()
+        editor._write_json(tmp_path / "saved.diagram.json")
+        self._offer(monkeypatch, other)
+
+        editor._open_diagram()
+
+        assert answers["asked"] == 0
+        assert editor._current_path == other
 
 
 class TestThePromptEditor:

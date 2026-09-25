@@ -25,7 +25,7 @@ def app():
     return instance
 
 
-@pytest.fixture()
+@pytest.fixture
 def chinese(monkeypatch):
     monkeypatch.setattr(error_text_mod.language_wrapper, "language_word_dict", CHINESE)
 

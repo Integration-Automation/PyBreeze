@@ -7,14 +7,21 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import paramiko
 import pytest
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
+from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
 from pybreeze.extend_multi_language.update_language_dict import update_language_dict
+from pybreeze.pybreeze_ui.connect_gui.ssh import ssh_command_widget
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_command_widget import (
+    CommandHistory,
     SSHCommandWidget,
     SSHReaderThread,
     TerminalDecoder,
 )
+from pybreeze.pybreeze_ui.terminal_view import terminal_size
+from pybreeze.utils.terminal_style import PLAIN
 
 
 @pytest.fixture(scope="module")
@@ -24,20 +31,25 @@ def app():
     return instance
 
 
+def _text(output) -> str:
+    """What the decoder's output shows, its styles left out."""
+    return "".join(text for _style, text in output.pieces)
+
+
 class TestTerminalDecoder:
     @pytest.mark.parametrize("cut", range(1, 6))
     def test_a_character_cut_between_reads_is_joined(self, cut):
         data = "中文".encode("utf-8")  # six bytes, two characters
         decoder = TerminalDecoder()
 
-        assert decoder.feed(data[:cut]) + decoder.feed(data[cut:]) == "中文"
+        assert _text(decoder.feed(data[:cut])) + _text(decoder.feed(data[cut:])) == "中文"
 
     @pytest.mark.parametrize("cut", range(1, 5))
     def test_an_escape_cut_between_reads_is_still_removed(self, cut):
         data = b"\x1b[31mred"
         decoder = TerminalDecoder()
 
-        assert decoder.feed(data[:cut]) + decoder.feed(data[cut:]) == "red"
+        assert _text(decoder.feed(data[:cut])) + _text(decoder.feed(data[cut:])) == "red"
 
     @pytest.mark.parametrize("data", [b"\x1b(Bok", b"\x1b]0;title\x1b\\ok", b"\x1bP1$r0m\x1b\\ok"])
     def test_a_character_set_or_string_escape_cut_anywhere_is_removed(self, data):
@@ -45,13 +57,13 @@ class TestTerminalDecoder:
         for cut in range(1, len(data) - 2):
             decoder = TerminalDecoder()
 
-            assert decoder.feed(data[:cut]) + decoder.feed(data[cut:]) == "ok", cut
+            assert _text(decoder.feed(data[:cut])) + _text(decoder.feed(data[cut:])) == "ok", cut
 
     def test_text_before_an_unfinished_escape_is_shown_now(self):
         decoder = TerminalDecoder()
 
-        assert decoder.feed(b"ready \x1b[") == "ready "
-        assert decoder.feed(b"0mgo") == "go"
+        assert _text(decoder.feed(b"ready \x1b[")) == "ready "
+        assert _text(decoder.feed(b"0mgo")) == "go"
 
     def test_a_very_long_unterminated_sequence_is_not_held_forever(self):
         decoder = TerminalDecoder()
@@ -68,7 +80,7 @@ class TestTerminalDecoder:
 
         decoder.reset()
 
-        assert decoder.feed(b"plain") == "plain"
+        assert _text(decoder.feed(b"plain")) == "plain"
 
 
 class TestTheTerminal:
@@ -103,6 +115,24 @@ class TestTheTerminal:
             widget._on_data(chunk)
 
         assert widget.terminal.toPlainText() == "line1\nline2\n"
+        widget.close()
+
+    def test_a_progress_bar_redraws_its_line(self, app):
+        # Each "\r" was a line break: one line per step of pip's or wget's bar
+        widget = self._widget()
+
+        for chunk in (b"start\r\n", b" 10%\r", b" 20%\r", b"100%\r\n", b"done\r\n"):
+            widget._on_data(chunk)
+
+        assert widget.terminal.toPlainText() == "start\n100%\ndone\n"
+        widget.close()
+
+    def test_a_rewind_and_its_text_in_one_read_redraw_the_line(self, app):
+        widget = self._widget()
+
+        widget._on_data(b"a 10%\r a 20%\r\x1b[Ka100%\r\ndone\r\n")
+
+        assert widget.terminal.toPlainText() == "a100%\ndone\n"
         widget.close()
 
     def test_a_notice_starts_on_a_line_of_its_own(self, app):
@@ -194,6 +224,98 @@ class TestSendingACommand:
         widget.shell_channel = None
         widget.close()
 
+    def test_an_empty_line_sends_enter(self, app):
+        # It sent nothing, so a prompt's default ("[Y/n]", "Press Enter to
+        # continue") could not be taken
+        widget = SSHCommandWidget()
+        channel = PartialSendChannel()
+        widget.shell_channel = channel
+
+        widget.send_command()
+
+        assert channel.sent == [b"\n"]
+        widget.shell_channel = None
+        widget.close()
+
+    def test_interrupt_sends_ctrl_c_and_keeps_the_line(self, app):
+        # A ping or tail -f could only be stopped by disconnecting
+        widget = SSHCommandWidget()
+        channel = PartialSendChannel()
+        widget.shell_channel = channel
+        widget.command_input_edit.setText("half typed")
+
+        widget.interrupt_button.click()
+
+        assert channel.sent == [b"\x03"]
+        assert widget.command_input_edit.text() == "half typed"
+        widget.shell_channel = None
+        widget.close()
+
+    def test_ctrl_c_in_the_command_line_interrupts(self, app):
+        widget = SSHCommandWidget()
+        channel = PartialSendChannel()
+        widget.shell_channel = channel
+        widget.command_input_edit.setText("ping example.com")
+
+        QTest.keyClick(widget.command_input_edit, Qt.Key.Key_C, Qt.KeyboardModifier.ControlModifier)
+
+        assert channel.sent == [b"\x03"]
+        widget.shell_channel = None
+        widget.close()
+
+    def test_ctrl_c_on_a_selection_copies_it(self, app):
+        widget = SSHCommandWidget()
+        channel = PartialSendChannel()
+        widget.shell_channel = channel
+        widget.command_input_edit.setText("copy me")
+        widget.command_input_edit.selectAll()
+
+        QTest.keyClick(widget.command_input_edit, Qt.Key.Key_C, Qt.KeyboardModifier.ControlModifier)
+
+        assert channel.sent == []
+        assert QApplication.clipboard().text() == "copy me"
+        widget.shell_channel = None
+        widget.close()
+
+    def test_up_and_down_bring_back_what_was_sent(self, app):
+        widget = SSHCommandWidget()
+        widget.shell_channel = PartialSendChannel()
+        line = widget.command_input_edit
+        for command in ("ls", "pwd"):
+            line.setText(command)
+            widget.send_command()
+        line.setText("half")
+
+        QTest.keyClick(line, Qt.Key.Key_Up)
+        assert line.text() == "pwd"
+        QTest.keyClick(line, Qt.Key.Key_Up)
+        assert line.text() == "ls"
+        QTest.keyClick(line, Qt.Key.Key_Down)
+        QTest.keyClick(line, Qt.Key.Key_Down)
+        assert line.text() == "half"
+        widget.shell_channel = None
+        widget.close()
+
+    def test_interrupt_without_a_session_does_nothing(self, app, monkeypatch):
+        widget = SSHCommandWidget()
+        asked: list = []
+        monkeypatch.setattr(ssh_command_widget.QMessageBox, "information", lambda *args: asked.append(args))
+
+        widget.interrupt_button.click()
+
+        assert asked == []
+        widget.close()
+
+    def test_an_empty_line_without_a_session_asks_nothing(self, app, monkeypatch):
+        widget = SSHCommandWidget()
+        asked: list = []
+        monkeypatch.setattr(ssh_command_widget.QMessageBox, "information", lambda *args: asked.append(args))
+
+        widget.send_command()
+
+        assert asked == []
+        widget.close()
+
 
 class _IdleReader:
     """A reader that is never started: the connect message is all that is looked at."""
@@ -221,9 +343,203 @@ class TestTheConnectMessage:
         widget = SSHCommandWidget()
         widget.word_dict = word
 
-        widget._start_shell(object(), host, 22, "alice")
+        widget._start_shell(ResizableChannel(), host, 22, "alice")
 
         assert widget.terminal.toPlainText().endswith(f"已以 alice 身分連線至 {shown}\n")
         assert widget.login_widget.status_label.text() == "已連線"
         widget.shell_channel = widget.reader_thread = None
+        widget.close()
+
+
+class TestCommandHistory:
+    def _history(self, *lines: str) -> CommandHistory:
+        history = CommandHistory(limit=3)
+        for line in lines:
+            history.add(line)
+        return history
+
+    def test_up_goes_back_and_stops_at_the_oldest(self):
+        history = self._history("a", "b")
+
+        assert history.older("") == "b"
+        assert history.older("") == "a"
+        assert history.older("") is None
+
+    def test_down_past_the_newest_gives_back_what_was_typed(self):
+        history = self._history("a", "b")
+        history.older("typing")
+
+        assert history.newer() == "typing"
+        assert history.newer() is None
+
+    def test_nothing_sent_leaves_nothing_to_walk(self):
+        history = self._history()
+
+        assert history.older("x") is None
+        assert history.newer() is None
+
+    def test_empty_lines_and_a_repeat_are_not_remembered(self):
+        history = self._history("a", "", "a")
+
+        assert history.older("") == "a"
+        assert history.older("") is None
+
+    def test_only_the_newest_lines_are_kept(self):
+        history = self._history("1", "2", "3", "4")
+
+        assert [history.older(""), history.older(""), history.older(""), history.older("")] == ["4", "3", "2", None]
+
+    def test_sending_goes_back_to_a_new_line(self):
+        history = self._history("a", "b")
+        history.older("")
+        history.older("")
+
+        history.add("a")  # sent again from the history
+
+        assert history.older("") == "a"
+        assert history.older("") == "b"
+
+
+class ResizableChannel:
+    """Records the pty sizes it is given."""
+
+    closed = False
+
+    def __init__(self, error: Exception | None = None) -> None:
+        self.sizes: list[tuple[int, int]] = []
+        self.error = error
+
+    def resize_pty(self, width: int, height: int) -> None:
+        if self.error is not None:
+            raise self.error
+        self.sizes.append((width, height))
+
+
+class TestThePtySize:
+    @staticmethod
+    def _shown(app, channel) -> SSHCommandWidget:
+        widget = SSHCommandWidget()
+        widget.resize(900, 600)
+        widget.show()
+        QApplication.processEvents()
+        widget.shell_channel = channel
+        return widget
+
+    @staticmethod
+    def _resize(widget: SSHCommandWidget, width: int) -> None:
+        widget.resize(width, 600)
+        QApplication.processEvents()
+
+    def test_the_pty_follows_the_view(self, app):
+        # It stayed at 120 columns whatever the view's width
+        channel = ResizableChannel()
+        widget = self._shown(app, channel)
+
+        self._resize(widget, 500)
+
+        assert channel.sizes[-1] == terminal_size(widget.terminal)
+        assert channel.sizes[-1][0] < 120 - 40
+        widget.shell_channel = None
+        widget.close()
+
+    def test_a_resize_within_a_column_sends_nothing(self, app):
+        channel = ResizableChannel()
+        widget = self._shown(app, channel)
+        self._resize(widget, 500)
+        sent = len(channel.sizes)
+
+        self._resize(widget, 501)
+
+        assert len(channel.sizes) == sent
+        widget.shell_channel = None
+        widget.close()
+
+    def test_without_a_session_nothing_is_sent(self, app):
+        widget = self._shown(app, None)
+
+        self._resize(widget, 500)  # no channel to give it to: nothing raised
+
+        widget.close()
+
+    def test_a_resize_the_server_refuses_is_not_raised(self, app):
+        widget = self._shown(app, ResizableChannel(OSError("link down")))
+
+        self._resize(widget, 500)
+
+        assert widget._pty_size != terminal_size(widget.terminal)  # tried again next time
+        widget.shell_channel = None
+        widget.close()
+
+    def test_the_shell_opens_at_the_view_size(self, app):
+        options = {}
+
+        class Client:
+            @staticmethod
+            def get_transport():
+                return None
+
+            @staticmethod
+            def invoke_shell(**given):
+                options.update(given)
+                return paramiko.Channel(0)
+
+        ssh_command_widget.open_shell_channel(Client(), (77, 21))
+
+        assert (options["width"], options["height"]) == (77, 21)
+
+
+def _colour_at(widget: SSHCommandWidget, position: int):
+    cursor = widget.terminal.textCursor()
+    cursor.setPosition(position + 1)  # the format of the character before the cursor
+    return cursor.charFormat().foreground().color()
+
+
+class TestColours:
+    def test_output_shows_the_colours_it_asks_for(self, app):
+        # They were removed: ls --color, git and grep came out all one colour
+        widget = SSHCommandWidget()
+
+        widget._on_data(b"\x1b[31mred\x1b[0m plain")
+
+        assert widget.terminal.toPlainText() == "red plain"
+        assert _colour_at(widget, 0) == QColor(205, 49, 49)
+        assert _colour_at(widget, 4) != QColor(205, 49, 49)
+        widget.close()
+
+    def test_a_colour_carries_over_to_the_next_read(self, app):
+        widget = SSHCommandWidget()
+
+        widget._on_data(b"\x1b[31mr")
+        widget._on_data(b"ed")
+
+        assert _colour_at(widget, 2) == QColor(205, 49, 49)  # the same on any background
+        widget.close()
+
+    def test_a_new_session_starts_without_the_last_one_colour(self, app):
+        decoder = TerminalDecoder()
+        decoder.feed(b"\x1b[31m")
+
+        decoder.reset()
+
+        assert decoder.feed(b"plain").pieces == [(PLAIN, "plain")]
+
+    @pytest.mark.parametrize("chunks", [
+        [b"50%\r\x1b[32m60%"],
+        [b"50%\r\x1b[32m", b"60%"],
+    ])
+    def test_a_bar_that_changes_colour_still_redraws_its_line(self, app, chunks):
+        widget = SSHCommandWidget()
+
+        for chunk in chunks:
+            widget._on_data(chunk)
+
+        assert widget.terminal.toPlainText() == "60%"
+        widget.close()
+
+    def test_a_line_ending_around_a_colour_reset_is_one_line_break(self, app):
+        widget = SSHCommandWidget()
+
+        widget._on_data(b"a\r\x1b[0m\nb")
+
+        assert widget.terminal.toPlainText() == "a\nb"
         widget.close()

@@ -43,3 +43,7 @@ content-type = "text/markdown"
 
 [tool.setuptools.packages]
 find = { namespaces = false }
+
+# The main window's icon, loaded from beside main_ui.py
+[tool.setuptools.package-data]
+"pybreeze.pybreeze_ui.editor_main" = ["pybreeze_icon.ico"]

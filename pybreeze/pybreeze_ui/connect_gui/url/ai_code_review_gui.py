@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.run_shortcut import press_on_ctrl_enter
 from pybreeze.pybreeze_ui.thread_keeper import let_run_out
 from pybreeze.utils.app_dirs import pybreeze_data_dir
 from pybreeze.utils.file_process.replace_file import replace_text
@@ -26,6 +27,7 @@ from pybreeze.utils.network.http_client import (
 from pybreeze.utils.network.public_http import overall_deadline, public_session
 from pybreeze.utils.network.url_validation import UnsafeURLError, validate_url
 from pybreeze.pybreeze_ui.exact_text import exact_text
+from pybreeze.pybreeze_ui.fixed_pitch import use_fixed_pitch_font
 
 
 # What the "seen this URL before" file keeps. An API URL can carry a token in
@@ -49,6 +51,8 @@ def looks_like_a_fingerprint(line: str) -> bool:
 SUPPORTED_METHODS = ("GET", "POST", "PUT", "DELETE")
 # The methods that carry the code in a body / 會把程式碼放進 body 的方法
 METHODS_WITH_A_BODY = ("POST", "PUT")
+# What a new panel sends with: GET carries no body, so the code went nowhere
+DEFAULT_METHOD = "POST"
 # A saved count longer than this is not a count this panel wrote
 _MAX_COUNT_DIGITS = 16
 
@@ -165,6 +169,7 @@ class AICodeReviewClient(QWidget):
         self.send_button = QPushButton(
             self.word_dict.get("ai_code_review_gui_button_send_request"))
         self.send_button.clicked.connect(self.send_request)
+        press_on_ctrl_enter(self, self.send_button)
         main_layout.addWidget(self.send_button)
         main_layout.addLayout(self._build_verdict_buttons())
         self.setLayout(main_layout)
@@ -187,6 +192,7 @@ class AICodeReviewClient(QWidget):
         method_layout.addWidget(QLabel(self.word_dict.get("ai_code_review_gui_label_method")))
         self.method_box = QComboBox()
         self.method_box.addItems(list(SUPPORTED_METHODS))
+        self.method_box.setCurrentText(DEFAULT_METHOD)
         method_layout.addWidget(self.method_box)
         top_layout.addLayout(method_layout)
         return top_layout
@@ -200,6 +206,7 @@ class AICodeReviewClient(QWidget):
         left_layout.addWidget(QLabel(
             self.word_dict.get("ai_code_review_gui_label_code_to_send")))
         self.code_input = QTextEdit()
+        use_fixed_pitch_font(self.code_input)
         self.code_input.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         left_layout.addWidget(self.code_input)
 
@@ -243,7 +250,8 @@ class AICodeReviewClient(QWidget):
             return
         url = self.url_input.text().strip()
         method = self.method_box.currentText()
-        code_content = exact_text(self.code_input).strip()
+        # As pasted: stripped, the first line of a selection lost its indent
+        code_content = exact_text(self.code_input)
 
         if not url:
             self.response_panel.setPlainText(
@@ -252,6 +260,9 @@ class AICodeReviewClient(QWidget):
         if method not in SUPPORTED_METHODS:
             self.response_panel.setPlainText(
                 self.word_dict.get("ai_code_review_gui_message_unsupported_http_method"))
+            return
+        if method in METHODS_WITH_A_BODY and not code_content.strip():
+            self.response_panel.setPlainText(self.word_dict.get("ai_code_review_gui_message_paste_code"))
             return
 
         # 這個 URL 之前送過嗎 / Has this URL been sent before?

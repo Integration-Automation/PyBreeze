@@ -18,7 +18,7 @@ def app():
     return instance
 
 
-@pytest.fixture()
+@pytest.fixture
 def widget(app):
     from pybreeze.pybreeze_ui.tools_gui.diff_gui import DiffGUI
     gui = DiffGUI()
@@ -68,7 +68,7 @@ class TestDiffGUI:
         widget.left_edit.setPlainText("a")
         widget.right_edit.setPlainText("b")
         _compare(widget)
-        widget.actions.copy()
+        widget.output_actions.copy()
         assert QApplication.clipboard().text() != ""
 
     def test_build_summary_line_identical(self, app):
@@ -114,3 +114,40 @@ class TestALargeComparison:
         release.set()
         _compare(widget, start=False)
         assert "+b" in widget.output_edit.toPlainText()
+
+
+class TestTheColours:
+    @pytest.mark.parametrize(("line", "number", "key"), [
+        ("--- expected", 0, None),
+        ("+++ actual", 1, None),
+        ("@@ -1,2 +1,2 @@", 2, "syntax_keyword_color"),
+        ("+added", 5, "diff_added_marker_color"),
+        ("-removed", 5, "diff_removed_marker_color"),
+        ("---x", 7, "diff_removed_marker_color"),  # a removed "--x", not a header
+        ("+++x", 7, "diff_added_marker_color"),
+        (" unchanged", 5, None),
+        ("\\ No newline at end of file", 6, "blame_annotation_color"),
+        ("", 5, None),
+    ])
+    def test_each_kind_of_line_has_its_theme_colour(self, line, number, key):
+        from pybreeze.pybreeze_ui.tools_gui.diff_gui import diff_line_colour
+
+        assert diff_line_colour(line, number) == key
+
+    def test_the_diff_is_shown_in_colour(self, widget):
+        # It was all one colour: added and removed lines had to be read by their sign
+        from je_editor.pyside_ui.main_ui.save_settings.user_color_setting_file import actually_color_dict
+
+        widget.left_edit.setPlainText("a\nb")
+        widget.right_edit.setPlainText("a\nc")
+        _compare(widget)
+
+        colours = {}
+        block = widget.output_edit.document().begin()
+        while block.isValid():
+            ranges = block.layout().formats()
+            colours[block.text()] = ranges[0].format.foreground().color() if ranges else None
+            block = block.next()
+        assert colours["-b"] == actually_color_dict["diff_removed_marker_color"]
+        assert colours["+c"] == actually_color_dict["diff_added_marker_color"]
+        assert colours[" a"] is None

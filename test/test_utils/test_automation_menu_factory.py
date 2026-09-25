@@ -96,7 +96,7 @@ def test_project_and_gui_actions_survive_and_answer(window):
         "run_label",
         create_project=lambda: created.append(True),
         create_project_label_key="project_label",
-        gui_widget_class=QWidget, gui_label="GUI",
+        gui_widget_factory=QWidget, gui_label="GUI",
     ))
     gc.collect()
 
@@ -124,3 +124,35 @@ def test_every_create_project_names_a_package_that_exists():
 
     assert names, "no create-project entries found"
     assert [name for name in names if importlib.util.find_spec(name) is None] == []
+
+
+@pytest.mark.parametrize("menu_module, set_menu, gui_module, class_name, label", [
+    ("load_density_menu.build_load_density_menu", "set_load_density_menu",
+     "je_load_density.gui.main_widget", "LoadDensityWidget", "LoadDensity GUI"),
+    ("api_testka_menu.build_api_testka_menu", "set_apitestka_menu",
+     "je_api_testka.gui.main_widget", "APITestkaWidget", "APITestka GUI"),
+])
+def test_a_gui_entry_imports_the_packages_gui_when_chosen(
+        window, monkeypatch, menu_module, set_menu, gui_module, class_name, label):
+    # A stand-in module, so the package is never imported here: Load Density's
+    # brings locust, which patches the whole process with gevent as it imports
+    import importlib
+    import sys
+    import types
+
+    class PackageGUI(QWidget):
+        """Stands in for the package's own GUI."""
+
+    stand_in = types.ModuleType(gui_module)
+    setattr(stand_in, class_name, PackageGUI)
+    monkeypatch.setitem(sys.modules, gui_module, stand_in)
+    module = importlib.import_module(f"pybreeze.pybreeze_ui.menu.automation_menu.{menu_module}")
+    getattr(module, set_menu)(window)
+    gc.collect()
+
+    package_menus = window.automation_menu.actions()
+    (gui_action,) = [action for action in package_menus[0].menu().actions() if action.text() == label]
+    gui_action.trigger()
+
+    assert isinstance(window.tab_widget.widget(0), PackageGUI)
+    assert window.tab_widget.tabText(0) == label

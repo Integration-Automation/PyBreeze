@@ -22,10 +22,11 @@ def build_result_text(result: TimestampResult) -> str:
     :return: display text listing every representation
     """
     word = language_wrapper.language_word_dict
+    line = word.get("timestamp_result_line")
     return "\n".join([
-        f"{word.get('timestamp_epoch_seconds_label')}: {result.epoch_seconds}",
-        f"{word.get('timestamp_epoch_millis_label')}: {result.epoch_millis}",
-        f"{word.get('timestamp_iso_label')}: {result.iso_utc}",
+        line.format(label=word.get("timestamp_epoch_seconds_label"), value=result.epoch_seconds),
+        line.format(label=word.get("timestamp_epoch_millis_label"), value=result.epoch_millis),
+        line.format(label=word.get("timestamp_iso_label"), value=result.iso_utc),
     ])
 
 
@@ -52,7 +53,7 @@ class TimestampGUI(QWidget):
         self.output_edit = QTextEdit()
         self.output_edit.setReadOnly(True)
 
-        self.actions = OutputActions(
+        self.output_actions = OutputActions(
             self, self.output_edit, main_window=main_window,
             basename="timestamp", extension="txt", is_valid=lambda: self._valid_output)
 
@@ -62,7 +63,7 @@ class TimestampGUI(QWidget):
             self.output_label, self.output_edit,
         ):
             layout.addWidget(widget)
-        layout.addLayout(self.actions.button_row())
+        layout.addLayout(self.output_actions.button_row())
         self.setLayout(layout)
 
     def convert(self) -> None:

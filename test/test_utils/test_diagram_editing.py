@@ -295,3 +295,64 @@ class TestZooming:
         assert view.transform().m11() < 8
         assert diagram_view._MAX_SCALE < 8
 
+
+
+class TestANewNodesText:
+    """A node the Rectangle or Text tool adds said "Node" or "Text" whatever the IDE spoke."""
+
+    @pytest.mark.parametrize(("add", "expected"), [("shape", "節點"), ("text", "文字")])
+    def test_is_in_the_ide_language(self, app, monkeypatch, add, expected):
+        from pybreeze.extend_multi_language.extend_traditional_chinese import (
+            pybreeze_traditional_chinese_word_dict,
+        )
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_items import NodeShape
+
+        monkeypatch.setattr(scene_module.language_wrapper, "language_word_dict", pybreeze_traditional_chinese_word_dict)
+        scene = DiagramScene()
+        if add == "shape":
+            scene._add_shape_node(QPointF(0, 0), NodeShape.RECTANGLE)
+        else:
+            scene._add_text_node(QPointF(0, 0))
+
+        (node,) = [item for item in scene.items() if isinstance(item, DiagramNode)]
+        assert node.text() == expected
+
+
+class TestResizeFromAHandle:
+    """Where a handle drag leaves a node or an image: the size follows the handle's
+    sides, a left or top handle moves the item too, and each keeps a minimum size
+    (a node 40 x 20, an image 40 x 40) with its far side where it was."""
+
+    @pytest.mark.parametrize("role,dx,dy,expected", [
+        ("r", 60, 0, (10, 10, 200, 60)),
+        ("b", 0, 30, (10, 10, 140, 90)),
+        ("l", 20, 0, (30, 10, 120, 60)),
+        ("t", 0, 20, (10, 30, 140, 40)),
+        ("br", 10, 10, (10, 10, 150, 70)),
+        ("tl", -10, -10, (0, 0, 150, 70)),
+        ("r", -500, 0, (10, 10, 40, 60)),
+        ("l", 500, 0, (110, 10, 40, 60)),
+        ("b", 0, -500, (10, 10, 140, 20)),
+        ("t", 0, 500, (10, 50, 140, 20)),
+    ])
+    def test_a_node(self, app, role, dx, dy, expected):
+        from PySide6.QtCore import QRectF
+
+        node = DiagramNode(x=10, y=10, w=140, h=60, text="A")
+        node._apply_resize(role, QPointF(dx, dy), QRectF(0, 0, 140, 60), QPointF(10, 10))
+
+        assert (node.pos().x(), node.pos().y(), node.node_w, node.node_h) == expected
+
+    @pytest.mark.parametrize("role,dx,dy,expected", [
+        ("r", 60, 0, (10, 10, 200, 60)),
+        ("t", 0, 500, (10, 30, 140, 40)),
+        ("b", 0, -500, (10, 10, 140, 40)),
+        ("l", 500, 0, (110, 10, 40, 60)),
+    ])
+    def test_an_image(self, app, role, dx, dy, expected):
+        from PySide6.QtCore import QRectF
+
+        image = DiagramImage(x=10, y=10, w=140, h=60)
+        image._apply_resize(role, QPointF(dx, dy), QRectF(0, 0, 140, 60), QPointF(10, 10))
+
+        assert (image.pos().x(), image.pos().y(), image.img_w, image.img_h) == expected

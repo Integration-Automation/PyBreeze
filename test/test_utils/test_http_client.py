@@ -188,3 +188,54 @@ class TestHowLongAnAnswerMayTake:
         from pybreeze.utils.network.http_client import describe_request_error
 
         assert "timed out" in describe_request_error(requests.exceptions.ReadTimeout("slow"))
+
+
+class TestWhatTheReadSkipsAndPassesOn:
+    def test_empty_chunks_are_skipped(self):
+        # A chunked or kept-alive stream can hand back an empty chunk between real ones
+        class Gappy(FakeResponse):
+            def iter_content(self, chunk_size: int = 65536):
+                yield from (b"", b"ab", b"", b"c")
+
+        assert read_capped_text(Gappy(b""), max_bytes=10) == "abc"
+
+    def test_an_error_the_watchdog_did_not_cause_is_raised(self):
+        import requests
+
+        class Broken(FakeResponse):
+            def iter_content(self, chunk_size: int = 65536):
+                yield b"ab"
+                raise requests.exceptions.ChunkedEncodingError("connection broken")
+
+        response = Broken(b"")
+        with pytest.raises(requests.exceptions.ChunkedEncodingError):
+            read_capped_text(response, max_bytes=10)
+        assert response.closed
+
+
+class TestTheWatchdog:
+    def test_a_cancelled_watchdog_does_nothing_when_its_time_comes(self):
+        from pybreeze.utils.network.http_client import _Watchdog
+
+        response = FakeResponse(b"")
+        watchdog = _Watchdog(response, 60)
+        watchdog.cancel()
+        watchdog._fire()  # the timer, had it fired late
+
+        assert not watchdog.fired
+        assert not response.closed
+
+    def test_a_connection_that_cannot_be_shut_is_logged_not_raised(self):
+        # On the timer's thread an exception would go nowhere and leave the read waiting
+        from pybreeze.utils.network.http_client import _Watchdog
+
+        def refuse():
+            raise OSError("already closed")
+
+        response = FakeResponse(b"")
+        response.raw = SimpleNamespace(shutdown=refuse)
+        watchdog = _Watchdog(response, 60)
+        watchdog._fire()
+
+        assert watchdog.fired
+        watchdog.cancel()

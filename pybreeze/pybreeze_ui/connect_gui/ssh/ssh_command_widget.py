@@ -3,10 +3,11 @@ from __future__ import annotations
 import codecs
 import os
 import weakref
+from dataclasses import dataclass
 
 import paramiko
-from PySide6.QtCore import QThread, Signal
-from PySide6.QtGui import QTextCursor
+from PySide6.QtCore import QEvent, QThread, Qt, Signal
+from PySide6.QtGui import QTextCharFormat, QTextCursor
 from PySide6.QtWidgets import (
     QWidget, QLineEdit, QPushButton,
     QPlainTextEdit, QHBoxLayout, QVBoxLayout,
@@ -22,10 +23,15 @@ from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_host_key_policy import (
 )
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_key_loader import load_private_key, unloadable_key_reason
 from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_login_widget import LoginWidget
+from pybreeze.pybreeze_ui.fixed_pitch import use_fixed_pitch_font
+from pybreeze.pybreeze_ui.terminal_view import insert_rewinding, style_format, terminal_size
 from pybreeze.pybreeze_ui.thread_keeper import if_alive, let_run_out
 from pybreeze.pybreeze_ui.error_text import error_text
 from pybreeze.utils.logging.logger import pybreeze_logger
-from pybreeze.utils.terminal_text import split_unfinished_end, strip_terminal_controls, take_leading_backspaces
+from pybreeze.utils.terminal_style import PLAIN, TextStyle, split_styled
+from pybreeze.utils.terminal_text import (
+    FULL_RESET, split_at_screen_clear, split_unfinished_end, strip_terminal_controls, take_leading_backspaces,
+)
 
 # What closing a channel or a client can raise on a connection already broken
 CLOSE_ERRORS = (OSError, EOFError, paramiko.SSHException)
@@ -37,27 +43,53 @@ class TerminalDecoder:
     A read ends wherever the channel's buffer did, so it can stop inside a
     multi-byte UTF-8 character or inside an escape sequence. Decoding each read
     on its own showed the character as replacement marks and the escape's tail
-    as text; this carries the unfinished part over to the next read.
+    as text; this carries the unfinished part over to the next read. The
+    colours and emphasis SGR sequences set carry over too.
     """
 
     def __init__(self) -> None:
         self._decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
         self._pending = ""
+        self._style = PLAIN
 
     def reset(self) -> None:
         """Forget anything carried over, for a new session."""
         self._decoder.reset()
         self._pending = ""
+        self._style = PLAIN
 
-    def feed(self, data: bytes) -> str:
-        """Return the text *data* completes, escape sequences removed.
+    def feed(self, data: bytes) -> TerminalOutput:
+        """Return what *data* completes: whether it clears the screen, and the text after.
 
-        Backspaces it starts with are kept, for the view to take back what an
-        earlier read showed; any others are applied here.
+        The text comes in pieces with the style each is shown in. Escape
+        sequences are removed. Backspaces a piece starts with are kept, for the
+        view to take back what it already showed; any others are applied here.
         """
         text, self._pending = split_unfinished_end(self._pending + self._decoder.decode(data))
-        backspaces, text = take_leading_backspaces(text)
-        return "\x08" * backspaces + strip_terminal_controls(text)
+        cleared = split_at_screen_clear(text)
+        if cleared is not None:
+            before, sequence, text = cleared
+            # What it wipes is not shown, but the colours it set carry on,
+            # unless a full reset drops them
+            _, self._style = split_styled(before, self._style)
+            if sequence == FULL_RESET:
+                self._style = PLAIN
+        pieces, self._style = split_styled(text, self._style)
+        return TerminalOutput(cleared is not None, [(style, _shown(piece)) for style, piece in pieces])
+
+
+@dataclass(frozen=True)
+class TerminalOutput:
+    """What one read shows: whether the screen is wiped first (``clear``, ``reset``), then its text."""
+
+    clears_screen: bool
+    pieces: list[tuple[TextStyle, str]]
+
+
+def _shown(text: str) -> str:
+    """*text* as the view shows it, the backspaces it starts with kept."""
+    backspaces, text = take_leading_backspaces(text)
+    return "\x08" * backspaces + strip_terminal_controls(text)
 
 
 # Bound the terminal scrollback so an endless stream (``tail -f``, ``yes``)
@@ -68,6 +100,51 @@ TERMINAL_MAX_BLOCKS = 10000
 # dropped by the TCP stack, a NAT/firewall, or the SSH server (≈ OpenSSH's
 # ServerAliveInterval).
 SSH_KEEPALIVE_SECONDS = 30
+
+
+# What Ctrl+C sends in a terminal (ETX): the shell's line discipline turns it into SIGINT
+INTERRUPT = b"\x03"
+
+# Lines the command line remembers for Up and Down; the oldest go first
+HISTORY_LIMIT = 500
+
+
+class CommandHistory:
+    """Lines sent from the command line, for Up and Down to bring back, as a shell does.
+
+    Walking up from a line being typed keeps it: walking down past the newest
+    line gives it back. A line sent twice in a row is remembered once.
+    """
+
+    def __init__(self, limit: int = HISTORY_LIMIT) -> None:
+        self._lines: list[str] = []
+        self._limit = limit
+        self._index = 0  # len(self._lines): at the line being typed
+        self._draft = ""
+
+    def add(self, line: str) -> None:
+        """Remember *line* (not an empty one) and go back to a new line."""
+        if line and (not self._lines or self._lines[-1] != line):
+            self._lines.append(line)
+            del self._lines[:-self._limit]
+        self._index = len(self._lines)
+        self._draft = ""
+
+    def older(self, current: str) -> str | None:
+        """The line before the one shown, or ``None`` at the oldest. *current* is what is typed."""
+        if self._index == 0:
+            return None
+        if self._index == len(self._lines):
+            self._draft = current
+        self._index -= 1
+        return self._lines[self._index]
+
+    def newer(self) -> str | None:
+        """The line after the one shown, the draft after the newest, or ``None`` at the draft."""
+        if self._index >= len(self._lines):
+            return None
+        self._index += 1
+        return self._draft if self._index == len(self._lines) else self._lines[self._index]
 
 
 # Longest a command waits for the server to take it (a full SSH window), on the UI thread
@@ -90,15 +167,17 @@ def send_all(channel: paramiko.Channel, data: bytes) -> None:
         channel.settimeout(0.0)
 
 
-def open_shell_channel(client: paramiko.SSHClient) -> paramiko.Channel:
+def open_shell_channel(client: paramiko.SSHClient, size: tuple[int, int]) -> paramiko.Channel:
     """Open an interactive shell on *client*'s connection. Waits on the network: not the UI thread.
 
-    The channel comes back non-blocking: its reader polls it.
+    Its pty is *size* (columns, rows). The channel comes back non-blocking:
+    its reader polls it.
     """
     transport = client.get_transport()
     if transport is not None:
         transport.set_keepalive(SSH_KEEPALIVE_SECONDS)
-    channel = client.invoke_shell(term="xterm", width=120, height=32)
+    columns, rows = size
+    channel = client.invoke_shell(term="xterm", width=columns, height=rows)
     channel.settimeout(0.0)
     return channel
 
@@ -157,7 +236,7 @@ class SSHCommandWidget(QWidget):
     # Emitted when the session comes up or goes down, for the tab's status label
     state_changed = Signal()
 
-    def __init__(self, external_login_widget: LoginWidget = None, add_login_widget: bool = True):
+    def __init__(self, external_login_widget: LoginWidget | None = None, add_login_widget: bool = True):
         super().__init__()
         self.word_dict = language_wrapper.language_word_dict
         self.setWindowTitle(
@@ -173,6 +252,12 @@ class SSHCommandWidget(QWidget):
         self._decoder = TerminalDecoder()
         # The connect in progress, if any / 正在進行的連線
         self._connecting: SshConnectThread | None = None
+        # Lines sent, for Up and Down / 送出過的指令
+        self._history = CommandHistory()
+        # The size the shell's pty was last given / pty 目前的大小
+        self._pty_size: tuple[int, int] | None = None
+        # The output so far ended on a lone \r the next piece applies / 待套用的 \r
+        self._rewind_pending = False
         host_key_asker()  # built here, on the UI thread, for a connect to ask through
 
         if self.add_login_widget:
@@ -190,6 +275,9 @@ class SSHCommandWidget(QWidget):
         self.command_input_edit = QLineEdit()
         self.command_send_button = QPushButton(
             self.word_dict.get("ssh_command_widget_button_label_send_command"))
+        self.interrupt_button = QPushButton(
+            self.word_dict.get("ssh_command_widget_button_label_interrupt"))
+        self.interrupt_button.setToolTip(self.word_dict.get("ssh_command_widget_tooltip_interrupt"))
 
         self._setup_ui()
         self._bind_events()
@@ -197,6 +285,7 @@ class SSHCommandWidget(QWidget):
     def _setup_ui(self):
         self.terminal.setReadOnly(True)
         self.terminal.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+        use_fixed_pitch_font(self.terminal)
         self.command_input_edit.setPlaceholderText(
             self.word_dict.get("ssh_command_widget_input_placeholder_command_line")
         )
@@ -207,6 +296,7 @@ class SSHCommandWidget(QWidget):
         command_input_bar = QHBoxLayout()
         command_input_bar.addWidget(self.command_input_edit)
         command_input_bar.addWidget(self.command_send_button)
+        command_input_bar.addWidget(self.interrupt_button)
 
         main_widget = QVBoxLayout()
         main_widget.addWidget(self.login_widget)  # 插入登入介面
@@ -223,6 +313,58 @@ class SSHCommandWidget(QWidget):
         # 綁定其他按鈕
         self.command_send_button.clicked.connect(self.send_command)
         self.command_input_edit.returnPressed.connect(self.send_command)
+        self.interrupt_button.clicked.connect(self.send_interrupt)
+        self.command_input_edit.installEventFilter(self)
+        self._terminal_viewport = self.terminal.viewport()
+        self._terminal_viewport.installEventFilter(self)
+
+    def eventFilter(self, watched, event) -> bool:
+        """Keys the command line gives to the shell rather than to its own text; the view's size."""
+        if watched is self._terminal_viewport and event.type() == QEvent.Type.Resize:
+            self._follow_view_size()
+        elif (watched is self.command_input_edit and event.type() == QEvent.Type.KeyPress
+                and self._command_line_key(event.key(), event.modifiers())):
+            return True
+        return super().eventFilter(watched, event)
+
+    def _command_line_key(self, key: int, modifiers) -> bool:
+        """Act on *key* in the command line; return whether it was taken.
+
+        Ctrl+C interrupts the shell, unless it copies a selection. Up and Down
+        walk through the lines sent before.
+        """
+        if (key == Qt.Key.Key_C and modifiers == Qt.KeyboardModifier.ControlModifier
+                and not self.command_input_edit.hasSelectedText()):
+            self.send_interrupt()
+            return True
+        if modifiers & ~Qt.KeyboardModifier.KeypadModifier:
+            return False
+        if key == Qt.Key.Key_Up:
+            line = self._history.older(self.command_input_edit.text())
+        elif key == Qt.Key.Key_Down:
+            line = self._history.newer()
+        else:
+            return False
+        if line is not None:
+            self.command_input_edit.setText(line)
+        return True
+
+    def _follow_view_size(self) -> None:
+        """Give the shell's pty the size the view shows, as a terminal window does on a resize.
+
+        It had 120 columns whatever the view's width, so ``ls`` laid its
+        columns out for a width the view did not have.
+        """
+        size = terminal_size(self.terminal)
+        if not self._has_shell() or size == self._pty_size:
+            return
+        columns, rows = size
+        try:
+            self.shell_channel.resize_pty(width=columns, height=rows)
+        except (OSError, paramiko.SSHException) as error:
+            pybreeze_logger.debug("SSH pty resize: %r", error)
+            return
+        self._pty_size = size
 
     def append_text(self, text: str):
         """Add a notice of our own, starting on a line of its own."""
@@ -230,8 +372,8 @@ class SSHCommandWidget(QWidget):
         end.movePosition(QTextCursor.MoveOperation.End)
         self._insert_output(text if end.atBlockStart() else "\n" + text)
 
-    def _insert_output(self, text: str) -> None:
-        """Add *text* where the output ends, without starting a new line.
+    def _insert_output(self, text: str, text_format: QTextCharFormat | None = None) -> None:
+        """Add *text* where the output ends, without starting a new line, in *text_format*.
 
         ``appendPlainText`` starts a new paragraph on every call, so each read
         from the shell began on a line of its own, wherever the read happened
@@ -242,12 +384,17 @@ class SSHCommandWidget(QWidget):
         end = QTextCursor(self.terminal.document())
         end.movePosition(QTextCursor.MoveOperation.End)
         backspaces, text = take_leading_backspaces(text)
-        if backspaces:
+        if self._rewind_pending:
+            # A lone \r before a colour change ("50%\r" "\x1b[32m60%") applies here
+            text = "\r" + text
+        elif backspaces:
             # They take back what an earlier read showed, never past the line's start
             end.movePosition(QTextCursor.MoveOperation.Left, QTextCursor.MoveMode.KeepAnchor,
                              min(backspaces, end.positionInBlock()))
             end.removeSelectedText()
-        end.insertText(text)
+        # A lone \r redraws the line (a progress bar); the decoder holds one
+        # that ends a read until the next shows whether "\n" follows
+        self._rewind_pending = insert_rewinding(end, text, text_format or QTextCharFormat())
         if following:
             scroll_bar.setValue(scroll_bar.maximum())
 
@@ -280,6 +427,7 @@ class SSHCommandWidget(QWidget):
         # connected would otherwise leak the old SSH client and orphan its
         # reader thread (which keeps appending to the terminal).
         self._cleanup()
+        size = self._pty_size = terminal_size(self.terminal)
         client = paramiko.SSHClient()
         self.ssh_client = client
         apply_host_key_policy(client, self)
@@ -293,7 +441,7 @@ class SSHCommandWidget(QWidget):
                 client.connect(
                     hostname=host, port=port, username=user, password=password, timeout=10,
                     disabled_algorithms=SHA1_ALGORITHMS)
-            opened["channel"] = open_shell_channel(client)
+            opened["channel"] = open_shell_channel(client, size)
         # The connect and the shell's channel are made off the UI thread: an
         # unreachable host used to hold the IDE for the connect, banner and auth
         # timeouts together, and a server gone quiet after auth held it while
@@ -345,10 +493,12 @@ class SSHCommandWidget(QWidget):
         """Show *channel*'s output from now on. UI thread; nothing here waits on the network."""
         self.shell_channel = channel
         self._decoder.reset()
+        self._rewind_pending = False
         self.reader_thread = SSHReaderThread(self.shell_channel)
         self.reader_thread.data_received.connect(self._on_data)
         self.reader_thread.closed.connect(self._on_closed)
         self.reader_thread.start()
+        self._follow_view_size()  # resized while it was connecting
         self.login_widget.status_label.setText(
             self.word_dict.get("ssh_command_widget_status_label_connected"))
         # An IPv6 address in brackets, or its port reads as one more group
@@ -357,7 +507,14 @@ class SSHCommandWidget(QWidget):
             host=shown_host, port=port, user=user) + "\n")
 
     def _on_data(self, data: bytes):
-        self._insert_output(self._decoder.feed(data))
+        output = self._decoder.feed(data)
+        if output.clears_screen:
+            # `clear` and `reset` wipe the screen; they used to leave it as it was
+            self.terminal.clear()
+            self._rewind_pending = False
+        palette = self.terminal.palette()
+        for style, text in output.pieces:
+            self._insert_output(text, style_format(style, palette))
 
     def _on_closed(self, msg: str):
         """The shell ended on the server's side (``exit``, a dropped link).
@@ -377,20 +534,42 @@ class SSHCommandWidget(QWidget):
         self.state_changed.emit()
 
     def send_command(self):
+        """Send the typed line and a newline to the shell.
+
+        An empty line is sent too, as Enter alone: a prompt's default
+        (``[Y/n]``, "Press Enter to continue") is taken that way. Without a
+        session it only asks to connect when something was typed.
+        """
         cmd = self.command_input_edit.text()
-        if not cmd:
-            return
-        if self.shell_channel and not self.shell_channel.closed:
-            try:
-                send_all(self.shell_channel, (cmd + "\n").encode("utf-8"))
+        if self._has_shell():
+            if self._send((cmd + "\n").encode("utf-8")):
+                self._history.add(cmd)
                 self.command_input_edit.clear()
-            except (OSError, paramiko.SSHException) as e:
-                self.append_text(f"{self.word_dict.get('ssh_command_widget_error_message_send_failed')} {e}\n")
-        else:
+        elif cmd:
             QMessageBox.information(
                 self,
                 self.word_dict.get('ssh_command_widget_dialog_title_not_connected'),
                 self.word_dict.get('ssh_command_widget_dialog_message_not_connected_shell'))
+
+    def send_interrupt(self) -> None:
+        """Send Ctrl+C to the shell, which stops what runs in it (``ping``, ``tail -f``).
+
+        What is typed in the command line stays. Without a session it does nothing.
+        """
+        if self._has_shell():
+            self._send(INTERRUPT)
+
+    def _has_shell(self) -> bool:
+        return self.shell_channel is not None and not self.shell_channel.closed
+
+    def _send(self, data: bytes) -> bool:
+        """Send *data* to the shell; say so in the terminal and return False when it fails."""
+        try:
+            send_all(self.shell_channel, data)
+        except (OSError, paramiko.SSHException) as e:
+            self.append_text(f"{self.word_dict.get('ssh_command_widget_error_message_send_failed')} {e}\n")
+            return False
+        return True
 
     def disconnect_ssh(self):
         self.append_text(f"{self.word_dict.get('ssh_command_widget_log_message_disconnect_in_progress')} \n")

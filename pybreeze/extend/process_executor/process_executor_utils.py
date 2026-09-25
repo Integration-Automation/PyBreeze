@@ -4,6 +4,7 @@ import os
 import time
 import weakref
 from collections.abc import Callable
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QCoreApplication, QObject, QTimer, Signal
@@ -14,7 +15,9 @@ from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
 from pybreeze.extend.mail_thunder_extend.mail_thunder_setting import DEFAULT_REPORT_PATH, send_after_test
 from pybreeze.extend.process_executor.python_task_process_manager import TaskProcessManager
 from pybreeze.utils.file_process.get_dir_file_list import get_dir_files_as_list
+from pybreeze.extend.process_executor.run_notice import run_notice
 from pybreeze.utils.logging.logger import pybreeze_logger
+from pybreeze.pybreeze_ui.error_text import error_text
 from pybreeze.pybreeze_ui.plain_text import as_text
 
 if TYPE_CHECKING:
@@ -34,13 +37,15 @@ def build_process(
     reports its own errors in the run window.
     """
     test_format_code = exec_str
+    subject = ""
     if test_format_code is None:
         widget = main_window.tab_widget.currentWidget()
         if not isinstance(widget, EditorWidget):
             report_no_script_tab(main_window, package, program_buffer)
             return
         test_format_code = widget.code_edit.toPlainText()
-    start_process(main_window, package, test_format_code, send_mail, program_buffer)
+        subject = Path(widget.current_file).name if widget.current_file else ""
+    start_process(main_window, package, test_format_code, send_mail, program_buffer, subject)
 
 
 def report_no_script_tab(
@@ -54,7 +59,7 @@ def report_no_script_tab(
     pybreeze_logger.error("%s run needs an editor tab in front", package)
     process = build_task_process(main_window, program_buffer=program_buffer)
     process.main_window.append_output(
-        f"[Error] {package} runs the script in the editor tab in front; open it and try again\n",
+        run_notice("needs_editor_tab", package=package),
         is_error=True, own_line=True)
     process.main_window.show()
 
@@ -64,12 +69,14 @@ def start_process(
         package: str,
         test_format_code: str,
         send_mail: bool = False,
-        program_buffer: int = 1024000
+        program_buffer: int = 1024000,
+        subject: str = "",
 ):
     process = build_task_process(main_window, send_mail, program_buffer)
     process.start_test_process(
         package,
         exec_str=test_format_code,
+        subject=subject,
     )
 
 
@@ -204,9 +211,9 @@ class _MailNotice(QObject):
     def tell(self, reason: str | None) -> None:
         """Called on the mail thread with ``send_report``'s answer."""
         if reason is None:
-            self.told.emit("[Mail] The test report was sent\n", False)
+            self.told.emit(run_notice("mail_sent"), False)
         else:
-            self.told.emit(f"[Mail] The test report was not sent: {reason}\n", True)
+            self.told.emit(run_notice("mail_not_sent", reason=error_text(reason)), True)
 
 
 def report_mail_hook(code_window: CodeWindow) -> Callable[[], None]:
@@ -247,7 +254,9 @@ def build_task_process(
     The run window carries the interpreter chosen in the IDE (the Python
     environment menu, or the saved setting), so the child runs with that
     interpreter; only when none was chosen does the manager fall back to a
-    ``venv`` / ``.venv`` in the working directory, then to ``PATH``. The run
+    ``venv`` / ``.venv`` in the working directory, then to the IDE's own
+    interpreter (``default_interpreter``; only a packaged build looks on
+    ``PATH``). The run
     window holds the manager (``CodeWindow.runner``), so a caller may drop it.
     """
     code_window = open_run_window(main_window)

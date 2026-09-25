@@ -46,7 +46,7 @@ pytestmark = pytest.mark.skipif(
     reason="prthinker is not installed here (set PYBREEZE_PRTHINKER_PYTHON to run these)")
 
 
-@pytest.fixture()
+@pytest.fixture
 def closed_url() -> str:
     """An address on this machine where nothing listens."""
     with socket.socket() as probe:

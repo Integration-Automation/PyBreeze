@@ -19,7 +19,7 @@ def app():
     return instance
 
 
-@pytest.fixture()
+@pytest.fixture
 def widget(app):
     from pybreeze.pybreeze_ui.tools_gui.url_builder_gui import UrlBuilderGUI
     gui = UrlBuilderGUI()
@@ -60,7 +60,7 @@ class TestUrlBuilderGUI:
     def test_copy_output(self, app, widget):
         widget.input_edit.setPlainText("https://example.com/api?a=1")
         widget.convert_to_json()
-        widget.actions.copy()
+        widget.output_actions.copy()
         assert "example.com" in QApplication.clipboard().text()
 
 

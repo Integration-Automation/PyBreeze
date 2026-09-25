@@ -1,6 +1,6 @@
 # PyBreeze 架構探勘 / Architecture Exploration
 
-> 掃描範圍：`pybreeze/`（201 個 `.py`、約 22,200 行，不含空行與註解約 17,300 行）＋ `test/`、`exe/`、`docs/`、CI 設定
+> 掃描範圍：`pybreeze/`（209 個 `.py`、約 24,200 行，不含空行與註解約 18,900 行）＋ `test/`、`exe/`、`docs/`、CI 設定
 > 對應版本：`pyproject.toml` 1.0.21（stable）／`dev.toml` 1.0.14（dev），分支 `dev`
 
 ---
@@ -50,7 +50,7 @@ PyBreeze 是一個「自動化優先」的 Python IDE，建構在 **PySide6 + JE
    ┌─────────────────────────────────────────────────────────────────────────┐
    │ 基礎層 Foundation                                                        │
    │  pybreeze/utils/              18 個工具子套件（純邏輯，可單測）           │
-   │  pybreeze/extend_multi_language/  內建 i18n（英 / 繁中，各 708 鍵）      │
+   │  pybreeze/extend_multi_language/  內建 i18n（英 / 繁中，各 735 鍵）      │
    └─────────────────────────────────────────────────────────────────────────┘
                                     ▼
    外部子行程：python -m je_api_testka / je_auto_control / je_web_runner /
@@ -62,25 +62,26 @@ PyBreeze 是一個「自動化優先」的 Python IDE，建構在 **PySide6 + JE
 
 ## 3. 啟動流程
 
-`pybreeze/pybreeze_ui/editor_main/main_ui.py:189` 的 `start_editor()`：
+`pybreeze/pybreeze_ui/editor_main/main_ui.py:216` 的 `start_editor()`（第 2 到 4 步在 `open_main_window()`，它回傳視窗給 `start_editor()` 握到程式結束）：
 
 1. 取得（或建立）`QApplication`，裝上 `collect_garbage_on_gui_thread()`（`pybreeze_ui/gui_thread_gc.py`：關掉自動垃圾回收，改在 UI 執行緒上定時回收，見 §16）
 2. 建立 `PyBreezeMainWindow`，其 `__init__` 依序：
-   - `update_language_dict()` 併入 PyBreeze 的 708 條翻譯——**必須在 `super().__init__` 之前**：JEditor 在那裡依設定挑啟動語言，英文以外的語言讀的是當下合併出來的一份副本，之後才加進去的字串它看不到，選單拿到 `None` 標題就讓 Qt 當掉（access violation）
-   - `super().__init__(..., extend=True)` — JEditor 在此已呼叫 `load_external_plugins()`，自動掃描 CWD 下的 `jeditor_plugins/`
+   - `update_language_dict()` 併入 PyBreeze 的 760 條翻譯——**必須在 `super().__init__` 之前**：JEditor 在那裡依設定挑啟動語言，英文以外的語言讀的是當下合併出來的一份副本，之後才加進去的字串它看不到，選單拿到 `None` 標題就讓 Qt 當掉（access violation）
+   - `super().__init__(..., extend=True)` — JEditor 在此已呼叫 `load_external_plugins()`，自動掃描 CWD 下的 `jeditor_plugins/`，也以 `startup_setting()` 套上存下的設定與 UI Style 主題
+   - `show_only_warnings_in_code_result()`（`pybreeze_ui/code_result_logs.py`）— JEditor 剛把一個 `RedirectStdErr` 掛到當下每個 logger 上、收到的顯示在 Code Result；自動化套件 import 時把 root 設成 DEBUG，所以開檔就有 gitpython 的除錯訊息以紅字出現。把這個 handler 的門檻調到 WARNING，logger 本身的層級不動
    - 刪掉 JEditor 原本的 Help 選單
-   - 設定標題、Windows AppUserModelID、圖示
+   - 設定標題、Windows AppUserModelID、圖示（`pybreeze_icon.ico`，在 `main_ui.py` 旁邊、以 package data 隨套件發佈：`pyproject.toml` / `dev.toml` 的 `[tool.setuptools.package-data]`，執行檔建置用 `datas` 帶進去，所以不論從哪個資料夾啟動都有圖示）
    - `add_menu_to_menubar()` — 建構全部選單（見 §5）
    - `syntax_extend_package()` — 註冊 `.json` / `.yml` / `.yaml` 自動化關鍵字高亮
    - 依 `EDITOR_EXTEND_TAB` 註冊表加入外部擴充分頁（`_add_extend_tabs()`：每一個分頁各自建，建不起來的只記 log，不會讓整個 IDE 起不來）
-   - `setup_file_tree_context_menu()` — 掛上檔案樹右鍵選單。改名時開著的分頁跟著檔案走（改資料夾也一樣，底下每個開著的檔案都跟著走）：先停掉分頁的自動存檔、改名、再用新路徑重開一條（`_stop_auto_save()` / `_start_auto_save()`）——JEditor 的存檔執行緒只認開檔當下的路徑，沒辦法改指向。外部修改監視也跟著搬（改名前就先移除，檔案搬走後 Windows 放不掉舊名），並照 `open_an_file` 重載語法高亮、git 基準與語言伺服器（`rename_self_tab()` 會清掉「未儲存」標記，有未存的編輯就用 `_on_text_changed()` 放回去，否則改名後五秒內關分頁會直接丟掉編輯）；Dock Editor（`FullEditorWidget`，關閉時才寫回、檔案不存在就不寫）的 `current_file` 也改指新路徑（`_dock_editors_under()`）。新增與改名的名稱不能帶磁碟代號、根目錄、`..` 或 `:`，也不能解析到資料夾外（`_inside()`；改名只能是單一名稱）。刪除資料夾用 `remove_folder()`（唯讀檔清掉唯讀屬性再刪，git 的物件檔就是唯讀），符號連結與 junction 只刪連結本身。刪除時同樣用 `_editors_under()`：檔案或資料夾底下每個開著的分頁先停掉自動存檔，再刪；刪完只關掉檔案真的不見了的分頁，刪不掉（被鎖住、唯讀）的檔案分頁留著、自動存檔重開。「在檔案總管中顯示」由 `reveal_command()` 組指令：Windows 用 Explorer 的 `/select,`、macOS 用 `open -R` 把檔案選起來，其他平台 `xdg-open` 只能開資料夾；啟動失敗（例如沒有 `xdg-open`）經 `_perform_file_op()` 跳警告
+   - `setup_file_tree_context_menu()` — 掛上檔案樹右鍵選單，以及焦點在樹上時的 F2（重新命名）與 Delete（刪除，先問、預設否）快捷鍵（`_attach_keys()`，`WidgetShortcut`，走選單的同一組動作）。改名時開著的分頁跟著檔案走（改資料夾也一樣，底下每個開著的檔案都跟著走）：先停掉分頁的自動存檔、改名、再用新路徑重開一條（`_stop_auto_save()` / `_start_auto_save()`）——JEditor 的存檔執行緒只認開檔當下的路徑，沒辦法改指向。外部修改監視也跟著搬（改名前就先移除，檔案搬走後 Windows 放不掉舊名），並照 `open_an_file` 重載語法高亮、git 基準與語言伺服器（`rename_self_tab()` 會清掉「未儲存」標記，有未存的編輯就用 `_on_text_changed()` 放回去，否則改名後五秒內關分頁會直接丟掉編輯）；Dock Editor（`FullEditorWidget`，關閉時才寫回、檔案不存在就不寫）的 `current_file` 也改指新路徑（`_dock_editors_under()`）。新增與改名的名稱不能帶磁碟代號、根目錄、`..` 或 `:`，也不能解析到資料夾外（`_inside()`；改名只能是單一名稱）。刪除先移到系統的回收筒（`_move_to_trash()`：`QFile.moveToTrash`，Windows 的資源回收筒、macOS 與 freedesktop 的垃圾桶）；沒有回收筒可用時再問一次（預設否）才永久刪除，資料夾用 `remove_folder()`（唯讀檔清掉唯讀屬性再刪，git 的物件檔就是唯讀）；符號連結與 junction 只刪連結本身，不進回收筒。刪除時同樣用 `_editors_under()`：檔案或資料夾底下每個開著的分頁先停掉自動存檔，再刪；刪完只關掉檔案真的不見了的分頁，刪不掉（被鎖住、唯讀）的檔案分頁留著、自動存檔重開。「在檔案總管中顯示」由 `reveal_command()` 組指令：Windows 用 Explorer 的 `/select,`、macOS 用 `open -R` 把檔案選起來，其他平台 `xdg-open` 只能開資料夾；啟動失敗（例如沒有 `xdg-open`）經 `_perform_file_op()` 跳警告
    - `close_tab()` 覆寫 JEditor 的：分頁有 `may_close()` 就先問（提示詞編輯器、架構圖編輯器有未存的變更時會問）；關掉的工具分頁 `deleteLater()`（JEditor 的 `removeTab` 不刪 widget，關過的工具分頁會留到 IDE 結束），JEditor 自己的編輯器分頁不動，關閉 IDE 時也先問過每個分頁與 dock，有一個說不就取消關閉
    - `debug_mode=True` 時啟動 10 秒自動關閉 `QTimer`（CI 用）
-3. `apply_stylesheet()` 套 qt_material 主題（預設 `dark_amber.xml`）
-4. `showMaximized()` → `startup_setting()` → `app.exec()`
+3. `start_editor(theme=...)` 給了主題時（`_apply_given_theme()`）：寫進 `user_setting_dict["ui_style"]` 成為選定的主題，再跑一次 `startup_setting()` 套上；它失敗時記 log，仍用 qt_material 的 `apply_stylesheet()` 套上這個主題。沒給主題就不再套：建構子已經套過 JEditor 存下的 `ui_style`（UI Style 選的，沒選過是 `dark_amber.xml`），而套一次主題要將近一秒；只把視窗自己的字型 style sheet 再設一次（`startup_setting()` 先設它、後套主題，不再設一次的話工具列比給了主題時高 4 px）
+4. `showMaximized()` → `app.exec()`
 5. 離開時以 `os._exit(ret)` 硬退出（避開 Qt 拆解殘留執行緒）
 
-模組層級有一個副作用：`main_ui.py:8` 在匯入 PySide6 之前就設定 `LOCUST_SKIP_MONKEY_PATCH=1`，避免 LoadDensity 的 gevent monkey patch 破壞 Qt。
+模組層級有一個副作用：`main_ui.py` 在匯入 PySide6 之前就設定 `LOCUST_SKIP_MONKEY_PATCH`（值是 `subprocess_util.IDE_ONLY`；使用者自己設過就沿用），避免 locust 一 import 就對整個行程做的 gevent monkey patch 破壞 Qt（Load Density GUI、JEditor 行程內的 IPython console 都可能 import 它）。IDE 啟動的行程拿到的是 `child_environment()`，不帶這個值：負載測試要靠 patch 才能讓使用者同時跑，帶著它時 HttpUser 一個接一個跑，3 秒的測試跑了三分多鐘。
 
 ---
 
@@ -101,9 +102,11 @@ Template Method 定義的子行程生命週期：
 
 三種啟動介面：
 
-- `start_test_process(package, exec_str)` — 腳本內容直接走 `--execute_str`（Windows 上先 `json.dumps` 逃逸）；Windows 上命令列超過 30,000 字元（上限 32,767）時改寫進暫存的 `pybreeze_run_*.json`、走 `--execute_file`（JSON 以全跳脫的 ASCII 寫回，套件用哪種編碼讀都一樣），執行結束或啟動失敗就刪掉
+- `start_test_process(package, exec_str, subject="")` — 腳本內容直接走 `--execute_str`（Windows 上先 `json.dumps` 逃逸）；Windows 上命令列超過 30,000 字元（上限 32,767）時改寫進暫存的 `pybreeze_run_*.json`、走 `--execute_file`（JSON 以全跳脫的 ASCII 寫回，套件用哪種編碼讀都一樣），執行結束或啟動失敗就刪掉
 - `start_test_process_file(package, file_path)` — 走 `--execute_file`，避開 Windows ~32K 命令列上限
-- `start_module_process(package, arguments, environment)` — 通用形式；**祕密（API key、token）走 environment 不走命令列**，工作管理員看不到
+- `start_module_process(package, arguments, environment, subject="")` — 通用形式；**祕密（API key、token）走 environment 不走命令列**，工作管理員看不到
+
+執行視窗的標題是 `套件 - 檔名`（`subject`：編輯器分頁的檔名、`--execute_file` 的檔案、TestPioneer 的 YAML），沒有檔案時只有套件名；一次執行整個資料夾時，每個檔案一個視窗，這樣才分得出來
 
 ### 4.2 `process_executor_utils.py` — 工廠函式
 
@@ -157,9 +160,10 @@ call_X_multi_file_and_send()   → run_dir_files_with_package(..., True)
 - `read_stream_into_queue(stream, queue, buffer_size, encoding, keep_reading)` — reader 執行緒用。行**原樣**進 queue（縮排、行尾、空行都留著）；空讀 = EOF 即停，管線被關掉的 `OSError` / `ValueError` 記 debug 後停。超過 `buffer_size` 的長行分段讀進來：用 incremental decoder 解碼（被切斷的多位元組字元接到下一段），段尾的 `\r` 留到下一段（`\r\n` 被切開時不會變成兩個換行）；不認得的 encoding 退回 UTF-8 並記 warning
 - `pump_message_queue(q, append_fn, is_error, max_messages)` — UI 執行緒用。`MAX_MESSAGES_PER_PUMP = 256`：每 tick 只抽一則的話輸出上限只有 ~10 行/秒，聒噪的腳本會爬行；有上界則避免洪水輸出卡住 UI 執行緒。`max_messages=None` 是收尾時一次抽乾。只跳過空字串
 - `output_queue()` — 每條管線的 queue 最多 `MAX_QUEUED_MESSAGES`（10,000）則；滿了 reader 就等（每 0.2 秒看一次 `keep_reading`），子行程寫管線也跟著等，跑得跟視窗顯示一樣快，像終端機；以前不設上限，印個不停的腳本會一直吃記憶體，按 Stop 後再一口氣全倒進視窗
-- `ReaderGrace` / `any_alive()` / `OUTPUT_STILL_HELD_NOTE` — 子行程結束後 reader 還能讀多久（`READER_GRACE_SECONDS = 2.0`，從結束後第一個 tick 起算）。管線要等最後一個握著它的行程結束才會 EOF，子行程開的行程沒轉向輸出時會一直握著；以前兩個執行器在 UI 執行緒上各 join 2 秒，IDE 卡 4 秒還是丟掉之後的輸出。現在由 pump 逐 tick 詢問，時間到就結束執行並在視窗註明
-- 執行視窗上方有「停止」按鈕：執行器在子行程跑起來後呼叫 `CodeWindow.run_started()` 打開它，`run_ended()` 關掉它，按下去走 `stop_runner()`（`stop_tree` 停掉子行程和它開的所有行程）；關掉執行視窗不會停止執行。
-- `CodeWindow.append_output(text, is_error, own_line=False)`（`show_code_window/code_window.py`，輸出是上限 10,000 行的 `QPlainTextEdit`：`QTextEdit` 到上限後每寫一行要花約 15 ms 丟掉最舊的一行）— 一律寫在文件**尾端**（不用 widget 自己的游標：那個游標跟著使用者的點擊與選取走，寫在那裡會把輸出插進中間、或蓋掉使用者選取的文字）。終端機控制碼（CSI 顏色與游標移動、OSC 等控制字串、`ESC ( B` 這類 nF 與其他兩位元組 escape）先拿掉、backspace 套用到前一個字元、tab、換行、`\r` 以外的控制字元丟掉（與 SSH terminal 共用 `utils/terminal_text.strip_terminal_controls()`；讀取切斷在 escape 中間時，reader 把尾巴留給下一段，`queue_pump` 的 `split_incomplete_escape()`），`\r\n` 是換行，單獨的 `\r` 像終端機一樣回到行首、由後面的文字取代這一行（`_insert_rewinding()`；結尾的 `\r` 記在 `_rewind_pending`，等下一段來才套用：接著是 `\n` 就是換行，否則回捲，跑完的進度條不會被清掉）；換行只出現在文字本身有換行的地方，所以超過 buffer 被切段的長行會接回同一行。`own_line=True` 給視窗自己的狀態訊息（`Task exit with code …`），程式留下沒換行的半行時先補一個換行。捲軸在最底時畫面跟著輸出走（像終端機）；使用者往上捲去讀時就停在原處
+- `ReaderGrace` / `any_alive()` — 子行程結束後 reader 還能讀多久（`READER_GRACE_SECONDS = 2.0`，從結束後第一個 tick 起算）。管線要等最後一個握著它的行程結束才會 EOF，子行程開的行程沒轉向輸出時會一直握著；以前兩個執行器在 UI 執行緒上各 join 2 秒，IDE 卡 4 秒還是丟掉之後的輸出。現在由 pump 逐 tick 詢問，時間到就結束執行並在視窗註明
+- 執行器寫進執行視窗、說明這次執行本身的訊息（`[Error] Command not found: …`、`[Compile]`、`[Run]`、`[Stopped]`、`[Mail] …`、`Task exit with code …`、行程仍握著輸出的註明，共 15 種）一律經 `run_notice.run_notice(名稱, **欄位)`：取語言字典的 `run_window_<名稱>` 填入欄位，字典沒有時（腳本、測試在 `update_language_dict()` 之前啟動執行器）退回 PyBreeze 的英文；`test_run_notice.py` 擋掉在執行器裡直接寫 `"[Error] …"` 字串
+- 執行視窗上方有「停止」按鈕：執行器在子行程跑起來後呼叫 `CodeWindow.run_started()` 打開它，`run_ended()` 關掉它，按下去走 `stop_runner()`（`stop_tree` 停掉子行程和它開的所有行程）；關掉執行視窗不會停止執行。Run > Stop All Program（JEditor 的 `run_menu.stop_all_program_action`，本來只停 JEditor 自己選單開的程式）另接到 `PyBreezeMainWindow.stop_all_runs()`，對每個執行視窗呼叫 `stop_runner()`，視窗與輸出留著。
+- `CodeWindow.append_output(text, is_error, own_line=False)`（`show_code_window/code_window.py`，輸出是上限 10,000 行的 `QPlainTextEdit`：`QTextEdit` 到上限後每寫一行要花約 15 ms 丟掉最舊的一行）— 一律寫在文件**尾端**（不用 widget 自己的游標：那個游標跟著使用者的點擊與選取走，寫在那裡會把輸出插進中間、或蓋掉使用者選取的文字）。終端機控制碼（CSI 顏色與游標移動、OSC 等控制字串、`ESC ( B` 這類 nF 與其他兩位元組 escape）先拿掉、backspace 套用到前一個字元、tab、換行、`\r` 以外的控制字元丟掉（與 SSH terminal 共用 `utils/terminal_text.strip_terminal_controls()`；讀取切斷在 escape 中間時，reader 把尾巴留給下一段，`queue_pump` 的 `split_incomplete_escape()`），`\r\n` 是換行，單獨的 `\r` 像終端機一樣回到行首、由後面的文字取代這一行（`pybreeze_ui/terminal_view.insert_rewinding()`；結尾的 `\r` 記在 `_rewind_pending`，等下一段來才套用：接著是 `\n` 就是換行，否則回捲，跑完的進度條不會被清掉）；輸出用等寬字型（`fixed_pitch.use_fixed_pitch_font()`：有 Consolas 用 Consolas，否則系統的等寬字型，Windows 上是 Courier New，與 SSH terminal 共用）；換行只出現在文字本身有換行的地方，所以超過 buffer 被切段的長行會接回同一行。`own_line=True` 給視窗自己的狀態訊息（`Task exit with code …`），程式留下沒換行的半行時先補一個換行。捲軸在最底時畫面跟著輸出走（像終端機）；使用者往上捲去讀時就停在原處
 
 ---
 
@@ -169,44 +173,44 @@ call_X_multi_file_and_send()   → run_dir_files_with_package(..., True)
 
 ### 5.1 `automation_menu_factory.py` — 選單工廠
 
-`build_automation_menu(ui, spec)` 依一份 `AutomationMenu` 描述組出標準自動化子選單：`Run` 子選單（`RunAction` 列表）/ `Help`（`HelpLink` 列表，文件＋GitHub，開內嵌瀏覽器分頁）/ `Project`（建立範本目錄）/ GUI 分頁，每一段各由一個小函式建（`_add_run_menu` 等），沒有項目的段落不建。三個描述都是 frozen dataclass。六個自動化模組全部靠它，`build_*_menu.py` 只剩一份 `AutomationMenu(...)`。每個 QAction 都以它所在的選單為 parent，由 Qt 持有；AutoControl 額外的 `Record` 子選單也一樣；它的停止錄製不論前面是哪個分頁都會停，把動作以 AutoControl 執行器讀的 JSON 插在編輯分頁的游標處（沒有編輯分頁就放剪貼簿），沒錄到東西就告知。
+`build_automation_menu(ui, spec)` 依一份 `AutomationMenu` 描述組出標準自動化子選單：`Run` 子選單（`RunAction` 列表）/ `Help`（`HelpLink` 列表，文件＋GitHub，開內嵌瀏覽器分頁）/ `Project`（建立範本目錄）/ GUI 分頁（`gui_widget_factory`，選到才呼叫，套件可以到那時才 import 它的 GUI），每一段各由一個小函式建（`_add_run_menu` 等），沒有項目的段落不建。三個描述都是 frozen dataclass。六個自動化模組全部靠它，`build_*_menu.py` 只剩一份 `AutomationMenu(...)`。每個 QAction 都以它所在的選單為 parent，由 Qt 持有；AutoControl 額外的 `Record` 子選單也一樣；它的停止錄製不論前面是哪個分頁都會停，把動作以 AutoControl 執行器讀的 JSON 插在編輯分頁的游標處（沒有編輯分頁就放剪貼簿），沒錄到東西就告知。`je_auto_control` 一 import 就把行程設成 system DPI aware，所以這個模組只在用到時才 import 它（`_auto_control()`、`_autocontrol_gui()`）：跟著選單在應用程式建立前 import，Qt 就設不成 per-monitor v2（每次啟動都警告 `SetProcessDpiAwarenessContext() failed`），在縮放比例跟主螢幕不同的螢幕上，Windows 把整個 IDE 當點陣圖拉伸。`test_startup_imports.py` 守著這點，也守著三個 GUI 與 SSH 用到時才 import：跟著選單一起 import 時，光是 import 主視窗模組就要 6.45 秒（中位數），現在 4.65 秒。
 
 `safe_create_project(ui, import_name)` 回傳延遲 import 的 closure：專案建在 IDE 開著的資料夾（`working_dir`，沒開就用行程的工作目錄）；套件的資料夾（`create_project_dir` 的 `parent_name` 預設值）已存在時先問（預設否），因為各套件一律覆寫範本檔；模組沒裝、寫入失敗都跳警告並記 log，成功時說出建在哪裡。
 
 | 選單 | 文件 | GUI 分頁 |
 |---|---|---|
-| APITestka | apitestka.readthedocs.io | `APITestkaWidget` |
-| AutoControl | autocontrol.readthedocs.io | `AutoControlGUIWidget` |
+| APITestka | apitestka.readthedocs.io | `APITestkaWidget`（開分頁時才 import） |
+| AutoControl | autocontrol.readthedocs.io | `AutoControlGUIWidget`（開分頁時才 import） |
 | WebRunner | webrunner.readthedocs.io | — |
-| LoadDensity | loaddensity.readthedocs.io | `LoadDensityWidget` |
+| LoadDensity | loaddensity.readthedocs.io | `LoadDensityWidget`（開分頁時才 import：套件會帶進 locust 與 gevent） |
 | FileAutomation | fileautomation.readthedocs.io | — |
 | MailThunder | mailthunder.readthedocs.io | — |
 
 ### 5.2 非工廠的兩個選單
 
-- **`test_pioneer_menu/`** — 建範本目錄（寫在 IDE 的工作目錄，已有範本先問是否取代，寫入失敗跳警告）+ `QFileDialog` 選 `.yml` / `.yaml`（副檔名清單與語法高亮共用 `syntax_keyword.TEST_PIONEER_SUFFIXES`；會驗副檔名，選錯跳 `QMessageBox`）
+- **`test_pioneer_menu/`** — 建範本目錄（寫在 IDE 的工作目錄，已有範本先問是否取代，寫入失敗跳警告）+ `QFileDialog` 選 `.yml` / `.yaml`（副檔名清單與語法高亮共用 `syntax_keyword.TEST_PIONEER_SUFFIXES`；會驗副檔名，選錯跳 `QMessageBox`）+ Help 子選單（`add_help_menu`，只有 GitHub：它的 readthedocs 網站沒有建出來）
 - **`prthinker_menu/`** — 審查目前檔案（先照 Run with... 的方式存檔：`save_current_file_for_run()`）/ 審查 PR（`QInputDialog` 問編號，範圍 1–1,000,000）/ 設定對話框 / Help
 
 ### 5.3 `tools/tools_menu.py` — 表格驅動的工具註冊
 
 這是全專案設計最乾淨的一塊。三張表把 20 個工具的「建構」「分頁開啟」「dock 開啟」完全解耦：
 
-- `_WIDGET_FACTORIES: dict[str, Callable]` — widget key → 建構 lambda
+- `_WIDGET_FACTORIES: dict[str, Callable]` — widget key → 建構 lambda；SSH 的經 `_ssh_widget()`，第一次開才 import（paramiko 與 cryptography 約佔啟動的六分之一秒）
 - `_TAB_ACTIONS: tuple[...]` — (widget key, 主視窗屬性, 選單屬性, action 語言鍵, 分頁標籤鍵)
-- `_DOCK_ACTIONS` / `_DOCK_TITLES` — 同一組 widget 也能開成右側 dock（`closing.AskingDock`：關 dock 前先問 widget 的 `may_close()`，有未存變更的提示詞與架構圖編輯器不會被 dock 的關閉鈕直接丟掉）
+- `_DOCK_ACTIONS` / `_DOCK_TITLES` — 同一組 widget 也能開成右側 dock（`closing.AskingDock`：關 dock 前先問 widget 的 `may_close()`，有未存變更的提示詞與架構圖編輯器不會被 dock 的關閉鈕直接丟掉）；AI 類的 dock 放進 JEditor Dock 選單原有的 AI 子選單（`dock_ai_menu`），沒有才自己建一個
 
 `_register_action()` 有一段關鍵註解：QAction 必須 `setattr` 掛回主視窗，否則 Qt 不持有它、被 GC 後選單項就失效。另一種做法是建構時把選單當 parent（自動化選單工廠、插件選單用這種）。`test_started_menus.py` 在子行程啟動真的 IDE、GC 後走訪整條選單列，任何子選單變空就失敗（JEditor 的兩個字型選單除外：offscreen 平台沒有字型）。
 
 ### 5.4 插件選單
 
-- **`build_plugin_menu.py`** — 讀 `je_editor.plugins.get_all_plugin_metadata()`，每個插件一個子選單（About + 一個 Run 動作，多個副檔名時一併列在標籤裡，動作直接呼叫 `run_current_file_with()`）；另有「Plugin Browser」分頁入口。插件是第三方程式：不是 dict 的 metadata 或 run config 略過並記 log，名稱經 `plugin_text()` 轉成文字（`addMenu(None)` 會讓 Qt access violation），每個插件的選單各自建、失敗只少它自己那一項
+- **`build_plugin_menu.py`** — 讀 `je_editor.plugins.get_all_plugin_metadata()`，每個插件一個子選單（About + 一個 Run 動作，多個副檔名時一併列在標籤裡，動作直接呼叫 `run_current_file_with()`）；另有「Plugin Browser」分頁入口，沒有任何插件時選單也照建、只有這一項（第一個插件就是從它裝的）。插件是第三方程式：不是 dict 的 metadata 或 run config 略過並記 log，名稱經 `plugin_text()` 轉成文字（`addMenu(None)` 會讓 Qt access violation），每個插件的選單各自建、失敗只少它自己那一項
 - **`build_run_with_menu.py`** — 讀 `get_all_plugin_run_configs()`，在 Run 選單下加「Run with…」。`run_config_suffixes()` 把插件登記的副檔名正規化成 `Path.suffix` 的樣子（小寫、一個前導點；JEditor 原樣保存，`.R`、`r` 以前永遠比對不上）。`run_current_file_with()` 先經 `save_current_file_for_run()` 存檔（已有檔名的分頁照 JEditor 自己存檔的方式寫：`write_file_with_encoding()` 用分頁的編碼與行尾，寫成功後才 `mark_ignore_next_file_change()` 與 `mark_saved()`；存檔失敗跳警告、不執行；沒檔名的走 JEditor 的另存新檔），再驗副檔名、交給 `FileRunnerProcess`。Plugins 選單的 Run 動作也走這一條
 
 ### 5.5 安裝選單
 
 `install_utils.install_packages()` 用 `build_task_process()` 開一個執行視窗，`start_module_process("pip", ["install", "-U", *packages])`：參數清單、不經 shell（以前借 JEditor 的 `ShellManager`，它用 `shell=True` 交給 `cmd.exe`，使用者選的資料夾名稱裡有 `&` 就會把指令切開）。多個套件一次 pip（建置工具以前是三個 pip 同時對同一個環境跑）。pip 用 IDE 選定的直譯器，沒選時照一般執行的退路。`install_package()` 是單一套件的寫法
 
-- `automation_menu/` — 七個自動化套件的一鍵安裝。**prthinker 例外**：不在 PyPI 上，第一次會問來源資料夾、記進設定，之後裝 `<path>[runner]`
+- `automation_menu/` — 八個自動化套件的一鍵安裝（PyPI 上的七個列在 `PYPI_PACKAGES`）。**prthinker 例外**：不在 PyPI 上，第一次會問來源資料夾、記進設定，之後裝 `<path>[runner]`
 - `tools_menu/` — 安裝 setuptools / build / wheel
 
 ---
@@ -226,7 +230,7 @@ call_X_multi_file_and_send()   → run_dir_files_with_package(..., True)
 | `UrlBuilderGUI` | `utils/url_tools/` | URL 拆成 JSON 元件 / 由元件組回 URL |
 | `RegexGUI` | `utils/regex_tools/` | regex 測試，flag 勾選、列出每個 match 與群組。pattern 在另一個行程裡跑（`find_matches_bounded()`：從原始碼執行時是 `python -I -S -c` 跑一段只用標準函式庫的固定腳本，工作用 JSON 從 stdin 進、結果從 stdout 出，5 秒後 kill；打包版沒有直譯器可用，仍是 multiprocessing spawn），分頁用 `RegexMatchThread` 等它：`re` 開始比對後就停不下來，災難性回溯只有整個行程能停。spawn 會重新匯入啟動 IDE 的腳本，README 那種沒有 `__main__` 防護的腳本會每跑一次就再開一個 IDE。還在跑的 worker 記在 `_RUNNING`，分頁關閉時 `stop_running_workers()` 結束它（IDE 以 `os._exit` 結束，子行程不會跟著走）；執行中不能存檔，列到 `MAX_MATCHES` 上限時會註明可能還有更多 |
 | `HttpStatusGUI` | `utils/http_reference/` | 狀態碼參考，可依碼前綴或描述搜尋 |
-| `DiffGUI` | `utils/diff_tools/` | unified diff + 增刪統計，`compare_texts()` 的統計與 diff 共用同一次比對（`_TrimmedMatcher`：先把相同的開頭結尾放一邊再比對中間，長而重複的文字改一行就是一行；放一邊有時反而比對得更差（`b b a b a` 對 `b a c b`），所以有放一邊時 `_closest_match` 也照原樣比一次，取改動行數少的；autojunk 照 difflib 的預設，關掉的話重複的文字比對時間隨行數平方成長；diff 照 `difflib.unified_diff` 的格式從它的 grouped opcodes 寫出），在 `DiffThread` 上算、不佔 UI 執行緒（4 萬行要四秒多），比對中按鈕停用、關閉時交給 `let_run_out()`。逐行比不出差別、文字卻不同時（最後少一個換行、`\r\n` 對 `\n`），改成連行尾一起比：少換行的那行下面標 `\ No newline at end of file`，其他行尾寫出來 |
+| `DiffGUI` | `utils/diff_tools/` | unified diff + 增刪統計，`compare_texts()` 的統計與 diff 共用同一次比對（`_TrimmedMatcher`：先把相同的開頭結尾放一邊再比對中間，長而重複的文字改一行就是一行；放一邊有時反而比對得更差（`b b a b a` 對 `b a c b`），所以有放一邊、且兩段合計不超過 2,000 行時，`_closest_match` 也照原樣比一次，取改動行數少的（更大的文字再比一次會讓等待加倍）；autojunk 照 difflib 的預設，關掉的話重複的文字比對時間隨行數平方成長；diff 照 `difflib.unified_diff` 的格式從它的 grouped opcodes 寫出），在 `DiffThread` 上算、不佔 UI 執行緒（4 萬行要四秒多），比對中按鈕停用、關閉時交給 `let_run_out()`。逐行比不出差別、文字卻不同時（最後少一個換行、`\r\n` 對 `\n`），改成連行尾一起比：少換行的那行下面標 `\ No newline at end of file`，其他行尾寫出來。輸出由 `UnifiedDiffHighlighter` 依行首上色（`diff_line_colour()`：`@@`、`+`、`-`、`\ No newline` 各用 JEditor 的主題色，深色淺色各一組；只有前兩行算 `---`/`+++` 標頭） |
 | `JsonFormatGUI` | `utils/json_format/` | 美化 / 壓縮 / 驗證 |
 | `HeaderAnalyzerGUI` | `utils/header_tools/` | HTTP header 安全稽核（HSTS、CSP、CORS、Set-Cookie、banner…）|
 | `ResponseInspectorGUI` | `utils/response_inspector/` | 貼整包 response → 拆狀態列/headers/body，順便挖出 JWT；`curl -i` 印出的多段回應（`100 Continue`、proxy 的 `Connection established`、`-L` 的轉址）取最後一段；只有一行又沒有狀態列就當 body |
@@ -234,22 +238,23 @@ call_X_multi_file_and_send()   → run_dir_files_with_package(..., True)
 ### 兩個橫向共用機制
 
 - **`tool_tabs.open_tool_tab()`** — 工具之間互相「轉交」：Response Inspector 把狀態碼丟給 HTTP Status、headers 丟給 Header Analyzer、JWT 丟給 JWT Decoder、JSON body 丟給 JSON Format；curl 匯入把 URL 丟給 URL Builder。開新分頁並自動聚焦。
+- **`pybreeze_ui/run_shortcut.press_on_ctrl_enter()`**（不在 `tools_gui/` 裡）— 只有一個主要動作的工具（cURL、Diff、Hash、Header、JSON Format、JWT、Regex、Response）在工具裡任何地方按 Ctrl+Enter 就等於按那顆鈕（文字框裡的 Enter 是換行）；shortcut 是工具的子物件、`WidgetWithChildrenShortcut`，焦點不在工具裡時不會搶走編輯器的按鍵，按鈕停用時（還在跑）不會觸發；AI Code Review、CoT Code Review 與 Skill Send 的送出鈕也用它；雙向的 Query ↔ JSON 與 URL Builder 用 `act_on_ctrl_enter()` 接到 `convert_as_pasted()`，輸入是 JSON 物件就往另一個方向轉
 - **`output_actions.OutputActions`** — 統一的「複製 / 在編輯器開啟 / 存檔」三顆按鈕，綁在工具的唯讀輸出 `QTextEdit` 上，輸出也經 `exact_text()` 讀（不讓 U+00A0、U+2028 被改掉）；副檔名與檔名可傳 callable 動態決定。存檔經 `replace_text()` 整檔替換，失敗（唯讀資料夾、被鎖住的檔案、磁碟滿）時原檔不動、會跳警告，說出檔名與原因。Qt 的文字元件留不住貼上的 CR，換行一律讀成 LF
 
 ---
 
-## 7. `pybreeze_ui/diagram_editor/` — 架構圖編輯器（3,963 行，最大子系統）
+## 7. `pybreeze_ui/diagram_editor/` — 架構圖編輯器（4,055 行，最大子系統）
 
 | 檔案 | 職責 |
 |---|---|
-| `diagram_editor_widget.py` (678) | 外層 widget：兩排工具列（工具模式列 + 檔案/undo/對齊/格線/匯出/縮放列）、canvas 與屬性面板的 splitter、快捷鍵（只在編輯器有焦點時作用，當 dock 開著也不搶程式碼編輯器的按鍵）；PNG/SVG 匯出；Mermaid 匯入對話框。「從 URL 加入圖片」也交給 `ImageDownloadThread`，圖片回來才放上畫布，失敗或不是圖片就跳警告；關閉時還在跑的下載交給 `let_run_out()`。存檔經 `replace_text()` 先寫 `<name>.saving` 再換上去，存檔失敗不會毀掉上一份 |
-| `diagram_scene.py` (888) | `DiagramScene(QGraphicsScene)`：**State pattern** 的 `ToolMode` 決定滑鼠行為；undo/redo、複製貼上（節點、連線與圖片）、多選對齊與分佈、z-order、序列化 `to_dict()` / `load_from_dict()`。`get_all_nodes/connections/images()` 由下往上列出（`_bottom_first()`），存檔與 undo 還原時同 z 值的重疊項目維持原本的上下；右鍵選單先選取點到的項目；置頂／置底放到所有其他節點與圖片之上／之下；`to_dict()` 給每個節點與圖片記下它在兩者之間由下往上的位置（`stack`），載入後 `_restore_stacking()` 照這個順序重新加回場景（同 z 值時後加的在上面），圖片也存 `z`。`load_from_dict()` 先用 `_check_is_a_diagram()` 確認資料形狀才清空畫布（不合就丟 `ValueError`，畫布原封不動），每一筆節點／連線／圖片再各自容錯；清空前先 `to_dict()` 留一份，載入途中還是出錯就放回原樣再往上丟——載入要嘛成功、要嘛什麼都沒變（編輯器存檔寫回上次開的檔案，半途清空的畫布會蓋掉使用者的檔）。圖片的 `source` 不是字串就丟掉。`undo_scope` 用 `try/finally`，本體丟例外也一定收掉快照；圖片來源先看副檔名、拒絕 UNC（`_is_on_this_machine()`）才碰檔案系統；URL 圖片交給 `ImageDownloadThread(QThread)` 下載並快取在 `_pixmap_cache`，undo/redo 重建項目時直接用快取，不會再連一次網路；編輯器關閉時 `let_image_downloads_run_out()` 把還在跑的下載交給 `let_run_out()`，不在 UI 執行緒等 |
-| `diagram_items.py` (960) | 圖元：`DiagramNode`（矩形/圓角/橢圓/菱形 4 種 body + 置中標籤 + 4 個 `ResizeHandle`；填色、框線色、字級收在 frozen dataclass `NodeStyle`）、`DiagramConnection`（三次貝茲 + 箭頭，連到節點邊界交點）、`DiagramImage`。`_EditableLabel` 刻意預設唯讀、雙擊才進編輯（對應 CLAUDE.md 的 Qt 規範）；雙擊時記下場景快照，失去焦點時經 `DiagramScene.record_change()` 記成一步「Edit Text」undo（有改才記）。`DiagramScene.add_image()`（`diagram_scene.py`）把圖放進 scene 的 `_pixmap_cache`，undo 重建時不必重讀檔案或重新下載。檔案裡的字級經 `_clamped_font_size()`：不是有限數字（`1e999` 讀進來是無限大、NaN、字串）就用預設字級；位置經 `_coordinate()`：不是有限數字就跳過這一筆，超過 `MAX_COORDINATE`（一百萬）就夾回來；連線建好所有東西之後才掛到兩端節點上 |
-| `diagram_mermaid_parser.py` (603) | Mermaid flowchart → diagram dict。切箭頭與 `;` 之前先用 `_protect()` 把引號與括號裡的標籤換成佔位符，解析節點時再 `_restore()`（標籤裡的 `-->`、`;` 不會被當成語法）。含 **Sugiyama 風格自動排版**：分層 → 交叉最小化掃描 → 交叉軸偏移解析 |
+| `diagram_editor_widget.py` (695) | 外層 widget：兩排工具列（工具模式列 + 檔案/undo/對齊/格線/匯出/縮放列）、canvas 與屬性面板的 splitter、快捷鍵（只在編輯器有焦點時作用，當 dock 開著也不搶程式碼編輯器的按鍵）；PNG/SVG 匯出；Mermaid 匯入對話框。「從 URL 加入圖片」也交給 `ImageDownloadThread`，圖片回來才放上畫布，失敗或不是圖片就跳警告；關閉時還在跑的下載交給 `let_run_out()`。存檔經 `replace_text()` 先寫 `<name>.saving` 再換上去，存檔失敗不會毀掉上一份 |
+| `diagram_scene.py` (915) | `DiagramScene(QGraphicsScene)`：**State pattern** 的 `ToolMode` 決定滑鼠行為；undo/redo、複製貼上（節點、連線與圖片）、多選對齊與分佈、z-order、序列化 `to_dict()` / `load_from_dict()`。`get_all_nodes/connections/images()` 由下往上列出（`_bottom_first()`），存檔與 undo 還原時同 z 值的重疊項目維持原本的上下；右鍵選單先選取點到的項目；置頂／置底放到所有其他節點與圖片之上／之下；`to_dict()` 給每個節點與圖片記下它在兩者之間由下往上的位置（`stack`），載入後 `_restore_stacking()` 照這個順序重新加回場景（同 z 值時後加的在上面），圖片也存 `z`。`load_from_dict()` 先用 `_check_is_a_diagram()` 確認資料形狀才清空畫布（不合就丟 `ValueError`，畫布原封不動），每一筆節點／連線／圖片再各自容錯；清空前先 `to_dict()` 留一份，載入途中還是出錯就放回原樣再往上丟——載入要嘛成功、要嘛什麼都沒變（編輯器存檔寫回上次開的檔案，半途清空的畫布會蓋掉使用者的檔）。圖片的 `source` 不是字串就丟掉。`undo_scope` 用 `try/finally`，本體丟例外也一定收掉快照；圖片來源先看副檔名、拒絕 UNC（`_is_on_this_machine()`）才碰檔案系統；URL 圖片交給 `ImageDownloadThread(QThread)` 下載並快取在 `_pixmap_cache`，undo/redo 重建項目時直接用快取，不會再連一次網路；編輯器關閉時 `let_image_downloads_run_out()` 把還在跑的下載交給 `let_run_out()`，不在 UI 執行緒等 |
+| `diagram_items.py` (962) | 圖元：`DiagramNode`（矩形/圓角/橢圓/菱形 4 種 body + 置中標籤 + 4 個 `ResizeHandle`；填色、框線色、字級收在 frozen dataclass `NodeStyle`）、`DiagramConnection`（三次貝茲 + 箭頭，連到節點邊界交點）、`DiagramImage`。`_EditableLabel` 刻意預設唯讀、雙擊才進編輯（對應 CLAUDE.md 的 Qt 規範）；雙擊時記下場景快照，失去焦點時經 `DiagramScene.record_change()` 記成一步「Edit Text」undo（有改才記）。`DiagramScene.add_image()`（`diagram_scene.py`）把圖放進 scene 的 `_pixmap_cache`，undo 重建時不必重讀檔案或重新下載。檔案裡的字級經 `_clamped_font_size()`：不是有限數字（`1e999` 讀進來是無限大、NaN、字串）就用預設字級；位置經 `_coordinate()`：不是有限數字就跳過這一筆，超過 `MAX_COORDINATE`（一百萬）就夾回來；連線建好所有東西之後才掛到兩端節點上 |
+| `diagram_mermaid_parser.py` (629) | Mermaid flowchart → diagram dict。切箭頭與 `;` 之前先用 `_protect()` 把引號與括號裡的標籤換成佔位符，解析節點時再 `_restore()`（標籤裡的 `-->`、`;` 不會被當成語法）。箭頭的 `|label|` 由 `_arrow_label()` 用兩個相鄰部分不共用字元的樣式讀（引號標籤一個、一般標籤一個，取最左邊的），線性時間：原本合成一個、標籤兩側可有空白的樣式在未閉合的標籤上是立方時間回溯。含 **Sugiyama 風格自動排版**：分層 → 交叉最小化掃描 → 交叉軸偏移解析 |
 | `diagram_property_panel.py` (453) | 右側屬性側欄，依選取型別切換 node / connection / image 三組表單；每記一步 undo（場景的 `recorded`）就重新整理（在畫布上拖把手改大小時選取沒變）；寬、高各自只改自己那一邊；數字欄位不追鍵盤、輸入完才套用 |
-| `diagram_view.py` (195) | `QGraphicsView`：滾輪與按鈕縮放都經 `_step_zoom()`（有上下界，界外時仍可往界內走；橫向滾輪不縮放），`fit()` 把「符合視窗」夾在上下界內、中鍵平移、`drawBackground` 畫格線 |
+| `diagram_view.py` (228) | `QGraphicsView`：滾輪與按鈕縮放都經 `_step_zoom()`（有上下界，界外時仍可往界內走；橫向滾輪不縮放），`fit()` 把「符合視窗」夾在上下界內、中鍵或右鍵拖曳平移（右鍵拖過畫布就不開右鍵選單，`contextMenuEvent`；放開沒送到它時下一次移動就停止平移）、`drawBackground` 畫格線 |
 | `diagram_commands.py` (48) | `DiagramSnapshotCommand(QUndoCommand)` — 快照式 undo，存變更前後完整場景狀態；有 `merge_key` 的連續步驟（同一個項目的同一個屬性：大小、字級、線寬）合併成一步（`id()` / `mergeWith`） |
-| `diagram_net_utils.py` (112) | **SSRF 防護參考實作**：scheme 白名單、DNS 解析後比對私有/迴環/link-local/reserved 網段、`_ValidatingRedirectHandler` 對每一跳重驗（驗過就關掉轉址回應，urllib 不會把轉址的內容整個讀完）、`_OPENER` 用 `PublicHTTPHandler` / `PublicHTTPSHandler`（連線當下再檢查一次並只連到那個位址）、20 MB 大小上限、每次等資料 15 秒 timeout，整個下載另有 `overall_deadline(DOWNLOAD_DEADLINE_SECONDS)` 120 秒上限（慢慢送位元組的伺服器原本可以一直卡住下載執行緒） |
+| `diagram_net_utils.py` (117) | **SSRF 防護參考實作**：scheme 白名單、DNS 解析後比對私有/迴環/link-local/reserved 網段、`_ValidatingRedirectHandler` 對每一跳重驗（驗過就關掉轉址回應，urllib 不會把轉址的內容整個讀完）、`_OPENER` 用 `PublicHTTPHandler` / `PublicHTTPSHandler`（連線當下再檢查一次並只連到那個位址）、20 MB 大小上限、每次等資料 15 秒 timeout，整個下載另有 `overall_deadline(DOWNLOAD_DEADLINE_SECONDS)` 120 秒上限（慢慢送位元組的伺服器原本可以一直卡住下載執行緒） |
 
 `diagram_net_utils` 是 CLAUDE.md 指定的網路安全參考實作，其他 HTTP 呼叫端則統一走 `utils/network/url_validation.py` 驗證、經 `utils/network/public_http.py` 的 `public_session()` 送出。
 
@@ -264,7 +269,7 @@ extend_ai_gui/
 ├── code_review/
 │   ├── cot_chain.py              接線表（純邏輯，無 Qt）：哪步引用哪步
 │   ├── code_review_thread.py     SenderThread(QThread)：跑八步審查鏈
-│   └── cot_code_review_gui.py    UI（工具 → AI 的分頁與 dock）；URL 只由 worker 驗證，UI 執行緒不查 DNS；每次送出先清掉上一輪的回覆；關閉時請審查停在目前這一步，交給 let_run_out()，不等
+│   └── cot_code_review_gui.py    UI（工具 → AI 的分頁與 dock）；URL 只由 worker 驗證，UI 執行緒不查 DNS；沒貼程式碼就不送（整條鏈八個請求都會白跑）；每次送出先清掉上一輪的回覆；關閉時請審查停在目前這一步，交給 let_run_out()，不等
 ├── prompt_edit_gui/
 │   ├── prompt_editor_widget.py         共用編輯器（QFileSystemWatcher 熱更新，watcher 以編輯器為 parent、關閉時停止監看；有未存編輯時，外部改動、「重新載入」和切換模板都先問；還沒有檔案的模板只用 placeholder 說明，存檔不會把說明寫進去）
 │   ├── cot_prompt_editor_widget.py     8 個 CoT 模板的檔案清單＋語言鍵
@@ -293,17 +298,17 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 9. `pybreeze_ui/connect_gui/`
 
-### `ssh/`（2,035 行）
+### `ssh/`（2,517 行）
 
 | 檔案 | 職責 |
 |---|---|
 | `ssh_main_widget.py` | 組合視圖：上方共用登入表單，下方 splitter 左 30% 檔案樹、右 70% 終端。兩半各自連線、各自發 `state_changed`，共用的狀態列每次有一半連上或斷開就重報兩者的狀態（不是按下按鈕時）。`closeEvent` 把關閉往下傳給兩半（Qt 只會送給被關的那個 widget） |
 | `ssh_login_widget.py` | 登入表單（密碼欄用 `EchoMode.Password`；任一欄按 Enter 就按下連線；金鑰欄旁的「瀏覽...」從 `~/.ssh` 開檔案對話框，選了檔就勾起金鑰驗證） |
-| `ssh_command_widget.py` | 互動式 shell。連線和開 shell 的 channel（`open_shell_channel()`：開 session 最多等 paramiko 的 `channel_timeout` 一小時，pty 與 shell 沒有逾時）都在 `SshConnectThread` 上做，UI 執行緒只接手啟動 reader；連線中再按 Connect 不理，連線中關掉 widget 時執行緒交給 `let_run_out()`，晚到的連線一結束就關掉。`SSHReaderThread(QThread)` 輪詢 channel（shell 結束時先把緩衝裡剩下的讀完；伺服器那端結束 shell 時 `_on_closed()` 一樣 `_cleanup()` 關掉連線並發 `state_changed`，共用狀態列照兩半的實際狀態重報），`TerminalDecoder` 把每次讀到的 bytes 轉成文字：UTF-8 字元、escape 與結尾的 `\r` 被讀取切斷時留到下一次接上（`split_unfinished_end()`，`\r\n` 被切開不會多一行空行），escape（CSI、OSC/DCS/SOS/PM/APC 控制字串、`ESC ( B` 這類 nF、其他兩位元組 escape）用 regex 剝除，backspace 套用到前一個字元、其餘 C0 控制字元丟掉（`utils/terminal_text.py` 的 `strip_terminal_controls()`；切斷的 escape 由 `split_incomplete_escape()` 留到下一次）；送出指令走 `send_all()`：整串 UTF-8 bytes 用 `sendall` 送完（`Channel.send` 一次只送一個封包），只在這次送出時給 channel 5 秒逾時；輸出接在最後一行後面（不用 `appendPlainText`，那會讓每次讀取都另起一行），自己的提示訊息才另起一行，terminal 有 block 上限，keepalive。`closeEvent` 一律 `_cleanup()`：執行緒不能活得比 widget 久（QThread 還在跑就被銷毀會讓 Qt abort） |
-| `ssh_file_viewer_widget.py` (722) + `sftp_session.py` (473) | `SSHFileTreeManager`（樹與右鍵選單，只看執行緒的 signal 做事）＋ `sftp_session.py` 的 `SFTPClientWrapper`、`SftpListThread` / `SftpTransferThread` / `SftpCallThread` 與純路徑工具（`remote_join`、`plain_remote_name`、`sort_entries`）：延遲載入的遠端檔案樹、右鍵選單（重新整理/建資料夾/改名/刪除/下載/上傳；新名稱只能是單一項目，`plain_remote_name()` 擋掉 `/`、`.`、`..`；改名已載入的資料夾會用新路徑重列子項；從檔案項目建資料夾或上傳時重新整理它所在的資料夾，`folder_item()`）、目錄優先 + 自然排序（項目是資料夾還是檔案記在 `KIND_ROLE`，`is_folder()` / `is_file()` 讀它，不看類型欄的字）；列目錄時符號連結用 `stat` 換成它指向的東西的類型與大小（`_follow_link`，伺服器列目錄用的是 `lstat`，連到資料夾的連結原本當成檔案），指不到東西的連結照舊當檔案。每個 SFTP 操作都經 `_session()`：拿 `_in_use` 鎖（paramiko 的 SFTP client 會把別的執行緒的回覆讀走丟掉，送出那個請求的執行緒就永遠等下去）、再 `_require_connection()`；列目錄與傳輸在工作執行緒上一直等，右鍵選單的建資料夾／改名／刪除交給 `SftpCallThread`（SFTP 回覆沒有逾時，放在 UI 執行緒會凍到 TCP 放棄），等 session 最多 `UI_WAIT_SECONDS`（1 秒），等不到就丟 `SftpBusy`（「連線忙碌」），完成後才更新樹（樹被清掉就不動）；下載先寫到同資料夾的暫存檔（`.<檔名>.*.part`），完整了才 `os.replace` 換上，失敗就刪掉暫存檔、原檔不動；上傳同理：先 `stat` 目標，已存在又沒說要取代就什麼都不傳、發 `exists` 讓樹先問（預設「否」），再 `put` 到 `.<檔名>.<亂數>.part`，完整了才 `posix_rename`（伺服器沒有這個擴充就先刪再 `rename`）換上；連線交給 `SshConnectThread`，成功後才列出根目錄；`SFTPClientWrapper.connect()` 用區域變數建連線，登入完如果 wrapper 已經被 `close()`（Disconnect 或關分頁）就自己關掉這條連線、丟 `ConnectAbandoned`，失敗時也只關自己的；連線中按 Disconnect 會把連線執行緒交給 `let_run_out()`（不跳「連線失敗」），可以再按 Connect；每次列目錄（根目錄、展開、重新整理）交給 `SftpListThread`，先顯示「載入中」，結果回來時只在樹沒被清掉（`_tree_generation`）、而且該項目等的還是這一次（`LISTING_ROLE` 序號，重新整理會取代前一次）時才填進去；下載／上傳交給 `SftpTransferThread(QThread)`（傳輸沒有自己的逾時，跑在 UI 執行緒會把整個 IDE 凍到傳完），一次只允許一個，傳輸中右鍵選單多一項「取消傳輸」（`SftpTransferThread.cancel()`：paramiko `get` / `put` 的進度回呼每塊都檢查，丟 `TransferCancelled`，暫存檔照失敗處理刪掉、要被取代的檔案不動，發 `cancelled`）；傳輸中按 Connect 不重連檔案樹（連線一開始就 `close()`，會把傳輸砍斷），只提示正在傳輸，`_refused_while_transferring()`；`closeEvent` 不等它也不打斷它（打斷會留下半個檔案），交給 `let_run_out()`，傳完才關掉 SFTP 連線 |
+| `ssh_command_widget.py` | 互動式 shell。連線和開 shell 的 channel（`open_shell_channel()`：開 session 最多等 paramiko 的 `channel_timeout` 一小時，pty 與 shell 沒有逾時；pty 開成 terminal 看得到的大小，`terminal_view.terminal_size()`：以等寬字型算出完整看得到的欄與列，至少 20 × 5）都在 `SshConnectThread` 上做，UI 執行緒只接手啟動 reader；連線中再按 Connect 不理，連線中關掉 widget 時執行緒交給 `let_run_out()`，晚到的連線一結束就關掉。`SSHReaderThread(QThread)` 輪詢 channel（shell 結束時先把緩衝裡剩下的讀完；伺服器那端結束 shell 時 `_on_closed()` 一樣 `_cleanup()` 關掉連線並發 `state_changed`，共用狀態列照兩半的實際狀態重報），`TerminalDecoder` 把每次讀到的 bytes 轉成 `TerminalOutput`：是否先清畫面（`clear`、`reset`：`split_at_screen_clear()`，只留最後一次清除之後的文字，清除前設的顏色延續、`ESC c` 則重設；widget 先 `clear()` 畫面並忘掉待套用的 `\r`），以及一段段帶樣式的文字（SGR 顏色與粗體等由 `utils/terminal_style.split_styled()` 讀出，跨次讀取延續、`reset()` 清掉；畫面用 `terminal_view.style_format()` 轉成 `QTextCharFormat`，一段結尾的單獨 `\r` 記在 `_rewind_pending` 給下一段套用）：UTF-8 字元、escape 與結尾的 `\r` 被讀取切斷時留到下一次接上（`split_unfinished_end()`，`\r\n` 被切開不會多一行空行），escape（CSI、OSC/DCS/SOS/PM/APC 控制字串、`ESC ( B` 這類 nF、其他兩位元組 escape）用 regex 剝除，backspace 套用到前一個字元、其餘 C0 控制字元丟掉（`utils/terminal_text.py` 的 `strip_terminal_controls()`；切斷的 escape 由 `split_incomplete_escape()` 留到下一次）；送出指令走 `send_all()`：整串 UTF-8 bytes 用 `sendall` 送完（`Channel.send` 一次只送一個封包），只在這次送出時給 channel 5 秒逾時；空白的一行也送出（只送換行，用來接受提示的預設值）；沒連線時，空白的一行不跳「尚未連線」提示；「中斷」按鈕與指令列的 Ctrl+C（沒有選取文字時；有選取就照常複製，`eventFilter`）送出 `\x03`（`send_interrupt()`），停止 shell 中正在跑的程式，指令列打到一半的字留著；上下鍵走過送出過的指令（`CommandHistory`：最多 500 行，連續重複只記一次，往下走過最新一行就還回原本打到一半的字）；輸出接在最後一行後面（不用 `appendPlainText`，那會讓每次讀取都另起一行），單獨的 `\r` 回到行首、由後面的文字取代這一行（進度條；與執行視窗共用 `terminal_view.insert_rewinding()`），輸出用等寬字型（`fixed_pitch.use_fixed_pitch_font()`，同執行視窗，欄位對齊的輸出才對得齊），terminal 的 viewport 改變大小、換算成字元數有變時送 `resize_pty`（`_follow_view_size()`，經 `eventFilter`；shell 開好時再對一次，連線中改了大小也跟上；伺服器拒絕時記 log，下次再試），自己的提示訊息才另起一行，terminal 有 block 上限，keepalive。`closeEvent` 一律 `_cleanup()`：執行緒不能活得比 widget 久（QThread 還在跑就被銷毀會讓 Qt abort） |
+| `ssh_file_viewer_widget.py` (756) + `sftp_session.py` (473) | `SSHFileTreeManager`（樹與右鍵選單，只看執行緒的 signal 做事；焦點在樹上時 F2 重新命名、Delete 刪除目前項目，走選單同一組動作，`_act_on()` 把斷線的錯誤變成對話框）＋ `sftp_session.py` 的 `SFTPClientWrapper`、`SftpListThread` / `SftpTransferThread` / `SftpCallThread` 與純路徑工具（`remote_join`、`plain_remote_name`、`sort_entries`）：延遲載入的遠端檔案樹、右鍵選單（重新整理/建資料夾/改名/刪除/下載/上傳；新名稱只能是單一項目，`plain_remote_name()` 擋掉 `/`、`.`、`..`；改名已載入的資料夾會用新路徑重列子項；從檔案項目建資料夾或上傳時重新整理它所在的資料夾，`folder_item()`）、目錄優先 + 自然排序（項目是資料夾還是檔案記在 `KIND_ROLE`，`is_folder()` / `is_file()` 讀它，不看類型欄的字）；列目錄時符號連結用 `stat` 換成它指向的東西的類型與大小（`_follow_link`，伺服器列目錄用的是 `lstat`，連到資料夾的連結原本當成檔案），指不到東西的連結照舊當檔案。每個 SFTP 操作都經 `_session()`：拿 `_in_use` 鎖（paramiko 的 SFTP client 會把別的執行緒的回覆讀走丟掉，送出那個請求的執行緒就永遠等下去）、再 `_require_connection()`；列目錄與傳輸在工作執行緒上一直等，右鍵選單的建資料夾／改名／刪除交給 `SftpCallThread`（SFTP 回覆沒有逾時，放在 UI 執行緒會凍到 TCP 放棄），等 session 最多 `UI_WAIT_SECONDS`（1 秒），等不到就丟 `SftpBusy`（「連線忙碌」），完成後才更新樹（樹被清掉就不動）；下載先寫到同資料夾的暫存檔（`.<檔名>.*.part`），完整了才 `os.replace` 換上，失敗就刪掉暫存檔、原檔不動；上傳同理：先 `stat` 目標，已存在又沒說要取代就什麼都不傳、發 `exists` 讓樹先問（預設「否」），再 `put` 到 `.<檔名>.<亂數>.part`，完整了才 `posix_rename`（伺服器沒有這個擴充就先刪再 `rename`）換上；連線交給 `SshConnectThread`，成功後才列出根目錄；`SFTPClientWrapper.connect()` 用區域變數建連線，登入完如果 wrapper 已經被 `close()`（Disconnect 或關分頁）就自己關掉這條連線、丟 `ConnectAbandoned`，失敗時也只關自己的；連線中按 Disconnect 會把連線執行緒交給 `let_run_out()`（不跳「連線失敗」），可以再按 Connect；每次列目錄（根目錄、展開、重新整理）交給 `SftpListThread`，先顯示「載入中」，結果回來時只在樹沒被清掉（`_tree_generation`）、而且該項目等的還是這一次（`LISTING_ROLE` 序號，重新整理會取代前一次）時才填進去；下載／上傳交給 `SftpTransferThread(QThread)`（傳輸沒有自己的逾時，跑在 UI 執行緒會把整個 IDE 凍到傳完），一次只允許一個，傳輸中右鍵選單多一項「取消傳輸」（`SftpTransferThread.cancel()`：paramiko `get` / `put` 的進度回呼每塊都檢查，丟 `TransferCancelled`，暫存檔照失敗處理刪掉、要被取代的檔案不動，發 `cancelled`）；傳輸中按 Connect 不重連檔案樹（連線一開始就 `close()`，會把傳輸砍斷），只提示正在傳輸，`_refused_while_transferring()`；`closeEvent` 不等它也不打斷它（打斷會留下半個檔案），交給 `let_run_out()`，傳完才關掉 SFTP 連線 |
 | `ssh_host_key_policy.py` | **`InteractiveHostKeyPolicy`** — 取代 `AutoAddPolicy`。首次連線顯示 SHA256 指紋要使用者確認，確認後寫入 `~/.pybreeze/ssh_known_hosts`（TOFU）。查詢、詢問、寫入都在模組層的 `_DECISION_LOCK` 裡一次一個（只有連線執行緒會拿，UI 執行緒不等它）；問之前先重讀檔案（同一次 Connect 的另一半剛接受過就不再問），使用者拒絕的 (host, 指紋) 記 10 秒，另一半直接拒絕；寫入時在檔案現況後面加一行（`_store()`），不用 `client.save_host_keys()`（那會用 Connect 時讀到的舊副本蓋掉別的分頁剛接受的主機），也不用 `HostKeys.save()`（paramiko 讀不懂的行，壞行或 `ssh-dss`，會被寫掉）。兩個 known_hosts 都經 `load_known_hosts()` 逐行讀，讀不懂的行跳過（`HostKeys.load` 遇到非 base64 的 key 丟 `InvalidHostKey`，整個 Connect 就失敗）。問題由 `HostKeyAsker`（住在 UI 執行緒的 QObject，`host_key_asker()` 取得，兩個 SSH widget 建立時先建好）顯示：從連線執行緒問時走 `BlockingQueuedConnection`，連線執行緒等答案、UI 不等。每個問題都從「否」開始；發問的面板已經關掉（dock 關閉即刪除）就答「否」，不會沿用上一題的答案 |
 | `ssh_connect_thread.py` | `SshConnectThread(QThread)`：在自己的執行緒上跑一次會阻塞的 `connect()`，發 `connected` 或 `failed(message)`。`CONNECT_ERRORS` 是連線會丟的例外；`SHA1_ALGORITHMS` 是每個 `connect()` 都帶上的 `disabled_algorithms`，拒絕 SHA-1 的 RSA 簽章與金鑰交換（paramiko 5 已移除，paramiko 4 仍會提供；CVE-2026-44405）。TCP 10 秒、banner 15 秒、auth 30 秒逾時加起來，連不到的主機以前會把 IDE 凍住將近一分鐘 |
-| `ssh_key_loader.py` | 依序嘗試各種私鑰型別，回傳第一個能解析的；都不行時 `unloadable_key_reason()` 分辨是密語沒給／給錯（檔案有加密，而且給的密語解不開它；用 `cryptography` 試解）還是不支援的私鑰（例如加密的 DSA） |
+| `ssh_key_loader.py` | 依序嘗試各種私鑰型別，回傳第一個能解析的；paramiko 不讀的 PKCS#8（`BEGIN PRIVATE KEY`／`BEGIN ENCRYPTED PRIVATE KEY`）由 `cryptography` 讀進來、在記憶體裡轉成 OpenSSH 格式再交給 paramiko；都不行時 `unloadable_key_reason()` 分辨是密語沒給／給錯（檔案有加密，而且給的密語解不開它；用 `cryptography` 試解）還是不支援的私鑰（例如加密的 DSA），或是要先匯出成 OpenSSH 格式的 PuTTY `.ppk` 金鑰 |
 
 ### `url/ai_code_review_gui.py`
 
@@ -311,6 +316,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 - 請求走 `ReviewRequestThread(QThread)`，只有 `answered` / `failed` 兩個 signal 碰 UI（和 `SkillsSendGUI` 同一套）；送出中再按不會重送；`closeEvent` 不等它，交給 `thread_keeper.let_run_out()`：斷開它和面板的連線、留著參考直到它結束（等它會讓 IDE 凍住最長一個讀取逾時）
 - `urls.txt` 只存 URL 的 SHA-256 指紋（`url_fingerprint()`）：API URL 可能帶權杖，依 CLAUDE.md 要當憑證看待；舊版留下的明文檔會在下次送出時改寫成指紋
+- 方法預設 POST（`DEFAULT_METHOD`）；POST／PUT（`METHODS_WITH_A_BODY`）把程式碼照貼上的樣子放進本文的表單欄位 `code`，程式碼是空的就不送、在面板說明；GET／DELETE 只送 URL
 - 非 2xx（含不跟隨的轉址）走 `failed`，狀態碼寫進面板，不會只留空白
 - 接受/拒絕只在收到回答（`answered`）後可按，每個回答只能評一次；Send 按鈕由執行緒的 `finished` 恢復，請求不論怎麼結束都回得來
 
@@ -318,7 +324,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 10. `pybreeze_ui/jupyter_lab_gui/`
 
-- `jupyter_lab_thread.py` — `JupyterLauncherThread(QThread)`：`find_free_port()`（綁 127.0.0.1 讓核心挑空 port）→ `choose_python()`（IDE 選定的直譯器優先，其次 venv 的，最後 IDE 自己的）→ `is_jupyter_installed()`（問直譯器 `find_spec('jupyterlab')`，不問 pip；缺就自動裝）→ 啟動 server（`_start_server()`，在 `_process_lock` 裡先看 `_stopped`：`stop()` 之後就不再啟動，即使還在安裝）→ `_wait_until_ready()` 輪詢 port（60 秒 timeout）→ emit `server_ready(url)`。server 的輸出寫進暫存檔而不是管線（server 起來後沒人讀管線，緩衝區滿了它會卡在 `write()`）；提早結束時錯誤訊息取這個檔案的尾巴。失敗時 `error_occurred` 送的是原因（例外訊息，最多 2,000 字），traceback 只進 log；已經 `stop()`（分頁關了）的失敗不算失敗，只記 debug
+- `jupyter_lab_thread.py` — `JupyterLauncherThread(QThread)`：`find_free_port()`（綁 127.0.0.1 讓核心挑空 port）→ `choose_python()`（IDE 選定的直譯器優先，否則和執行一樣走 `default_interpreter()`：工作目錄的 `venv`／`.venv`，再來 IDE 自己的；打包版找 PATH，找不到的 `JEditorExecException` 在分頁上顯示原因）→ `is_jupyter_installed()`（問直譯器 `find_spec('jupyterlab')`，不問 pip；缺就自動裝）→ 啟動 server（`_start_server()`，在 `_process_lock` 裡先看 `_stopped`：`stop()` 之後就不再啟動，即使還在安裝）→ `_wait_until_ready()` 輪詢 port（60 秒 timeout）→ emit `server_ready(url)`。server 的輸出寫進暫存檔而不是管線（server 起來後沒人讀管線，緩衝區滿了它會卡在 `write()`）；提早結束時錯誤訊息取這個檔案的尾巴。失敗時 `error_occurred` 送的是原因（例外訊息，最多 2,000 字），traceback 只進 log；已經 `stop()`（分頁關了）的失敗不算失敗，只記 debug
 - `jupyter_lab_widget.py` — 設 `WA_DeleteOnClose`：分頁關閉就刪掉（`close_tab` 只移除分頁、不刪 widget，網頁檢視與它的 Chromium renderer 會一直留到 IDE 結束）。收到 URL 後用 `QWebEngineView.setUrl()` 載入；失敗時在狀態列顯示「初始化失敗：原因」（純文字、可選取、自動換行）；`closeEvent` 一律關掉 server（launcher 執行緒在 lab 載入完就結束了，只停「還在跑的執行緒」等於從不停 server）；還在安裝或啟動的 launcher 交給 `let_run_out()`，不在 UI 執行緒等（安裝可能要好幾分鐘），也不用 `blockSignals`（那會連 `finished` 一起擋掉，keeper 永遠放不掉它）。IDE 關閉時 `PyBreezeMainWindow._close_tool_tabs_and_docks()` 會關掉所有非編輯器分頁與 `DestroyDock`，這個 `closeEvent` 才會被呼叫到
 
 安全前提（CLAUDE.md 已明列）：server 只綁 localhost，因此 token/password 刻意留空、`disable_check_xsrf=True` 才能內嵌。`--ServerApp.port_retries=0`：port 被占就直接結束（走「提早結束」的回報），不讓它默默換 port。**不設 `allow_origin`**：loopback 擋不住瀏覽器，開放來源的話使用者逛到的任何網頁都能操作這個沒有 token 的 server。
@@ -327,9 +333,9 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 11. `pybreeze_ui/syntax/`
 
-- `syntax_keyword.py`（625 行）— 七份關鍵字清單，彙整成 `package_keyword_list`：
+- `syntax_keyword.py`（629 行）— 七份關鍵字清單，彙整成 `package_keyword_list`：
   `je_auto_control` / `je_load_density` / `je_api_testka` / `je_web_runner` / `automation_file` / `mail_thunder` / `test_pioneer`
-- `syntax_extend.py` — 把前六個註冊到 `.json`（黃色 `#FFFF00`），`test_pioneer` 註冊到 `TEST_PIONEER_SUFFIXES` 的每個副檔名（`.yml`、`.yaml`，橘色 `#FF9900`），然後重置當前編輯器的 highlighter
+- `syntax_extend.py` — 把前六個註冊到 `.json`（黃色，JEditor 主題色鍵 `warning_output_color`），`test_pioneer` 註冊到 `TEST_PIONEER_SUFFIXES` 的每個副檔名（`.yml`、`.yaml`，橘色，`diff_modified_marker_color`）；顏色給的是主題色的鍵而不是固定顏色，JEditor 的 highlighter 每次建立時查 `actually_color_dict`，所以深色與淺色主題各用各的一組，然後重置當前編輯器的 highlighter
 
 `PackageManager.syntax_check_list` 決定要註冊哪些；用 `package_keyword_list.get(pkg, [])` 取值，套件沒有關鍵字清單時註冊空集合而不是炸掉。
 
@@ -340,16 +346,17 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 | 套件 | 內容 |
 |---|---|
 | `app_dirs.py` | `pybreeze_data_dir()` → `~/.pybreeze`，所有持久化資料的單一位置，建立時為 `0700`（`DATA_DIR_MODE`）；`pybreeze_data_path()` 只給路徑、不建立 |
-| `terminal_text.py` | 終端輸出的 escape 與控制字元：`strip_terminal_controls()`（CSI、OSC/DCS 等控制字串、nF、兩位元組 escape 剝除，backspace 套用，其餘 C0 丟掉）、`split_incomplete_escape()`（讀取切斷在 escape 中間時把尾巴留給下一次）、`split_unfinished_end()`（再加上它前面或最後的 `\r`）、`take_leading_backspaces()`（一段開頭的 backspace 留給畫面，擦掉前一段已經顯示的字，不越過行首）。SSH terminal 與執行視窗共用 |
-| `subprocess_util.py` | `utf8_subprocess_env()`（釘 `PYTHONIOENCODING`，解 Windows cp950 亂碼）、`no_window_creationflags()`（`CREATE_NO_WINDOW`，避免 GUI 程式彈出黑窗） |
+| `terminal_text.py` | 終端輸出的 escape 與控制字元：`strip_terminal_controls()`（CSI、OSC/DCS 等控制字串、nF、兩位元組 escape 剝除，backspace 套用，其餘 C0 丟掉）、`split_incomplete_escape()`（讀取切斷在 escape 中間時把尾巴留給下一次）、`split_unfinished_end()`（再加上它前面或最後的 `\r`）、`take_leading_backspaces()`（一段開頭的 backspace 留給畫面，擦掉前一段已經顯示的字，不越過行首）、`split_at_screen_clear()`（最後一個清除整個畫面的序列：`ESC [ 2J`、`ESC [ 3J`、`ESC c`，前後切開；`ESC [ J` 只清游標以下，shell 重畫提示字元時會送，不算）。SSH terminal 與執行視窗共用 |
+| `terminal_style.py` | SGR（`ESC [ … m`）讀成 `TextStyle`（frozen dataclass：前景、背景、粗體、斜體、底線、反白）：`apply_sgr()`（16 色與亮色、`38;5;n` 256 色、`38;2;r;g;b` 24 位元色、各開關與 39/49 預設、0 重設；看不懂或格式錯的參數不改任何東西，超過 5 位數的參數略過，`int()` 不收超過 4300 位數）、`split_styled()`（文字在 SGR 處切段，每段帶它的樣式，其餘 escape 留給 `strip_terminal_controls()`）、`colour_rgb(colour, on_dark=)`（前 16 色用 VS Code 終端機的預設值，深色與淺色主題各一組，`terminal_view.style_format()` 依 view 背景的亮度挑；256 色的色塊、灰階與 24 位元色照 xterm）。只有 SSH terminal 用：執行視窗的程式寫到 pipe，不會上色 |
+| `subprocess_util.py` | `child_environment()`（`os.environ` 去掉值為 `IDE_ONLY` 的變數：IDE 只給自己設的）、`utf8_subprocess_env()`（以它為底再釘 `PYTHONIOENCODING`，解 Windows cp950 亂碼）、`no_window_creationflags()`（`CREATE_NO_WINDOW`，避免 GUI 程式彈出黑窗） |
 | `logging/logger.py` | `pybreeze_logger`（具名 logger，**不動 root logger**）+ `PyBreezeLogger(RotatingFileHandler)`：寫到 `~/.pybreeze/logs/PyBreeze.log`（`PYBREEZE_LOG_FILE` 可改），UTF-8、附加模式、每行帶行程編號，第一筆紀錄才開檔；只在開檔時輪替，門檻 `PYBREEZE_LOG_MAX_BYTES`（預設 100 MB）；開不了檔就改寫 `os.devnull` 並警告一次。與 JEditor、FrontEngine 同一套做法（工作區 X-6） |
 | `exception/` | `ITEException` 為根的 17 個例外類別 + `exception_tags.py` 訊息常數；`error_templates.py` 把名稱以 `_error` 結尾的常數變成語言字典的 `error_text_<名稱>`（英文字典直接取常數本身） |
 | `network/url_validation.py` | `validate_url()`：先拒絕 `urlparse` 與 `urllib3` 讀出不同主機的 URL（反斜線、空白、控制字元，或兩者主機不同；`_check_one_reading`），再做 scheme 白名單、私有/迴環/link-local/reserved 阻擋、額外處理 CGNAT 與 NAT64 網段、IPv6 內嵌 IPv4 的偵測 |
 | `network/public_http.py` | 只連到剛檢查過的位址（防 DNS rebinding）：`public_session()`（`_NoRedirectSession`：不跟也不準備轉址，3xx 原封不讀地回來；`PublicAddressAdapter`，連線開 socket 時把 urllib3 的 `_dns_host` 依序暫換成 `public_addresses()` 回傳的每個位址，連得上就用，全部失敗才丟最後一個錯誤）、`PublicHTTPHandler` / `PublicHTTPSHandler`（`http.client` 的 `_create_connection`）。主機名仍是連線的 host，所以 SNI、憑證檢查與 `Host` 標頭照舊；經 proxy 的連線不釘住。`overall_deadline(seconds)`：這個執行緒在區塊內的請求總共最多這麼久，釘住的連線等回應時把 socket 登記上去，時間到就 shutdown，丟 `ReadTimeout`（讀取逾時每來一個位元組就重算，慢慢送標頭的伺服器原本可以一直拖）；AI 審查、Skill、CoT 每一步都包在 `overall_deadline(DEFAULT_MAX_READ_SECONDS)` 裡。`test_http_goes_through_public_connections.py` 擋下直接呼叫 `requests.*` / `urlopen` |
 | `network/http_client.py` | `read_capped_text()`（串流讀取有上限，超出丟 `ResponseTooLargeError`；照 `Content-Type` 明寫的 charset 解碼，沒寫就 UTF-8，不用 requests 給 `text/*` 的 ISO-8859-1，`named_charset()`；整個回應最多讀 `DEFAULT_MAX_READ_SECONDS`（300 秒），時間到由 `_Watchdog` 關掉連線（urllib3 的 `HTTPResponse.shutdown()` 能中斷別的執行緒上正在等的讀取），丟 `ReadTimeout`：讀取逾時只管每一塊之間，一次送一個位元組的伺服器可以一直拖下去；狀態列與標頭由呼叫端的 `public_http.overall_deadline()` 涵蓋）、`describe_request_error()`（給使用者看的失敗原因：逾時、連不上、URL 不合法等，不含 URL；requests 的錯誤訊息會引用含 token 的完整 URL）、`succeeded()`（只有 2xx 算回答；`response.ok` 連 3xx 都算，這些請求又不跟隨轉址）、`truncate_for_display()`、`CONNECT_TIMEOUT` |
-| `curl_import/` | `curl_parser.py`(600) 完整 curl 解析（`-I` 是 HEAD、`--oauth2-bearer` 變成 `Authorization`（`-H` 給的優先）、URL 的 `#fragment` 丟掉、URL 拆不開（沒關的 `[`、不是數字的 port）就是 `CurlParseException`，`url_is_well_formed()` 也給 HAR 用：這種 entry 跳過；同名的 `-F` 全留（`request_body.py` 的 `form_parts()` 回傳 list，產生的程式寫成 `files=[(…), …]`）；表單一律以 multipart 送出：文字欄位也放進 `files=`，寫成 `(None, 文字)`（`form_entries()`），複製來的 `Content-Type: multipart/...` 不寫進 headers（`sent_headers()`，requests 要自己帶 boundary）；APITestka JSON action 遇到上傳檔案、`@file` body 或 `-b` cookie 檔就丟 `CurlParseException`；`@file` body 一律以位元組讀（`--data-binary` 原樣、`-d` 去掉 CR/LF，和 curl 一樣），和其他 `-d` 片段照命令列的順序接起來（`data_file_positions`）；`-b <檔案>` 存進 `cookie_files`，產生的程式以註解說明沒有讀它；`-G` 搭 `@file` 拒絕；bash 的 `$'...'` 先展開成一般引號字串再交給 `shlex`、短旗標叢集展開、`--data-urlencode`、`-F`、`--form-string`、`-b`、`-G`）；`-F` 的值照 curl 語法（`@` 開頭是上傳檔案），`--form-string` 與 HAR 的文字欄位進 `form_strings`、照字面；URL 的 query 只有「解碼再編碼會一模一樣」時才拆進 `params`（`query_tools.query_round_trips()`，URL Builder 也用它決定 query 顯示成 dict 還是原字串；否則照原樣留在 URL，`requests` 原封送出，簽章 URL 才不會壞），query 參數 `params` 同一個 key 出現多次時存成值的清單（`add_repeated_value()`），URL 的在前、`-G` 的在後，和 curl 實際送出的一樣；`http_method()` 只收 RFC 9110 的 token（HAR 也用它），方法會寫進產生的程式碼，不是 token 就拒絕；`request_body.py` 判斷 body 型別（`body_kind()`：JSON 物件要能原樣送回才走 `json=`，重複的 key、float 裝不下的數字、`NaN`、巢狀超過 100 層都照原字串送）；`request_codegen.py` 產 requests 程式（字串一律經 `python_string()`：`json.dumps` 預設把 BMP 以外的字元寫成兩個 surrogate，Python 讀成兩個字；JSON body 經 `python_literal()` 寫成 Python，`true`/`null` 在 Python 裡是未定義的名稱）；`script_templates.py`(293) 產 APITestka/LoadDensity/pytest 模板 |
-| `har_import/` | `har_parser.py`(354) HAR → `CurlRequest`（重用 curl 那套 codegen；建不出請求的 entry 跳過，含半個字元（JSON 的 `\ud800`）的也跳過，同名 cookie 改走 `Cookie` header）；`is_api_like()` 濾掉靜態資源；`har_codegen.py` 批次產生單一腳本、函式名去重，每段開頭註解裡的控制字元寫成 `\xNN`（URL 裡的換行不會結束註解） |
-| `header_tools/` | `header_analyzer.py`(318) 安全稽核；`header_merge.py` 依 HTTP 規則合併重複 header（Cookie 用 `; ` 其餘用 `, `） |
+| `curl_import/` | `curl_parser.py`(612) 完整 curl 解析（`-I` 是 HEAD、`--oauth2-bearer` 變成 `Authorization`（`-H` 給的優先）、URL 的 `#fragment` 丟掉、URL 拆不開（沒關的 `[`、不是數字的 port）就是 `CurlParseException`，`url_is_well_formed()` 也給 HAR 用：這種 entry 跳過；同名的 `-F` 全留（`request_body.py` 的 `form_parts()` 回傳 list，產生的程式寫成 `files=[(…), …]`）；表單一律以 multipart 送出：文字欄位也放進 `files=`，寫成 `(None, 文字)`（`form_entries()`），複製來的 `Content-Type: multipart/...` 不寫進 headers（`sent_headers()`，requests 要自己帶 boundary）；APITestka JSON action 遇到上傳檔案、`@file` body 或 `-b` cookie 檔就丟 `CurlParseException`；`@file` body 一律以位元組讀（`--data-binary` 原樣、`-d` 去掉 CR/LF，和 curl 一樣），和其他 `-d` 片段照命令列的順序接起來（`data_file_positions`）；`-b <檔案>` 存進 `cookie_files`，產生的程式以註解說明沒有讀它；`-G` 搭 `@file` 拒絕；bash 的 `$'...'` 先展開成一般引號字串再交給 `shlex`、短旗標叢集展開、`--data-urlencode`、`-F`、`--form-string`、`-b`、`-G`）；`-F` 的值照 curl 語法（`@` 開頭是上傳檔案），`--form-string` 與 HAR 的文字欄位進 `form_strings`、照字面；URL 的 query 只有「解碼再編碼會一模一樣」時才拆進 `params`（`query_tools.query_round_trips()`，URL Builder 也用它決定 query 顯示成 dict 還是原字串；否則照原樣留在 URL，`requests` 原封送出，簽章 URL 才不會壞），query 參數 `params` 同一個 key 出現多次時存成值的清單（`add_repeated_value()`），URL 的在前、`-G` 的在後，和 curl 實際送出的一樣；`http_method()` 只收 RFC 9110 的 token（HAR 也用它），方法會寫進產生的程式碼，不是 token 就拒絕；`request_body.py` 判斷 body 型別（`body_kind()`：JSON 物件要能原樣送回才走 `json=`，重複的 key、float 裝不下的數字、`NaN`、巢狀超過 100 層都照原字串送）；`request_codegen.py` 產 requests 程式（字串一律經 `python_string()`：`json.dumps` 預設把 BMP 以外的字元寫成兩個 surrogate，Python 讀成兩個字；JSON body 經 `python_literal()` 寫成 Python，`true`/`null` 在 Python 裡是未定義的名稱）；`script_templates.py`(293) 產 APITestka/LoadDensity/pytest 模板 |
+| `har_import/` | `har_parser.py`(368) HAR → `CurlRequest`（重用 curl 那套 codegen；建不出請求的 entry 跳過，含半個字元（JSON 的 `\ud800`）的也跳過，同名 cookie 改走 `Cookie` header）；`is_api_like()` 濾掉靜態資源；`har_codegen.py` 批次產生單一腳本、函式名去重，每段開頭註解裡的控制字元寫成 `\xNN`（URL 裡的換行不會結束註解） |
+| `header_tools/` | `header_analyzer.py`(335) 安全稽核；`header_merge.py` 依 HTTP 規則合併重複 header（Cookie 用 `; ` 其餘用 `, `） |
 | `jwt_tools/`、`hash_tools/`、`timestamp_tools/`、`regex_tools/`、`query_tools/`、`url_tools/`、`diff_tools/`、`http_reference/`、`json_format/`、`response_inspector/` | 對應 §6 工具分頁的純邏輯。`json_format` 的 Format / Minify 不改內容：數字保留原文（先換成帶隨機標記的佔位字串、輸出後一次換回）、非 ASCII 原樣輸出、同一物件重複的 key 與 `NaN`/`Infinity` 報錯；`pretty_json_or_none()` 是同一套解析、不記 log 的版本，Response Inspector 的 body 與 JWT 各段（`jwt_decoder.shown_json()`）用它排版。`json_format/view_safe.py` 的 `dumps_for_view()` / `escape_for_view()`：工具顯示的 JSON 把文字框還不回原樣的字元（U+2029、U+FDD0、U+FDD1 會變換行，落單的 surrogate 會消失；U+2028 經 `toPlainText()`、U+0085 經 `splitlines()` 也會斷行）寫成 `\uXXXX`，JSON Format、Query/URL 轉 JSON、JWT、Response Inspector、cURL/HAR 產生的 JSON 與 Python 字串都經過它。`query_tools` 與 `url_tools` 讀 JSON 也保留數字原文、拒收 `NaN` 與同一物件重複的 key（`load_json_verbatim()`，用 `json_process.unique_pairs`），Query 轉 JSON 遇到不是 UTF-8 的 percent-escape 報錯而不換成 U+FFFD，`urlencode` 經 `encode_pairs()`：寫不進 URL 的字元（落單的 surrogate）報自己的錯，不從分頁的 slot 漏出去 |
 | `file_process/get_dir_file_list.py` | 遞迴收集指定副檔名的檔案（大小寫不敏感） |
 | `file_process/read_capped.py` | `read_text_capped(path, encoding, max_bytes=None)`：先看大小，超過 `MAX_OPEN_BYTES`（100 MB）丟 `FileTooLargeError`（`OSError`，`strerror` 說明大小與上限），HAR 分頁與架構圖編輯器開檔都經它，不在 UI 執行緒讀好幾 GB 的檔案 |
@@ -362,7 +369,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 13. `pybreeze/extend_multi_language/`
 
-`extend_english.py` 與 `extend_traditional_chinese.py` 各 708 個鍵，`update_language_dict()` 把它們併進 `je_editor` 的字典，並把 `application_name`（「PyBreeze」）寫進 `language_wrapper.choose_language_dict` 裡每一個語言：這是 PyBreeze 唯一覆寫而非新增的 JEditor 鍵，日文、簡中等 PyBreeze 沒翻譯的語言自帶「JEditor」，不寫的話會蓋過英文退回值。`test_language_parity.py` 守住兩邊鍵值必須對齊，也檢查每個已註冊語言都解得出程式用到的每個鍵；`test_startup_language.py` 在子行程裡用存好的繁中／日文真的啟動主視窗。
+`extend_english.py` 與 `extend_traditional_chinese.py` 各 760 個鍵，`update_language_dict()` 把它們併進 `je_editor` 的字典，並把 `application_name`（「PyBreeze」）寫進 `language_wrapper.choose_language_dict` 裡每一個語言：這是 PyBreeze 唯一覆寫而非新增的 JEditor 鍵，日文、簡中等 PyBreeze 沒翻譯的語言自帶「JEditor」，不寫的話會蓋過英文退回值。`test_language_parity.py` 守住兩邊鍵值必須對齊，也檢查每個已註冊語言都解得出程式用到的每個鍵；`test_startup_language.py` 在子行程裡用存好的繁中／日文真的啟動主視窗。
 
 ---
 
@@ -455,10 +462,10 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 18. 測試與 CI
 
-- **單元測試** `test/test_utils/` — 124 個 `test_*.py`、2251 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
+- **單元測試** `test/test_utils/` — 150 個 `test_*.py`、2714 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
 - **整合測試** `test/unit_test/start_automation/` — 以 `debug_mode=True` 啟動 IDE，10 秒後自動關閉，驗證啟動流程與 extend tab
 - **CI** `.github/workflows/{dev,stable}.yml` — `unit-tests` job 跑 Windows runner、Python 3.10–3.14 矩陣，3.12 那一腳額外上傳 `coverage-xml` artifact；`sonarcloud` job 跑 ubuntu、`needs: unit-tests`。每日 02:00 排程 + push/PR 觸發。`stable.yml` 另有 `publish` job 負責版號遞增與 PyPI 發布
-- **覆蓋率** `.coveragerc` — `relative_files = True` 是必要的：報告在 Windows 產生、由 Linux 上的 scanner 讀取，路徑不能帶機器資訊。目前整體 60%（`utils/`、`tools_gui`、`dialog` 95–100%；`editor_main` 58%、`menu` 54%；仍低的是 `diagram_editor` 45%、`process_executor` 39%、`connect_gui` 28%）
+- **覆蓋率** `.coveragerc` — `relative_files = True` 是必要的：報告在 Windows 產生、由 Linux 上的 scanner 讀取，路徑不能帶機器資訊。`patch = subprocess` 也是必要的：pytest-cov 7 不再量測子行程，沒有它，測試在子直譯器裡建出的真主視窗（`started_window.py`）一行都不算。目前整體語句 96%、連分支 95%（`tools_gui` 99%、`utils/` 98%、`dialog` 100%；`menu` 97%、`connect_gui` 96%、`diagram_editor` 96%、`extend_ai_gui` 95%、`extend/` 94%、`jupyter_lab_gui` 92%；最低的是 `editor_main` 90%）。coverage 只追蹤 Python 自己開的執行緒，`test/test_utils/conftest.py` 讓每個 `QThread` 子類別的 `run` 在 Qt 的執行緒上裝上 coverage 的 tracer，否則沒有一個 `QThread.run` 算得到
 - **靜態分析** SonarCloud（`sonar-project.properties`，CI-based analysis；Automatic Analysis 已關閉且必須維持關閉，兩種模式互斥）+ Codacy（`.codacy.yml`）+ Bandit（`pyproject.toml` 中排除 test、skip B101/B404）
 - **SonarCloud 方案限制** 該組織的方案只開放 `main` 與 PR 的分析結果。非 main 分支的分析送得出去、CE 任務也會成功，但結果讀回來是 403（組織內每個專案都只有 `main` 一條分支）。因此 `dev.yml` 只在 PR 時掃描，`stable.yml` 另外掃 push to `main`
 

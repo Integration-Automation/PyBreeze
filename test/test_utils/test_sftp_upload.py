@@ -75,7 +75,7 @@ def _wrapper(sftp: FakeSftp) -> sftp_session.SFTPClientWrapper:
     return wrapper
 
 
-@pytest.fixture()
+@pytest.fixture
 def local_file(tmp_path):
     path = tmp_path / "config.yaml"
     path.write_bytes(b"new config")

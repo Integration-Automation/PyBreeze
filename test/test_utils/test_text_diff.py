@@ -223,3 +223,26 @@ def test_repetitive_text_just_under_2000_lines_is_quick():
     compare_texts(left, right)
 
     assert time.monotonic() - started < 5
+
+
+@pytest.mark.parametrize(("lines", "plain_matches"), [(10, 1), (1500, 0)])
+def test_the_plain_match_is_made_only_for_small_texts(monkeypatch, lines, plain_matches):
+    # Made for every text, it took a 40,000-line comparison from 6 s to 16 s
+    import difflib
+
+    from pybreeze.utils.diff_tools import text_diff
+
+    made: list = []
+
+    class Counting(difflib.SequenceMatcher):
+        def __init__(self, *args, **kwargs):
+            made.append(True)
+            super().__init__(*args, **kwargs)
+
+    monkeypatch.setattr(text_diff.difflib, "SequenceMatcher", Counting)
+    left = "\n".join(["same"] + [f"l{i}" for i in range(lines)])
+    right = "\n".join(["same"] + [f"r{i}" for i in range(lines)])
+
+    text_diff.compare_texts(left, right)
+
+    assert len(made) == plain_matches

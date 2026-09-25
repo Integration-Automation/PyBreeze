@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import re
+
 import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from pybreeze.pybreeze_ui.diagram_editor.diagram_mermaid_parser import (
     _order_layers,
@@ -381,3 +385,48 @@ class TestWhatTheReviewFound:
 
     def test_a_quoted_edge_label_loses_its_quotes(self):
         assert _edges(parse_mermaid('graph TD\nA -->|"quoted label"| B')) == [("A", "B", "quoted label")]
+
+
+class TestArrowLabels:
+    @pytest.mark.parametrize("token,label", [
+        ("-->", ""),
+        ("-->|yes|", "yes"),
+        ("-->| yes |", "yes"),
+        ('-->|"a|b"|', "a|b"),
+        ('-->| "a|b" |', "a|b"),
+        ('-->|"a" b|', '"a" b'),
+        ('-->|"a|', '"a'),
+        ("-->||", ""),
+        ("-->| |", ""),
+        ("==>|thick|", "thick"),
+        ('-->|""|', ""),
+        ("-->|x|y|", "x"),
+        ("--> |yes|", "yes"),
+    ])
+    def test_the_label_of_an_arrow(self, token, label):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_mermaid_parser import _parse_arrow
+
+        assert _parse_arrow(token)[0] == label
+
+    @given(st.text(alphabet='|" a\t', max_size=14))
+    @settings(max_examples=400, deadline=None)
+    def test_the_label_is_the_one_the_old_pattern_found(self, tail):
+        # The pattern the two replaced, as the oracle: cubic, but not on 14 characters
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_mermaid_parser import _arrow_label
+
+        old = re.search(r'\|\s*("[^"]*"|[^|]*)\s*\|', "-->" + tail)
+
+        assert _arrow_label("-->" + tail).strip() == (old.group(1).strip() if old else "")
+
+    def test_a_long_unclosed_label_is_read_in_linear_time(self):
+        # The label pattern backtracked in cubic time: 800 spaces took half a
+        # second, 3,000 about half a minute, on the UI thread
+        import time
+
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_mermaid_parser import _parse_arrow
+
+        started = time.perf_counter()
+        _parse_arrow("-->|" + " " * 3000 + "x")
+        _parse_arrow('-->| "' + " " * 3000 + "x")
+
+        assert time.perf_counter() - started < 1

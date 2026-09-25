@@ -12,6 +12,7 @@ import stat
 from collections.abc import Callable
 
 from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLineEdit, QTreeWidget, QTreeWidgetItem,
     QMenu, QFileDialog, QMessageBox, QSplitter, QInputDialog, QStyle
@@ -92,6 +93,10 @@ def folder_item(item: QTreeWidgetItem | None) -> QTreeWidgetItem | None:
     return item.parent()
 
 
+# The keys that rename and delete the entry in focus, by the menu entry they stand for
+_ENTRY_KEYS = {"rename": Qt.Key.Key_F2, "delete": Qt.Key.Key_Delete}
+
+
 class SSHFileTreeManager(QWidget):
     """
     QWidget: connection form + tree + context menu.
@@ -101,7 +106,7 @@ class SSHFileTreeManager(QWidget):
     # Emitted when the session comes up or goes down, for the tab's status label
     state_changed = Signal()
 
-    def __init__(self, external_login_widget: LoginWidget = None, add_login_widget: bool = True):
+    def __init__(self, external_login_widget: LoginWidget | None = None, add_login_widget: bool = True):
         super().__init__()
         self.word_dict = language_wrapper.language_word_dict
         self.setWindowTitle(
@@ -140,6 +145,11 @@ class SSHFileTreeManager(QWidget):
         self.tree.itemExpanded.connect(self.on_item_expanded)
         self.tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.tree.customContextMenuRequested.connect(self.on_context_menu)
+        # F2 and Delete act on the entry in focus while the tree has the focus, as in the project tree
+        for name, act in (("rename", self._rename_current), ("delete", self._delete_current)):
+            shortcut = QShortcut(QKeySequence(_ENTRY_KEYS[name]), self.tree)
+            shortcut.setContext(Qt.ShortcutContext.WidgetShortcut)
+            shortcut.activated.connect(act)
 
         # Layouts
         splitter = QSplitter(Qt.Orientation.Vertical)
@@ -228,11 +238,12 @@ class SSHFileTreeManager(QWidget):
         if transfer_running:
             let_run_out(transfer, transfer.done, transfer.failed, transfer.cancelled)
             transfer.finished.connect(self.client.close)
-        for listing in list(self._listings):
+        # Over copies: a thread's slot may drop it from its set
+        for listing in tuple(self._listings):
             if listing.isRunning():
                 let_run_out(listing, listing.listed, listing.failed)
         self._listings.clear()
-        for call in list(self._calls):
+        for call in tuple(self._calls):
             if call.isRunning():
                 let_run_out(call, call.done, call.failed)
         self._calls.clear()
@@ -394,10 +405,7 @@ class SSHFileTreeManager(QWidget):
         Show context menu for file operations.
         顯示右鍵選單以進行檔案操作。
         """
-        item = self.tree.itemAt(pos)
-        if item is not None and not item.text(3):
-            # The "..." or loading row: no entry of its own, so the folder it is in
-            item = item.parent()
+        item = self._entry_of(self.tree.itemAt(pos))
         menu = QMenu(self)
         handlers = {}
         for name, handler in (
@@ -408,16 +416,39 @@ class SSHFileTreeManager(QWidget):
                 ("download", self.action_download),
                 ("upload", self.action_upload),
         ):
-            handlers[menu.addAction(self.word_dict.get(f"ssh_file_viewer_context_menu_action_{name}"))] = handler
+            action = menu.addAction(self.word_dict.get(f"ssh_file_viewer_context_menu_action_{name}"))
+            if name in _ENTRY_KEYS:
+                action.setShortcut(QKeySequence(_ENTRY_KEYS[name]))  # shown beside it: the tree's own keys do it
+                action.setShortcutVisibleInContextMenu(True)
+            handlers[action] = handler
         if self._transfer is not None and self._transfer.isRunning():
             menu.addSeparator()
             cancel = menu.addAction(self.word_dict.get("ssh_file_viewer_context_menu_action_cancel_transfer"))
             handlers[cancel] = self.action_cancel_transfer
 
         chosen = menu.exec(self.tree.viewport().mapToGlobal(pos))
+        menu.deleteLater()  # a child of this widget: kept for good otherwise, one per right-click
         handler = handlers.get(chosen)
-        if handler is None:
-            return
+        if handler is not None:
+            self._act_on(handler, item)
+
+    def _rename_current(self) -> None:
+        """F2: rename the entry in focus."""
+        self._act_on(self.action_rename, self._entry_of(self.tree.currentItem()))
+
+    def _delete_current(self) -> None:
+        """Delete: delete the entry in focus, once the user says so (No is the default)."""
+        self._act_on(self.action_delete, self._entry_of(self.tree.currentItem()))
+
+    @staticmethod
+    def _entry_of(item: QTreeWidgetItem | None) -> QTreeWidgetItem | None:
+        """The entry *item* stands for: the "..." or loading row has none of its own, so its folder."""
+        if item is not None and not item.text(3):
+            return item.parent()
+        return item
+
+    def _act_on(self, handler: Callable[[QTreeWidgetItem | None], None], item: QTreeWidgetItem | None) -> None:
+        """Run a tree action on *item*; a failed SFTP request is reported, not raised."""
         try:
             handler(item)
         # what an SFTP operation raises, a closed session's RuntimeError included
@@ -553,7 +584,8 @@ class SSHFileTreeManager(QWidget):
             self,
             self.word_dict.get("ssh_file_viewer_dialog_title_confirm_delete"),
             as_text(f"{self.word_dict.get('ssh_file_viewer_dialog_message_confirm_delete')} '{path}'?"),
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
         )
         if reply != QMessageBox.StandardButton.Yes:
             return

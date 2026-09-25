@@ -1,153 +1,159 @@
 AI 工具
 =======
 
-PyBreeze 整合了多個 AI 驅動的工具，用於程式碼審查、提示詞工程和 LLM 互動。
-所有 AI 工具都可以從 **Tools** 選單存取，並可以作為分頁或停靠面板開啟。
+PyBreeze 有五個 AI 輔助程式碼審查與提示詞的工具，都可以從 **Tools > AI** 以分頁開啟，或從
+**Dock > AI** 以停靠面板開啟。用 prthinker 審查檔案或 Pull Request 則在 **Automation** 選單
+（見 :doc:`menu_automation`）。
 
-AI 程式碼審查用戶端
---------------------
+.. list-table::
+   :header-rows: 1
+   :widths: 30 70
 
-**選單：** Tools > AI Code-Review Tab / AI Code-Review Dock
+   * - 工具
+     - 用途
+   * - **AI Code Review**
+     - 以一次請求把程式碼送到端點審查，再接受或拒絕回答。
+   * - **CoT Code Review**
+     - 執行八個步驟的思維鏈（CoT）審查：每個步驟一次請求。
+   * - **CoT Prompt Editor**
+     - 編輯八個 CoT 提示詞。
+   * - **Skill Prompt Editor**
+     - 編輯兩個技能提示詞（程式碼審查、程式碼解釋）。
+   * - **Skill Send**
+     - 送出一個放入你程式碼的技能提示詞，並顯示回答。
 
-用於將程式碼發送到 AI API 端點進行自動程式碼審查的用戶端。
-
-介面配置
-^^^^^^^^
-
-- **URL 輸入框** -- 輸入 API 端點 URL
-- **方法選擇器** -- 選擇 HTTP 方法（GET、POST、PUT、DELETE）
-- **程式碼輸入區**（左面板）-- 貼上或撰寫要審查的程式碼
-- **回應顯示區**（右面板，唯讀）-- 顯示 AI 審查回應
-- **Send Request** 按鈕 -- 將程式碼發送到 API 端點
-
-功能
-^^^^
-
-- 追蹤 AI 回應的接受/拒絕統計
-- 在 ``.pybreeze/urls.txt`` 記錄用過哪些端點，存的是指紋：API URL 可能帶著權杖，
-  所以不會把 URL 本身寫進磁碟
-- 將回應統計儲存到 ``.pybreeze/response_stats.txt``
-
-使用方式
-^^^^^^^^
-
-1. 在 URL 輸入框中輸入您的 AI API 端點 URL
-2. 選擇 HTTP 方法（通常為 POST）
-3. 在左面板中貼上要審查的程式碼
-4. 點擊 **Send Request**
-5. 在右面板中查看 AI 的回應
-
-CoT 程式碼審查 GUI
---------------------
-
-**選單：** Tools > AI Code-Review Tab / Dock
-
-使用思維鏈（CoT）提示詞進行更結構化和詳細審查的進階程式碼審查工具。
-
-介面配置
-^^^^^^^^
-
-- **API URL 輸入框** -- 輸入 API 端點 URL
-- **程式碼區域** -- 貼上要審查的程式碼
-- **回應選擇器**（ComboBox）-- 瀏覽多個審查回應
-- **回應檢視器**（唯讀）-- 顯示選定的審查回應
-- **Send** 按鈕 -- 發送程式碼進行審查
-
-功能
-^^^^
-
-- 透過 ``SenderThread`` 支援一次審查多個檔案
-- 背景執行緒防止 API 呼叫時 UI 凍結
-- 可以儲存和瀏覽多個回應
-
-CoT 提示詞編輯器
------------------
-
-**選單：** Tools > CoT Prompt Editor Tab / CoT Prompt Editor Dock
-
-基於範本的編輯器，用於建立和管理思維鏈提示詞範本。
-
-介面配置
-^^^^^^^^
-
-- **檔案選擇器**（ComboBox）-- 從可用的提示詞範本檔案中選擇
-- **編輯面板**（QTextEdit）-- 編輯選定的提示詞範本
-- **Create** 按鈕 -- 建立新的提示詞範本檔案
-- **Save** 按鈕 -- 儲存目前範本的變更
-- **Reload** 按鈕 -- 從磁碟重新載入範本
-
-功能
-^^^^
-
-- 透過 ``COT_TEMPLATE_RELATION`` 對應的範本檔案管理
-- 檔案系統監控，偵測外部變更
-- 當範本在編輯器外修改時自動重新載入
-- 預先設定的常用 CoT 審查模式範本
-
-使用方式
-^^^^^^^^
-
-1. 從下拉選單選擇範本或建立新範本
-2. 在文字區域中編輯提示詞範本
-3. 點擊 **Save** 儲存變更
-4. 該範本可以在 CoT 程式碼審查 GUI 中使用
-
-Skill 提示詞編輯器
--------------------
-
-**選單：** Tools > Skill Prompt Editor Tab / Skill Prompt Editor Dock
-
-與 CoT 提示詞編輯器類似，但專門用於基於技能的提示詞範本，
-如程式碼審查和程式碼解釋提示詞。
-
-介面配置
-^^^^^^^^
-
-- **檔案選擇器**（ComboBox）-- 從可用的技能提示詞範本中選擇
-- **編輯面板**（QTextEdit）-- 編輯選定的技能提示詞
-- **Create** 按鈕 -- 建立新的技能提示詞範本
-- **Save** 按鈕 -- 儲存變更
-- **Reload** 按鈕 -- 從磁碟重新載入
-
-預設技能範本
-^^^^^^^^^^^^
-
-- 程式碼審查提示詞
-- 程式碼解釋提示詞
-
-Skills 傳送 GUI
-----------------
-
-**選單：** Tools > Skill Send GUI Tab / Skill Prompt Dock
-
-用於將基於技能的提示詞發送到 LLM API 並查看回應的介面。
-
-介面配置
-^^^^^^^^
-
-- **API URL 輸入框** -- 輸入 LLM API 端點 URL
-- **提示詞範本選擇器**（ComboBox）-- 選擇預定義的技能提示詞範本
-- **提示詞文字區域** -- 在發送前編輯或自訂提示詞
-- **Send** 按鈕 -- 將提示詞發送到 API（在背景執行緒中執行）
-- **回應顯示區**（唯讀）-- 顯示 LLM 回應
-
-功能
-^^^^
-
-- 透過 ``RequestThread`` 在背景執行緒中執行，防止 UI 凍結
-- 具備特定 HTTP 狀態碼訊息的錯誤處理
-- 從 Skill 提示詞編輯器的範本檔案載入提示詞範本
-
-使用方式
-^^^^^^^^
-
-1. 輸入您的 LLM API 端點 URL
-2. 從下拉選單選擇提示詞範本
-3. 根據需要自訂提示詞文字（例如，貼上要審查的程式碼）
-4. 點擊 **Send**
-5. 等待回應出現在回應顯示區域
+在 AI Code Review、CoT Code Review 與 Skill Send 中，於面板任何位置按 **Ctrl+Enter** 就會按下送出按鈕。
+請求在背景執行，送出按鈕在請求結束前會維持停用。
 
 .. note::
 
-   所有 AI 工具都需要相容的 API 端點。請將您的 API URL 指向您的 LLM 服務
-   （例如 OpenAI 相容的 API、本地 LLM 伺服器等）。
+   端點 URL 必須是公開的 ``http`` / ``https`` 位址。送出前會先檢查，而且只連線到檢查過的位址：
+   位於本機或私有網路的端點（例如本機的模型伺服器）會被拒絕。不會跟隨重新導向，回答上限為 16 MB，
+   超過五分鐘的請求會被中止。只有 AI Code Review 會記錄用過的 URL，而且只記指紋（見下文），
+   因為 API URL 可能夾帶權杖。
+
+AI Code Review
+--------------
+
+**選單：** Tools > AI > AI Code Review Tab／Dock > AI > AI Code Review Dock
+
+介面佈局
+^^^^^^^^
+
+- **URL** -- 端點 URL
+- **Method** -- ``GET``、``POST``\ （預設）、``PUT`` 或 ``DELETE``
+- **Code to Send**\ （左側）-- 要審查的程式碼
+- **Response**\ （右側，唯讀）-- 回答，或沒有回答的原因
+- **Send Request** -- 送出請求
+- **Accept Response** / **Reject Response** -- 你對回答的評價
+
+使用方式
+^^^^^^^^
+
+1. 輸入端點 URL 並選擇方法。``POST`` 與 ``PUT`` 會把程式碼放在本文的表單欄位 ``code``；
+   ``GET`` 與 ``DELETE`` 只送 URL。
+2. 在左側貼上要審查的程式碼（``POST`` 與 ``PUT`` 必須有內容）。
+3. 點擊 **Send Request**。回應區先說明這個 URL 是否用過，回答到達後再顯示回答。
+   不是成功的回答（HTTP 錯誤，或不會跟隨的重新導向）會連同狀態碼以錯誤顯示。
+4. 點擊 **Accept Response** 或 **Reject Response**。兩者在回答到達後才能按，每個回答只能評一次。
+
+檔案
+^^^^
+
+- ``~/.pybreeze/response_stats.txt`` -- 接受與拒絕的累計次數，所有 AI Code Review 面板共用
+- ``~/.pybreeze/urls.txt`` -- 用過的 URL 的 SHA-256 指紋：URL 本身從不寫入磁碟
+
+CoT Code Review
+---------------
+
+**選單：** Tools > AI > CoT Code Review Tab／Dock > AI > CoT Code Review Dock
+
+介面佈局
+^^^^^^^^
+
+- **API URL** -- 端點 URL
+- **Code to Review** -- 要審查的程式碼
+- **Response Area** -- **Step** 選單（列出已收到回答的步驟），旁邊顯示所選步驟的回答（唯讀）
+- **Start Sending** -- 開始審查
+
+審查如何進行
+^^^^^^^^^^^^
+
+八個步驟依下列順序執行，因為每一步都可能引用前面步驟的回答：
+
+1. ``first_summary_prompt.md`` -- 程式碼的初步摘要
+2. ``first_code_review.md`` -- 初步審查
+3. ``judge_single_review.md`` -- 評審這份審查
+4. ``linter.md`` -- lint 發現
+5. ``code_smell_detector.md`` -- 程式碼異味
+6. ``step_by_step_analysis.md`` -- 逐一分析每個 lint 發現與程式碼異味
+7. ``total_summary.md`` -- 以上所有內容的總結
+8. ``judge.md`` -- 評審這份總結
+
+每一步的提示詞會包上全域審查規則，以 JSON ``{"prompt": "..."}`` 的 ``POST`` 送出，回應本文（文字）
+就是該步驟的回答。回答一到就出現在 **Step** 選單並立即顯示。失敗的步驟會顯示原因，之後的步驟不會引用這個失敗。
+**Start Sending** 會清掉上一次的回答；關閉面板時，審查會在進行中的請求結束後停止。
+
+提示詞來自 CoT Prompt Editor：編輯過的提示詞會取代內建的。
+
+CoT Prompt Editor
+-----------------
+
+**選單：** Tools > AI > CoT Prompt Editor Tab／Dock > AI > CoT Prompt Editor Dock
+
+介面佈局
+^^^^^^^^
+
+- **Edit File Content** -- 下方所選提示詞的內容
+- 提示詞檔案所在的資料夾 ``~/.pybreeze/prompts/``
+- 提示詞選單（每個步驟一項，如上表）
+- **Reload** -- 從磁碟重新讀取檔案
+- **Save** -- 把內容寫入檔案
+- **Create File** -- 以內建提示詞建立檔案
+
+提示詞如何保存
+^^^^^^^^^^^^^^
+
+每個提示詞都有內建版本。``~/.pybreeze/prompts/`` 中同名的檔案只要有內容就會取代它，
+所以審查送出的是你存下的內容。檔案建立之前，編輯區是空的並會註明；**Create File** 會把內建提示詞寫進檔案，
+當作起點。
+
+提示詞中的佔位符（例如 ``{code_diff}``）會在審查執行時填入。編輯過的提示詞若用了該步驟填不了的佔位符，
+那一次會改用內建提示詞。
+
+檔案會被監看：在編輯器外的修改會立刻出現。只要換上另一份內容會失去沒存的編輯——選另一個提示詞、
+**Reload**、**Create File**、外部修改，或關閉分頁、停靠面板或 IDE——編輯器都會先詢問，預設為 **No**。
+不是 UTF-8 的檔案會把讀不出的部分替換後顯示並告知；存檔時會寫回 UTF-8。
+
+Skill Prompt Editor
+-------------------
+
+**選單：** Tools > AI > Skill Prompt Editor Tab／Dock > AI > Skill Prompt Editor Dock
+
+與 CoT Prompt Editor 相同的編輯器，用於兩個技能提示詞：``code_review_skill.md``\ （程式碼審查）與
+``code_explainer_skill.md``\ （程式碼解釋）。檔案放在同一個資料夾，運作方式也相同。
+
+Skill Send
+----------
+
+**選單：** Tools > AI > Skill Send Tab／Dock > AI > Skill Send Dock
+
+介面佈局
+^^^^^^^^
+
+- **LLM API URL** -- 端點 URL
+- **Select Prompt Template** -- 作為起點的技能提示詞
+- **Prompt** -- 要送出的提示詞，可編輯
+- **Send** -- 送出
+- **Response**\ （唯讀）-- 回答，或沒有回答的原因
+
+使用方式
+^^^^^^^^
+
+1. 輸入端點 URL。
+2. 選擇範本。它的內容（有編輯過的檔案就用檔案，否則用內建提示詞）會填入 **Prompt**。
+   編輯過提示詞後再選另一個範本時會先詢問。
+3. 把提示詞中的 ``{code_diff}`` 換成你的程式碼。提示詞裡還有 ``{code_diff}`` 時不會送出。
+4. 點擊 **Send**。提示詞以 JSON ``{"code": "..."}`` 的 ``POST`` 送出，回應本文原樣顯示。
+   被拒絕的請求（401、403）與伺服器錯誤會以錯誤顯示；重新導向不會被跟隨，並說明它指向哪裡
+   （只列出 scheme 與主機）。

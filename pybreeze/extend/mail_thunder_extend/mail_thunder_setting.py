@@ -4,7 +4,17 @@ import os
 import threading
 from collections.abc import Callable
 
-from pybreeze.utils.exception.exception_tags import send_html_exception_tag
+from pybreeze.utils.exception.exception_tags import (
+    mail_login_failed_error,
+    mail_no_user_error,
+    mail_not_installed_error,
+    mail_send_failed_error,
+    mail_settings_unreadable_error,
+    report_missing_error,
+    report_not_a_file_error,
+    report_stale_error,
+    send_html_exception_tag,
+)
 from pybreeze.utils.exception.exceptions import ITESendHtmlReportException
 from pybreeze.utils.logging.logger import pybreeze_logger
 
@@ -37,7 +47,7 @@ def send_after_test(
             outcome = send_report(html_report_path, not_before=not_before)
         # The last stop on this thread: anything je_mail_thunder raises past
         # send_report must still reach on_done, or the run window never says
-        except Exception as error:  # noqa: BLE001 — logged, and reported to the run window
+        except Exception as error:  # noqa: BLE001 — logged and reported to the run window
             pybreeze_logger.error("Sending the report failed: %r", error)
             outcome = f"sending failed ({type(error).__name__})"
         if on_done is not None:
@@ -64,7 +74,7 @@ def send_report(html_report_path: str | None = None, *, not_before: float | None
         from je_mail_thunder.utils.exception.exceptions import MailThunderException
     except ImportError as error:
         pybreeze_logger.error("Cannot send the report without je_mail_thunder: %r", error)
-        return "je_mail_thunder is not installed"
+        return mail_not_installed_error
 
     report_path = html_report_path if html_report_path is not None else DEFAULT_REPORT_PATH
     problem = _report_problem(report_path, not_before)
@@ -78,10 +88,10 @@ def send_report(html_report_path: str | None = None, *, not_before: float | None
     # system, raised out of the mail thread
     except (OSError, ValueError, MailThunderException) as error:
         pybreeze_logger.error("The mail settings file could not be read: %r", error)
-        return "the mail settings file (mail_thunder_content.json) could not be read"
+        return mail_settings_unreadable_error
     if user is None:
         pybreeze_logger.error("Cannot determine mail user for sending report")
-        return "no mail user is set"
+        return mail_no_user_error
     try:
         with open(report_path, encoding="utf-8") as file:
             html_string = file.read()
@@ -98,12 +108,12 @@ def send_report(html_report_path: str | None = None, *, not_before: float | None
             mail_thunder_smtp.send_message(message)
     except ITESendHtmlReportException as error:
         pybreeze_logger.error("%r %s", error, send_html_exception_tag)
-        return "the mail server login failed"
+        return mail_login_failed_error
     # OSError covers the socket and every smtplib error; ValueError a report
     # that is not UTF-8
     except (OSError, ValueError, MailThunderException) as error:
         pybreeze_logger.error("Failed to send report: %r", error)
-        return f"sending failed ({type(error).__name__})"
+        return mail_send_failed_error.format(kind=type(error).__name__)
     return None
 
 
@@ -113,11 +123,11 @@ def _report_problem(report_path: str, not_before: float | None) -> str | None:
     try:
         written = os.stat(report_path)
     except OSError:
-        return f"the run wrote no {name}"
+        return report_missing_error.format(name=name)
     if not os.path.isfile(report_path):
-        return f"{name} is not a file"
+        return report_not_a_file_error.format(name=name)
     if not_before is not None and written.st_mtime < not_before - _MTIME_SLACK_SECONDS:
-        return f"the run wrote no new {name}; the one there is from an earlier run"
+        return report_stale_error.format(name=name)
     return None
 
 

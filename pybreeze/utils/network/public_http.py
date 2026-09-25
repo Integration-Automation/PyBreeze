@@ -150,7 +150,8 @@ class _PinnedConnectionMixin(_UnderDeadlineMixin):
                 self._dns_host = address
                 try:
                     return super()._new_conn()  # type: ignore[misc]
-                except (NewConnectionError, ConnectTimeoutError) as error:
+                # A refused connection too: urllib3's NewConnectionError is a ConnectTimeoutError
+                except ConnectTimeoutError as error:
                     failure = error
         finally:
             self._dns_host = name
@@ -208,7 +209,7 @@ def public_session() -> requests.Session:
     """
     session = _NoRedirectSession()
     adapter = PublicAddressAdapter()
-    session.mount("http://", adapter)
+    session.mount("http://", adapter)  # NOSONAR S5332 — the checked adapter for http URLs; which schemes are allowed is validate_url's call
     session.mount("https://", adapter)
     return session
 

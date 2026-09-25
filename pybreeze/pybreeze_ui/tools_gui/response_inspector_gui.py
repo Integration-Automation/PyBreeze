@@ -11,9 +11,10 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.run_shortcut import press_on_ctrl_enter
 from pybreeze.pybreeze_ui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.header_analyzer_gui import HeaderAnalyzerGUI
-from pybreeze.pybreeze_ui.tools_gui.http_status_gui import HttpStatusGUI
+from pybreeze.pybreeze_ui.tools_gui.http_status_gui import HttpStatusGUI, status_heading
 from pybreeze.pybreeze_ui.tools_gui.json_format_gui import JsonFormatGUI
 from pybreeze.pybreeze_ui.tools_gui.jwt_decoder_gui import JwtDecoderGUI
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
@@ -31,7 +32,7 @@ def _status_section(analysis: ResponseAnalysis) -> list[str]:
         return []
     word = language_wrapper.language_word_dict
     status = analysis.status
-    lines = [word.get("response_status_label"), f"{status.code} {status.phrase}  [{status.category}]"]
+    lines = [word.get("response_status_label"), status_heading(status)]
     if status.description:
         lines.append(f"    {status.description}")
     lines.append("")
@@ -96,6 +97,7 @@ class ResponseInspectorGUI(QWidget):
 
         self.analyze_button = QPushButton(word.get("response_analyze_button"))
         self.analyze_button.clicked.connect(self.analyze)
+        press_on_ctrl_enter(self, self.analyze_button)
 
         self.output_label = QLabel(word.get("response_output_label"))
         self.output_edit = QTextEdit()
@@ -116,7 +118,7 @@ class ResponseInspectorGUI(QWidget):
         self.open_body_button.setEnabled(False)
 
         # Shared copy / open-in-editor / save actions, valid once analysed.
-        self.actions = OutputActions(
+        self.output_actions = OutputActions(
             self, self.output_edit, main_window=main_window,
             basename="response", extension="txt",
             is_valid=lambda: self._analysis is not None)
@@ -134,7 +136,7 @@ class ResponseInspectorGUI(QWidget):
         layout.addWidget(self.output_label)
         layout.addWidget(self.output_edit)
         layout.addLayout(cross_tool)
-        layout.addLayout(self.actions.button_row())
+        layout.addLayout(self.output_actions.button_row())
         self.setLayout(layout)
 
     def analyze(self) -> None:

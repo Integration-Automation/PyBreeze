@@ -27,9 +27,12 @@ from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.diagram_editor.diagram_mermaid_parser import parse_mermaid
 from pybreeze.pybreeze_ui.diagram_editor.diagram_property_panel import DiagramPropertyPanel
-from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene, ImageDownloadThread, ToolMode
+from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import (
+    IMAGE_SUFFIXES, DiagramScene, ImageDownloadThread, ToolMode,
+)
 from pybreeze.pybreeze_ui.diagram_editor.diagram_view import DiagramView
 from pybreeze.pybreeze_ui.error_text import error_text
+from pybreeze.pybreeze_ui.fixed_pitch import use_fixed_pitch_font
 from pybreeze.pybreeze_ui.thread_keeper import let_run_out
 from pybreeze.pybreeze_ui.plain_text import as_text
 from pybreeze.utils.file_process.read_capped import read_text_capped
@@ -40,6 +43,17 @@ from pybreeze.pybreeze_ui.exact_text import exact_text
 
 def _lang(key: str, fallback: str = "") -> str:
     return language_wrapper.language_word_dict.get(key, fallback or key)
+
+
+def _diagram_filter() -> str:
+    """The Open and Save dialogs' filter: diagrams, then any file."""
+    return f"{_lang('diagram_editor_filter_diagram')};;{_lang('diagram_editor_filter_all')}"
+
+
+def _image_filter() -> str:
+    """Add Image's filter: every suffix a saved diagram may keep (``IMAGE_SUFFIXES``), then any file."""
+    patterns = " ".join(f"*{suffix}" for suffix in sorted(IMAGE_SUFFIXES))
+    return f"{_lang('diagram_editor_filter_images').format(patterns=patterns)};;{_lang('diagram_editor_filter_all')}"
 
 
 _STATUS_HINTS: dict[ToolMode, str] = {
@@ -116,6 +130,7 @@ class MermaidImportDialog(QDialog):
 
         self._editor = QPlainTextEdit()
         self._editor.setPlaceholderText(_MERMAID_PLACEHOLDER)
+        use_fixed_pitch_font(self._editor)
         self._editor.setTabStopDistance(32)
         layout.addWidget(self._editor, 1)
 
@@ -397,6 +412,7 @@ class DiagramEditorWidget(QWidget):
                 _lang("diagram_editor_confirm_title", "Confirm"),
                 _lang("diagram_editor_confirm_new", "Discard current diagram?"),
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
             )
             if reply != QMessageBox.StandardButton.Yes:
                 return
@@ -406,11 +422,16 @@ class DiagramEditorWidget(QWidget):
         self._current_path = None
 
     def _open_diagram(self) -> None:
+        # Opening replaces the canvas and clears the undo history
+        if not self._may_discard_edits(
+                "diagram_editor_open_over_edits",
+                "The diagram has changes that are not saved. Open another and lose them?"):
+            return
         path, _ = QFileDialog.getOpenFileName(
             self,
             _lang("diagram_editor_dialog_open", "Open Diagram"),
             "",
-            "Diagram JSON (*.diagram.json);;All Files (*)",
+            _diagram_filter(),
         )
         if not path:
             return
@@ -438,7 +459,7 @@ class DiagramEditorWidget(QWidget):
             self,
             _lang("diagram_editor_dialog_save", "Save Diagram"),
             "untitled.diagram.json",
-            "Diagram JSON (*.diagram.json);;All Files (*)",
+            _diagram_filter(),
         )
         if not path:
             return
@@ -447,10 +468,10 @@ class DiagramEditorWidget(QWidget):
 
     def _import_mermaid(self) -> None:
         dialog = MermaidImportDialog(self)
-        if dialog.exec() != QDialog.DialogCode.Accepted:
-            return
+        accepted = dialog.exec() == QDialog.DialogCode.Accepted
         text = dialog.get_text().strip()
-        if not text:
+        dialog.deleteLater()  # a child of the editor: kept for good otherwise, one per import
+        if not accepted or not text:
             return
         try:
             data = parse_mermaid(text)
@@ -480,12 +501,15 @@ class DiagramEditorWidget(QWidget):
         Asked by the main window before it closes this tab or the IDE: an
         unsaved diagram was lost on close without a word.
         """
+        return self._may_discard_edits(
+            "diagram_editor_close_over_edits", "The diagram has changes that are not saved. Close and lose them?")
+
+    def _may_discard_edits(self, question_key: str, fallback: str) -> bool:
+        """True when the diagram is as last saved or opened, or the user answers Yes to *question_key*."""
         if self._scene.undo_stack.isClean():
             return True
         reply = QMessageBox.question(
-            self, _lang("unsaved_close_title", "Unsaved changes"),
-            _lang("diagram_editor_close_over_edits",
-                  "The diagram has changes that are not saved. Close and lose them?"),
+            self, _lang("unsaved_close_title", "Unsaved changes"), _lang(question_key, fallback),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
         return reply == QMessageBox.StandardButton.Yes
 
@@ -538,7 +562,7 @@ class DiagramEditorWidget(QWidget):
     def _export_png(self) -> None:
         path, _ = QFileDialog.getSaveFileName(
             self, _lang("diagram_editor_dialog_export_png", "Export PNG"),
-            "diagram.png", "PNG Image (*.png)",
+            "diagram.png", _lang("diagram_editor_filter_png"),
         )
         if not path:
             return
@@ -574,7 +598,7 @@ class DiagramEditorWidget(QWidget):
     def _export_svg(self) -> None:
         path, _ = QFileDialog.getSaveFileName(
             self, _lang("diagram_editor_dialog_export_svg", "Export SVG"),
-            "diagram.svg", "SVG Image (*.svg)",
+            "diagram.svg", _lang("diagram_editor_filter_svg"),
         )
         if not path:
             return
@@ -612,7 +636,7 @@ class DiagramEditorWidget(QWidget):
             self,
             _lang("diagram_editor_dialog_image_file", "Open Image"),
             "",
-            "Images (*.png *.jpg *.jpeg *.bmp *.gif *.svg *.webp);;All Files (*)",
+            _image_filter(),
         )
         if not path:
             return

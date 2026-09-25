@@ -9,6 +9,7 @@ from __future__ import annotations
 from PySide6.QtWidgets import QLabel, QPushButton, QTextEdit, QVBoxLayout, QWidget
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.run_shortcut import press_on_ctrl_enter
 from pybreeze.pybreeze_ui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.utils.exception.exceptions import JwtDecodeException
@@ -17,6 +18,7 @@ from pybreeze.utils.jwt_tools.jwt_decoder import (
 )
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.pybreeze_ui.error_text import error_text
+from pybreeze.pybreeze_ui.fixed_pitch import use_fixed_pitch_font
 
 
 def build_decoded_text(decoded: DecodedJwt) -> str:
@@ -57,15 +59,18 @@ class JwtDecoderGUI(QWidget):
         self.input_edit = QTextEdit()
         self.input_edit.setPlaceholderText(word.get("jwt_decoder_input_placeholder"))
         self.input_edit.setAcceptRichText(False)
+        use_fixed_pitch_font(self.input_edit)
 
         self.decode_button = QPushButton(word.get("jwt_decoder_decode_button"))
         self.decode_button.clicked.connect(self.decode)
+        press_on_ctrl_enter(self, self.decode_button)
 
         self.output_label = QLabel(word.get("jwt_decoder_output_label"))
         self.output_edit = QTextEdit()
         self.output_edit.setReadOnly(True)
+        use_fixed_pitch_font(self.output_edit)
 
-        self.actions = OutputActions(
+        self.output_actions = OutputActions(
             self, self.output_edit, main_window=main_window,
             basename="jwt", extension="txt", is_valid=lambda: self._valid_output)
 
@@ -75,7 +80,7 @@ class JwtDecoderGUI(QWidget):
             self.output_label, self.output_edit,
         ):
             layout.addWidget(widget)
-        layout.addLayout(self.actions.button_row())
+        layout.addLayout(self.output_actions.button_row())
         self.setLayout(layout)
 
         if initial_token:

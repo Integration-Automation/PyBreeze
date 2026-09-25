@@ -20,7 +20,6 @@ from threading import Event, Thread
 from PySide6.QtCore import QTimer
 
 from pybreeze.extend.process_executor.queue_pump import (
-    OUTPUT_STILL_HELD_NOTE,
     ReaderGrace,
     any_alive,
     output_queue,
@@ -28,6 +27,7 @@ from pybreeze.extend.process_executor.queue_pump import (
     read_stream_into_queue,
 )
 from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
+from pybreeze.extend.process_executor.run_notice import run_notice
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.subprocess_util import (
     no_window_creationflags, own_session_options, stop_tree, utf8_subprocess_env,
@@ -101,7 +101,7 @@ class FileRunnerProcess:
         compiler = run_config.get("compiler")
         if not isinstance(compiler, str) or not compiler:
             # A plugin's config is not checked by JEditor when it registers.
-            self.main_window.append_output("[Error] The run config names no compiler\n", is_error=True)
+            self.main_window.append_output(run_notice("no_compiler"), is_error=True)
             return
         args = run_arguments(run_config)
 
@@ -128,20 +128,20 @@ class FileRunnerProcess:
             output_name += ".exe"
 
         compile_cmd = [compiler] + args + [file_path, output_flag, output_name]
-        self.main_window.append_output(f"[Compile] {' '.join(compile_cmd)}\n", is_error=False)
+        self.main_window.append_output(run_notice("compile", command=' '.join(compile_cmd)), is_error=False)
 
         def run_if_compiled(exit_code: int) -> None:
             if self._cancelled:
                 # Stopped: while compiling (reported as a failed compile), or
                 # just after it succeeded (the binary ran anyway)
-                self.main_window.append_output("[Stopped]\n", is_error=True, own_line=True)
+                self.main_window.append_output(run_notice("stopped"), is_error=True, own_line=True)
                 self._remove_build_dir(build_dir)
                 return
             if exit_code != 0:
-                self.main_window.append_output(f"[Compile failed] exit code {exit_code}\n", is_error=True)
+                self.main_window.append_output(run_notice("compile_failed", code=exit_code), is_error=True)
                 self._remove_build_dir(build_dir)
                 return
-            self.main_window.append_output(f"[Run] {output_name}\n", is_error=False)
+            self.main_window.append_output(run_notice("run", name=output_name), is_error=False)
             self._start_process([output_name], cleanup_dir=build_dir)
 
         self._start_process(
@@ -179,7 +179,7 @@ class FileRunnerProcess:
                 **own_session_options(),
             )
         except FileNotFoundError:
-            self.main_window.append_output(f"[Error] Command not found: {command[0]}\n", is_error=True)
+            self.main_window.append_output(run_notice("command_not_found", command=command[0]), is_error=True)
             self._remove_build_dir(cleanup_dir)
             return
         except OSError as error:
@@ -187,7 +187,7 @@ class FileRunnerProcess:
             # by antivirus: this raised out of the menu, or out of the timer
             # slot after a compile, and the window said nothing.
             self.main_window.append_output(
-                f"[Error] Could not start {command[0]}: {error.strerror or error}\n", is_error=True)
+                run_notice("could_not_start", command=command[0], reason=error.strerror or error), is_error=True)
             self._remove_build_dir(cleanup_dir)
             return
 
@@ -242,7 +242,7 @@ class FileRunnerProcess:
             elif self._deadline is not None and time.monotonic() > self._deadline:
                 self._deadline = None
                 self.main_window.append_output(
-                    f"[Error] Timed out after {COMPILE_TIME_LIMIT_SECONDS}s\n", is_error=True)
+                    run_notice("timed_out", seconds=COMPILE_TIME_LIMIT_SECONDS), is_error=True)
                 stop_tree(self.process)
 
     def _finish(self) -> None:
@@ -261,7 +261,7 @@ class FileRunnerProcess:
         # Drain remaining output directly (not via _pull_text to avoid recursion)
         self._drain_queues()
         if any_alive(*readers):
-            self.main_window.append_output(OUTPUT_STILL_HELD_NOTE, is_error=False, own_line=True)
+            self.main_window.append_output(run_notice("output_still_held"), is_error=False, own_line=True)
 
         after_exit, self._after_exit = self._after_exit, None
         if self.process is not None:

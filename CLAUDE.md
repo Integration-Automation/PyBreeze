@@ -24,7 +24,11 @@ pybreeze/
 │   ├── gui_thread_gc.py         # Garbage collected on a GUI-thread timer, never on a worker
 │   ├── plain_text.py            # as_text: server/file text shown in message boxes as text, not markup
 │   ├── exact_text.py            # exact_text: a text box read as typed (toPlainText changes U+00A0, U+2028)
+│   ├── terminal_view.py         # Terminal output in a text view: colours, the pty size, a lone \r rewinding the line
+│   ├── fixed_pitch.py           # use_fixed_pitch_font: the system's fixed-pitch font, whatever the theme names
+│   ├── run_shortcut.py          # press_on_ctrl_enter: Ctrl+Enter in a panel presses its main button
 │   ├── error_text.py            # error_text: a tool's English error (exception_tags) in the IDE language
+│   ├── code_result_logs.py      # Only warnings and errors from loggers reach the editor's Code Result panel
 │   ├── closing.py               # may_close / AskingDock: tabs and docks with unsaved work are asked first
 │   ├── dialog/                  # prthinker settings dialog
 │   └── syntax/                  # Automation keyword highlighting definitions
@@ -34,6 +38,7 @@ pybreeze/
 │   │   ├── process_executor_utils.py       # build_process / start_process / run_dir_files_*
 │   │   ├── file_runner_process.py          # FileRunnerProcess — plugin run configs (any language)
 │   │   ├── queue_pump.py                   # Shared pipe reader + per-tick queue drain
+│   │   ├── run_notice.py                   # run_notice: a run window's own [Error]/[Run]/… lines, translated
 │   │   ├── api_testka/ auto_control/ web_runner/ load_density/
 │   │   ├── file_automation/ mail_thunder/  # Each delegates to build_process with its package name
 │   │   ├── test_pioneer/        # python -m test_pioneer -e <yaml> via start_module_process
@@ -50,6 +55,7 @@ pybreeze/
     ├── exception/               # ITEException hierarchy
     ├── logging/ file_process/ app_dirs.py / subprocess_util.py
     ├── terminal_text.py         # Escape sequences and controls stripped from terminal output (SSH, run window)
+    ├── terminal_style.py        # SGR colours and emphasis read into a TextStyle (SSH terminal)
     └── manager/package_manager/ # PackageManager — holds syntax_check_list
 ```
 
@@ -73,7 +79,7 @@ pybreeze/
 - `unit-tests` job: GitHub Actions on Windows, Python 3.10–3.14 — install deps → pytest `test/test_utils/` → `start_automation_test` → `extend_automation_test`
 - `sonarcloud` job: CI-based SonarQube Cloud analysis (`sonar-project.properties`), `needs: unit-tests` so it can consume the `coverage-xml` artifact that leg uploads. Automatic Analysis is off and must stay off — the two modes are mutually exclusive and the scanner refuses to run alongside it
 - SonarCloud's plan for this organization exposes results for `main` and for pull requests only. An analysis pushed for another branch succeeds but its results read back 403, so `dev.yml` scans on pull requests only; `stable.yml` also scans pushes to `main`. Do not "fix" this by scanning every `dev` push — the numbers are not readable
-- Coverage comes from the 3.12 matrix leg (`pytest --cov`), configured by `.coveragerc`. `relative_files = True` is required: the report is produced on Windows and consumed by a Linux scanner, so it must not carry machine-specific paths
+- Coverage comes from the 3.12 matrix leg (`pytest --cov`), configured by `.coveragerc`. `relative_files = True` is required: the report is produced on Windows and consumed by a Linux scanner, so it must not carry machine-specific paths. `patch = subprocess` is required too: pytest-cov 7 no longer measures child processes, and without it nothing the tests run in a child interpreter (the real main window, `started_window.py`) counts. coverage traces only the threads Python starts, so `test/test_utils/conftest.py` gives every `QThread` subclass a `run` that installs its tracer on Qt's thread; without it no `QThread.run` counts as covered
 
 ## Development
 
@@ -96,6 +102,10 @@ ruff check pybreeze/                              # before committing non-trivia
 - Custom exceptions inherit from `ITEException`; log via `pybreeze_logger` (lazy `%s` formatting, never `print()`)
 - Plugin API: `register_programming_language()` / `register_natural_language()` from `je_editor.plugins`
 - A QAction built for a menu must be kept alive: store it on the main window or give it the menu as its parent. A menu does not own the actions added to it, so one held only by a local variable is deleted when the builder returns and its entry disappears
+- A context menu or dialog built on each use with a parent (`QMenu(self)`, `SomeDialog(self)`) is deleted once `exec()` returns (`deleteLater()`, or `WA_DeleteOnClose` for a message box): its parent keeps it otherwise, one more per use
+- A process the IDE starts gets `child_environment()` or `utf8_subprocess_env()` (`utils/subprocess_util.py`) as its `env`, never `os.environ` as it is: a variable the IDE sets for itself alone has the value `IDE_ONLY` and stays out (`LOCUST_SKIP_MONKEY_PATCH`, which a load test must not inherit)
+- Import `je_auto_control` only where it is used, never at the top of a module the IDE loads as it starts: it makes the process system DPI aware as it imports, which keeps Qt from making the IDE per-monitor aware. The automation packages' GUIs and the SSH client (paramiko) are likewise imported by the entry that opens them, which keeps almost two seconds off the start; `test_startup_imports.py` fails when one of them is imported as the IDE starts
+- An instance attribute of a Qt class never takes the name of a member of its Qt base (`self.actions`, `self.thread`, `self.layout`, …): it hides the method from everything that calls it on the widget. `test_no_qt_member_shadowing.py` fails on one
 - Delete unused code immediately — no dead imports, unreachable branches, commented-out blocks, or `_old_` prefixes
 - Follow PEP 8 and standard Pythonic practice; `ruff` is the arbiter
 
@@ -167,3 +177,4 @@ Workspace rule shared by every repository under `D:\Codes` (full text: `D:\Codes
 - Commit messages: short imperative sentence ("Update stable version", "Fix github actions")
 - **No AI attribution (mandatory)** — never mention any AI tool, assistant, agent, model or vendor in commit messages, trailers, branch names, PR titles or bodies, issues, code comments or documentation. No `Co-Authored-By` referencing an AI, no "Generated with …" footers. PR text describes *what changed and why*, never how it was authored.
 - PR target: `dev` for development work, `main` for stable releases
+- **SonarCloud / Codacy findings.** When a PR or commit fails a SonarCloud or Codacy check, look the findings up through their APIs instead of guessing. The keys are in environment variables: `SonarCloudToken` (SonarCloud, e.g. `curl -s -u "$SonarCloudToken:" "https://sonarcloud.io/api/issues/search?componentKeys=<key>&pullRequest=<n>&resolved=false"`) and `CODACY_PROJECT_TOKEN` (a Codacy project token, valid only for its own project: any other repository answers "Bad credentials", so for a public repository query `https://app.codacy.com/api/v3/analysis/organizations/gh/<org>/repositories/<repo>/pull-requests/<n>/issues?status=new` without a key). **Never reveal a key or any personal credential while doing so**: refer to the variables by name only, never echo or print their values, and never put them in files, commit messages, PR or issue text, logs, or any output that leaves the machine.

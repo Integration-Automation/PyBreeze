@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.run_shortcut import press_on_ctrl_enter
 from pybreeze.pybreeze_ui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.header_analyzer_gui import HeaderAnalyzerGUI
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
@@ -25,6 +26,7 @@ from pybreeze.utils.exception.exceptions import CurlParseException
 from pybreeze.utils.header_tools.header_merge import stored_header_name
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.pybreeze_ui.error_text import error_text
+from pybreeze.pybreeze_ui.fixed_pitch import use_fixed_pitch_font
 
 # The single target that generates JSON rather than Python
 _JSON_TARGET = "apitestka_action"
@@ -47,6 +49,7 @@ class CurlImportGUI(QWidget):
 
         self.input_label = QLabel(word.get("curl_import_input_label"))
         self.input_edit = QTextEdit()
+        use_fixed_pitch_font(self.input_edit)
         self.input_edit.setPlaceholderText(word.get("curl_import_input_placeholder"))
         self.input_edit.setAcceptRichText(False)
 
@@ -57,11 +60,14 @@ class CurlImportGUI(QWidget):
             self.target_select.addItem(word.get(label_key), target_key)
         self.target_select.currentIndexChanged.connect(self._on_target_changed)
 
-        self.convert_button = QPushButton(word.get("curl_import_convert_button"))
+        self.convert_button = QPushButton()
+        self._name_convert_button()
         self.convert_button.clicked.connect(self.convert)
+        press_on_ctrl_enter(self, self.convert_button)
 
         self.output_label = QLabel(word.get("curl_import_output_label"))
         self.output_edit = QTextEdit()
+        use_fixed_pitch_font(self.output_edit)
         self.output_edit.setReadOnly(True)
 
         # Cross-tool actions: hand the parsed parts to the tool that specialises
@@ -79,7 +85,7 @@ class CurlImportGUI(QWidget):
 
         # Shared copy / open-in-editor / save actions. The extension and basename
         # follow the selected target; open/save are no-ops until a valid template.
-        self.actions = OutputActions(
+        self.output_actions = OutputActions(
             self, self.output_edit, main_window=main_window,
             basename=lambda: "action" if self.selected_target() == _JSON_TARGET else "request",
             extension=lambda: "json" if self.selected_target() == _JSON_TARGET else "py",
@@ -93,15 +99,22 @@ class CurlImportGUI(QWidget):
         ):
             layout.addWidget(widget)
         layout.addLayout(cross_tool)
-        layout.addLayout(self.actions.button_row())
+        layout.addLayout(self.output_actions.button_row())
         self.setLayout(layout)
 
     def selected_target(self) -> str:
         """Return the template key of the currently selected target."""
         return self.target_select.currentData()
 
+    def _name_convert_button(self) -> None:
+        """Name the chosen target on the button that generates it."""
+        self.convert_button.setText(
+            language_wrapper.language_word_dict.get("curl_import_convert_button").format(
+                target=self.target_select.currentText()))
+
     def _on_target_changed(self, _index: int) -> None:
-        """Regenerate when the target changes, if there is already input."""
+        """Rename the button, and regenerate if there is already input."""
+        self._name_convert_button()
         if exact_text(self.input_edit).strip():
             self.convert()
 

@@ -9,7 +9,6 @@ from je_editor import language_wrapper
 from je_editor import jeditor_logger
 
 from pybreeze.pybreeze_ui.closing import AskingDock
-from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_main_widget import SSHMainWidget
 from pybreeze.pybreeze_ui.connect_gui.url.ai_code_review_gui import AICodeReviewClient
 from pybreeze.pybreeze_ui.diagram_editor.diagram_editor_widget import DiagramEditorWidget
 from pybreeze.pybreeze_ui.extend_ai_gui.code_review.cot_code_review_gui import CoTCodeReviewGUI
@@ -32,16 +31,26 @@ from pybreeze.pybreeze_ui.tools_gui.timestamp_gui import TimestampGUI
 from pybreeze.pybreeze_ui.tools_gui.url_builder_gui import UrlBuilderGUI
 
 if TYPE_CHECKING:
+    from PySide6.QtWidgets import QWidget
+
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
 
 # ---------------------------------------------------------------------------
 # Widget registry
 # ---------------------------------------------------------------------------
 
+
+def _ssh_widget() -> QWidget:
+    # Imported when the SSH client first opens: paramiko and cryptography take
+    # about a sixth of a second of the IDE's start
+    from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_main_widget import SSHMainWidget
+    return SSHMainWidget()
+
+
 # Widget key -> factory taking the main window. Shared by the Tools-menu tab
 # actions and the dock actions so each widget's constructor is written once.
 _WIDGET_FACTORIES: dict[str, Callable[[PyBreezeMainWindow], object]] = {
-    "SSH": lambda _win: SSHMainWidget(),
+    "SSH": lambda _win: _ssh_widget(),
     "AICodeReview": lambda _win: AICodeReviewClient(),
     "CoTPromptEditor": lambda _win: CoTPromptEditor(),
     "CoTCodeReview": lambda _win: CoTCodeReviewGUI(),
@@ -107,7 +116,7 @@ _TAB_ACTIONS: tuple[tuple[str, str, str, str, str], ...] = (
      "extend_tools_menu_skill_prompt_editor_tab_action",
      "extend_tools_menu_skill_prompt_editor_tab_label"),
     ("SkillSendGUI", "tools_ai_skill_send_action", "tools_ai_menu",
-     "extend_tools_menu_skill_prompt_send_tab_label",
+     "extend_tools_menu_skill_prompt_send_tab_action",
      "extend_tools_menu_skill_prompt_send_tab_label"),
     ("DiagramEditor", "tools_diagram_editor_action", "tools_menu",
      "extend_tools_menu_diagram_editor_tab_action", "extend_tools_menu_diagram_editor_tab_label"),
@@ -253,9 +262,12 @@ def extend_dock_menu(ui_we_want_to_set: PyBreezeMainWindow):
     ui_we_want_to_set.dock_ssh_menu = ui_we_want_to_set.dock_menu.addMenu(
         language_wrapper.language_word_dict.get("extend_tools_menu_dock_ssh_menu")
     )
-    ui_we_want_to_set.dock_ai_menu = ui_we_want_to_set.dock_menu.addMenu(
-        language_wrapper.language_word_dict.get("extend_tools_menu_dock_ai_menu")
-    )
+    # JEditor's Dock menu has an AI submenu of its own (Chat UI): the review docks
+    # join it. A second one beside it showed two "AI" entries
+    if getattr(ui_we_want_to_set, "dock_ai_menu", None) is None:
+        ui_we_want_to_set.dock_ai_menu = ui_we_want_to_set.dock_menu.addMenu(
+            language_wrapper.language_word_dict.get("extend_tools_menu_dock_ai_menu")
+        )
 
     for widget_key, attribute, menu_attribute, action_key in _DOCK_ACTIONS:
         _register_action(

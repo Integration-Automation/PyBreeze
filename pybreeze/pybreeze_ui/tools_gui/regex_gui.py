@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.run_shortcut import press_on_ctrl_enter
 from pybreeze.pybreeze_ui.thread_keeper import let_run_out
 from pybreeze.pybreeze_ui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
@@ -56,9 +57,9 @@ def build_matches_text(matches: list[MatchResult], no_match_message: str) -> str
     for index, match in enumerate(matches, start=1):
         lines.append(f"[{index}] ({match.start}-{match.end}) {match.matched_text!r}")
         for group_index, value in enumerate(match.groups, start=1):
-            lines.append(f"    group {group_index}: {value!r}")
+            lines.append("    " + word.get("regex_group_line").format(index=group_index, value=repr(value)))
         for name, value in match.named_groups.items():
-            lines.append(f"    {name}: {value!r}")
+            lines.append("    " + word.get("regex_named_group_line").format(name=name, value=repr(value)))
     return "\n".join(lines)
 
 
@@ -94,12 +95,13 @@ class RegexGUI(QWidget):
 
         self.test_button = QPushButton(word.get("regex_test_button"))
         self.test_button.clicked.connect(self.test)
+        press_on_ctrl_enter(self, self.test_button)
 
         self.output_label = QLabel(word.get("regex_output_label"))
         self.output_edit = QTextEdit()
         self.output_edit.setReadOnly(True)
 
-        self.actions = OutputActions(
+        self.output_actions = OutputActions(
             self, self.output_edit, main_window=main_window,
             basename="matches", extension="txt", is_valid=lambda: self._valid_output)
 
@@ -112,7 +114,7 @@ class RegexGUI(QWidget):
         layout.addWidget(self.test_button)
         layout.addWidget(self.output_label)
         layout.addWidget(self.output_edit)
-        layout.addLayout(self.actions.button_row())
+        layout.addLayout(self.output_actions.button_row())
         self.setLayout(layout)
 
     def selected_flags(self) -> list[str]:

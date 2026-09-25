@@ -8,8 +8,8 @@ import sys
 from collections.abc import Callable
 from pathlib import Path, PureWindowsPath
 
-from PySide6.QtCore import Qt, QModelIndex
-from PySide6.QtGui import QCursor
+from PySide6.QtCore import QFile, Qt, QModelIndex
+from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QTreeView, QMenu, QFileSystemModel, QInputDialog,
     QMessageBox, QApplication,
@@ -73,6 +73,34 @@ def _attach_context_menu(tree_view: QTreeView, main_window) -> None:
     tree_view.customContextMenuRequested.connect(
         lambda pos, tv=tree_view, mw=main_window: _show_context_menu(pos, tv, mw)
     )
+    _attach_keys(tree_view, main_window)
+
+
+# Keys that act on the entry in focus while the tree has the focus, as in a file manager
+_RENAME_KEY = QKeySequence(Qt.Key.Key_F2)
+_DELETE_KEY = QKeySequence(Qt.Key.Key_Delete)
+
+
+def _attach_keys(tree_view: QTreeView, main_window) -> None:
+    """F2 renames and Delete deletes the current entry, through the menu's own actions.
+
+    Only while the tree itself has the focus (``WidgetShortcut``): Delete in the
+    editor beside it is the editor's. Delete asks first, No being the default.
+    """
+    for keys, act in ((_RENAME_KEY, "rename"), (_DELETE_KEY, "delete")):
+        shortcut = QShortcut(keys, tree_view)
+        shortcut.setContext(Qt.ShortcutContext.WidgetShortcut)
+        shortcut.activated.connect(
+            lambda tv=tree_view, mw=main_window, what=act: _act_on_current(what, tv, mw))
+
+
+def _act_on_current(what: str, tree_view: QTreeView, main_window) -> None:
+    """Rename or delete (*what*) the entry in focus, if there is one."""
+    path = _get_path_from_index(tree_view, tree_view.currentIndex())
+    if what == "rename":
+        _action_rename(tree_view, main_window, path)
+    else:
+        _action_delete(tree_view, main_window, path)
 
 
 def _get_path_from_index(tree_view: QTreeView, index: QModelIndex) -> Path | None:
@@ -108,6 +136,9 @@ def _show_context_menu(pos, tree_view: QTreeView, main_window) -> None:
     delete_act = menu.addAction(word.get("file_tree_ctx_delete"))
     rename_act.setEnabled(path is not None)
     delete_act.setEnabled(path is not None)
+    for act, keys in ((rename_act, _RENAME_KEY), (delete_act, _DELETE_KEY)):
+        act.setShortcut(keys)  # shown beside the entry: the tree's own keys do it
+        act.setShortcutVisibleInContextMenu(True)
     menu.addSeparator()
 
     # --- Clipboard ---
@@ -121,7 +152,8 @@ def _show_context_menu(pos, tree_view: QTreeView, main_window) -> None:
     reveal_act = menu.addAction(word.get("file_tree_ctx_reveal_in_explorer"))
     reveal_act.setEnabled(path is not None)
 
-    action = menu.exec(QCursor.pos())
+    action = menu.exec(tree_view.viewport().mapToGlobal(pos))
+    menu.deleteLater()  # a child of the tree: kept for good otherwise, one per right-click
     if action is None:
         return
 
@@ -239,7 +271,7 @@ def _unwatch(editor: EditorWidget) -> None:
     Done before the file moves: once it is gone, Windows does not let go of
     the old name.
     """
-    watcher = editor._file_watcher  # noqa: SLF001 — JEditor's own watcher, handled as open_an_file handles it (test_jeditor_contract.py)
+    watcher = editor._file_watcher  # noqa: SLF001 — JEditor's own watcher; handled as open_an_file handles it (test_jeditor_contract.py)
     watched = watcher.files()
     if watched:
         watcher.removePaths(watched)
@@ -355,6 +387,7 @@ def _action_delete(tree_view: QTreeView, main_window, path: Path | None) -> None
         word.get("file_tree_ctx_confirm_delete"),
         as_text(word.get("file_tree_ctx_confirm_delete_message").format(name=str(path))),
         QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        QMessageBox.StandardButton.No,
     )
     if reply != QMessageBox.StandardButton.Yes:
         return
@@ -366,15 +399,7 @@ def _action_delete(tree_view: QTreeView, main_window, path: Path | None) -> None
     for editor, _file in open_tabs:
         _stop_auto_save(editor)
 
-    def _delete() -> None:
-        if _is_link(path):
-            _remove_link(path)
-        elif path.is_dir():
-            remove_folder(path)
-        else:
-            path.unlink()
-
-    _perform_file_op(tree_view, _delete)
+    _remove(tree_view, path)
     # Only a tab whose file is gone closes. The delete can fail -- a locked or
     # read-only file -- or remove only part of a folder, and closing the tabs
     # beforehand lost a file's tab and its unsaved edits while the file stayed.
@@ -386,6 +411,34 @@ def _action_delete(tree_view: QTreeView, main_window, path: Path | None) -> None
         editor.close()
         if index >= 0:
             main_window.tab_widget.removeTab(index)
+
+
+def _move_to_trash(path: Path) -> bool:
+    """Move *path* to the system's trash (the Recycle Bin on Windows); ``False`` where there is none."""
+    return QFile.moveToTrash(str(path))
+
+
+def _remove(tree_view: QTreeView, path: Path) -> None:
+    """Move *path* to the trash; where there is none, delete it for good if the user says so.
+
+    A link (a symbolic link, a junction) is removed itself, never moved: what
+    it points to stays where it is.
+    """
+    if _is_link(path):
+        _perform_file_op(tree_view, lambda: _remove_link(path))
+        return
+    if _move_to_trash(path):
+        return
+    word = language_wrapper.language_word_dict
+    reply = QMessageBox.question(
+        tree_view,
+        word.get("file_tree_ctx_confirm_delete"),
+        as_text(word.get("file_tree_ctx_no_trash").format(name=str(path))),
+        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        QMessageBox.StandardButton.No,
+    )
+    if reply == QMessageBox.StandardButton.Yes:
+        _perform_file_op(tree_view, lambda: remove_folder(path) if path.is_dir() else path.unlink())
 
 
 def _action_copy_path(tree_view: QTreeView, path: Path | None, relative: bool = False) -> None:

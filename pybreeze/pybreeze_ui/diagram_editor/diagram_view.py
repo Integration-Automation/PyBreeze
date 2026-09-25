@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from PySide6.QtCore import QRectF, Qt, Signal
-from PySide6.QtGui import QBrush, QColor, QPainter, QPen
-from PySide6.QtWidgets import QGraphicsView
+from PySide6.QtGui import QBrush, QColor, QContextMenuEvent, QPainter, QPen
+from PySide6.QtWidgets import QApplication, QGraphicsView
 
 from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import DiagramScene
 
@@ -12,6 +12,7 @@ _MAX_SCALE = 5.0
 _GRID_COLOR = QColor("#e0e0e0")
 _GRID_COLOR_MAJOR = QColor("#bdbdbd")
 _BG_COLOR = QColor("#ffffff")
+_PAN_BUTTONS = (Qt.MouseButton.MiddleButton, Qt.MouseButton.RightButton)
 
 
 class DiagramView(QGraphicsView):
@@ -54,6 +55,10 @@ class DiagramView(QGraphicsView):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
         self._panning = False
         self._pan_start = None
+        self._pan_origin = None
+        self._pan_button = Qt.MouseButton.NoButton
+        # A right-drag moved the canvas: the menu its release brings is not wanted
+        self._right_drag_panned = False
         self._draw_grid = False
         self._grid_size = 20
 
@@ -168,28 +173,56 @@ class DiagramView(QGraphicsView):
     # --- middle-button / right-button pan ---
 
     def mousePressEvent(self, event) -> None:
-        if event.button() in (Qt.MouseButton.MiddleButton, Qt.MouseButton.RightButton):
+        if event.button() in _PAN_BUTTONS:
             self._panning = True
+            self._pan_button = event.button()
             self._pan_start = event.position().toPoint()
+            self._pan_origin = self._pan_start
+            self._right_drag_panned = False
             self.setCursor(Qt.CursorShape.ClosedHandCursor)
             event.accept()
             return
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event) -> None:
+        if self._panning and not event.buttons() & self._pan_button:
+            # The release went elsewhere (a context menu opened on the press
+            # took it): the canvas kept following a mouse with no button held
+            self._stop_panning()
         if self._panning and self._pan_start is not None:
-            delta = event.position().toPoint() - self._pan_start
-            self._pan_start = event.position().toPoint()
+            position = event.position().toPoint()
+            delta = position - self._pan_start
+            self._pan_start = position
             self.horizontalScrollBar().setValue(self.horizontalScrollBar().value() - delta.x())
             self.verticalScrollBar().setValue(self.verticalScrollBar().value() - delta.y())
+            if (self._pan_button == Qt.MouseButton.RightButton
+                    and (position - self._pan_origin).manhattanLength() >= QApplication.startDragDistance()):
+                self._right_drag_panned = True
             event.accept()
             return
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event) -> None:
-        if event.button() in (Qt.MouseButton.MiddleButton, Qt.MouseButton.RightButton) and self._panning:
-            self._panning = False
-            self.setCursor(Qt.CursorShape.ArrowCursor)
+        if event.button() == self._pan_button and self._panning:
+            self._stop_panning()
             event.accept()
             return
         super().mouseReleaseEvent(event)
+
+    def _stop_panning(self) -> None:
+        self._panning = False
+        self._pan_button = Qt.MouseButton.NoButton
+        self.setCursor(Qt.CursorShape.ArrowCursor)
+
+    def contextMenuEvent(self, event: QContextMenuEvent) -> None:
+        """Open the canvas menu, except at the end of a right-drag that panned.
+
+        Windows opens a context menu as the right button is released, so every
+        pan with the right button ended in a menu. A right click that did not
+        move, and the keyboard's menu key, still open it.
+        """
+        panned, self._right_drag_panned = self._right_drag_panned, False
+        if panned and event.reason() == QContextMenuEvent.Reason.Mouse:
+            event.accept()
+            return
+        super().contextMenuEvent(event)

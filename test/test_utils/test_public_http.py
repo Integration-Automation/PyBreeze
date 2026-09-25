@@ -6,9 +6,11 @@ that answered a public address the first time and a private one the second
 """
 from __future__ import annotations
 
+import http.client
 import socket
 import ssl
 import threading
+import time
 import urllib.error
 import urllib.request
 
@@ -33,7 +35,7 @@ def _answer(ip: str, port) -> list:
     return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (ip, int(port or 0)))]
 
 
-@pytest.fixture()
+@pytest.fixture
 def dns(monkeypatch):
     """Names ending in ``.test`` answer from a table; ``rebind.test`` public first, then loopback."""
     rebind_answers = [_PUBLIC_IP]
@@ -49,7 +51,7 @@ def dns(monkeypatch):
     monkeypatch.setattr(socket, "getaddrinfo", getaddrinfo)
 
 
-@pytest.fixture()
+@pytest.fixture
 def loopback_allowed(monkeypatch):
     """Let the checks pass loopback, so a local server can stand in for a public one."""
     monkeypatch.setattr(url_validation, "_is_blocked_ip", lambda _ip: False)
@@ -108,7 +110,7 @@ def _session() -> requests.Session:
     return session
 
 
-@pytest.fixture()
+@pytest.fixture
 def listener():
     server = _Listener()
     yield server
@@ -201,8 +203,20 @@ class TestUrllibOpener:
 
         assert listener.received[0].startswith(b"GET http://rebind.test/i.png HTTP/1.1\r\n")
 
+    def test_https_through_a_proxy_is_left_to_the_proxy(self, dns, listener):
+        # The proxy connects to the name; there is no address here to pin
+        opener = urllib.request.build_opener(
+            urllib.request.ProxyHandler({"https": f"http://127.0.0.1:{listener.port}"}),
+            PublicHTTPHandler(), PublicHTTPSHandler())
 
-@pytest.fixture()
+        with pytest.raises((urllib.error.URLError, ssl.SSLError, ConnectionError, http.client.HTTPException)):
+            opener.open("https://rebind.test/i.png", timeout=3)
+
+        listener.close()
+        assert listener.received[0].startswith(b"CONNECT rebind.test:443 HTTP/1.")
+
+
+@pytest.fixture
 def two_addresses(monkeypatch):
     """``two.test`` answers an address nothing listens on first, then loopback."""
     def getaddrinfo(host, port=None, *args, **kwargs):
@@ -228,6 +242,26 @@ class TestEveryCheckedAddressIsTried:
         with opener.open(f"http://two.test:{listener.port}/", timeout=3) as response:
             assert response.read() == b"ok"
 
+    @staticmethod
+    def _closed_port() -> int:
+        """A loopback port nothing listens on any more."""
+        probe = socket.socket()
+        probe.bind(("127.0.0.1", 0))
+        port = probe.getsockname()[1]
+        probe.close()
+        return port
+
+    def test_requests_fails_when_no_address_answers(self, two_addresses, loopback_allowed):
+        # After the last address the error is the connection's own, not a hang or a None raised
+        with _session() as session, pytest.raises(requests.ConnectionError):
+            session.get(f"http://two.test:{self._closed_port()}/", timeout=(3, 3))
+
+    def test_urllib_fails_when_no_address_answers(self, two_addresses, loopback_allowed):
+        opener = urllib.request.build_opener(PublicHTTPHandler())
+
+        with pytest.raises(urllib.error.URLError):
+            opener.open(f"http://two.test:{self._closed_port()}/", timeout=3)
+
     def test_one_blocked_address_still_refuses_the_name(self, two_addresses, listener):
         with _session() as session, pytest.raises(requests.ConnectionError):
             session.get(f"http://two.test:{listener.port}/", timeout=(3, 3))
@@ -249,6 +283,55 @@ class TestInternationalNames:
 
         assert validate_url("http://straße.de/") == "http://straße.de/"
         assert looked_up == ["xn--strae-oqa.de"]
+
+
+class TestTheDeadlineItself:
+    """What ``overall_deadline`` promises in the cases no request above runs into."""
+
+    @staticmethod
+    def _passed(seconds: float = 0.0):
+        from pybreeze.utils.network.public_http import _Deadline
+
+        deadline = _Deadline(seconds)
+        limit = time.monotonic() + 5
+        while not deadline.passed and time.monotonic() < limit:
+            time.sleep(0.01)
+        return deadline
+
+    def test_a_block_that_ends_after_the_time_is_up_still_times_out(self):
+        # A read cut off where no length was announced returns normally: the block must not
+        from pybreeze.utils.network.public_http import overall_deadline
+
+        with pytest.raises(requests.exceptions.ReadTimeout), overall_deadline(0.01):
+            time.sleep(0.2)
+
+    def test_a_socket_watched_after_the_time_is_up_is_shut_at_once(self):
+        deadline = self._passed()
+        mine, theirs = socket.socketpair()
+        with mine, theirs:
+            deadline.watch(mine)
+            theirs.settimeout(2)
+            assert theirs.recv(1) == b""  # the other end sees it closed
+        deadline.end()
+
+    def test_nothing_is_shut_once_the_request_is_over(self):
+        from pybreeze.utils.network.public_http import _Deadline
+
+        deadline = _Deadline(60)
+        mine, theirs = socket.socketpair()
+        with mine, theirs:
+            deadline.watch(mine)
+            deadline.end()
+            deadline._pass()  # the timer firing late, after end()
+            assert not deadline.passed
+            mine.sendall(b"x")
+            theirs.settimeout(2)
+            assert theirs.recv(1) == b"x"
+
+    def test_no_socket_is_nothing_to_watch(self):
+        deadline = self._passed()
+        deadline.watch(None)
+        deadline.end()
 
 
 class TestTheOverallDeadline:

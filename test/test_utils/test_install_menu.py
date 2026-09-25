@@ -31,7 +31,7 @@ class Process:
         self.runs.append((package, list(arguments)))
 
 
-@pytest.fixture()
+@pytest.fixture
 def processes(monkeypatch) -> list:
     started: list = []
 
@@ -106,6 +106,47 @@ class TestInstallingTheBuildTools:
         install_build_tools(object())
 
         assert _runs(processes) == [("pip", ["install", "-U", "setuptools", "build", "wheel"])]
+
+
+class TestTheAutomationInstallMenu:
+    """Each entry installs its own package."""
+
+    @staticmethod
+    def _menu(app):
+        from types import SimpleNamespace
+
+        from PySide6.QtWidgets import QMenu
+
+        from pybreeze.pybreeze_ui.menu.install_menu.automation_menu.build_automation_install_menu import (
+            build_automation_install_menu,
+        )
+
+        window = SimpleNamespace(install_menu=QMenu())
+        build_automation_install_menu(window)
+        return window, window.install_automation_menu
+
+    def test_the_entries_and_their_packages(self, app, processes):
+        from je_editor import language_wrapper
+
+        window, menu = self._menu(app)
+        words = language_wrapper.language_word_dict
+        pip_entries = [action for action in menu.actions()
+                       if action.text() != words.get("install_menu_prthinker")]
+        installed = []
+        for action in pip_entries:
+            action.trigger()
+            installed.append((action.text(), _runs(processes)[-1][1][-1]))
+
+        assert installed == [
+            (words.get("install_menu_autocontrol"), "je_auto_control"),
+            (words.get("install_menu_apitestka"), "je_api_testka"),
+            (words.get("install_menu_loaddensity"), "je_load_density"),
+            (words.get("install_menu_webrunner"), "je_web_runner"),
+            (words.get("install_menu_automation_file"), "automation_file"),
+            (words.get("install_menu_mail_thunder"), "je_mail_thunder"),
+            (words.get("install_menu_test_pioneer"), "test_pioneer"),
+        ]
+        assert menu.actions()[-1].text() == words.get("install_menu_prthinker")
 
 
 class TestInstallingPrthinker:

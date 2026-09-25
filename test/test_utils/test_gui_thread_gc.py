@@ -14,7 +14,7 @@ from pybreeze.pybreeze_ui import gui_thread_gc
 from pybreeze.pybreeze_ui.gui_thread_gc import GuiThreadGarbageCollector
 
 
-@pytest.fixture()
+@pytest.fixture
 def collector():
     was_enabled = gc.isenabled()
     made = GuiThreadGarbageCollector()

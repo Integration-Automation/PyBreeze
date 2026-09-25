@@ -7,21 +7,23 @@ Jupyter notebooks directly within the IDE.
 Opening JupyterLab
 -------------------
 
-JupyterLab is available from the tab menu. When opened, it creates a new tab
-containing a full JupyterLab interface rendered via Qt's web engine.
+Open it from **Tab > Tools Tab > JupyterLab**. It opens a new tab (titled
+``JupyterLab <n>``) containing a full JupyterLab interface rendered via Qt's web engine.
 
 First-Time Setup
 ^^^^^^^^^^^^^^^^
 
-On first launch, if JupyterLab is not installed, PyBreeze will automatically
-install it using pip. A status label shows the initialization progress.
+If the interpreter the lab runs in cannot import ``jupyterlab``, PyBreeze first
+installs it there with ``pip install -U jupyterlab``. A status label shows the progress.
 
 Interface
 ---------
 
 The JupyterLab tab contains:
 
-- **Status Label** -- Shows initialization status ("Starting JupyterLab...", "Ready", etc.)
+- **Status Label** -- Shows the startup status ("Initializing...", "Downloading..." while
+  JupyterLab is installed, "Loading... (Ns / 60s)" while the server starts) and is removed
+  once the lab loads; if the lab cannot start it reads "JupyterLab init failed: <reason>"
 - **Web Engine View** -- A full JupyterLab interface rendered in a ``QWebEngineView``
 
 The embedded JupyterLab provides all standard Jupyter features:
@@ -51,7 +53,10 @@ How It Works
 Usage Tips
 ----------
 
-- JupyterLab runs on a local port; no external network access is needed
+- JupyterLab listens on a free port on localhost only; network access is needed only to
+  install JupyterLab when it is missing
 - You can open multiple notebooks in JupyterLab's own tab system
 - Use JupyterLab for data analysis, prototyping, and interactive testing
-- The embedded JupyterLab shares the same Python environment as PyBreeze
+- JupyterLab and its kernels run in the interpreter a script run uses: the one chosen under
+  **Python Env > Choose python interpreter**; with none chosen, a ``venv`` or ``.venv`` in
+  the working folder, else the interpreter PyBreeze itself runs on

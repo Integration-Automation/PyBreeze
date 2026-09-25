@@ -48,7 +48,7 @@ class FakeWindow(QMainWindow):
         self.encoding = "utf-8"
 
 
-@pytest.fixture()
+@pytest.fixture
 def window(app):
     made = FakeWindow()
     yield made
@@ -214,10 +214,23 @@ class TestRefusingToRunTheWrongFile:
 
 
 class TestThePluginMenu:
-    def test_no_plugins_means_no_menu(self, window, monkeypatch):
+    def test_with_no_plugins_the_menu_still_offers_the_plugin_browser(self, window, monkeypatch):
+        # The browser is how a first plugin gets installed: the menu was left
+        # out while none was loaded, so it could not be reached until one was
+        # copied into jeditor_plugins/ by hand. JEditor's own menu always has it.
         monkeypatch.setattr(plugin_menu, "get_all_plugin_metadata", lambda: [])
         set_plugin_menu(window)
-        assert not hasattr(window, "plugin_menu")
+        assert labels(window.plugin_menu) == ["Plugin Browser"]
+
+    def test_the_plugin_browser_opens_as_a_tab(self, window, monkeypatch):
+        monkeypatch.setattr(plugin_menu, "get_all_plugin_metadata", lambda: [])
+        monkeypatch.setattr(plugin_menu, "PluginBrowserWidget", QWidget)
+        set_plugin_menu(window)
+
+        window.plugin_menu.actions()[0].trigger()
+
+        assert window.tab_widget.count() == 1
+        assert window.tab_widget.tabText(0).startswith("Plugin Browser")
 
     def test_a_plugin_without_a_run_config_gets_a_bare_entry(
             self, window, monkeypatch):
@@ -265,6 +278,21 @@ class TestThePluginMenu:
         plugin_menu._make_about_callback(None, "Go", "2.1", "someone")()
         assert "2.1" in shown[0]
         assert "someone" in shown[0]
+
+    def test_the_about_dialog_speaks_the_ide_language(self, app, monkeypatch):
+        # "Version:" and "Author:" were English whatever the IDE spoke
+        from pybreeze.extend_multi_language.extend_traditional_chinese import (
+            pybreeze_traditional_chinese_word_dict,
+        )
+        monkeypatch.setattr(plugin_menu.language_wrapper, "language_word_dict",
+                            pybreeze_traditional_chinese_word_dict)
+        shown: list[str] = []
+        monkeypatch.setattr(
+            plugin_menu.QMessageBox, "exec", lambda self: shown.append(self.text()))
+        plugin_menu._make_about_callback(None, "Go", "2.1", "someone")()
+
+        assert "版本" in shown[0] and "作者" in shown[0]
+        assert "Version" not in shown[0] and "Author" not in shown[0]
 
     def test_the_about_dialog_shows_markup_as_text(self, app, monkeypatch):
         # A plugin's name or author went to the box as markup, <img> and all
@@ -318,7 +346,7 @@ class EditorTab(QWidget):
         self.events.append("saved")
 
 
-@pytest.fixture()
+@pytest.fixture
 def editor_tab(window, monkeypatch):
     """Put an editor tab in the window; the helper recognises it by type."""
     monkeypatch.setattr(run_with, "EditorWidget", EditorTab)

@@ -58,6 +58,167 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-111 | 2026-09-25 | Python 3.15 checked: PyBreeze cannot be installed there until PySide6 moves; the badge says 3.10–3.14 | #compat #docs | [2026-09-c](2026-09-c.md) |
+| U-20260925-110 | 2026-09-25 | Runs from a Chinese folder with Chinese output are tested end to end | #test #encoding | [2026-09-c](2026-09-c.md) |
+| U-20260925-109 | 2026-09-25 | The SSH widgets' optional login widget is typed as optional | #types #ssh | [2026-09-c](2026-09-c.md) |
+| U-20260925-108 | 2026-09-25 | No tool tab or panel hides a Qt method behind an attribute of the same name | #refactor #quality | [2026-09-c](2026-09-c.md) |
+| U-20260925-107 | 2026-09-25 | Opening the main window takes about 1 s instead of 3: the theme is applied once | #perf #startup | [2026-09-c](2026-09-c.md) |
+| U-20260925-106 | 2026-09-25 | The packaged build's regex worker: its timeout and its errors are tested | #test #regex | [2026-09-c](2026-09-c.md) |
+| U-20260925-105 | 2026-09-25 | The main window shows PyBreeze's icon wherever the IDE starts from | #fix #packaging #ui | [2026-09-c](2026-09-c.md) |
+| U-20260925-104 | 2026-09-25 | Each entry of the project tree's right-click menu is tested | #test #file-tree | [2026-09-c](2026-09-c.md) |
+| U-20260925-103 | 2026-09-25 | Load tests the IDE starts are patched with gevent again | #fix #load-density #subprocess | [2026-09-c](2026-09-c.md) |
+| U-20260925-102 | 2026-09-25 | The IDE starts about 1.8 s sooner: the automation GUIs and SSH load when opened | #perf #startup | [2026-09-c](2026-09-c.md) |
+| U-20260925-101 | 2026-09-25 | The IDE is per-monitor DPI aware again: AutoControl is imported when used | #fix #startup #autocontrol | [2026-09-c](2026-09-c.md) |
+| U-20260925-100 | 2026-09-25 | Coverage counts the tests that start the real main window in a child | #ci #test #coverage | [2026-09-c](2026-09-c.md) |
+| U-20260925-99 | 2026-09-25 | The JupyterLab tab test no longer crashes the test run on exit | #test #fix #jupyter | [2026-09-c](2026-09-c.md) |
+| U-20260925-98 | 2026-09-25 | Installing JupyterLab for the tab is tested | #test #jupyter | [2026-09-c](2026-09-c.md) |
+| U-20260925-97 | 2026-09-25 | The SSH terminal's key authentication and input checks are tested | #test #ssh | [2026-09-c](2026-09-c.md) |
+| U-20260925-96 | 2026-09-25 | The SFTP tree's download and upload dialogs are tested | #test #ssh | [2026-09-c](2026-09-c.md) |
+| U-20260925-95 | 2026-09-25 | architecture.md's custom-tab extension point is complete | #docs | [2026-09-c](2026-09-c.md) |
+| U-20260925-94 | 2026-09-25 | Every Tools tab entry is opened in a test | #test #menu | [2026-09-c](2026-09-c.md) |
+| U-20260925-93 | 2026-09-25 | The prthinker menu is tested beyond reviewing a file | #test #prthinker | [2026-09-c](2026-09-c.md) |
+| U-20260925-92 | 2026-09-25 | The property panel's node edits and colour button are tested | #test #diagram | [2026-09-c](2026-09-c.md) |
+| U-20260925-91 | 2026-09-25 | The diagram canvas's clicks and keys are tested | #test #diagram | [2026-09-c](2026-09-c.md) |
+| U-20260925-90 | 2026-09-25 | The diagram canvas's zoom and grid are tested | #test #diagram | [2026-09-c](2026-09-c.md) |
+| U-20260925-89 | 2026-09-25 | A node and an image resize through one function | #refactor #diagram | [2026-09-c](2026-09-c.md) |
+| U-20260925-88 | 2026-09-25 | Fixture decorators without empty parentheses | #refactor #test | [2026-09-c](2026-09-c.md) |
+| U-20260925-87 | 2026-09-25 | SonarCloud's open issues in pybreeze/ dealt with | #refactor #quality | [2026-09-c](2026-09-c.md) |
+| U-20260925-86 | 2026-09-25 | An arrow's label is read in linear time | #fix #diagram | [2026-09-c](2026-09-c.md) |
+| U-20260925-85 | 2026-09-25 | The PDF of the guide keeps its Chinese half | #fix #docs | [2026-09-c](2026-09-c.md) |
+| U-20260925-84 | 2026-09-25 | A run whose window was closed can be stopped from the Run menu | #test #run | [2026-09-c](2026-09-c.md) |
+| U-20260925-83 | 2026-09-25 | A damaged saved theme stops JEditor's window: recorded | #investigation | [2026-09-c](2026-09-c.md) |
+| U-20260925-82 | 2026-09-25 | A plugin's About box speaks the IDE language | #fix #i18n #plugins | [2026-09-c](2026-09-c.md) |
+| U-20260925-81 | 2026-09-25 | architecture_explore.md's line counts re-measured | #docs | [2026-09-c](2026-09-c.md) |
+| U-20260925-80 | 2026-09-25 | The variable inspector is not offered as a feature | #docs | [2026-09-c](2026-09-c.md) |
+| U-20260925-79 | 2026-09-25 | Why a key did not load, decided in one place | #refactor #ssh | [2026-09-c](2026-09-c.md) |
+| U-20260925-78 | 2026-09-25 | The Sphinx pages say what a tree click does to a tab's text | #docs | [2026-09-c](2026-09-c.md) |
+| U-20260925-77 | 2026-09-25 | Stop All Program stops PyBreeze's runs too | #fix #run | [2026-09-c](2026-09-c.md) |
+| U-20260925-76 | 2026-09-25 | The Sphinx overview, getting-started and base-menu pages told right | #docs | [2026-09-c](2026-09-c.md) |
+| U-20260925-75 | 2026-09-25 | start_editor's theme is the one the IDE shows | #fix #startup | [2026-09-c](2026-09-c.md) |
+| U-20260925-74 | 2026-09-25 | The main window opens from its own function | #refactor #startup | [2026-09-c](2026-09-c.md) |
+| U-20260925-73 | 2026-09-25 | The Sphinx Plugins and extension pages told right | #docs #plugins | [2026-09-c](2026-09-c.md) |
+| U-20260925-72 | 2026-09-25 | The Plugin Browser is there before any plugin is | #fix #plugins | [2026-09-c](2026-09-c.md) |
+| U-20260925-71 | 2026-09-25 | The Sphinx AI Tools pages told right | #docs #ai | [2026-09-c](2026-09-c.md) |
+| U-20260925-70 | 2026-09-25 | CoT Code Review labels its code box as the code | #fix #ai | [2026-09-c](2026-09-c.md) |
+| U-20260925-69 | 2026-09-25 | The Sphinx Tools pages told right | #docs #diagram | [2026-09-c](2026-09-c.md) |
+| U-20260925-68 | 2026-09-25 | Opening another diagram asks before unsaved changes go | #fix #diagram | [2026-09-c](2026-09-c.md) |
+| U-20260925-67 | 2026-09-25 | The diagram editor's unsaved-edits question in one place | #refactor #diagram | [2026-09-c](2026-09-c.md) |
+| U-20260925-66 | 2026-09-25 | The Sphinx Automation pages told right | #docs #menu | [2026-09-c](2026-09-c.md) |
+| U-20260925-65 | 2026-09-25 | The Sphinx Install pages list TestPioneer and the right fallback interpreter | #docs | [2026-09-c](2026-09-c.md) |
+| U-20260925-64 | 2026-09-25 | The Sphinx SSH pages told right | #docs #ssh | [2026-09-c](2026-09-c.md) |
+| U-20260925-63 | 2026-09-25 | The Sphinx JupyterLab pages told right | #docs #jupyter | [2026-09-c](2026-09-c.md) |
+| U-20260925-62 | 2026-09-25 | JupyterLab runs in the interpreter a run uses | #fix #jupyter | [2026-09-c](2026-09-c.md) |
+| U-20260925-61 | 2026-09-25 | Bold and code in the Chinese Sphinx pages render, and the docs build without warnings | #fix #docs #i18n | [2026-09-c](2026-09-c.md) |
+| U-20260925-60 | 2026-09-25 | architecture.md's recipe for a new tool follows today's conventions | #docs | [2026-09-c](2026-09-c.md) |
+| U-20260925-59 | 2026-09-25 | The Sphinx docs show today's main window | #docs | [2026-09-c](2026-09-c.md) |
+| U-20260925-58 | 2026-09-25 | The Sphinx docs name the menu entries as they now read | #docs #i18n | [2026-09-c](2026-09-c.md) |
+| U-20260925-57 | 2026-09-25 | 外掛, not 插件, in the plugin guide | #docs #i18n | [2026-09-c](2026-09-c.md) |
+| U-20260925-56 | 2026-09-25 | The README says what the other languages in the menu do | #docs #readme #i18n | [2026-09-c](2026-09-c.md) |
+| U-20260925-55 | 2026-09-25 | The README says which Python JupyterLab starts in | #docs #readme | [2026-09-c](2026-09-c.md) |
+| U-20260925-54 | 2026-09-25 | Which interpreter a run uses, told right in the README and a docstring | #docs #readme #executor | [2026-09-c](2026-09-c.md) |
+| U-20260925-53 | 2026-09-25 | The README's project tree names the root documents | #docs #readme | [2026-09-c](2026-09-c.md) |
+| U-20260925-52 | 2026-09-25 | Record the build configs left under the old name as progress #112 | #docs #decision | [2026-09-c](2026-09-c.md) |
+| U-20260925-51 | 2026-09-25 | The READMEs no longer promise keyword highlighting | #docs #readme #jeditor | [2026-09-c](2026-09-c.md) |
+| U-20260925-50 | 2026-09-25 | Ctrl+Enter in the two-way tools goes the way the input reads | #feature #tools #readme | [2026-09-c](2026-09-c.md) |
+| U-20260925-49 | 2026-09-25 | Refactor: Ctrl+Enter can call any action | #refactor #ui | [2026-09-c](2026-09-c.md) |
+| U-20260925-48 | 2026-09-25 | Tests of a saved diagram's local images | #test #diagram #security | [2026-09-c](2026-09-c.md) |
+| U-20260925-47 | 2026-09-25 | Re-measure the coverage the architecture map quotes | #docs #test | [2026-09-c](2026-09-c.md) |
+| U-20260925-46 | 2026-09-25 | Coverage counts what QThread workers run | #test #ci | [2026-09-c](2026-09-c.md) |
+| U-20260925-45 | 2026-09-25 | Tests of the SSH host-key store's last line and a closed panel's question | #test #ssh #security | [2026-09-c](2026-09-c.md) |
+| U-20260925-44 | 2026-09-25 | Tests that stopping a run stops what it started | #test #executor | [2026-09-c](2026-09-c.md) |
+| U-20260925-43 | 2026-09-25 | Tests of the diagram editor's image download itself | #test #security #diagram | [2026-09-c](2026-09-c.md) |
+| U-20260925-42 | 2026-09-25 | Every undeclared direct import in progress #53 | #docs #deps | [2026-09-c](2026-09-c.md) |
+| U-20260925-41 | 2026-09-25 | Record cryptography with the undeclared direct imports in progress #53 | #docs #deps #security | [2026-09-c](2026-09-c.md) |
+| U-20260925-40 | 2026-09-25 | Tests that reach every branch of the pinned connections and capped reads | #test #security #network | [2026-09-c](2026-09-c.md) |
+| U-20260925-39 | 2026-09-25 | Tests that reach every branch of the SSRF check | #test #security #network | [2026-09-c](2026-09-c.md) |
+| U-20260925-38 | 2026-09-25 | The project tree deletes to the trash | #feature #ui #readme | [2026-09-c](2026-09-c.md) |
+| U-20260925-37 | 2026-09-25 | F2 and Delete in the SFTP tree | #feature #ssh #readme | [2026-09-c](2026-09-c.md) |
+| U-20260925-36 | 2026-09-25 | Refactor: the SFTP tree's menu action runner and entry lookup | #refactor #ssh | [2026-09-c](2026-09-c.md) |
+| U-20260925-35 | 2026-09-25 | F2 and Delete in the project tree | #feature #ui #readme | [2026-09-c](2026-09-c.md) |
+| U-20260925-34 | 2026-09-25 | The Regex tab's Traditional Chinese title | #fix #tools #i18n | [2026-09-c](2026-09-c.md) |
+| U-20260925-33 | 2026-09-25 | Ctrl+Enter sends from the AI panels | #feature #ai #readme | [2026-09-c](2026-09-c.md) |
+| U-20260925-32 | 2026-09-25 | Refactor: the Ctrl+Enter helper moves up to pybreeze_ui | #refactor #ui | [2026-09-c](2026-09-c.md) |
+| U-20260925-31 | 2026-09-25 | Ctrl+Enter runs a tool | #feature #tools #readme | [2026-09-c](2026-09-c.md) |
+| U-20260925-30 | 2026-09-25 | The SSH login form's secret field says Passphrase for a key | #fix #ssh #i18n #readme | [2026-09-c](2026-09-c.md) |
+| U-20260925-29 | 2026-09-25 | Re-measure the counts the architecture map quotes | #docs | [2026-09-c](2026-09-c.md) |
+| U-20260925-28 | 2026-09-25 | The READMEs count the dictionary keys there are, and a test keeps them to it | #docs #i18n #readme | [2026-09-c](2026-09-c.md) |
+| U-20260925-27 | 2026-09-25 | A run window names the file it runs | #fix #executor #ui | [2026-09-c](2026-09-c.md) |
+| U-20260925-26 | 2026-09-25 | 提示詞 throughout the Traditional Chinese IDE, and a CoT review window named as its tab | #fix #ai #i18n | [2026-09-c](2026-09-c.md) |
+| U-20260925-25 | 2026-09-25 | The diagram editor's file dialogs in the IDE's language, offering every image it keeps | #fix #diagram #i18n | [2026-09-c](2026-09-c.md) |
+| U-20260925-24 | 2026-09-25 | Refactor: the diagram image suffix allowlist public, its comment back on it | #refactor #diagram | [2026-09-c](2026-09-c.md) |
+| U-20260925-23 | 2026-09-25 | Deleting and discarding ask with No as the default | #fix #ui #ssh #diagram | [2026-09-c](2026-09-c.md) |
+| U-20260925-22 | 2026-09-25 | Install FileAutomation, as the menu and the README call it | #fix #menu #i18n | [2026-09-c](2026-09-c.md) |
+| U-20260925-21 | 2026-09-25 | Menu names spelled one way, and Tools entries that say Tab or Dock | #fix #menu #i18n #readme | [2026-09-c](2026-09-c.md) |
+| U-20260925-20 | 2026-09-25 | One AI submenu in the Dock menu | #fix #menu #jeditor | [2026-09-c](2026-09-c.md) |
+| U-20260925-19 | 2026-09-25 | One space after the SSH terminal's [Error] | #fix #ssh #i18n | [2026-09-c](2026-09-c.md) |
+| U-20260925-18 | 2026-09-25 | Regex and timestamp results worded in the IDE's language | #fix #tools #i18n | [2026-09-c](2026-09-c.md) |
+| U-20260925-17 | 2026-09-25 | HTTP status classes in the IDE's language | #fix #tools #i18n | [2026-09-c](2026-09-c.md) |
+| U-20260925-16 | 2026-09-25 | One wording for the JWT hand-over, and a status button that says what it does | #fix #tools #i18n | [2026-09-c](2026-09-c.md) |
+| U-20260925-15 | 2026-09-25 | The architecture map on what the AI review panels send | #docs #ai | [2026-09-c](2026-09-c.md) |
+| U-20260925-14 | 2026-09-25 | AI Code Review and CoT Code Review send no empty code, and the code as pasted | #fix #ai #i18n | [2026-09-c](2026-09-c.md) |
+| U-20260925-13 | 2026-09-25 | Say what CoT Code Review and Skill Send send | #docs #ai #readme | [2026-09-c](2026-09-c.md) |
+| U-20260925-12 | 2026-09-25 | AI Code Review sends the code by default | #fix #ai #readme | [2026-09-c](2026-09-c.md) |
+| U-20260925-11 | 2026-09-25 | AI panels no longer suggest an endpoint they refuse | #fix #ai #readme | [2026-09-c](2026-09-c.md) |
+| U-20260925-10 | 2026-09-25 | JWT, Query and URL tools in the fixed-pitch font | #fix #tools #ui | [2026-09-c](2026-09-c.md) |
+| U-20260925-09 | 2026-09-25 | No private address in the SSH host placeholder | #fix #ssh #i18n | [2026-09-c](2026-09-c.md) |
+| U-20260925-08 | 2026-09-25 | Say what to do with a PuTTY key instead of offering it | #fix #ssh #i18n #readme | [2026-09-c](2026-09-c.md) |
+| U-20260925-07 | 2026-09-25 | SSH and SFTP log in with a PKCS#8 private key | #feature #ssh | [2026-09-c](2026-09-c.md) |
+| U-20260925-06 | 2026-09-25 | The Mermaid paste box in the fixed-pitch font | #fix #diagram #ui | [2026-09-c](2026-09-c.md) |
+| U-20260925-05 | 2026-09-25 | Free the diagram editor's Mermaid import dialog | #fix #diagram | [2026-09-c](2026-09-c.md) |
+| U-20260925-04 | 2026-09-25 | The project tree's menu opens where it was asked for | #fix #ui | [2026-09-c](2026-09-c.md) |
+| U-20260925-03 | 2026-09-25 | Free the project and SFTP trees' right-click menus | #fix #ui #ssh | [2026-09-c](2026-09-c.md) |
+| U-20260925-02 | 2026-09-25 | Full-width punctuation in the Traditional Chinese strings | #fix #i18n | [2026-09-c](2026-09-c.md) |
+| U-20260925-01 | 2026-09-25 | Start the 2026-09-c batch | #docs | [2026-09-c](2026-09-c.md) |
+| U-20260924-320 | 2026-09-24 | Help, not HELP, in the automation menus | #fix #i18n | [2026-09-b](2026-09-b.md) |
+| U-20260924-319 | 2026-09-24 | Drop the ReEdgeGPT words no menu asks for | #cleanup #i18n | [2026-09-b](2026-09-b.md) |
+| U-20260924-318 | 2026-09-24 | Say that the SSH terminal is line by line | #docs #ssh #readme | [2026-09-b](2026-09-b.md) |
+| U-20260924-317 | 2026-09-24 | Say what the CoT review's step selector is | #fix #ai | [2026-09-b](2026-09-b.md) |
+| U-20260924-316 | 2026-09-24 | Reword the Traditional Chinese Open in editor tab button | #fix #i18n | [2026-09-b](2026-09-b.md) |
+| U-20260924-315 | 2026-09-24 | Tell apart labels that read the same | #fix #i18n | [2026-09-b](2026-09-b.md) |
+| U-20260924-314 | 2026-09-24 | Code in the tool tabs in the fixed-pitch font | #feature #tools #readme | [2026-09-b](2026-09-b.md) |
+| U-20260924-313 | 2026-09-24 | Consolas before Courier New for terminal output | #fix #ui | [2026-09-b](2026-09-b.md) |
+| U-20260924-312 | 2026-09-24 | Move the fixed-pitch font helper out of terminal_view | #refactor #ui | [2026-09-b](2026-09-b.md) |
+| U-20260924-311 | 2026-09-24 | Remove the images nothing shows | #docs #cleanup | [2026-09-b](2026-09-b.md) |
+| U-20260924-310 | 2026-09-24 | Redo the README's main window and correct its caption | #docs #readme | [2026-09-b](2026-09-b.md) |
+| U-20260924-309 | 2026-09-24 | Keep library debug records out of Code Result | #fix #editor #logging | [2026-09-b](2026-09-b.md) |
+| U-20260924-308 | 2026-09-24 | The cURL import button names the chosen target | #fix #tools #readme | [2026-09-b](2026-09-b.md) |
+| U-20260924-307 | 2026-09-24 | Redo the README screenshots of the AI tabs | #docs #readme | [2026-09-b](2026-09-b.md) |
+| U-20260924-306 | 2026-09-24 | Record the gitpython floor question as progress #109 | #docs #deps #security | [2026-09-b](2026-09-b.md) |
+| U-20260924-305 | 2026-09-24 | Taiwan terms for Help and template in the Traditional Chinese IDE | #fix #i18n | [2026-09-b](2026-09-b.md) |
+| U-20260924-304 | 2026-09-24 | A HELP submenu for TestPioneer | #feature #menu | [2026-09-b](2026-09-b.md) |
+| U-20260924-303 | 2026-09-24 | Make the automation menus' HELP builder public | #refactor #menu | [2026-09-b](2026-09-b.md) |
+| U-20260924-302 | 2026-09-24 | Install TestPioneer from the Install menu | #feature #menu | [2026-09-b](2026-09-b.md) |
+| U-20260924-301 | 2026-09-24 | Build the automation Install menu from a table | #refactor #menu | [2026-09-b](2026-09-b.md) |
+| U-20260924-300 | 2026-09-24 | Correction to U-20260924-295: the keyword colours are not shown yet | #docs #jeditor | [2026-09-b](2026-09-b.md) |
+| U-20260924-299 | 2026-09-24 | clear and reset wipe the SSH terminal | #fix #ssh | [2026-09-b](2026-09-b.md) |
+| U-20260924-298 | 2026-09-24 | Arrow labels in the README's tool screenshots | #docs | [2026-09-b](2026-09-b.md) |
+| U-20260924-297 | 2026-09-24 | README screenshots of the SSH tab, the run window and the diagram editor redone | #docs | [2026-09-b](2026-09-b.md) |
+| U-20260924-296 | 2026-09-24 | The diff tool shows its diff in colour | #feature #ui | [2026-09-b](2026-09-b.md) |
+| U-20260924-295 | 2026-09-24 | Automation keywords readable on a light theme | #fix #ui #jeditor | [2026-09-b](2026-09-b.md) |
+| U-20260924-294 | 2026-09-24 | The terminal font holds under the IDE's theme | #fix #ssh #ui | [2026-09-b](2026-09-b.md) |
+| U-20260924-293 | 2026-09-24 | Terminal colours readable on a dark and on a light theme | #fix #ssh #ui | [2026-09-b](2026-09-b.md) |
+| U-20260924-292 | 2026-09-24 | Colours in the SSH terminal | #feature #ssh #ui | [2026-09-b](2026-09-b.md) |
+| U-20260924-291 | 2026-09-24 | The SSH shell's pty follows the terminal's size | #feature #ssh | [2026-09-b](2026-09-b.md) |
+| U-20260924-290 | 2026-09-24 | Terminal output in a fixed-pitch font | #fix #ssh #ui | [2026-09-b](2026-09-b.md) |
+| U-20260924-289 | 2026-09-24 | A progress bar in the SSH terminal redraws its line | #fix #ssh | [2026-09-b](2026-09-b.md) |
+| U-20260924-288 | 2026-09-24 | Refactor: the run window's line rewinding in a shared module | #refactor | [2026-09-b](2026-09-b.md) |
+| U-20260924-287 | 2026-09-24 | Command history on the SSH command line | #feature #ssh | [2026-09-b](2026-09-b.md) |
+| U-20260924-286 | 2026-09-24 | Interrupt what runs in the SSH shell | #feature #ssh #i18n | [2026-09-b](2026-09-b.md) |
+| U-20260924-285 | 2026-09-24 | Enter on an empty SSH command line sends Enter | #fix #ssh | [2026-09-b](2026-09-b.md) |
+| U-20260924-284 | 2026-09-24 | Taiwan terms in the Traditional Chinese interface | #fix #i18n | [2026-09-b](2026-09-b.md) |
+| U-20260924-283 | 2026-09-24 | architecture_explore.md coverage figures re-measured | #docs #test | [2026-09-b](2026-09-b.md) |
+| U-20260924-282 | 2026-09-24 | A right-drag on the diagram canvas pans without opening the menu | #fix #diagram | [2026-09-b](2026-09-b.md) |
+| U-20260924-281 | 2026-09-24 | architecture_explore.md line counts re-measured | #docs | [2026-09-b](2026-09-b.md) |
+| U-20260924-280 | 2026-09-24 | curl -b '' reads no cookie file | #fix #curl | [2026-09-b](2026-09-b.md) |
+| U-20260924-279 | 2026-09-24 | A new diagram node's text in the IDE language | #fix #i18n #diagram | [2026-09-b](2026-09-b.md) |
+| U-20260924-278 | 2026-09-24 | Tests for the property panel on a connection and an image | #test #diagram | [2026-09-b](2026-09-b.md) |
+| U-20260924-277 | 2026-09-24 | Tests for the diagram editor's align and distribute | #test #diagram | [2026-09-b](2026-09-b.md) |
+| U-20260924-276 | 2026-09-24 | Check the trimmed diff against the plain one only on small texts | #fix #diff #perf | [2026-09-b](2026-09-b.md) |
+| U-20260924-275 | 2026-09-24 | The Traditional and Simplified Chinese READMEs follow README.md again | #docs #readme | [2026-09-b](2026-09-b.md) |
+| U-20260924-274 | 2026-09-24 | The exit-code line and the held-output note in the IDE language too | #fix #i18n #run-window | [2026-09-b](2026-09-b.md) |
+| U-20260924-273 | 2026-09-24 | Why a report mail was not sent, in the IDE language | #fix #i18n #mail | [2026-09-b](2026-09-b.md) |
+| U-20260924-272 | 2026-09-24 | Refactor: the reasons a report mail was not sent come from exception_tags | #refactor #i18n #mail | [2026-09-b](2026-09-b.md) |
+| U-20260924-271 | 2026-09-24 | A run window's own notices in the IDE language | #fix #i18n #run-window | [2026-09-b](2026-09-b.md) |
 | U-20260924-270 | 2026-09-24 | Report a deeply nested regex instead of crashing on CPython 3.10 | #fix #regex | [2026-09-b](2026-09-b.md) |
 | U-20260924-269 | 2026-09-24 | Adopt je_editor 1.0.27 docked-editor contract | #done #cross-project | [2026-09-b](2026-09-b.md) |
 | U-20260924-268 | 2026-09-24 | A file that is not a diagram, and a refused CoT URL, say why in the IDE language | #fix #i18n #diagram #ai | [2026-09-b](2026-09-b.md) |
@@ -352,4 +513,5 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | File | Period | Entries |
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
-| [2026-09-b.md](2026-09-b.md) | 2026-09 | 68 |
+| [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
+| [2026-09-c.md](2026-09-c.md) | 2026-09 | 111 |

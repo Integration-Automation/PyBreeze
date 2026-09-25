@@ -1,78 +1,137 @@
 Plugins Menu
 ============
 
-PyBreeze supports a plugin system for extending functionality. Plugins are
-auto-discovered from the ``jeditor_plugins/`` directory in your working directory.
+PyBreeze uses JEditor's plugin system. Plugins are loaded at start-up from the
+``jeditor_plugins/`` folder in the working directory (and, for a development checkout of
+JEditor, the one beside its package):
+
+- a ``.py`` file is a plugin, and so is a folder with an ``__init__.py``;
+- a folder without ``__init__.py`` only groups plugins, and is searched inside;
+- names that start with ``_`` or ``.`` are skipped.
+
+Each plugin defines a ``register()`` function, called once as it loads. It may also set
+``PLUGIN_NAME``, ``PLUGIN_AUTHOR``, ``PLUGIN_VERSION`` and ``PLUGIN_RUN_CONFIG``.
 
 Plugin Browser
 --------------
 
-Opens the plugin browser interface where you can:
+**Plugins > Plugin Browser** opens a tab that lists the plugins in a GitHub repository
+(``https://github.com/Jeffrey-Plugin-Repos/IDE_Plugins`` by default; any
+``https://github.com/owner/repo`` or ``owner/repo`` can be entered in **Repository URL**
+and read with **Fetch Plugins**). Select a plugin to see its details and source, then
+**Download & Install** saves it into ``jeditor_plugins/`` in the working directory, asking
+before it replaces a plugin of the same name. An installed plugin loads at the next start.
 
-- Browse available plugins
-- View plugin details
-- Install new plugins
+The entry is there before any plugin is installed.
 
 Loaded Plugins
 --------------
 
-After startup, any plugins found in ``jeditor_plugins/`` are automatically loaded
-and listed under the Plugins menu. Each loaded plugin appears as a menu entry.
+Below the Plugin Browser, each loaded plugin has an entry:
 
-Run With Menu
--------------
+- a plugin without a run configuration (a translation, a syntax plugin): its name, which
+  shows its name, version and author;
+- a plugin with a run configuration: a submenu named after the configuration, with
+  **About** and **Run with** *<name>* (the suffixes it runs are listed in the label when
+  there are several).
 
-The **Run With** menu provides options to run the current file using different
-compilers and interpreters. This is dynamically built based on available
-language support.
+Run with... Menu
+----------------
 
-Supported languages include:
+The **Run** menu has a **Run with...** submenu once a plugin has registered a run
+configuration: one entry per configuration, labelled with its name and suffixes. It runs
+the file in the editor tab in front:
 
-- **C** -- Compile and run with gcc/clang
-- **C++** -- Compile and run with g++/clang++
-- **Go** -- Run with go run
-- **Java** -- Compile and run with javac/java
-- **Rust** -- Compile and run with rustc
+1. The tab is saved first, in its own encoding and line ending; a tab without a file goes
+   through **Save As**. A save that fails is reported and nothing runs.
+2. A file whose suffix the configuration does not list is refused.
+3. The file runs in a run window titled with the configuration's name and the file, with a
+   **Stop** button: ``compiler [args...] file``, or, for a compiled language, the compiler
+   first (limited to 60 seconds) and then the program it built. The build goes into a
+   temporary folder that is removed afterwards.
 
 .. note::
 
-   The available "Run With" options depend on which compilers/interpreters are
-   installed on your system and discoverable via the system PATH.
+   A run configuration only names the compiler or interpreter; it has to be installed and
+   on ``PATH``. Otherwise the run window says the command was not found.
+
+A run configuration is a dictionary:
+
+.. code-block:: python
+
+   PLUGIN_RUN_CONFIG = {
+       "name": "Go",            # the menu label
+       "suffixes": (".go",),    # the files it runs
+       "compiler": "go",        # the program started
+       "args": ("run",),        # arguments between the compiler and the file
+       # For a compiled language:
+       # "compile_then_run": True, "output_flag": "-o",
+       # PyBreeze only: the encoding the program writes ("locale" is the machine's own)
+       # "encoding": "locale",
+   }
 
 Creating Plugins
 ----------------
 
-For detailed information on creating custom plugins, including syntax highlighting
-plugins and UI translation plugins, see the
-`Plugin Guide <https://github.com/Integration-Automation/JEDITOR/blob/main/PLUGIN_GUIDE.md>`_
-(the guide lives in the JEditor repository, since PyBreeze uses JEditor's plugin system).
+The full plugin API, with worked examples, is JEditor's
+`Plugin Guide <https://github.com/Integration-Automation/JEDITOR/blob/main/PLUGIN_GUIDE.md>`_;
+PyBreeze's `PLUGIN_GUIDE.md <https://github.com/Integration-Automation/PyBreeze/blob/main/PLUGIN_GUIDE.md>`_
+covers what PyBreeze adds. Ready-made plugins are in
+`IDE_Plugins <https://github.com/Jeffrey-Plugin-Repos/IDE_Plugins>`_.
 
 Syntax Highlighting Plugin Example
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Plugins can extend syntax highlighting with custom keywords:
+A plugin can colour the keywords of a language, by file suffix:
 
 .. code-block:: python
 
-   # jeditor_plugins/my_syntax_plugin.py
-   from je_editor import syntax_word_dict
+   # jeditor_plugins/lua_syntax.py
+   from PySide6.QtGui import QColor
+   from je_editor.plugins import register_programming_language
 
-   syntax_word_dict.update({
-       "my_keyword": "keyword_format",
-       "my_function": "function_format",
-   })
+   PLUGIN_NAME = "Lua syntax"
+   PLUGIN_VERSION = "1.0"
+
+
+   def register() -> None:
+       register_programming_language(
+           suffix=".lua",
+           syntax_words={
+               "keywords": {"words": ("function", "local", "end", "return"),
+                            "color": QColor(86, 156, 214)},
+           },
+           syntax_rules={
+               "comments": {"rules": (r"--[^\n]*",), "color": QColor(106, 153, 85)},
+           },
+       )
+
+.. note::
+
+   Registered keywords are used only for a suffix JEditor does not colour itself. For
+   ``.c``, ``.cpp``, ``.go``, ``.h``, ``.hpp``, ``.java``, ``.js``, ``.json``, ``.rs``,
+   ``.sh``, ``.sql``, ``.toml``, ``.ts``, ``.yaml`` and ``.yml`` JEditor's own rules apply,
+   and a plugin's keywords for them are not shown.
 
 UI Translation Plugin Example
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Plugins can add new UI translations:
+A plugin can add an interface language, listed in the **Language** menu:
 
 .. code-block:: python
 
-   # jeditor_plugins/my_language_plugin.py
-   from je_editor import language_wrapper
+   # jeditor_plugins/french.py
+   from je_editor.plugins import register_natural_language
 
-   language_wrapper.language_word_dict.update({
-       "application_name": "My Custom Name",
-       # ... more translations
-   })
+   PLUGIN_NAME = "French"
+
+
+   def register() -> None:
+       register_natural_language("French", "Français", {
+           "file_menu_label": "Fichier",
+           # ... the translated strings
+       })
+
+The keys are those of JEditor's English dictionary and of PyBreeze's
+(``pybreeze/extend_multi_language/extend_english.py``). A key the plugin leaves out is
+shown in English.

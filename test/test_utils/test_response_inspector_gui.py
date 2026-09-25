@@ -27,7 +27,7 @@ def app():
     return instance
 
 
-@pytest.fixture()
+@pytest.fixture
 def widget(app):
     from pybreeze.pybreeze_ui.tools_gui.response_inspector_gui import ResponseInspectorGUI
     gui = ResponseInspectorGUI()
@@ -65,7 +65,7 @@ class TestResponseInspectorGUI:
     def test_copy_output(self, app, widget):
         widget.input_edit.setPlainText('{"a": 1}')
         widget.analyze()
-        widget.actions.copy()
+        widget.output_actions.copy()
         assert '"a": 1' in QApplication.clipboard().text()
 
     def test_build_report_text_minimal(self, app):
@@ -94,7 +94,7 @@ class _FakeMainWindow:
         self.tab_widget = _FakeTabWidget()
 
 
-@pytest.fixture()
+@pytest.fixture
 def widget_with_window(app):
     from pybreeze.pybreeze_ui.tools_gui.response_inspector_gui import ResponseInspectorGUI
     window = _FakeMainWindow()

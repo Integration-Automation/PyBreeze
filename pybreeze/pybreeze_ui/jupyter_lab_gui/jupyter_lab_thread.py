@@ -1,19 +1,18 @@
 from __future__ import annotations
 
-import os
 import socket
 import subprocess
-import sys
 import tempfile
 import threading
 import time
 import traceback
 
 from PySide6.QtCore import QThread, Signal
-from je_editor import language_wrapper
+from je_editor import JEditorExecException, language_wrapper
 
+from pybreeze.extend.process_executor.python_task_process_manager import default_interpreter
 from pybreeze.utils.logging.logger import pybreeze_logger
-from pybreeze.utils.subprocess_util import no_window_creationflags
+from pybreeze.utils.subprocess_util import child_environment, no_window_creationflags
 
 JUPYTER_STARTUP_TIMEOUT = 60
 # How much of a failure's reason the tab shows: pip's stderr can run long
@@ -32,43 +31,20 @@ def find_free_port() -> int:
         return s.getsockname()[1]
 
 
-def get_venv_python() -> str:
-    # If already in a venv
-    if hasattr(sys, 'real_prefix') or (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix):
-        return sys.executable
-
-    # Try common venv locations
-    if sys.platform in ["win32", "cygwin", "msys"]:
-        possible_paths = [
-            os.path.join(os.getcwd(), "venv", "Scripts", "python.exe"),
-            os.path.join(os.getcwd(), ".venv", "Scripts", "python.exe"),
-        ]
-    else:
-        possible_paths = [
-            os.path.join(os.getcwd(), "venv", "bin", "python"),
-            os.path.join(os.getcwd(), ".venv", "bin", "python"),
-        ]
-
-    for path in possible_paths:
-        if os.path.exists(path):
-            return path
-
-    raise RuntimeError("Cannot find venv python executable")
-
-
 def choose_python(chosen: str | None) -> str:
-    """The interpreter the lab runs in: the one chosen in the IDE, else a venv's, else the IDE's own.
+    """The interpreter the lab runs in: the one chosen in the IDE, else the one a run uses.
 
     It took the IDE's own or a ``venv``/``.venv`` in the working directory and
     never the one chosen in the IDE, so kernels ran in the wrong environment,
-    and an IDE installed outside a venv could not start the lab at all.
+    and an IDE installed outside a venv could not start the lab at all. Then an
+    IDE started from a venv of its own ran the lab there, while a run of the
+    project used the project's ``.venv``: now both go through
+    ``default_interpreter`` (a ``venv``/``.venv`` in the working directory,
+    else the IDE's own; a packaged build looks on ``PATH``).
+
+    :raises JEditorExecException: when a packaged build finds no Python
     """
-    if chosen:
-        return chosen
-    try:
-        return get_venv_python()
-    except RuntimeError:
-        return sys.executable
+    return chosen or default_interpreter()
 
 
 def is_jupyter_installed(python_exe: str) -> bool:
@@ -115,8 +91,8 @@ class JupyterLauncherThread(QThread):
             if not is_jupyter_installed(python_exe):
                 self.status_update.emit(language_wrapper.language_word_dict.get("jupyterlab_downloading"))
 
-                # Install jupyterlab into the local venv. python_exe comes from
-                # get_venv_python(); shell=False. nosec B603.
+                # Install jupyterlab into the interpreter the lab runs in
+                # (choose_python); shell=False. nosec B603.
                 result = subprocess.run([  # nosec B603  # nosemgrep  # noqa: S603
                     python_exe,
                     "-m",
@@ -143,8 +119,9 @@ class JupyterLauncherThread(QThread):
             self._wait_until_ready(port)
             self.server_ready.emit(f"http://localhost:{port}/lab")
 
-        # OSError includes the TimeoutError of a server that never came up
-        except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
+        # OSError includes the TimeoutError of a server that never came up;
+        # JEditorExecException, a packaged build that found no Python
+        except (OSError, ValueError, RuntimeError, subprocess.SubprocessError, JEditorExecException) as error:
             if self._stopped.is_set():
                 # The tab closed: stop() ended the server, and the wait saw it
                 # exit. Not a failure, and it used to be logged as one.
@@ -182,7 +159,7 @@ class JupyterLauncherThread(QThread):
             "--ServerApp.password=",
             "--ServerApp.disable_check_xsrf=True",
         ], stdout=self._output, stderr=subprocess.STDOUT, text=True,
-            creationflags=no_window_creationflags())
+            env=child_environment(), creationflags=no_window_creationflags())
 
     @staticmethod
     def _port_open(port: int) -> bool:

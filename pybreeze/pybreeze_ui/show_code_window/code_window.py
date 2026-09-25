@@ -8,6 +8,8 @@ from PySide6.QtCore import QTimer, Signal
 from PySide6.QtGui import QGuiApplication, QTextCharFormat, QTextCursor
 from PySide6.QtWidgets import QWidget, QGridLayout, QHBoxLayout, QPlainTextEdit, QPushButton, QScrollArea
 
+from pybreeze.pybreeze_ui.fixed_pitch import use_fixed_pitch_font
+from pybreeze.pybreeze_ui.terminal_view import insert_rewinding
 from pybreeze.utils.terminal_text import strip_terminal_controls, take_leading_backspaces
 
 if TYPE_CHECKING:
@@ -21,27 +23,6 @@ if TYPE_CHECKING:
 # every line written past the cap cost about 15 ms to drop the oldest one, and
 # a chatty run froze the IDE for seconds a tick.
 MAX_OUTPUT_BLOCKS = 10000
-
-
-def _insert_rewinding(cursor: QTextCursor, text: str, text_format: QTextCharFormat) -> bool:
-    """Insert *text* at *cursor*, a lone ``\\r`` going back to the start of the line.
-
-    As a terminal does: a progress bar that rewinds with ``\\r`` redraws its
-    line instead of adding one per step. ``\\r\\n`` and ``\\n`` are line breaks.
-
-    :return: whether *text* ended on a ``\\r`` still to be applied: it waits
-        for what comes next, since rewound now, a finished progress bar's last
-        line would be erased with nothing to replace it
-    """
-    pieces = text.replace("\r\n", "\n").split("\r")
-    cursor.insertText(pieces[0], text_format)
-    for index, piece in enumerate(pieces[1:], start=1):
-        if not piece and index == len(pieces) - 1:
-            return True
-        cursor.movePosition(QTextCursor.MoveOperation.StartOfBlock, QTextCursor.MoveMode.KeepAnchor)
-        cursor.removeSelectedText()
-        cursor.insertText(piece, text_format)
-    return False
 
 
 class CodeWindow(QWidget):
@@ -78,6 +59,7 @@ class CodeWindow(QWidget):
         self.code_result = QPlainTextEdit()
         self.code_result.setLineWrapMode(self.code_result.LineWrapMode.NoWrap)
         self.code_result.setReadOnly(True)
+        use_fixed_pitch_font(self.code_result)
         self.code_result.document().setMaximumBlockCount(MAX_OUTPUT_BLOCKS)
         self.code_result_scroll_area = QScrollArea()
         self.code_result_scroll_area.setWidgetResizable(True)
@@ -169,6 +151,6 @@ class CodeWindow(QWidget):
             cursor.movePosition(QTextCursor.MoveOperation.Left, QTextCursor.MoveMode.KeepAnchor,
                                 min(backspaces, cursor.positionInBlock()))
             cursor.removeSelectedText()
-        self._rewind_pending = _insert_rewinding(cursor, text, text_format)
+        self._rewind_pending = insert_rewinding(cursor, text, text_format)
         if follow_output:
             scroll_bar.setValue(scroll_bar.maximum())

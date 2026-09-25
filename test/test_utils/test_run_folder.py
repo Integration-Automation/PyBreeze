@@ -21,7 +21,7 @@ def window():
     made.deleteLater()
 
 
-@pytest.fixture()
+@pytest.fixture
 def picked(monkeypatch):
     """The folder the dialog returns, and the parents it was opened with."""
     state = {"folder": "", "parents": [], "told": []}

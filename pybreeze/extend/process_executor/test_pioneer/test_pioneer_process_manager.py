@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from pybreeze.extend.process_executor.process_executor_utils import build_task_process
@@ -19,4 +20,4 @@ def init_and_start_test_pioneer_process(
     than raised out of the menu callback.
     """
     process = build_task_process(ui_we_want_to_set, program_buffer=program_buffer)
-    process.start_module_process(_PACKAGE, ["-e", file_path])
+    process.start_module_process(_PACKAGE, ["-e", file_path], subject=Path(file_path).name)

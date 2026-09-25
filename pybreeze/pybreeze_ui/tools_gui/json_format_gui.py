@@ -6,12 +6,14 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.run_shortcut import press_on_ctrl_enter
 from pybreeze.pybreeze_ui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.utils.exception.exceptions import ITEJsonException
 from pybreeze.utils.json_format.json_process import minify_json, reformat_json
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.pybreeze_ui.error_text import error_text
+from pybreeze.pybreeze_ui.fixed_pitch import use_fixed_pitch_font
 
 
 class JsonFormatGUI(QWidget):
@@ -29,11 +31,13 @@ class JsonFormatGUI(QWidget):
 
         self.input_label = QLabel(word.get("json_format_input_label"))
         self.input_edit = QTextEdit()
+        use_fixed_pitch_font(self.input_edit)
         self.input_edit.setPlaceholderText(word.get("json_format_input_placeholder"))
         self.input_edit.setAcceptRichText(False)
 
         self.format_button = QPushButton(word.get("json_format_format_button"))
         self.format_button.clicked.connect(self.format_json)
+        press_on_ctrl_enter(self, self.format_button)
         self.minify_button = QPushButton(word.get("json_format_minify_button"))
         self.minify_button.clicked.connect(self.minify)
 
@@ -43,9 +47,10 @@ class JsonFormatGUI(QWidget):
 
         self.output_label = QLabel(word.get("json_format_output_label"))
         self.output_edit = QTextEdit()
+        use_fixed_pitch_font(self.output_edit)
         self.output_edit.setReadOnly(True)
 
-        self.actions = OutputActions(
+        self.output_actions = OutputActions(
             self, self.output_edit, main_window=main_window,
             basename="formatted", extension="json",
             is_valid=lambda: self._valid_output)
@@ -56,7 +61,7 @@ class JsonFormatGUI(QWidget):
         layout.addLayout(buttons)
         layout.addWidget(self.output_label)
         layout.addWidget(self.output_edit)
-        layout.addLayout(self.actions.button_row())
+        layout.addLayout(self.output_actions.button_row())
         self.setLayout(layout)
 
         if initial_json:

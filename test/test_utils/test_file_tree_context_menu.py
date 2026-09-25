@@ -7,6 +7,7 @@ the user would have given is supplied directly.
 from __future__ import annotations
 
 import os
+import time
 from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -33,7 +34,7 @@ def app():
     return instance
 
 
-@pytest.fixture()
+@pytest.fixture
 def tree(app, tmp_path):
     """A tree view rooted at *tmp_path*, as the project tree would be."""
     view = QTreeView()
@@ -60,7 +61,28 @@ def confirm(monkeypatch, yes: bool) -> None:
         ctx.QMessageBox, "question", staticmethod(lambda *a, **k: button))
 
 
-@pytest.fixture()
+# Before the stand-in below replaces it in every test
+_REAL_MOVE_TO_TRASH = ctx._move_to_trash
+
+
+@pytest.fixture(autouse=True)
+def trash(tmp_path_factory, monkeypatch):
+    """A trash of the test's own: a delete must not fill the machine's Recycle Bin."""
+    import shutil
+
+    bin_folder = tmp_path_factory.mktemp("trash")
+    trashed: list[Path] = []
+
+    def move_to_trash(path: Path) -> bool:
+        trashed.append(path)
+        shutil.move(str(path), str(bin_folder / f"{len(trashed)}_{path.name}"))
+        return True
+
+    monkeypatch.setattr(ctx, "_move_to_trash", move_to_trash)
+    return trashed
+
+
+@pytest.fixture
 def warnings(monkeypatch):
     """Collect the warning dialogs an action raises instead of showing them."""
     shown: list[str] = []
@@ -347,7 +369,9 @@ class TestDeleting:
 
     def test_a_delete_that_fails_keeps_the_tab_open(self, tree, tmp_path, monkeypatch):
         # The tabs used to close before the delete ran, so a locked file stayed
-        # on disk while its tab, and any unsaved edits in it, were gone.
+        # on disk while its tab, and any unsaved edits in it, were gone. Where
+        # there is no trash, the file is deleted for good, and that can fail.
+        monkeypatch.setattr(ctx, "_move_to_trash", lambda _path: False)
         target = tmp_path / "locked.py"
         target.touch()
         window = FakeWindow()
@@ -372,6 +396,58 @@ class TestDeleting:
         assert window.tab_widget.count() == 1
         # Its auto-save, stopped for the delete, runs again.
         assert restarted == [str(target)]
+
+
+class TestDeletingToTheTrash:
+    """A delete from the tree was for good: it goes to the trash, as a file manager does."""
+
+    def test_a_file_goes_to_the_trash(self, tree, tmp_path, monkeypatch, trash):
+        target = tmp_path / "notes.py"
+        target.write_text("keep a copy", encoding="utf-8")
+        confirm(monkeypatch, yes=True)
+
+        _action_delete(tree, FakeWindow(), target)
+
+        assert trash == [target]
+        assert not target.exists()
+
+    def test_a_folder_goes_to_the_trash_whole(self, tree, tmp_path, monkeypatch, trash):
+        folder = tmp_path / "pkg"
+        folder.mkdir()
+        (folder / "inner.py").touch()
+        confirm(monkeypatch, yes=True)
+
+        _action_delete(tree, FakeWindow(), folder)
+
+        assert trash == [folder]
+
+    @pytest.mark.parametrize("delete_for_good", [True, False])
+    def test_without_a_trash_it_asks_before_deleting_for_good(self, tree, tmp_path, monkeypatch, delete_for_good):
+        monkeypatch.setattr(ctx, "_move_to_trash", lambda _path: False)
+        target = tmp_path / "notes.py"
+        target.touch()
+        asked: list = []
+
+        def question(_parent, _title, text, _buttons, default):
+            asked.append((text, default))
+            answer_now = delete_for_good or len(asked) == 1  # yes to the first question, then the choice
+            return QMessageBox.StandardButton.Yes if answer_now else QMessageBox.StandardButton.No
+
+        monkeypatch.setattr(ctx.QMessageBox, "question", staticmethod(question))
+
+        _action_delete(tree, FakeWindow(), target)
+
+        assert len(asked) == 2
+        assert asked[1][1] == QMessageBox.StandardButton.No  # for good is not the default
+        assert target.exists() is not delete_for_good
+
+    def test_the_trash_is_the_systems(self, tmp_path, monkeypatch):
+        # The stand-in replaces _move_to_trash; the real one asks Qt for the system's trash
+        called: list = []
+        monkeypatch.setattr(ctx.QFile, "moveToTrash", staticmethod(lambda name: called.append(name) or True))
+
+        assert _REAL_MOVE_TO_TRASH(tmp_path / "x.py") is True
+        assert called == [str(tmp_path / "x.py")]
 
 
 class TestCopyingThePath:
@@ -433,6 +509,64 @@ class TestAttachingTheMenu:
         assert index == 0
         assert window.tab_widget.count() == 1
         placeholder.deleteLater()
+
+
+class TestTheKeys:
+    """F2 renames and Delete deletes the entry in focus, as in a file manager: only the menu did."""
+
+    @staticmethod
+    def _shortcut(tree, keys: str):
+        from PySide6.QtGui import QKeySequence, QShortcut
+
+        found = [shortcut for shortcut in tree.findChildren(QShortcut) if shortcut.key() == QKeySequence(keys)]
+        assert len(found) == 1, keys
+        assert found[0].context() == Qt.ShortcutContext.WidgetShortcut  # only while the tree has the focus
+        return found[0]
+
+    @pytest.mark.parametrize(("keys", "action"), [("F2", "_action_rename"), ("Del", "_action_delete")])
+    def test_the_key_acts_on_the_current_entry(self, tree, tmp_path, monkeypatch, keys, action):
+        target = tmp_path / "notes.py"
+        target.touch()
+        asked: list = []
+        monkeypatch.setattr(ctx, action, lambda _tree, _window, path: asked.append(path))
+        _attach_context_menu(tree, FakeWindow())
+        tree.setCurrentIndex(tree.model().index(str(target)))
+
+        self._shortcut(tree, keys).activated.emit()
+
+        assert asked == [target]
+
+    @pytest.mark.parametrize(("key", "action"), [(Qt.Key.Key_F2, "_action_rename"),
+                                                 (Qt.Key.Key_Delete, "_action_delete")])
+    def test_a_key_pressed_in_the_tree_reaches_it(self, tree, tmp_path, monkeypatch, key, action):
+        # The view handles keys of its own (F2 starts an edit): the shortcut must still get them
+        from PySide6.QtTest import QTest
+
+        target = tmp_path / "notes.py"
+        target.touch()
+        asked: list = []
+        monkeypatch.setattr(ctx, action, lambda _tree, _window, path: asked.append(path))
+        _attach_context_menu(tree, FakeWindow())
+        tree.show()
+        tree.activateWindow()
+        tree.setFocus()
+        # The model lists the folder in the background, as it does for a user who then picks a file
+        deadline = time.monotonic() + 10
+        while tree.model().rowCount(tree.rootIndex()) == 0 and time.monotonic() < deadline:
+            QApplication.processEvents()
+        tree.setCurrentIndex(tree.model().index(str(target)))
+        QApplication.processEvents()
+
+        QTest.keyClick(tree, key)
+
+        assert asked == [target]
+        tree.close()
+
+    def test_attaching_twice_adds_the_keys_once(self, tree):
+        window = FakeWindow()
+        _attach_context_menu(tree, window)
+        _attach_context_menu(tree, window)
+        self._shortcut(tree, "F2")
 
 
 class TestANameStaysInItsFolder:
@@ -562,3 +696,60 @@ class TestRevealing:
         ctx._action_reveal_in_explorer(tree, tmp_path)
 
         assert len(warnings) == 1 and "xdg-open" in warnings[0]
+
+
+class TestTheMenuEntries:
+    """Each entry of the right-click menu does its own action, and those that need an item wait for one."""
+
+    _HANDLERS = ("_action_new_file", "_action_new_folder", "_action_rename", "_action_delete",
+                 "_action_copy_path", "_action_reveal_in_explorer")
+
+    @staticmethod
+    def _open(tree, monkeypatch, *, under_the_cursor: Path | None, choose: str | None) -> tuple[list, dict]:
+        """Open the menu over *under_the_cursor* and pick the entry reading *choose*."""
+        from PySide6.QtWidgets import QMenu
+
+        calls: list = []
+        enabled: dict[str, bool] = {}
+
+        class ChoosingMenu(QMenu):
+            def exec(self, *args):
+                enabled.update({action.text(): action.isEnabled() for action in self.actions() if action.text()})
+                return next((action for action in self.actions() if action.text() == choose), None)
+
+        monkeypatch.setattr(ctx, "QMenu", ChoosingMenu)
+        monkeypatch.setattr(ctx, "_get_path_from_index", lambda _tree, _index: under_the_cursor)
+        for name in TestTheMenuEntries._HANDLERS:
+            monkeypatch.setattr(ctx, name, lambda *args, _name=name, **kwargs: calls.append((_name, args, kwargs)))
+        ctx._show_context_menu(QPoint(1, 1), tree, "the window")
+        return calls, enabled
+
+    @pytest.mark.parametrize("key, handler, arguments, keywords", [
+        ("file_tree_ctx_new_file", "_action_new_file", ("path",), {}),
+        ("file_tree_ctx_new_folder", "_action_new_folder", ("path",), {}),
+        ("file_tree_ctx_rename", "_action_rename", ("window", "path"), {}),
+        ("file_tree_ctx_delete", "_action_delete", ("window", "path"), {}),
+        ("file_tree_ctx_copy_path", "_action_copy_path", ("path",), {"relative": False}),
+        ("file_tree_ctx_copy_relative_path", "_action_copy_path", ("path",), {"relative": True}),
+        ("file_tree_ctx_reveal_in_explorer", "_action_reveal_in_explorer", ("path",), {}),
+    ])
+    def test_an_entry_does_its_own_action(self, tree, tmp_path, monkeypatch, key, handler, arguments, keywords):
+        from je_editor import language_wrapper
+
+        item = tmp_path / "a.py"
+        calls, _enabled = self._open(tree, monkeypatch, under_the_cursor=item,
+                                     choose=language_wrapper.language_word_dict.get(key))
+
+        given = {"path": item, "window": "the window"}
+        assert calls == [(handler, (tree, *(given[name] for name in arguments)), keywords)]
+
+    def test_on_empty_space_only_new_entries_can_be_chosen(self, tree, monkeypatch):
+        from je_editor import language_wrapper
+
+        words = language_wrapper.language_word_dict
+        calls, enabled = self._open(tree, monkeypatch, under_the_cursor=None, choose=None)
+
+        assert calls == []
+        assert {text for text, on in enabled.items() if on} == {
+            words.get("file_tree_ctx_new_file"), words.get("file_tree_ctx_new_folder")}
+        assert len(enabled) == 7

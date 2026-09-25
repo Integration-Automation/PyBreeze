@@ -37,7 +37,7 @@ their output reaches the UI through Queue + QTimer.
 | `pybreeze/extend/process_executor/` | Subprocess isolation layer: `TaskProcessManager`, `process_executor_utils.py`, `FileRunnerProcess`, `queue_pump.py`, one sub-package per automation package, plus `test_pioneer/` and `prthinker/` |
 | `pybreeze/extend/mail_thunder_extend/`, `prthinker_extend/` | Post-test email hook; prthinker settings and argument assembly (pure logic) |
 | `pybreeze/extend_multi_language/` | PyBreeze's English and Traditional Chinese strings, merged into JEditor's dictionaries |
-| `pybreeze/utils/` | Pure logic, no Qt or JEditor (`test_utils_has_no_qt.py` guards it): request parsing and codegen, HTTP tools, `network/` SSRF validation, pinned connections and capped reads, exceptions, logging, `app_dirs.py`, `subprocess_util.py`, `terminal_text.py` (terminal escapes stripped for the SSH terminal and the run window) |
+| `pybreeze/utils/` | Pure logic, no Qt or JEditor (`test_utils_has_no_qt.py` guards it): request parsing and codegen, HTTP tools, `network/` SSRF validation, pinned connections and capped reads, exceptions, logging, `app_dirs.py`, `subprocess_util.py`, `terminal_text.py` (terminal escapes stripped for the SSH terminal and the run window), `terminal_style.py` (SGR colours read for the SSH terminal) |
 | `test/test_utils/` | Unit tests (pure logic and headless widgets). `test/unit_test/start_automation/` holds the launch tests |
 | `pyproject.toml`, `dev.toml` | Stable packaging (CI bumps and publishes it) and the unpublished dev packaging (keep its dependencies identical) |
 | `.github/workflows/` | `dev.yml`, `stable.yml` (unit tests on a Windows matrix, then SonarCloud) |
@@ -53,7 +53,8 @@ The layers are presentation (`pybreeze_ui/`), then execution (`extend/`), then f
   `multiprocessing.freeze_support()`: in the packaged executable the regex tester runs patterns in
   a spawned process, which re-runs the executable. From source it runs them in a plain worker script
   (`python -I -S -c`), so a launch script without the guard is safe.
-- **Programmatic**: `pybreeze.start_editor(debug_mode=False, theme="dark_amber.xml", **kwargs)`.
+- **Programmatic**: `pybreeze.start_editor(debug_mode=False, theme=None, **kwargs)`. A `theme` replaces
+  the one picked from UI Style (JEditor's saved `ui_style`) and is saved as it; `None` keeps the saved one.
   `debug_mode=True` adds an auto-close timer, which CI uses.
 - **Main window**: `PyBreezeMainWindow` exposes `tab_widget`, `current_run_code_window` and
   `python_compiler`.
@@ -72,16 +73,20 @@ The layers are presentation (`pybreeze_ui/`), then execution (`extend/`), then f
 **Startup**
 
 ```
-python -m pybreeze → start_editor() → QApplication → PyBreezeMainWindow()
+python -m pybreeze → start_editor() → QApplication → open_main_window() → PyBreezeMainWindow()
   → update_language_dict()             [before JEditor picks the startup language]
   → EditorMain.__init__(extend=True)   [JEditor builds the editor, loads jeditor_plugins/]
   → drop JEditor Help menu → add_menu_to_menubar()
   → syntax_extend_package() → EDITOR_EXTEND_TAB tabs → setup_file_tree_context_menu()
-  → apply_stylesheet(theme) → showMaximized() → startup_setting() → exec() → os._exit()
+     [EditorMain.__init__ has applied the saved settings and UI Style theme: startup_setting()]
+  → a theme given to start_editor(): saved as ui_style, startup_setting() again
+     (none given: only the window's own style sheet is set again)
+  → showMaximized() → exec() → os._exit()
 ```
 
-Before PySide6 is imported, `main_ui.py` sets `LOCUST_SKIP_MONKEY_PATCH=1` to keep LoadDensity's
-gevent patching away from Qt.
+Before PySide6 is imported, `main_ui.py` sets `LOCUST_SKIP_MONKEY_PATCH` (to `IDE_ONLY`, unless the user
+set it) to keep locust's gevent patching away from Qt. The processes the IDE starts get
+`subprocess_util.child_environment()`, which leaves it out: a load test needs the patching.
 
 **Run an automation script**
 
@@ -105,7 +110,9 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
 ## 5. Extension points
 
 - **Custom tabs**: add entries to `EDITOR_EXTEND_TAB` (`pybreeze_ui/editor_main/main_ui.py`) before
-  `start_editor()`.
+  `start_editor()`, or in a file plugin's `register()`, which runs before the tabs are added. A widget
+  with a `may_close()` is asked before its tab, its dock or the IDE closes (`pybreeze_ui/closing.py`);
+  one whose constructor raises costs only its own tab.
 - **File plugins**: `jeditor_plugins/` in the working directory, loaded by JEditor
   (`je_editor/plugins/plugin_loader.py`). `PLUGIN_RUN_CONFIG` entries appear in the Run with… and
   Plugins menus and execute via `FileRunnerProcess`. The plugin browser tab reuses JEditor's
@@ -120,9 +127,12 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
   - add keywords in `pybreeze_ui/syntax/syntax_keyword.py`.
 - **New tool tab or dock**: a widget in `pybreeze_ui/tools_gui/`, its logic in `pybreeze/utils/`, and
   rows in `_WIDGET_FACTORIES` / `_TAB_ACTIONS` / `_DOCK_ACTIONS` / `_DOCK_TITLES`
-  (`pybreeze_ui/menu/tools/tools_menu.py`).
+  (`pybreeze_ui/menu/tools/tools_menu.py`). Like the other tools, a box that holds code calls
+  `fixed_pitch.use_fixed_pitch_font()`, and the main button gets Ctrl+Enter through
+  `run_shortcut.press_on_ctrl_enter()` (`act_on_ctrl_enter()` when the input decides the action).
 - **UI strings**: add keys to both `extend_multi_language/extend_english.py` and
-  `extend_traditional_chinese.py`. `test/test_utils/test_language_parity.py` enforces parity.
+  `extend_traditional_chinese.py`. `test/test_utils/test_language_parity.py` enforces parity, and the
+  key count in the READMEs and `architecture_explore.md` must follow (`test_the_readmes_count_the_keys_there_are`).
 
 ## 6. Cross-project boundaries
 
@@ -143,14 +153,23 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
   | `choose_file_get_save_file_path` | `pyside_ui.dialog.file_dialog.save_file_dialog` | `menu/plugin_menu/build_run_with_menu.py` |
   | `write_file_with_encoding` | `utils.file.save.save_file` | `menu/plugin_menu/build_run_with_menu.py` |
   | `DEFAULT_ENCODING`, `LINE_ENDING_LF` | `utils.encodings.text_codec` | `menu/plugin_menu/build_run_with_menu.py` |
-  | `actually_color_dict` | `pyside_ui.main_ui.save_settings.user_color_setting_file` | `show_code_window/code_window.py`, `automation_menu/auto_control_menu/build_autocontrol_menu.py` |
+  | `actually_color_dict` | `pyside_ui.main_ui.save_settings.user_color_setting_file` | `show_code_window/code_window.py`, `automation_menu/auto_control_menu/build_autocontrol_menu.py`, `tools_gui/diff_gui.py` (the diff's line colours: `diff_added_marker_color`, `diff_removed_marker_color`, `syntax_keyword_color`, `blame_annotation_color`) |
+  | `RedirectStdErr` | `utils.redirect_manager.redirect_manager_class` | `code_result_logs.py` (the handler `EditorMain` hooks onto every logger to show records in Code Result; PyBreeze raises its level to `WARNING`) |
+  | `user_setting_dict` | `pyside_ui.main_ui.save_settings.user_setting_file` | `editor_main/main_ui.py` (`open_main_window()` makes a `theme` given to `start_editor()` the saved `ui_style`, which `EditorMain.startup_setting()` applies over any theme applied before it) |
 
   PyBreeze also relies on `EditorWidget`'s `current_file`, `code_edit`, `file_encoding`,
   `line_ending`, `mark_ignore_next_file_change()` and `mark_saved()`, on its private `_file_watcher`,
   `_ignore_next_change`, `_is_modified` and `_on_text_changed()` (a rename puts the unsaved mark
   back after `rename_self_tab()` clears it), on `EditorMain.close_tab(index)` (overridden to ask a
   tab's `may_close()` first, and to delete a closed tool tab, which its `removeTab` keeps) and on `CodeEditor`'s `reset_highlighter()`, `load_git_baseline()` and
-  `start_language_server()` (a rename moves the tab the way `open_an_file` does), and on `language_wrapper`'s
+  `start_language_server()` (a rename moves the tab the way `open_an_file` does), on `EditorMain`'s
+  `run_menu.stop_all_program_action` (Stop All Program also stops every run window's run), on
+  `EditorMain.__init__` calling `startup_setting()` (the window is built with the saved settings and
+  theme; `open_main_window()` applies them again only for a theme given to `start_editor()`), its
+  `dock_menu` and its AI submenu `dock_ai_menu` (PyBreeze's AI docks join it; without one they get an
+  AI submenu of their own, `menu/tools/tools_menu.py`), on the syntax highlighter
+  taking a theme colour key (`warning_output_color`, `diff_modified_marker_color`, in both JEditor's dark and light
+  sets) for a registered keyword's colour (`syntax/syntax_extend.py`), and on `language_wrapper`'s
   `choose_language_dict` serving English and Traditional Chinese from the exported dict objects
   themselves. Having je_editor export the names in the table is workspace X-17. It
   merges its strings by mutating JEditor's `english_word_dict` and `traditional_chinese_word_dict`

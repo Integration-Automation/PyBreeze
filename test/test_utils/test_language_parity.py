@@ -58,6 +58,13 @@ class TestLanguageParity:
         }
         assert not mismatched, f"Placeholder mismatches between languages: {mismatched}"
 
+    def test_no_value_starts_or_ends_with_a_space(self):
+        # The code puts its own space between a label and what follows it: the SSH
+        # terminal's "[Error] " came out "[Error]  <message>" in English only
+        padded = {key: value for words in (EN, ZH) for key, value in words.items()
+                  if str(value) != str(value).strip(" ")}
+        assert padded == {}
+
     def test_no_word_is_written_twice(self):
         # Four Chinese menu entries read "運行 Multi WebRunner 腳本 腳本並寄信"
         doubled = {
@@ -67,6 +74,138 @@ class TestLanguageParity:
             if re.search(r"(?<!\S)(\S{2,}) \1(?!\S)|(?<!\S)(\S{2,}) \2(?=[一-鿿])", str(value))
         }
         assert not doubled, f"A word written twice: {doubled}"
+
+    def test_traditional_chinese_uses_taiwan_terms(self):
+        # The automation menus said 運行 where the run window said 執行; JEditor's
+        # own entries (its Run and plugin menus) are not in this dictionary
+        mainland = {"運行": "執行", "字體": "字型", "插件": "外掛", "默認": "預設", "文件夾": "資料夾",
+                    "信息": "訊息", "軟件": "軟體", "數據": "資料", "屏幕": "螢幕", "鼠標": "滑鼠",
+                    "幫助": "說明", "模板": "範本"}
+        found = {
+            key: [word for word in mainland if word in value]
+            for key, value in ZH.items()
+            if any(word in value for word in mainland)
+        }
+        assert not found, f"Mainland terms, Taiwan uses {mainland}: {found}"
+        # 終端 on its own is 終端機
+        assert not {key: value for key, value in ZH.items() if re.search("終端(?!機)", value)}
+
+    def test_traditional_chinese_uses_full_width_punctuation(self):
+        # Forty-two labels ended in "：" and a few in ":"; the SSH placeholder read
+        # "主機 (例如: ...)". A file dialog's filter keeps "(*.txt)", or "({patterns})"
+        # filled in with them: Qt reads it
+        cjk = "[一-鿿]"
+        half_width = {
+            key: value for key, value in ZH.items()
+            if re.search(rf"{cjk}\s?(:|\((?![*{{]))|:(\s*$|\s+\{{)|\((?![*{{])[^)]*{cjk}", value)
+        }
+        assert half_width == {}
+
+
+class TestLabelsAreTold:
+    def test_side_by_side_controls_are_named_apart(self):
+        # The diagram toolbar's Align menu and Snap box both read 對齊
+        for first, second in [("diagram_editor_action_snap", "diagram_editor_align_menu")]:
+            assert EN[first] != EN[second]
+            assert ZH[first] != ZH[second]
+
+    def test_a_dock_is_titled_like_its_tab(self):
+        # The prompt editors' docks said "CoT PromptEditor"
+        for tab, dock in [
+                ("extend_tools_menu_cot_prompt_editor_tab_label", "extend_tools_menu_cot_prompt_editor_dock_title"),
+                ("extend_tools_menu_skill_prompt_editor_tab_label", "extend_tools_menu_skill_prompt_editor_dock_title")]:
+            assert EN[dock] == EN[tab]
+            assert ZH[dock] == ZH[tab]
+
+    def test_every_tools_entry_says_whether_it_opens_a_tab_or_a_dock(self):
+        # Tools > AI read "CoT Prompt Editor", "Skill Send GUI" beside "CoT Code Review Tab"
+        from pybreeze.pybreeze_ui.menu.tools.tools_menu import _DOCK_ACTIONS, _TAB_ACTIONS
+
+        for *_start, action_key, _label_key in _TAB_ACTIONS:
+            assert EN[action_key].endswith(" Tab") and ZH[action_key].endswith("分頁"), action_key
+        for *_start, action_key in _DOCK_ACTIONS:
+            assert EN[action_key].endswith(" Dock") and ZH[action_key].endswith("停駐窗格"), action_key
+
+    def test_a_tab_is_titled_as_its_menu_entry_names_it(self):
+        # The Regex tab was "Regex" in Traditional Chinese, opened by 正規表示式測試器分頁
+        from pybreeze.pybreeze_ui.menu.tools.tools_menu import _TAB_ACTIONS
+
+        for *_start, action_key, label_key in _TAB_ACTIONS:
+            for words in (EN, ZH):
+                assert words[label_key] in words[action_key], (label_key, words[label_key], words[action_key])
+
+    def test_a_dock_is_titled_like_the_tab_of_the_same_tool(self):
+        # "AI Code-Review" and "Skill Send GUI" as titles; the Skill Send dock's
+        # menu entry read "Skill Prompt Dock"
+        for tool in ("ai_code_review", "cot_code_review", "cot_prompt_editor", "skill_prompt_editor",
+                     "skill_prompt_send"):
+            for words in (EN, ZH):
+                tab = words[f"extend_tools_menu_{tool}_tab_label"]
+                assert words[f"extend_tools_menu_{tool}_dock_title"] == tab
+                assert words[f"extend_tools_menu_{tool}_dock_action"].startswith(tab), tool
+
+    def test_traditional_chinese_says_prompt_one_way(self):
+        # The prompt editors' tabs said 提示詞 and their labels "Prompt 檔案位置（會覆寫內建 prompt）"
+        assert {key: value for key, value in ZH.items() if re.search(r"\b[Pp]rompt\b", str(value))} == {}
+
+    def test_a_name_is_spelled_one_way(self):
+        # "Autocontrol" beside "AutoControl GUI" and "Install AutoControl";
+        # "Test Pioneer" beside "TestPioneer"; "Yaml" for YAML; "Install Automation File"
+        # beside the FileAutomation menu
+        misspelt = {key: value for words in (EN, ZH) for key, value in words.items()
+                    if re.search(r"Autocontrol|Test Pioneer|Yaml|Code-Review|Automation File", str(value))}
+        assert misspelt == {}
+
+    def test_the_same_action_reads_the_same_on_every_tab(self):
+        # Header Analyzer said "Open token in JWT decoder", Response Inspector
+        # "Open JWT in decoder", for the same hand-over
+        for words in (EN, ZH):
+            assert words["header_analyzer_open_jwt_button"] == words["response_open_jwt_button"]
+
+    def test_a_hand_over_button_does_not_name_a_tab_that_is_not_there(self):
+        # "Open status in reference": no tab is called Reference (the HTTP Status tab looks codes up)
+        assert "reference" not in EN["response_open_status_button"].lower()
+        assert "參考" not in ZH["response_open_status_button"]
+
+    def test_no_string_holds_an_ip_address(self):
+        # The SSH host placeholder's example was a private address (CLAUDE.md: no
+        # hardcoded IPs or hostnames outside documented loopback)
+        addresses = {key: value for words in (EN, ZH) for key, value in words.items()
+                     if re.search(r"\b(?!127\.)\d{1,3}(\.\d{1,3}){3}\b", str(value))}
+        assert addresses == {}
+
+    def test_an_example_url_is_one_the_ide_would_send_to(self, monkeypatch):
+        # CoT Code Review and Skill Send suggested http://127.0.0.1:5000/api, which
+        # the URL check they send through refuses as not public
+        import ipaddress
+        import socket
+
+        from pybreeze.utils.network.url_validation import UnsafeURLError, validate_url
+
+        def getaddrinfo(host, *_args, **_kwargs):
+            try:
+                address = str(ipaddress.ip_address(host))
+            except ValueError:
+                address = "127.0.0.1" if host == "localhost" else "8.8.8.8"
+            return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (address, 0))]
+
+        monkeypatch.setattr(socket, "getaddrinfo", getaddrinfo)
+        refused = {}
+        for words in (EN, ZH):
+            for key, value in words.items():
+                for url in re.findall(r"https?://[^\s'\"，）)]+", str(value)):
+                    try:
+                        validate_url(url)
+                    except UnsafeURLError as error:
+                        refused[key] = (url, str(error))
+        assert refused == {}
+
+    def test_no_label_is_in_capitals(self):
+        # Every automation menu's Help submenu read "HELP", beside JEditor's "Help" menu
+        acronyms = {"HTTP", "JSON", "MIME", "SFTP", "YAML"}
+        shouted = {key: text for key, text in EN.items() if key.endswith("_label")
+                   for word in re.findall(r"\b[A-Z]{4,}\b", text) if word not in acronyms}
+        assert shouted == {}
 
 
 class TestCodeKeysAreDefined:
@@ -154,3 +293,19 @@ class TestEveryLanguageServesPyBreezeStrings:
         finally:
             language_wrapper.reset_language(original)
         assert set(names.values()) == {"PyBreeze"}, names
+
+
+def test_the_readmes_count_the_keys_there_are():
+    # They said 735 while the dictionaries held 753: a count kept by hand drifts.
+    # The architecture map quotes it too
+    readmes = {
+        "README.md": r"the same (\d+) keys",
+        "README/README_zh-TW.md": r"相同的 (\d+) 個鍵",
+        "README/README_zh-CN.md": r"同样的 (\d+) 个键",
+        "architecture_explore.md": r"各 (\d+) 個鍵",
+    }
+    root = pathlib.Path(pybreeze.__file__).parent.parent
+    for name, pattern in readmes.items():
+        found = re.search(pattern, (root / name).read_text(encoding="utf-8"))
+        assert found is not None, name
+        assert int(found.group(1)) == len(EN) == len(ZH), name

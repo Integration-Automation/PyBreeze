@@ -15,7 +15,7 @@ from pybreeze.extend.prthinker_extend.prthinker_setting import (
 )
 
 
-@pytest.fixture()
+@pytest.fixture
 def data_dir(tmp_path, monkeypatch):
     """Keep every test's settings file inside its own temporary directory."""
     monkeypatch.setattr(prthinker_setting, "pybreeze_data_path", lambda: tmp_path)

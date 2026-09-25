@@ -43,7 +43,11 @@ INTERNAL = [
     ("je_editor.utils.encodings.text_codec", "LINE_ENDING_LF",
      "menu/plugin_menu/build_run_with_menu.py"),
     ("je_editor.pyside_ui.main_ui.save_settings.user_color_setting_file", "actually_color_dict",
-     "show_code_window/code_window.py, auto_control_menu/build_autocontrol_menu.py"),
+     "show_code_window/code_window.py, auto_control_menu/build_autocontrol_menu.py, tools_gui/diff_gui.py"),
+    ("je_editor.utils.redirect_manager.redirect_manager_class", "RedirectStdErr",
+     "code_result_logs.py"),
+    ("je_editor.pyside_ui.main_ui.save_settings.user_setting_file", "user_setting_dict",
+     "editor_main/main_ui.py"),
 ]
 
 # Names PyBreeze imports from je_editor's top level, i.e. from its __all__.
@@ -84,6 +88,25 @@ class TestTheShapesPyBreezeCalls:
         assert callable(EditorMain.clear_code_result)
         assert callable(EditorMain.startup_setting)
 
+    def test_the_run_menu_keeps_its_stop_all_action(self):
+        # PyBreezeMainWindow connects its run windows' stop to this action.
+        build = importlib.import_module("je_editor.pyside_ui.main_ui.menu.run_menu.build_run_menu")
+        assert "run_menu.stop_all_program_action" in inspect.getsource(build)
+
+    def test_the_window_is_built_with_the_saved_settings(self):
+        from je_editor import EditorMain
+
+        # open_main_window() applies them again only for a theme start_editor() is given
+        assert "self.startup_setting()" in inspect.getsource(EditorMain.__init__)
+
+    def test_the_startup_applies_the_saved_theme(self):
+        from je_editor import EditorMain
+
+        # open_main_window() gives start_editor's theme to startup_setting() as the saved one.
+        assert '"ui_style"' in inspect.getsource(EditorMain.startup_setting)
+        settings = _internal("je_editor.pyside_ui.main_ui.save_settings.user_setting_file", "user_setting_dict")
+        assert settings.get("ui_style") is not None
+
     def test_an_editor_tab_can_be_saved_the_way_a_run_saves_it(self):
         from je_editor import EditorWidget
 
@@ -113,6 +136,20 @@ class TestTheShapesPyBreezeCalls:
             "je_editor.pyside_ui.main_ui.save_settings.user_color_setting_file",
             "actually_color_dict")
         assert {"normal_output_color", "error_output_color"} <= set(colours)
+        # The diff tool's line colours
+        assert {"diff_added_marker_color", "diff_removed_marker_color", "syntax_keyword_color",
+                "blame_annotation_color"} <= set(colours)
+
+    def test_a_keyword_colour_can_be_a_theme_colour_key(self):
+        # syntax_extend registers keys, not colours, so keywords follow the theme
+        from je_editor.pyside_ui.code.syntax.python_syntax import PythonHighlighter
+        from je_editor.utils.theme.theme_colors import DARK_COLORS, LIGHT_COLORS
+
+        from pybreeze.pybreeze_ui.syntax.syntax_extend import JSON_KEYWORD_COLOUR, YAML_KEYWORD_COLOUR
+
+        assert "actually_color_dict.get(color)" in inspect.getsource(PythonHighlighter._make_format)
+        for key in (JSON_KEYWORD_COLOUR, YAML_KEYWORD_COLOUR):
+            assert key in DARK_COLORS and key in LIGHT_COLORS, key
 
     def test_the_widgets_build_without_arguments(self):
         from PySide6.QtWidgets import QDockWidget, QWidget

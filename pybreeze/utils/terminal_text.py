@@ -25,13 +25,21 @@ ANSI_ESCAPE_PATTERN = re.compile(
 # Backspace is applied first (_apply_backspaces)
 _CONTROL_CHARACTER = re.compile('[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]')
 
-# The end of a read that stops inside an escape sequence: a lone ESC, a CSI
-# still waiting for its final byte, a control string still waiting for its
-# terminator (or the second byte of ST), or a character-set escape still
-# waiting for its final byte
-_INCOMPLETE_ESCAPE = re.compile(r'\x1B(?:\[[0-?]*[ -/]*|[\]PX^_][^\x07\x1B]*\x1B?|[ -/]+)?\Z')
+# The end of a read that stops inside an escape sequence: a lone ESC, or ESC and
+# one of these, still waiting for the rest
+_UNFINISHED_CSI = r'\[[0-?]*[ -/]*'  # a CSI without its final byte
+_UNFINISHED_STRING = r'[\]PX^_][^\x07\x1B]*\x1B?'  # a control string without its terminator (or ST's second byte)
+_UNFINISHED_CHARSET = r'[ -/]+'  # a character-set escape without its final byte
+_INCOMPLETE_ESCAPE = re.compile(rf'\x1B(?:{_UNFINISHED_CSI}|{_UNFINISHED_STRING}|{_UNFINISHED_CHARSET})?\Z')
 # Longest such tail held back for the next read; anything longer is shown as is
 _MAX_PENDING_ESCAPE = 256
+
+# What wipes the screen: Erase in Display of all of it (2) or of it and the
+# scrollback (3), as `clear` sends, and a full reset (RIS), as `reset` sends.
+# Erasing below the cursor alone (ESC [ J) is not one: shells send it to
+# redraw a prompt.
+_SCREEN_CLEAR = re.compile(r'\x1B\[[23]J|\x1Bc')
+FULL_RESET = '\x1Bc'
 
 
 def strip_terminal_controls(text: str) -> str:
@@ -97,3 +105,16 @@ def split_unfinished_end(text: str) -> tuple[str, str]:
     if shown.endswith("\r"):
         return shown[:-1], "\r" + held
     return shown, held
+
+
+def split_at_screen_clear(text: str) -> tuple[str, str, str] | None:
+    """*text* around its last screen clear: what comes before, the sequence, what comes after.
+
+    ``None`` when it has none. Only what follows the last clear is left on
+    the screen.
+    """
+    clears = list(_SCREEN_CLEAR.finditer(text))
+    if not clears:
+        return None
+    last = clears[-1]
+    return text[:last.start()], last.group(), text[last.end():]
