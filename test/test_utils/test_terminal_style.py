@@ -49,6 +49,20 @@ class TestApplySgr:
         # int() refuses more than 4300 digits: a server could send them
         assert apply_sgr(PLAIN, "9" * 5000 + ";31") == TextStyle(foreground=1)
 
+    def test_a_parameter_too_long_to_read_leaves_the_style_as_it_was(self):
+        # Ignored, not taken for the 0 that resets everything
+        assert apply_sgr(TextStyle(bold=True), "123456") == TextStyle(bold=True)
+
+    def test_a_parameter_of_five_digits_is_still_read(self):
+        assert apply_sgr(PLAIN, "00031") == TextStyle(foreground=1)
+
+    @pytest.mark.parametrize(("parameters", "expected"), [
+        ("1;38;5;196", TextStyle(bold=True, foreground=196)),
+        ("1;4;48;2;10;20;30", TextStyle(bold=True, underline=True, background=(10, 20, 30))),
+    ])
+    def test_an_extended_colour_after_other_parameters(self, parameters, expected):
+        assert apply_sgr(PLAIN, parameters) == expected
+
 
 class TestColourRgb:
     @pytest.mark.parametrize(("colour", "on_dark", "rgb"), [
