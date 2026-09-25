@@ -63,6 +63,13 @@ class TestReadCappedText:
         resp = FakeResponse(b"x" * 100)
         assert len(read_capped_text(resp, max_bytes=100)) == 100
 
+    def test_by_default_an_answer_of_a_few_megabytes_is_read_and_16_mb_is_the_cap(self):
+        from pybreeze.utils.network.http_client import DEFAULT_MAX_RESPONSE_BYTES
+
+        assert DEFAULT_MAX_RESPONSE_BYTES == 16 * 1024 * 1024
+        answer = b"x" * (3 * 1024 * 1024)
+        assert len(read_capped_text(FakeResponse(answer, chunk=65536))) == len(answer)
+
     def test_falls_back_to_default_encoding_when_none(self):
         resp = FakeResponse("héllo".encode("utf-8"), encoding=None)
         assert read_capped_text(resp, default_encoding="utf-8") == "héllo"

@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-56 | 2026-09-26 | The AI panels' default response cap is tested to be 16 MB | #test #network | [2026-09-d](2026-09-d.md) |
 | U-20260926-55 | 2026-09-26 | A reserved address is tested to be refused, IPv6 4000::1 included | #test #security #network | [2026-09-d](2026-09-d.md) |
 | U-20260926-54 | 2026-09-26 | Control characters in a URL are tested to be refused by the character check itself | #test #security #network | [2026-09-d](2026-09-d.md) |
 | U-20260926-53 | 2026-09-26 | A DEL character in a URL is tested to be refused | #test #security #network | [2026-09-d](2026-09-d.md) |
@@ -594,4 +595,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
-| [2026-09-d.md](2026-09-d.md) | 2026-09 | 75 |
+| [2026-09-d.md](2026-09-d.md) | 2026-09 | 76 |
