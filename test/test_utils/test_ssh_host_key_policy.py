@@ -153,6 +153,18 @@ class TestAQuestionNobodyCanAnswer:
         assert answers == [False]
 
 
+def test_there_is_one_asker_made_on_first_use(app, monkeypatch):
+    # The SSH panels call it as they are built, on the UI thread, so a connect
+    # thread asking later finds it living where a box can be shown
+    monkeypatch.setattr(policy_mod, "_ASKER", None)
+
+    first = policy_mod.host_key_asker()
+
+    assert isinstance(first, policy_mod.HostKeyAsker)
+    assert policy_mod.host_key_asker() is first
+    assert first.thread() is app.thread()
+
+
 class TestTheQuestionBoxItself:
     """The other tests stand in for the asker; here its message box is only kept from showing."""
 
