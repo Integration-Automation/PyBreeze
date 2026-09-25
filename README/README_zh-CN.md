@@ -201,7 +201,7 @@ PyBreeze 开箱即用，涵盖自动化测试的完整范围：
 
 PyBreeze 继承了 JEditor 的插件架构，会从工作目录下的 `jeditor_plugins/` 目录自动发现插件。插件可以注册：
 
-- **语法高亮** — 任何语言的关键字集与规则
+- **语法高亮** — JEditor 自身不着色的文件扩展名的关键字集与规则（`.c`、`.cpp`、`.go`、`.java`、`.js`、`.json`、`.rs`、`.sh`、`.sql`、`.toml`、`.ts`、`.yaml` 等 JEditor 会着色的扩展名，使用的是它自己的规则）
 - **界面翻译** — 新的界面语言
 - **运行配置** — 为解释型（`go run main.go`）与编译型（`gcc main.c -o main` 后再运行）语言提供"Run with…"，通过 PyBreeze 的 `FileRunnerProcess` 执行，编译产物在运行后会被清理
 - **插件浏览器** — 在 IDE 内从远程仓库浏览并安装插件，入口是 **Plugins → Plugin Browser**，尚未安装任何插件时也在；装好的插件在下次启动时加载

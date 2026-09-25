@@ -201,7 +201,7 @@ Define reusable skill prompts (code explanation, code review), then pick one, ed
 
 PyBreeze inherits JEditor's plugin architecture, auto-discovered from a `jeditor_plugins/` directory in the working directory. A plugin can register:
 
-- **Syntax highlighting** — keyword sets and rules for any language
+- **Syntax highlighting** — keyword sets and rules for a file suffix JEditor does not colour itself (for `.c`, `.cpp`, `.go`, `.java`, `.js`, `.json`, `.rs`, `.sh`, `.sql`, `.toml`, `.ts`, `.yaml` and the other suffixes it colours, its own rules are used)
 - **UI translations** — new interface languages
 - **Run configurations** — "Run with…" for interpreted (`go run main.go`) and compiled (`gcc main.c -o main` then run) languages, executed through PyBreeze's `FileRunnerProcess` with the compiled artifact cleaned up afterwards
 - **Plugin Browser** — browse and install plugins from remote repositories inside the IDE, from **Plugins → Plugin Browser**, which is there before any plugin is installed; an installed plugin loads at the next start

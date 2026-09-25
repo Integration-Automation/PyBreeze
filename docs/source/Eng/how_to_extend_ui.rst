@@ -51,17 +51,52 @@ How It Works
    You must register your custom tabs in ``EDITOR_EXTEND_TAB`` **before** calling
    ``start_editor()``, as the tabs are loaded during window initialization.
 
+A widget whose constructor raises costs only its own tab: the error is logged and the IDE
+starts without it.
+
+Asking Before Closing
+---------------------
+
+A tab that can hold unsaved work can say so. Give the widget a ``may_close()`` method
+returning ``True`` when it may close: closing its tab, or the IDE, asks it first, and
+``False`` keeps it open. Ask the user there, as PyBreeze's own prompt and diagram editors
+do:
+
+.. code-block:: python
+
+   from PySide6.QtWidgets import QMessageBox, QTextEdit, QVBoxLayout, QWidget
+
+
+   class NotesTab(QWidget):
+       def __init__(self):
+           super().__init__()
+           self.text = QTextEdit()
+           QVBoxLayout(self).addWidget(self.text)
+
+       def may_close(self) -> bool:
+           if not self.text.document().isModified():
+               return True
+           reply = QMessageBox.question(self, "Unsaved notes", "Close and lose the notes?")
+           return reply == QMessageBox.StandardButton.Yes
+
+A ``may_close()`` that raises counts as a yes (it is logged): it cannot keep the IDE from
+closing.
+
 Advanced: Plugin-Based Tabs
 ----------------------------
 
 You can also add custom tabs via the plugin system by placing a plugin file
-in the ``jeditor_plugins/`` directory:
+in the ``jeditor_plugins/`` directory (see :doc:`menu_plugins`). Register the tab in the
+plugin's ``register()``: plugins load while the main window is being built, before its
+tabs are added.
 
 .. code-block:: python
 
    # jeditor_plugins/my_custom_tab.py
    from PySide6.QtWidgets import QWidget, QVBoxLayout, QTextEdit
    from pybreeze import EDITOR_EXTEND_TAB
+
+   PLUGIN_NAME = "My Tool"
 
 
    class MyToolWidget(QWidget):
@@ -73,6 +108,8 @@ in the ``jeditor_plugins/`` directory:
            layout.addWidget(self.text_edit)
 
 
-   EDITOR_EXTEND_TAB.update({"My Tool": MyToolWidget})
+   def register() -> None:
+       EDITOR_EXTEND_TAB.update({"My Tool": MyToolWidget})
 
-This plugin will be auto-discovered and loaded when PyBreeze starts.
+This plugin will be auto-discovered and loaded when PyBreeze starts from a folder that
+has it in ``jeditor_plugins/``.

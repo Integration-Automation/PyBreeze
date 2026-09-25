@@ -9,6 +9,9 @@ for both editors, kept in the JEditor repository:
 
 Ready-made plugins (C, C++, Go, Java and Rust highlighting with run support, a French UI
 translation) live in [IDE_Plugins](https://github.com/Jeffrey-Plugin-Repos/IDE_Plugins).
+JEditor now colours those five languages itself, and a registered language's keywords are used
+only for a suffix it does not colour, so from these plugins their run configurations are what
+takes effect.
 
 PyBreeze reads one run-config key JEditor does not: `"encoding"`, the encoding the program writes
 its output in (`"cp950"`, `"utf-8"`, or `"locale"` for the machine's own). Without it the output is
@@ -25,6 +28,7 @@ PyBreeze 建立在 JEditor 之上，原封不動地使用它的外掛系統：`j
 
 現成的外掛（C、C++、Go、Java、Rust 語法高亮與執行設定，以及法文介面翻譯）放在
 [IDE_Plugins](https://github.com/Jeffrey-Plugin-Repos/IDE_Plugins)。
+JEditor 現在自己就會為這五種語言上色，而註冊的語言關鍵字只用在它不上色的副檔名，所以這些外掛實際生效的是執行設定。
 
 PyBreeze 多讀一個 JEditor 不讀的執行設定欄位：`"encoding"`，程式輸出用的編碼（`"cp950"`、`"utf-8"`，
 或 `"locale"` 表示這台電腦自己的）。沒寫就用 IDE 的編碼讀，預設 UTF-8。Java 與中文化的編譯器輸出的是

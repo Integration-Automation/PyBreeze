@@ -201,7 +201,7 @@ PyBreeze 開箱即用，涵蓋自動化測試的完整範疇：
 
 PyBreeze 沿用 JEditor 的外掛架構，會自動從工作目錄中的 `jeditor_plugins/` 目錄探索外掛。外掛可以註冊：
 
-- **語法高亮** — 任何語言的關鍵字集與規則
+- **語法高亮** — JEditor 自己不上色的副檔名的關鍵字集與規則（`.c`、`.cpp`、`.go`、`.java`、`.js`、`.json`、`.rs`、`.sh`、`.sql`、`.toml`、`.ts`、`.yaml` 等 JEditor 會上色的副檔名，用的是它自己的規則）
 - **介面翻譯** — 新的介面語言
 - **執行設定** — 為直譯式（`go run main.go`）與編譯式（`gcc main.c -o main` 後執行）語言提供「Run with…」，透過 PyBreeze 的 `FileRunnerProcess` 執行，並在結束後清掉編譯產物
 - **外掛瀏覽器** — 在 IDE 內瀏覽並安裝遠端儲存庫中的外掛，入口是 **Plugins → Plugin Browser**，還沒裝任何外掛時也在；裝好的外掛在下次啟動時載入
