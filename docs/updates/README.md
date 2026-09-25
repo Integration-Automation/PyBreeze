@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-18 | 2026-09-26 | Refactor: the last typing.List, typing.Dict and quoted annotations give way to the built-in forms | #refactor | [2026-09-d](2026-09-d.md) |
 | U-20260926-17 | 2026-09-26 | A test keeps requirements.txt, pyproject.toml and dev.toml asking for the same packages | #test #packaging | [2026-09-d](2026-09-d.md) |
 | U-20260926-16 | 2026-09-26 | CI actions pinned by commit on their Node 24 releases; only the publish job keeps its token; Dependabot tracks actions after a week | #ci #security | [2026-09-d](2026-09-d.md) |
 | U-20260926-15 | 2026-09-26 | A theme given at launch is tested to survive saved settings that fail to apply | #test #ui | [2026-09-d](2026-09-d.md) |
@@ -556,4 +557,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
-| [2026-09-d.md](2026-09-d.md) | 2026-09 | 37 |
+| [2026-09-d.md](2026-09-d.md) | 2026-09 | 38 |

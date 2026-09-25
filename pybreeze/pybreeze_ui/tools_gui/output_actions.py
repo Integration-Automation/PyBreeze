@@ -9,8 +9,8 @@ read-only output ``QTextEdit`` and adding its button row to the layout.
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from PySide6.QtWidgets import (
     QApplication, QFileDialog, QHBoxLayout, QMessageBox, QPushButton, QTextEdit, QWidget

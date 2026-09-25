@@ -7,7 +7,7 @@ import subprocess
 import sys
 import tempfile
 import threading
-from typing import Callable
+from collections.abc import Callable
 from pathlib import Path
 from queue import Queue
 from threading import Thread

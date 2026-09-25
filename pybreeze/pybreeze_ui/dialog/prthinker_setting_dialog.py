@@ -11,7 +11,6 @@ never reaches a command line.
 """
 from __future__ import annotations
 
-from typing import Dict
 
 from PySide6.QtWidgets import (
     QComboBox, QDialog, QDialogButtonBox, QFormLayout, QLabel, QLineEdit, QMessageBox,
@@ -58,8 +57,8 @@ class PRThinkerSettingDialog(QDialog):
         super().__init__(parent)
         self.word_dict = language_wrapper.language_word_dict
         self.setWindowTitle(self.word_dict.get("prthinker_setting_dialog_title"))
-        self.setting: Dict[str, str] = load_setting()
-        self.editors: Dict[str, QLineEdit | QComboBox] = {}
+        self.setting: dict[str, str] = load_setting()
+        self.editors: dict[str, QLineEdit | QComboBox] = {}
 
         layout = QVBoxLayout()
         form = QFormLayout()
@@ -101,7 +100,7 @@ class PRThinkerSettingDialog(QDialog):
             box.setCurrentText(chosen)
         return box
 
-    def values(self) -> Dict[str, str]:
+    def values(self) -> dict[str, str]:
         """
         表格上目前填的內容
         What the form currently holds.

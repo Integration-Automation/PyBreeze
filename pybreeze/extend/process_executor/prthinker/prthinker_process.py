@@ -9,7 +9,7 @@ same as the other automation tools, so the editor never waits on it.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 from je_editor import EditorWidget
 
@@ -70,7 +70,7 @@ def review_pull_request(
         setting, program_buffer)
 
 
-def _run(main_window: PyBreezeMainWindow, arguments: List[str],
+def _run(main_window: PyBreezeMainWindow, arguments: list[str],
          setting: dict, program_buffer: int) -> bool:
     """開一個執行視窗把 prthinker 跑起來 / Open a run window and start prthinker in it."""
     process = build_task_process(main_window, program_buffer=program_buffer)
