@@ -62,12 +62,12 @@ PyBreeze 是一個「自動化優先」的 Python IDE，建構在 **PySide6 + JE
 
 ## 3. 啟動流程
 
-`pybreeze/pybreeze_ui/editor_main/main_ui.py:191` 的 `start_editor()`（第 2 步到 `startup_setting()` 在 `open_main_window()`，它回傳視窗給 `start_editor()` 握到程式結束）：
+`pybreeze/pybreeze_ui/editor_main/main_ui.py:216` 的 `start_editor()`（第 2 到 4 步在 `open_main_window()`，它回傳視窗給 `start_editor()` 握到程式結束）：
 
 1. 取得（或建立）`QApplication`，裝上 `collect_garbage_on_gui_thread()`（`pybreeze_ui/gui_thread_gc.py`：關掉自動垃圾回收，改在 UI 執行緒上定時回收，見 §16）
 2. 建立 `PyBreezeMainWindow`，其 `__init__` 依序：
    - `update_language_dict()` 併入 PyBreeze 的 760 條翻譯——**必須在 `super().__init__` 之前**：JEditor 在那裡依設定挑啟動語言，英文以外的語言讀的是當下合併出來的一份副本，之後才加進去的字串它看不到，選單拿到 `None` 標題就讓 Qt 當掉（access violation）
-   - `super().__init__(..., extend=True)` — JEditor 在此已呼叫 `load_external_plugins()`，自動掃描 CWD 下的 `jeditor_plugins/`
+   - `super().__init__(..., extend=True)` — JEditor 在此已呼叫 `load_external_plugins()`，自動掃描 CWD 下的 `jeditor_plugins/`，也以 `startup_setting()` 套上存下的設定與 UI Style 主題
    - `show_only_warnings_in_code_result()`（`pybreeze_ui/code_result_logs.py`）— JEditor 剛把一個 `RedirectStdErr` 掛到當下每個 logger 上、收到的顯示在 Code Result；自動化套件 import 時把 root 設成 DEBUG，所以開檔就有 gitpython 的除錯訊息以紅字出現。把這個 handler 的門檻調到 WARNING，logger 本身的層級不動
    - 刪掉 JEditor 原本的 Help 選單
    - 設定標題、Windows AppUserModelID、圖示（`pybreeze_icon.ico`，在 `main_ui.py` 旁邊、以 package data 隨套件發佈：`pyproject.toml` / `dev.toml` 的 `[tool.setuptools.package-data]`，執行檔建置用 `datas` 帶進去，所以不論從哪個資料夾啟動都有圖示）
@@ -77,8 +77,8 @@ PyBreeze 是一個「自動化優先」的 Python IDE，建構在 **PySide6 + JE
    - `setup_file_tree_context_menu()` — 掛上檔案樹右鍵選單，以及焦點在樹上時的 F2（重新命名）與 Delete（刪除，先問、預設否）快捷鍵（`_attach_keys()`，`WidgetShortcut`，走選單的同一組動作）。改名時開著的分頁跟著檔案走（改資料夾也一樣，底下每個開著的檔案都跟著走）：先停掉分頁的自動存檔、改名、再用新路徑重開一條（`_stop_auto_save()` / `_start_auto_save()`）——JEditor 的存檔執行緒只認開檔當下的路徑，沒辦法改指向。外部修改監視也跟著搬（改名前就先移除，檔案搬走後 Windows 放不掉舊名），並照 `open_an_file` 重載語法高亮、git 基準與語言伺服器（`rename_self_tab()` 會清掉「未儲存」標記，有未存的編輯就用 `_on_text_changed()` 放回去，否則改名後五秒內關分頁會直接丟掉編輯）；Dock Editor（`FullEditorWidget`，關閉時才寫回、檔案不存在就不寫）的 `current_file` 也改指新路徑（`_dock_editors_under()`）。新增與改名的名稱不能帶磁碟代號、根目錄、`..` 或 `:`，也不能解析到資料夾外（`_inside()`；改名只能是單一名稱）。刪除先移到系統的回收筒（`_move_to_trash()`：`QFile.moveToTrash`，Windows 的資源回收筒、macOS 與 freedesktop 的垃圾桶）；沒有回收筒可用時再問一次（預設否）才永久刪除，資料夾用 `remove_folder()`（唯讀檔清掉唯讀屬性再刪，git 的物件檔就是唯讀）；符號連結與 junction 只刪連結本身，不進回收筒。刪除時同樣用 `_editors_under()`：檔案或資料夾底下每個開著的分頁先停掉自動存檔，再刪；刪完只關掉檔案真的不見了的分頁，刪不掉（被鎖住、唯讀）的檔案分頁留著、自動存檔重開。「在檔案總管中顯示」由 `reveal_command()` 組指令：Windows 用 Explorer 的 `/select,`、macOS 用 `open -R` 把檔案選起來，其他平台 `xdg-open` 只能開資料夾；啟動失敗（例如沒有 `xdg-open`）經 `_perform_file_op()` 跳警告
    - `close_tab()` 覆寫 JEditor 的：分頁有 `may_close()` 就先問（提示詞編輯器、架構圖編輯器有未存的變更時會問）；關掉的工具分頁 `deleteLater()`（JEditor 的 `removeTab` 不刪 widget，關過的工具分頁會留到 IDE 結束），JEditor 自己的編輯器分頁不動，關閉 IDE 時也先問過每個分頁與 dock，有一個說不就取消關閉
    - `debug_mode=True` 時啟動 10 秒自動關閉 `QTimer`（CI 用）
-3. `apply_stylesheet()` 套 qt_material 主題：JEditor 存下的 `ui_style`（UI Style 選單選的，沒選過是 `dark_amber.xml`）。`start_editor(theme=...)` 給的主題先寫進 `user_setting_dict["ui_style"]`：`startup_setting()` 會把存下的主題蓋在之前套的任何主題上，以前這個參數因此從來看不到
-4. `showMaximized()` → `startup_setting()` → `app.exec()`
+3. `start_editor(theme=...)` 給了主題時（`_apply_given_theme()`）：寫進 `user_setting_dict["ui_style"]` 成為選定的主題，再跑一次 `startup_setting()` 套上；它失敗時記 log，仍用 qt_material 的 `apply_stylesheet()` 套上這個主題。沒給主題就不再套：建構子已經套過 JEditor 存下的 `ui_style`（UI Style 選的，沒選過是 `dark_amber.xml`），而套一次主題要將近一秒；只把視窗自己的字型 style sheet 再設一次（`startup_setting()` 先設它、後套主題，不再設一次的話工具列比給了主題時高 4 px）
+4. `showMaximized()` → `app.exec()`
 5. 離開時以 `os._exit(ret)` 硬退出（避開 Qt 拆解殘留執行緒）
 
 模組層級有一個副作用：`main_ui.py` 在匯入 PySide6 之前就設定 `LOCUST_SKIP_MONKEY_PATCH`（值是 `subprocess_util.IDE_ONLY`；使用者自己設過就沿用），避免 locust 一 import 就對整個行程做的 gevent monkey patch 破壞 Qt（Load Density GUI、JEditor 行程內的 IPython console 都可能 import 它）。IDE 啟動的行程拿到的是 `child_environment()`，不帶這個值：負載測試要靠 patch 才能讓使用者同時跑，帶著它時 HttpUser 一個接一個跑，3 秒的測試跑了三分多鐘。
@@ -462,7 +462,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 18. 測試與 CI
 
-- **單元測試** `test/test_utils/` — 149 個 `test_*.py`、2707 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
+- **單元測試** `test/test_utils/` — 149 個 `test_*.py`、2711 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
 - **整合測試** `test/unit_test/start_automation/` — 以 `debug_mode=True` 啟動 IDE，10 秒後自動關閉，驗證啟動流程與 extend tab
 - **CI** `.github/workflows/{dev,stable}.yml` — `unit-tests` job 跑 Windows runner、Python 3.10–3.14 矩陣，3.12 那一腳額外上傳 `coverage-xml` artifact；`sonarcloud` job 跑 ubuntu、`needs: unit-tests`。每日 02:00 排程 + push/PR 觸發。`stable.yml` 另有 `publish` job 負責版號遞增與 PyPI 發布
 - **覆蓋率** `.coveragerc` — `relative_files = True` 是必要的：報告在 Windows 產生、由 Linux 上的 scanner 讀取，路徑不能帶機器資訊。`patch = subprocess` 也是必要的：pytest-cov 7 不再量測子行程，沒有它，測試在子直譯器裡建出的真主視窗（`started_window.py`）一行都不算。目前整體語句 96%、連分支 95%（`tools_gui` 99%、`utils/` 98%、`dialog` 100%；`menu` 97%、`connect_gui` 96%、`diagram_editor` 96%、`extend_ai_gui` 95%、`extend/` 94%、`jupyter_lab_gui` 92%；最低的是 `editor_main` 90%）。coverage 只追蹤 Python 自己開的執行緒，`test/test_utils/conftest.py` 讓每個 `QThread` 子類別的 `run` 在 Qt 的執行緒上裝上 coverage 的 tracer，否則沒有一個 `QThread.run` 算得到

@@ -37,9 +37,6 @@ from pybreeze.utils.logging.logger import pybreeze_logger
 EDITOR_EXTEND_TAB: dict[str, type[QWidget]] = {
 }
 
-# The theme until one is picked from UI Style, as JEditor has it
-DEFAULT_THEME = "dark_amber.xml"
-
 # Shipped beside this module (package data): it was read from the working
 # folder, which a started IDE never has, and the window had no icon
 _ICON_PATH = Path(__file__).with_name("pybreeze_icon.ico")
@@ -239,7 +236,12 @@ def start_editor(debug_mode: bool = False, theme: str | None = None, **kwargs) -
 
 def open_main_window(app: QApplication, debug_mode: bool = False, theme: str | None = None,
                      **kwargs) -> PyBreezeMainWindow:
-    """Build the main window, style it, show it and apply the saved settings.
+    """Build the main window, apply a theme given here, and show it.
+
+    JEditor's constructor applies the saved settings, the theme picked from UI
+    Style among them (``startup_setting()``). They are applied again only for a
+    theme given here, which becomes the picked one: applying a theme takes most
+    of a second, and the start applied the same one three times.
 
     :param app: the running application, which the theme is applied to
     :param debug_mode: close by itself after a while, as the startup tests need
@@ -248,16 +250,24 @@ def open_main_window(app: QApplication, debug_mode: bool = False, theme: str | N
     :return: the window, which the caller keeps for as long as the IDE runs
     """
     window = PyBreezeMainWindow(debug_mode=debug_mode, **kwargs)
-    # startup_setting() applies the picked theme, over any applied before it:
-    # a theme given here was never seen until it became the picked one
     if theme is not None:
-        user_setting_dict["ui_style"] = theme
-    apply_stylesheet(app, theme=user_setting_dict.get("ui_style", DEFAULT_THEME))
+        _apply_given_theme(app, window, theme)
+    else:
+        # startup_setting() sets the window's font style sheet before the
+        # application's theme; set again after it, as a second run of it did,
+        # the toolbar keeps the height it has with a theme given (4 px less)
+        window.setStyleSheet(window.styleSheet())
     window.showMaximized()
+    return window
+
+
+def _apply_given_theme(app: QApplication, window: PyBreezeMainWindow, theme: str) -> None:
+    """Make *theme* the picked one and apply the settings with it (``startup_setting()``)."""
+    user_setting_dict["ui_style"] = theme
     try:
         window.startup_setting()
     # The user's saved settings, and the files they reopen, can be anything:
-    # a bad one is logged and the IDE starts without it.
+    # a bad one is logged, and the theme is still applied.
     except (OSError, ValueError, TypeError, KeyError, RuntimeError) as error:
         pybreeze_logger.error("Startup setting error: %r", error)
-    return window
+        apply_stylesheet(app, theme=theme)

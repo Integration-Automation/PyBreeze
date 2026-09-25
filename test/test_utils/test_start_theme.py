@@ -41,3 +41,51 @@ def test_without_one_the_theme_picked_before_is_shown(tmp_path):
 
 def test_without_either_the_default_is_shown(tmp_path):
     assert _start(tmp_path)["shown"] == "dark_amber.xml"
+
+
+_COUNT_THEMES = """
+applied = []
+_set_style_sheet = QApplication.setStyleSheet
+def _counting(self, sheet):
+    applied.append(len(sheet))
+    return _set_style_sheet(self, sheet)
+QApplication.setStyleSheet = _counting
+"""
+
+_READ_COUNT = """
+from PySide6.QtWidgets import QToolBar
+for _ in range(5):
+    app.processEvents()
+result = {"shown": os.environ.get("QTMATERIAL_THEME"), "applied": len(applied),
+          "toolbar": window.findChildren(QToolBar)[0].height()}
+"""
+
+
+def _count(tmp_path, theme: str | None = None, saved: str = "light_blue.xml") -> dict:
+    return run_started_window(
+        tmp_path, _READ_COUNT, before_window=_COUNT_THEMES,
+        build=_OPEN.format(theme="" if theme is None else f", theme={theme!r}"),
+        saved_settings={"ui_style": saved})
+
+
+def test_the_saved_theme_is_applied_once(tmp_path):
+    # The window applies the saved settings as it is built; they were applied
+    # twice more after it (about 0.7 s and 0.9 s of the start)
+    seen = _count(tmp_path)
+    assert (seen["shown"], seen["applied"]) == ("light_blue.xml", 1)
+
+
+def test_a_theme_given_at_launch_is_applied_once_over_the_saved_one(tmp_path):
+    seen = _count(tmp_path, theme="dark_teal.xml")
+    assert (seen["shown"], seen["applied"]) == ("dark_teal.xml", 2)
+
+
+def test_the_window_looks_the_same_with_the_theme_given_or_saved(tmp_path):
+    # Applied once, the theme left the toolbar 4 px taller than a theme given
+    # at launch, which applies the settings again
+    for folder in ("saved", "given"):
+        (tmp_path / folder).mkdir()
+    saved = _count(tmp_path / "saved", saved="dark_amber.xml")
+    given = _count(tmp_path / "given", theme="dark_amber.xml", saved="dark_amber.xml")
+
+    assert saved["toolbar"] == given["toolbar"]

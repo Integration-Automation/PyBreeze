@@ -78,7 +78,10 @@ python -m pybreeze → start_editor() → QApplication → open_main_window() �
   → EditorMain.__init__(extend=True)   [JEditor builds the editor, loads jeditor_plugins/]
   → drop JEditor Help menu → add_menu_to_menubar()
   → syntax_extend_package() → EDITOR_EXTEND_TAB tabs → setup_file_tree_context_menu()
-  → apply_stylesheet(theme) → showMaximized() → startup_setting() → exec() → os._exit()
+     [EditorMain.__init__ has applied the saved settings and UI Style theme: startup_setting()]
+  → a theme given to start_editor(): saved as ui_style, startup_setting() again
+     (none given: only the window's own style sheet is set again)
+  → showMaximized() → exec() → os._exit()
 ```
 
 Before PySide6 is imported, `main_ui.py` sets `LOCUST_SKIP_MONKEY_PATCH` (to `IDE_ONLY`, unless the user
@@ -160,7 +163,9 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
   back after `rename_self_tab()` clears it), on `EditorMain.close_tab(index)` (overridden to ask a
   tab's `may_close()` first, and to delete a closed tool tab, which its `removeTab` keeps) and on `CodeEditor`'s `reset_highlighter()`, `load_git_baseline()` and
   `start_language_server()` (a rename moves the tab the way `open_an_file` does), on `EditorMain`'s
-  `run_menu.stop_all_program_action` (Stop All Program also stops every run window's run), its
+  `run_menu.stop_all_program_action` (Stop All Program also stops every run window's run), on
+  `EditorMain.__init__` calling `startup_setting()` (the window is built with the saved settings and
+  theme; `open_main_window()` applies them again only for a theme given to `start_editor()`), its
   `dock_menu` and its AI submenu `dock_ai_menu` (PyBreeze's AI docks join it; without one they get an
   AI submenu of their own, `menu/tools/tools_menu.py`), on the syntax highlighter
   taking a theme colour key (`warning_output_color`, `diff_modified_marker_color`, in both JEditor's dark and light

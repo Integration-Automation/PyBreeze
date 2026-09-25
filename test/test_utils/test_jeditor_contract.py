@@ -93,6 +93,12 @@ class TestTheShapesPyBreezeCalls:
         build = importlib.import_module("je_editor.pyside_ui.main_ui.menu.run_menu.build_run_menu")
         assert "run_menu.stop_all_program_action" in inspect.getsource(build)
 
+    def test_the_window_is_built_with_the_saved_settings(self):
+        from je_editor import EditorMain
+
+        # open_main_window() applies them again only for a theme start_editor() is given
+        assert "self.startup_setting()" in inspect.getsource(EditorMain.__init__)
+
     def test_the_startup_applies_the_saved_theme(self):
         from je_editor import EditorMain
 
