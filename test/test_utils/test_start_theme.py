@@ -89,3 +89,26 @@ def test_the_window_looks_the_same_with_the_theme_given_or_saved(tmp_path):
     given = _count(tmp_path / "given", theme="dark_amber.xml", saved="dark_amber.xml")
 
     assert saved["toolbar"] == given["toolbar"]
+
+
+def test_settings_that_fail_to_apply_still_leave_the_theme_given(monkeypatch):
+    # The saved settings (and the files they reopen) can be anything: a bad
+    # one used to stop the start before the theme was applied
+    from pybreeze.pybreeze_ui.editor_main import main_ui
+
+    applied: list = []
+    logged: list = []
+    monkeypatch.setitem(main_ui.user_setting_dict, "ui_style", "dark_amber.xml")
+    monkeypatch.setattr(main_ui, "apply_stylesheet", lambda app, theme: applied.append((app, theme)))
+    monkeypatch.setattr(main_ui.pybreeze_logger, "error", lambda *args: logged.append(args))
+
+    class Window:
+        def startup_setting(self) -> None:
+            raise KeyError("font_size")
+
+    app = object()
+    main_ui._apply_given_theme(app, Window(), "dark_teal.xml")
+
+    assert main_ui.user_setting_dict["ui_style"] == "dark_teal.xml"
+    assert applied == [(app, "dark_teal.xml")]
+    assert logged

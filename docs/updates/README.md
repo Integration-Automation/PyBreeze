@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-15 | 2026-09-26 | A theme given at launch is tested to survive saved settings that fail to apply | #test #ui | [2026-09-d](2026-09-d.md) |
 | U-20260926-14 | 2026-09-26 | The main window's own answers to a tab or dock that keeps its work are tested | #test #ui | [2026-09-d](2026-09-d.md) |
 | U-20260926-13 | 2026-09-26 | prthinker's menu message and its install from a picked source folder are tested | #test #prthinker | [2026-09-d](2026-09-d.md) |
 | U-20260926-12 | 2026-09-26 | The JupyterLab launcher's port check, output tail and stop without terminate are tested | #test #jupyter | [2026-09-d](2026-09-d.md) |
@@ -553,4 +554,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
-| [2026-09-d.md](2026-09-d.md) | 2026-09 | 34 |
+| [2026-09-d.md](2026-09-d.md) | 2026-09 | 35 |
