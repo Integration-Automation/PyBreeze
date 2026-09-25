@@ -20,8 +20,10 @@ def show_only_warnings_in_code_result() -> None:
     changes the handler's level only; loggers keep theirs, so their files and
     other handlers still get every record.
     """
+    # Over a copy taken at once: a thread creating a logger meanwhile would
+    # change the dict under a loop over it
     loggers = [logging.root, *(
-        logger for logger in list(logging.root.manager.loggerDict.values())
+        logger for logger in list(logging.root.manager.loggerDict.values())  # NOSONAR S7504
         if isinstance(logger, logging.Logger))]
     for logger in loggers:
         for handler in logger.handlers:

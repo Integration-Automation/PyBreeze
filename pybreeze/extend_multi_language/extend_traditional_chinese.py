@@ -5,6 +5,7 @@ from je_editor import traditional_chinese_word_dict
 _COT_PROMPT_EDITOR = "CoT 提示詞編輯器"
 _SKILL_PROMPT_EDITOR = "Skill 提示詞編輯器"
 _RESULT_LABEL = "結果："
+_COT_CODE_REVIEW = "CoT 程式碼審查"
 
 # PyBreeze-specific Traditional Chinese translations
 pybreeze_traditional_chinese_word_dict = {
@@ -334,7 +335,7 @@ pybreeze_traditional_chinese_word_dict = {
     "extend_tools_menu_cot_prompt_editor_tab_action": _COT_PROMPT_EDITOR + "分頁",
     "extend_tools_menu_cot_prompt_editor_tab_label": _COT_PROMPT_EDITOR,
     "extend_tools_menu_cot_code_review_tab_action": "CoT 程式碼審查分頁",
-    "extend_tools_menu_cot_code_review_tab_label": "CoT 程式碼審查",
+    "extend_tools_menu_cot_code_review_tab_label": _COT_CODE_REVIEW,
     "extend_tools_menu_skill_prompt_editor_tab_action": _SKILL_PROMPT_EDITOR + "分頁",
     "extend_tools_menu_skill_prompt_editor_tab_label": _SKILL_PROMPT_EDITOR,
     "extend_tools_menu_skill_prompt_send_tab_label": "Skill 提示詞傳送",
@@ -345,7 +346,7 @@ pybreeze_traditional_chinese_word_dict = {
     "extend_tools_menu_ai_code_review_dock_action": "AI 程式碼審查停駐窗格",
     "extend_tools_menu_cot_prompt_editor_dock_action": "CoT 提示詞編輯器停駐窗格",
     "extend_tools_menu_cot_code_review_dock_action": "CoT 程式碼審查停駐窗格",
-    "extend_tools_menu_cot_code_review_dock_title": "CoT 程式碼審查",
+    "extend_tools_menu_cot_code_review_dock_title": _COT_CODE_REVIEW,
     "extend_tools_menu_skill_prompt_editor_dock_action": "Skill 提示詞編輯器停駐窗格",
     "extend_tools_menu_ssh_client_dock_title": "SSH 用戶端",
     "extend_tools_menu_ai_code_review_dock_title": "AI 程式碼審查",
@@ -354,7 +355,7 @@ pybreeze_traditional_chinese_word_dict = {
     "extend_tools_menu_skill_prompt_send_dock_action": "Skill 提示詞傳送停駐窗格",
     "extend_tools_menu_skill_prompt_send_dock_title": "Skill 提示詞傳送",
     # CoT code-review GUI
-    "cot_gui_window_title": "CoT 程式碼審查",
+    "cot_gui_window_title": _COT_CODE_REVIEW,
     "cot_gui_label_api_url": "API URL：",
     "cot_gui_placeholder_api_url": "要傳送到的 API URL，例如 https://llm.example.com/api",
     "cot_gui_placeholder_code_paste_area": "在這裡貼上要審查的程式碼",

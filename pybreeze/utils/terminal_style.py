@@ -31,8 +31,8 @@ _EXTENDED_BACKGROUND = 48
 # Parameter runs that pick one of the 16 basic colours: first, attribute, first colour
 _COLOUR_RUNS = ((30, "foreground", 0), (90, "foreground", 8), (40, "background", 0), (100, "background", 8))
 _RUN_LENGTH = 8
-_PALETTE_FORM = 5  # 38;5;n
-_RGB_FORM = 2      # 38;2;r;g;b
+_PALETTE_FORM = 5  # ESC[38;5;<index>m: one of 256 colours
+_RGB_FORM = 2      # ESC[38;2;<red>;<green>;<blue>m
 
 # The first 16 colours (normal, then bright) as VS Code's terminal shows them
 # on a dark and on a light theme. xterm's own blue (0, 0, 238) was all but
@@ -112,7 +112,10 @@ def _colour_parameter(style: TextStyle, number: int) -> TextStyle:
     """*style* after one of the basic colour parameters (30–49, 90–107), or as it was."""
     for first, attribute, offset in _COLOUR_RUNS:
         if first <= number < first + _RUN_LENGTH:
-            return replace(style, **{attribute: number - first + offset})
+            colour = number - first + offset
+            if attribute == "foreground":
+                return replace(style, foreground=colour)
+            return replace(style, background=colour)
     if number == _DEFAULT_FOREGROUND:
         return replace(style, foreground=None)
     if number == _DEFAULT_BACKGROUND:

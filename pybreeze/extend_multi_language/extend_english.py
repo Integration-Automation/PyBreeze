@@ -10,6 +10,7 @@ from pybreeze.utils.exception.error_templates import (
 _COT_PROMPT_EDITOR = "CoT Prompt Editor"
 _SKILL_PROMPT_EDITOR = "Skill Prompt Editor"
 _RESULT_LABEL = "Result:"
+_COT_CODE_REVIEW = "CoT Code Review"
 
 # PyBreeze-specific English translations
 pybreeze_english_word_dict = {
@@ -344,7 +345,7 @@ pybreeze_english_word_dict = {
     "extend_tools_menu_cot_prompt_editor_tab_action": _COT_PROMPT_EDITOR + " Tab",
     "extend_tools_menu_cot_prompt_editor_tab_label": _COT_PROMPT_EDITOR,
     "extend_tools_menu_cot_code_review_tab_action": "CoT Code Review Tab",
-    "extend_tools_menu_cot_code_review_tab_label": "CoT Code Review",
+    "extend_tools_menu_cot_code_review_tab_label": _COT_CODE_REVIEW,
     "extend_tools_menu_skill_prompt_editor_tab_action": _SKILL_PROMPT_EDITOR + " Tab",
     "extend_tools_menu_skill_prompt_editor_tab_label": _SKILL_PROMPT_EDITOR,
     "extend_tools_menu_skill_prompt_send_tab_label": "Skill Send",
@@ -355,7 +356,7 @@ pybreeze_english_word_dict = {
     "extend_tools_menu_ai_code_review_dock_action": "AI Code Review Dock",
     "extend_tools_menu_cot_prompt_editor_dock_action": "CoT Prompt Editor Dock",
     "extend_tools_menu_cot_code_review_dock_action": "CoT Code Review Dock",
-    "extend_tools_menu_cot_code_review_dock_title": "CoT Code Review",
+    "extend_tools_menu_cot_code_review_dock_title": _COT_CODE_REVIEW,
     "extend_tools_menu_skill_prompt_editor_dock_action": "Skill Prompt Editor Dock",
     "extend_tools_menu_ssh_client_dock_title": "SSH Client",
     "extend_tools_menu_ai_code_review_dock_title": "AI Code Review",
@@ -364,7 +365,7 @@ pybreeze_english_word_dict = {
     "extend_tools_menu_skill_prompt_send_dock_action": "Skill Send Dock",
     "extend_tools_menu_skill_prompt_send_dock_title": "Skill Send",
     # CoT code-review GUI
-    "cot_gui_window_title": "CoT Code Review",
+    "cot_gui_window_title": _COT_CODE_REVIEW,
     "cot_gui_label_api_url": "API URL:",
     "cot_gui_placeholder_api_url": "The API URL to send to, e.g. https://llm.example.com/api",
     "cot_gui_placeholder_code_paste_area": "Paste the code to review here",
