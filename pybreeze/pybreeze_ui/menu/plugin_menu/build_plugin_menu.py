@@ -26,11 +26,10 @@ def set_plugin_menu(ui_we_want_to_set: PyBreezeMainWindow) -> None:
     有執行設定的插件是一個子選單：About 和一個「Run with」項目，支援多種副檔名時一併列出。
     A plugin with a run config gets a submenu: About, and one Run with entry
     that lists the suffixes when there are several.
+    外掛瀏覽器一定在：沒有任何外掛時，第一個外掛就是從它安裝的。
+    The Plugin Browser is always there, with no plugin loaded too: it is how
+    the first one gets installed.
     """
-    metadata_list = get_all_plugin_metadata()
-    if not metadata_list:
-        return
-
     ui_we_want_to_set.plugin_menu = ui_we_want_to_set.menu.addMenu(
         language_wrapper.language_word_dict.get("plugin_menu_label", "Plugins")
     )
@@ -42,8 +41,10 @@ def set_plugin_menu(ui_we_want_to_set: PyBreezeMainWindow) -> None:
     )
     browse_action.triggered.connect(lambda: _open_plugin_browser(ui_we_want_to_set))
     ui_we_want_to_set.plugin_menu.addAction(browse_action)
-    ui_we_want_to_set.plugin_menu.addSeparator()
 
+    metadata_list = get_all_plugin_metadata()
+    if metadata_list:
+        ui_we_want_to_set.plugin_menu.addSeparator()
     for meta in metadata_list:
         # One plugin with bad metadata costs its own entry, not the IDE's start
         if not isinstance(meta, dict):

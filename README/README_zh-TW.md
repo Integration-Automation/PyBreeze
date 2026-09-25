@@ -204,7 +204,7 @@ PyBreeze 沿用 JEditor 的外掛架構，會自動從工作目錄中的 `jedito
 - **語法高亮** — 任何語言的關鍵字集與規則
 - **介面翻譯** — 新的介面語言
 - **執行設定** — 為直譯式（`go run main.go`）與編譯式（`gcc main.c -o main` 後執行）語言提供「Run with…」，透過 PyBreeze 的 `FileRunnerProcess` 執行，並在結束後清掉編譯產物
-- **外掛瀏覽器** — 在 IDE 內瀏覽並安裝遠端儲存庫中的外掛
+- **外掛瀏覽器** — 在 IDE 內瀏覽並安裝遠端儲存庫中的外掛，入口是 **Plugins → Plugin Browser**，還沒裝任何外掛時也在；裝好的外掛在下次啟動時載入
 
 已載入的外掛會出現在它們專屬的 **Plugins**（外掛）選單下，附一個 About 項目和一個執行動作，動作名稱標示它能執行的副檔名。[PLUGIN_GUIDE.md](../PLUGIN_GUIDE.md) 說明 PyBreeze 額外提供的部分，並連到 JEditor 的指南，那裡有完整的 API 與實作範例（C、C++、Go、Java、Rust，以及法文翻譯）。
 

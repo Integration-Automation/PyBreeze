@@ -204,7 +204,7 @@ PyBreeze 继承了 JEditor 的插件架构，会从工作目录下的 `jeditor_p
 - **语法高亮** — 任何语言的关键字集与规则
 - **界面翻译** — 新的界面语言
 - **运行配置** — 为解释型（`go run main.go`）与编译型（`gcc main.c -o main` 后再运行）语言提供"Run with…"，通过 PyBreeze 的 `FileRunnerProcess` 执行，编译产物在运行后会被清理
-- **插件浏览器** — 在 IDE 内从远程仓库浏览并安装插件
+- **插件浏览器** — 在 IDE 内从远程仓库浏览并安装插件，入口是 **Plugins → Plugin Browser**，尚未安装任何插件时也在；装好的插件在下次启动时加载
 
 已加载的插件会出现在它们自己的 **Plugins** 菜单下，包含一个 About 项与一个运行动作，标签上注明它能运行的文件扩展名。[PLUGIN_GUIDE.md](../PLUGIN_GUIDE.md) 介绍 PyBreeze 额外提供的内容，并链接到 JEditor 的指南，那里有完整的 API 与示例（C、C++、Go、Java、Rust，以及一份法语翻译）。
 

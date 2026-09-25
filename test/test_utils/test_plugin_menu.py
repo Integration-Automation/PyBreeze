@@ -214,10 +214,23 @@ class TestRefusingToRunTheWrongFile:
 
 
 class TestThePluginMenu:
-    def test_no_plugins_means_no_menu(self, window, monkeypatch):
+    def test_with_no_plugins_the_menu_still_offers_the_plugin_browser(self, window, monkeypatch):
+        # The browser is how a first plugin gets installed: the menu was left
+        # out while none was loaded, so it could not be reached until one was
+        # copied into jeditor_plugins/ by hand. JEditor's own menu always has it.
         monkeypatch.setattr(plugin_menu, "get_all_plugin_metadata", lambda: [])
         set_plugin_menu(window)
-        assert not hasattr(window, "plugin_menu")
+        assert labels(window.plugin_menu) == ["Plugin Browser"]
+
+    def test_the_plugin_browser_opens_as_a_tab(self, window, monkeypatch):
+        monkeypatch.setattr(plugin_menu, "get_all_plugin_metadata", lambda: [])
+        monkeypatch.setattr(plugin_menu, "PluginBrowserWidget", QWidget)
+        set_plugin_menu(window)
+
+        window.plugin_menu.actions()[0].trigger()
+
+        assert window.tab_widget.count() == 1
+        assert window.tab_widget.tabText(0).startswith("Plugin Browser")
 
     def test_a_plugin_without_a_run_config_gets_a_bare_entry(
             self, window, monkeypatch):

@@ -204,7 +204,7 @@ PyBreeze inherits JEditor's plugin architecture, auto-discovered from a `jeditor
 - **Syntax highlighting** — keyword sets and rules for any language
 - **UI translations** — new interface languages
 - **Run configurations** — "Run with…" for interpreted (`go run main.go`) and compiled (`gcc main.c -o main` then run) languages, executed through PyBreeze's `FileRunnerProcess` with the compiled artifact cleaned up afterwards
-- **Plugin Browser** — browse and install plugins from remote repositories inside the IDE
+- **Plugin Browser** — browse and install plugins from remote repositories inside the IDE, from **Plugins → Plugin Browser**, which is there before any plugin is installed; an installed plugin loads at the next start
 
 Loaded plugins appear under their own **Plugins** menu with an About entry and one run action, labelled with the suffixes it runs. [PLUGIN_GUIDE.md](PLUGIN_GUIDE.md) covers what PyBreeze adds and links JEditor's guide, which has the full API and worked examples (C, C++, Go, Java, Rust, and a French translation).
 
