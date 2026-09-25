@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-76 | 2026-09-25 | The Sphinx overview, getting-started and base-menu pages told right | #docs | [2026-09-c](2026-09-c.md) |
 | U-20260925-75 | 2026-09-25 | start_editor's theme is the one the IDE shows | #fix #startup | [2026-09-c](2026-09-c.md) |
 | U-20260925-74 | 2026-09-25 | The main window opens from its own function | #refactor #startup | [2026-09-c](2026-09-c.md) |
 | U-20260925-73 | 2026-09-25 | The Sphinx Plugins and extension pages told right | #docs #plugins | [2026-09-c](2026-09-c.md) |
@@ -478,4 +479,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
-| [2026-09-c.md](2026-09-c.md) | 2026-09 | 75 |
+| [2026-09-c.md](2026-09-c.md) | 2026-09 | 76 |
