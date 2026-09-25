@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-65 | 2026-09-26 | replace_text's private mode is tested where CI runs, and its mutation run is read | #test #security | [2026-09-d](2026-09-d.md) |
 | U-20260926-64 | 2026-09-26 | Refactor: the HAR import keeps a query that does not round-trip with a plain else | #refactor #har | [2026-09-d](2026-09-d.md) |
 | U-20260926-63 | 2026-09-26 | The HAR import's nameless form parameter and empty body, and which queries round-trip, are tested | #test #har | [2026-09-d](2026-09-d.md) |
 | U-20260926-62 | 2026-09-26 | Refactor: a cURL value flag goes straight to its handler | #refactor #curl | [2026-09-d](2026-09-d.md) |
@@ -603,4 +604,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
-| [2026-09-d.md](2026-09-d.md) | 2026-09 | 84 |
+| [2026-09-d.md](2026-09-d.md) | 2026-09 | 85 |
