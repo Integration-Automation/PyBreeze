@@ -17,7 +17,7 @@ from pybreeze.extend.prthinker_extend.prthinker_setting import (
     PRTHINKER_PACKAGE, environment_for, load_setting, review_file_arguments,
     review_pr_arguments
 )
-from pybreeze.extend.process_executor.process_executor_utils import build_task_process
+from pybreeze.extend.process_executor.process_executor_utils import DEFAULT_PROGRAM_BUFFER, build_task_process
 from pybreeze.utils.logging.logger import pybreeze_logger
 
 if TYPE_CHECKING:
@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 
 
 def review_current_file(
-        main_window: PyBreezeMainWindow, program_buffer: int = 1024000) -> bool:
+        main_window: PyBreezeMainWindow, program_buffer: int = DEFAULT_PROGRAM_BUFFER) -> bool:
     """
     審查目前分頁的檔案
     Review the file in the current tab.
@@ -51,7 +51,7 @@ def review_current_file(
 
 def review_pull_request(
         main_window: PyBreezeMainWindow, pull_request_number: int,
-        program_buffer: int = 1024000) -> bool:
+        program_buffer: int = DEFAULT_PROGRAM_BUFFER) -> bool:
     """
     審查一個 Pull Request
     Review one pull request.
