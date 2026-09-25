@@ -171,6 +171,38 @@ class _FolderOnDisk(paramiko.SFTPServerInterface):
         return paramiko.SFTP_OK
 
 
+def accept_every_host_key(monkeypatch, data_dir: Path) -> dict:
+    """Answer yes to every unknown host key, keep known hosts under *data_dir*; the questions are counted.
+
+    :return: ``{"count": <questions asked>}``, updated as they are asked
+    """
+    from pybreeze.pybreeze_ui.connect_gui.ssh import ssh_host_key_policy as policy_mod
+
+    state = {"count": 0}
+
+    class Asker:
+        def ask(self, _parent, _title, _message) -> bool:
+            state["count"] += 1
+            return True
+
+    monkeypatch.setattr(policy_mod, "pybreeze_data_dir", lambda: data_dir)
+    monkeypatch.setattr(policy_mod, "host_key_asker", Asker)
+    monkeypatch.setattr(policy_mod, "_RECENT_DECLINES", {})
+    return state
+
+
+def wait_until(app, condition, seconds: float = 20) -> None:
+    """Process *app*'s events until *condition* holds; ``AssertionError`` after *seconds*."""
+    import time
+
+    deadline = time.monotonic() + seconds
+    while not condition():
+        if time.monotonic() > deadline:
+            raise AssertionError("timed out waiting")
+        app.processEvents()
+        time.sleep(0.02)
+
+
 class LoopbackServer:
     """Accepts SSH connections on 127.0.0.1 on its own thread until stopped.
 

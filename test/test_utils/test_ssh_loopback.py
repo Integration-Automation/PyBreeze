@@ -20,7 +20,9 @@ from PySide6.QtWidgets import QApplication
 from pybreeze.extend_multi_language.update_language_dict import update_language_dict
 from pybreeze.pybreeze_ui.connect_gui.ssh import ssh_host_key_policy as policy_mod
 from pybreeze.pybreeze_ui.connect_gui.ssh.sftp_session import SFTPClientWrapper
-from test_utils.ssh_loopback_server import ONE_ENTRY, PASSWORD, USER, LoopbackServer
+from test_utils.ssh_loopback_server import (
+    ONE_ENTRY, PASSWORD, USER, LoopbackServer, accept_every_host_key, wait_until,
+)
 
 _PASSPHRASE = "the passphrase"
 _OpenSSH = serialization.PrivateFormat.OpenSSH
@@ -46,17 +48,7 @@ def app():
 @pytest.fixture
 def asked(app, tmp_path, monkeypatch):
     """Accepts every unknown host key into a known hosts file under *tmp_path*, and counts the questions."""
-    state = {"count": 0}
-
-    class Asker:
-        def ask(self, _parent, _title, _message) -> bool:
-            state["count"] += 1
-            return True
-
-    monkeypatch.setattr(policy_mod, "pybreeze_data_dir", lambda: tmp_path)
-    monkeypatch.setattr(policy_mod, "host_key_asker", Asker)
-    monkeypatch.setattr(policy_mod, "_RECENT_DECLINES", {})
-    return state
+    return accept_every_host_key(monkeypatch, tmp_path)
 
 
 @pytest.fixture
@@ -145,18 +137,6 @@ def test_a_server_that_signs_only_with_sha1_is_refused(asked):
     assert asked["count"] == 0
 
 
-def _wait_until(app, condition, seconds: float = 20) -> None:
-    """Process events until *condition* holds; fail after *seconds*."""
-    import time
-
-    deadline = time.monotonic() + seconds
-    while not condition():
-        if time.monotonic() > deadline:
-            pytest.fail("timed out waiting")
-        app.processEvents()
-        time.sleep(0.02)
-
-
 @pytest.fixture
 def terminal(app, asked, server):
     """The SSH terminal logged in to the loopback server's shell with a password."""
@@ -169,7 +149,7 @@ def terminal(app, asked, server):
     widget.login_widget.user_edit.setText(USER)
     widget.login_widget.pass_edit.setText(PASSWORD)
     widget.connect_ssh()
-    _wait_until(app, lambda: "welcome" in widget.terminal.toPlainText())
+    wait_until(app, lambda: "welcome" in widget.terminal.toPlainText())
     yield widget
     widget.close()
     widget.deleteLater()
@@ -183,7 +163,7 @@ class TestTheTerminal:
         assert pty[1] in (b"xterm", "xterm")  # bytes from paramiko 4's server side
         assert terminal.is_connected()
         # The last size the server was told is the one the widget holds (terminal_size: at least 20 by 5)
-        _wait_until(app, lambda: terminal._pty_size in [
+        wait_until(app, lambda: terminal._pty_size in [
             (event[-2], event[-1]) for event in server.events if event[0] in ("pty", "resize")][-1:])
         assert terminal._pty_size[0] >= 20
         assert terminal._pty_size[1] >= 5
@@ -192,19 +172,19 @@ class TestTheTerminal:
         terminal.command_input_edit.setText("echo 中文")
         terminal.send_command()
 
-        _wait_until(app, lambda: "got: echo 中文" in terminal.terminal.toPlainText())
+        wait_until(app, lambda: "got: echo 中文" in terminal.terminal.toPlainText())
         assert terminal.command_input_edit.text() == ""
 
     def test_interrupt_sends_ctrl_c(self, app, terminal, server):
         terminal.send_interrupt()
 
-        _wait_until(app, lambda: ("received", b"\x03") in server.events)
+        wait_until(app, lambda: ("received", b"\x03") in server.events)
 
     def test_a_shell_the_server_ends_ends_the_session(self, app, terminal):
         terminal.command_input_edit.setText("exit")
         terminal.send_command()
 
-        _wait_until(app, lambda: not terminal.is_connected() and terminal.ssh_client is None)
+        wait_until(app, lambda: not terminal.is_connected() and terminal.ssh_client is None)
         assert "bye" in terminal.terminal.toPlainText()
 
     def test_disconnect_closes_the_shell(self, app, terminal):
