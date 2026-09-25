@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-58 | 2026-09-26 | A --form-string without = is tested to be left out, and its @ to name no file | #test #curl | [2026-09-d](2026-09-d.md) |
 | U-20260926-57 | 2026-09-26 | A week date with its own offset is tested to be moved to UTC | #test | [2026-09-d](2026-09-d.md) |
 | U-20260926-56 | 2026-09-26 | The AI panels' default response cap is tested to be 16 MB | #test #network | [2026-09-d](2026-09-d.md) |
 | U-20260926-55 | 2026-09-26 | A reserved address is tested to be refused, IPv6 4000::1 included | #test #security #network | [2026-09-d](2026-09-d.md) |
@@ -596,4 +597,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
-| [2026-09-d.md](2026-09-d.md) | 2026-09 | 77 |
+| [2026-09-d.md](2026-09-d.md) | 2026-09 | 78 |

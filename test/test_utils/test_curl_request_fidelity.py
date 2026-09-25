@@ -215,3 +215,12 @@ def test_a_form_field_without_an_equals_sign_is_left_out():
     request = CurlRequest(form_fields=["just-a-name", "kept=1"])
 
     assert form_parts(request) == ({"kept": "1"}, {})
+
+
+def test_a_form_string_without_an_equals_sign_is_left_out_too():
+    from pybreeze.utils.curl_import.curl_parser import CurlRequest
+
+    request = CurlRequest(form_strings=["just-a-name", "kept=@not-a-file"])
+
+    # --form-string takes the value as it is: an @ there names no file
+    assert form_parts(request) == ({"kept": "@not-a-file"}, {})
