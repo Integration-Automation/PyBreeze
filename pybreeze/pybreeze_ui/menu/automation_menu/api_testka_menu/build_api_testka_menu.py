@@ -2,19 +2,25 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from je_api_testka.gui.main_widget import APITestkaWidget
-
 from pybreeze.pybreeze_ui.menu.automation_menu.automation_menu_factory import (
     AutomationMenu, HelpLink, RunAction, build_automation_menu, safe_create_project
 )
 
 if TYPE_CHECKING:
+    from PySide6.QtWidgets import QWidget
+
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
 
 from pybreeze.extend.process_executor.api_testka.api_testka_process import (
     call_api_testka, call_api_testka_with_send,
     call_api_testka_multi_file, call_api_testka_multi_file_and_send,
 )
+
+
+def _api_testka_gui() -> QWidget:
+    # Imported when its tab opens, not with the menus as the IDE starts
+    from je_api_testka.gui.main_widget import APITestkaWidget
+    return APITestkaWidget()
 
 
 def set_apitestka_menu(ui_we_want_to_set: PyBreezeMainWindow):
@@ -37,6 +43,6 @@ def set_apitestka_menu(ui_we_want_to_set: PyBreezeMainWindow):
         ),
         create_project=safe_create_project(ui_we_want_to_set, "je_api_testka"),
         create_project_label_key="apitestka_create_project_label",
-        gui_widget_factory=APITestkaWidget,
+        gui_widget_factory=_api_testka_gui,
         gui_label="APITestka GUI",
     ))

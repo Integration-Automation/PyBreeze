@@ -7,7 +7,12 @@ import pytest
 
 from test_utils.started_window import run_started_window
 
-_WHAT_THE_START_LOADED = """
+# Imported by the entries that use them: together they took about a fifth of
+# the IDE's start (the Load Density GUI brings locust and gevent; SSH brings
+# paramiko and cryptography)
+_UNUSED_YET = ("je_auto_control", "je_load_density", "locust", "je_api_testka", "paramiko")
+
+_WHAT_THE_START_LOADED = f"UNUSED_YET = {_UNUSED_YET!r}\n" + """
 import ctypes
 awareness = None
 if sys.platform == "win32":
@@ -17,7 +22,7 @@ if sys.platform == "win32":
     awareness = user32.GetAwarenessFromDpiAwarenessContext(user32.GetThreadDpiAwarenessContext())
 result = {
     "awareness": awareness,
-    "loaded": sorted(name for name in ("je_auto_control",) if name in sys.modules),
+    "loaded": sorted(name for name in UNUSED_YET if name in sys.modules),
 }
 """
 
@@ -38,5 +43,5 @@ def test_the_dpi_awareness_is_left_to_qt(started):
     assert started["awareness"] == 0
 
 
-def test_the_autocontrol_package_is_loaded_when_used(started):
+def test_the_automation_packages_and_ssh_are_loaded_when_used(started):
     assert started["loaded"] == []

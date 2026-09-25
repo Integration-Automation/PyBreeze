@@ -9,7 +9,6 @@ from je_editor import language_wrapper
 from je_editor import jeditor_logger
 
 from pybreeze.pybreeze_ui.closing import AskingDock
-from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_main_widget import SSHMainWidget
 from pybreeze.pybreeze_ui.connect_gui.url.ai_code_review_gui import AICodeReviewClient
 from pybreeze.pybreeze_ui.diagram_editor.diagram_editor_widget import DiagramEditorWidget
 from pybreeze.pybreeze_ui.extend_ai_gui.code_review.cot_code_review_gui import CoTCodeReviewGUI
@@ -32,16 +31,26 @@ from pybreeze.pybreeze_ui.tools_gui.timestamp_gui import TimestampGUI
 from pybreeze.pybreeze_ui.tools_gui.url_builder_gui import UrlBuilderGUI
 
 if TYPE_CHECKING:
+    from PySide6.QtWidgets import QWidget
+
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
 
 # ---------------------------------------------------------------------------
 # Widget registry
 # ---------------------------------------------------------------------------
 
+
+def _ssh_widget() -> QWidget:
+    # Imported when the SSH client first opens: paramiko and cryptography take
+    # about a sixth of a second of the IDE's start
+    from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_main_widget import SSHMainWidget
+    return SSHMainWidget()
+
+
 # Widget key -> factory taking the main window. Shared by the Tools-menu tab
 # actions and the dock actions so each widget's constructor is written once.
 _WIDGET_FACTORIES: dict[str, Callable[[PyBreezeMainWindow], object]] = {
-    "SSH": lambda _win: SSHMainWidget(),
+    "SSH": lambda _win: _ssh_widget(),
     "AICodeReview": lambda _win: AICodeReviewClient(),
     "CoTPromptEditor": lambda _win: CoTPromptEditor(),
     "CoTCodeReview": lambda _win: CoTCodeReviewGUI(),
