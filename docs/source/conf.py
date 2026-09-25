@@ -33,3 +33,20 @@ exclude_patterns = []
 # -- Options for HTML output -------------------------------------------------
 
 html_theme = "sphinx_rtd_theme"
+
+# -- Options for LaTeX (PDF) output -------------------------------------------
+
+# Half of the guide is Traditional Chinese, which pdflatex cannot set: the PDF
+# Read the Docs built had every Chinese character missing. xelatex sets it with
+# xeCJK and the Noto CJK TC fonts, which Read the Docs' build image has
+# (fonts-noto-cjk); ctex's own fonts leave out some Traditional characters.
+latex_engine = "xelatex"
+latex_use_xindy = False
+latex_elements = {
+    "preamble": "\n".join((
+        r"\usepackage{xeCJK}",
+        r"\setCJKmainfont{Noto Serif CJK TC}",
+        r"\setCJKsansfont{Noto Sans CJK TC}",
+        r"\setCJKmonofont{Noto Sans Mono CJK TC}",
+    )),
+}
