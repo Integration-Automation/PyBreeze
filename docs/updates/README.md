@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-125 | 2026-09-25 | The report-mail timeout is tested against MailThunder's own client; the packaging test reads the table | #test #mail #packaging | [2026-09-d](2026-09-d.md) |
 | U-20260925-124 | 2026-09-25 | A report mail gives up on a silent mail server after 30 s (progress #102) | #done #fix #mail | [2026-09-d](2026-09-d.md) |
 | U-20260925-123 | 2026-09-25 | A test checks that the published package holds every module and data file | #test #packaging | [2026-09-d](2026-09-d.md) |
 | U-20260925-122 | 2026-09-25 | Assertions in the two diagram test files put the actual value first | #refactor #test #sonarcloud | [2026-09-d](2026-09-d.md) |
@@ -528,4 +529,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
-| [2026-09-d.md](2026-09-d.md) | 2026-09 | 9 |
+| [2026-09-d.md](2026-09-d.md) | 2026-09 | 10 |

@@ -332,3 +332,24 @@ class TestAServerThatStopsAnswering:
             listener.close()
             for connection in held:
                 connection.close()
+
+    def test_the_timeout_reaches_mailthunders_own_client(self, monkeypatch):
+        # What _with_timeout relies on: SMTPWrapper is an SMTP_SSL that connects
+        # as it is built, through _get_socket
+        mail_thunder = pytest.importorskip("je_mail_thunder")
+        import smtplib
+
+        assert issubclass(mail_thunder.SMTPWrapper, smtplib.SMTP_SSL)
+        listener, held = self._silent_server()
+        monkeypatch.setattr(mail, "_SMTP_TIMEOUT_SECONDS", 1)
+        timed_client = mail._with_timeout(mail_thunder.SMTPWrapper)
+        port = listener.getsockname()[1]
+        started = time.monotonic()
+        try:
+            with pytest.raises(TimeoutError):
+                timed_client("127.0.0.1", port)
+            assert time.monotonic() - started < 15
+        finally:
+            listener.close()
+            for connection in held:
+                connection.close()

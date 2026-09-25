@@ -7,27 +7,47 @@ window's icon was read from the working folder, and never shipped.
 """
 from __future__ import annotations
 
+import re
+import subprocess
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[2]
 _PACKAGE = _ROOT / "pybreeze"
 
 
-def _source_folders() -> list[Path]:
-    return sorted({path.parent for path in _PACKAGE.rglob("*.py") if "__pycache__" not in path.parts})
+def _package_files() -> list[Path]:
+    """The files under ``pybreeze/`` that are the package's: tracked ones, when git can say.
+
+    A log a tool wrote there, or an editor's backup, is not the package's.
+    """
+    try:
+        listed = subprocess.run(  # noqa: S603 - fixed argv
+            ["git", "ls-files", "pybreeze"], cwd=_ROOT, capture_output=True, text=True,
+            encoding="utf-8", timeout=60, check=True, shell=False).stdout.split()
+    except (OSError, subprocess.SubprocessError):
+        return [path for path in _PACKAGE.rglob("*") if path.is_file() and "__pycache__" not in path.parts]
+    return [_ROOT / name for name in listed]
+
+
+def _package_data(config: str) -> dict[str, list[str]]:
+    """The ``[tool.setuptools.package-data]`` table of *config*, package -> file names."""
+    text = (_ROOT / config).read_text(encoding="utf-8")
+    table = text.split("[tool.setuptools.package-data]", 1)[1].split("\n[", 1)[0]
+    return {package: re.findall(r'"([^"]+)"', names)
+            for package, names in re.findall(r'^"([\w.]+)"\s*=\s*\[([^\]]*)\]', table, re.M)}
 
 
 def test_every_folder_of_modules_is_a_package():
-    assert [str(folder.relative_to(_ROOT)) for folder in _source_folders()
-            if not (folder / "__init__.py").is_file()] == []
+    # Every module found, tracked or not: a folder added a moment ago counts too
+    folders = sorted({path.parent for path in _PACKAGE.rglob("*.py") if "__pycache__" not in path.parts})
+    assert [str(folder.relative_to(_ROOT)) for folder in folders if not (folder / "__init__.py").is_file()] == []
 
 
 def test_every_file_that_is_not_python_is_package_data():
-    others = [path for path in _PACKAGE.rglob("*")
-              if path.is_file() and path.suffix not in {".py", ".pyc"} and "__pycache__" not in path.parts]
+    others = [path for path in _package_files() if path.suffix != ".py"]
     assert others, "the window's icon, at least, is package data"
     for config in ("pyproject.toml", "dev.toml"):
-        text = (_ROOT / config).read_text(encoding="utf-8")
+        listed = _package_data(config)
         for path in others:
             package = ".".join(path.parent.relative_to(_ROOT).parts)
-            assert f'"{package}" = ["{path.name}"]' in text, f"{path.name} is not package data in {config}"
+            assert path.name in listed.get(package, []), f"{path.name} is not package data in {config}"
