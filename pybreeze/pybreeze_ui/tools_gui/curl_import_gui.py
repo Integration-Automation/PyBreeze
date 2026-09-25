@@ -85,7 +85,7 @@ class CurlImportGUI(QWidget):
 
         # Shared copy / open-in-editor / save actions. The extension and basename
         # follow the selected target; open/save are no-ops until a valid template.
-        self.actions = OutputActions(
+        self.output_actions = OutputActions(
             self, self.output_edit, main_window=main_window,
             basename=lambda: "action" if self.selected_target() == _JSON_TARGET else "request",
             extension=lambda: "json" if self.selected_target() == _JSON_TARGET else "py",
@@ -99,7 +99,7 @@ class CurlImportGUI(QWidget):
         ):
             layout.addWidget(widget)
         layout.addLayout(cross_tool)
-        layout.addLayout(self.actions.button_row())
+        layout.addLayout(self.output_actions.button_row())
         self.setLayout(layout)
 
     def selected_target(self) -> str:

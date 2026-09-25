@@ -54,7 +54,7 @@ class TestTimestampGUI:
     def test_copy_output(self, app, widget):
         widget.input_edit.setText("1609459200")
         widget.convert()
-        widget.actions.copy()
+        widget.output_actions.copy()
         assert "1609459200" in QApplication.clipboard().text()
 
     def test_save_after_error_is_noop(self, widget, tmp_path):
@@ -66,7 +66,7 @@ class TestTimestampGUI:
             "pybreeze.pybreeze_ui.tools_gui.output_actions.QFileDialog.getSaveFileName",
             return_value=(str(tmp_path / "x.txt"), "Text (*.txt)"),
         ):
-            assert widget.actions.save_to_file() is None
+            assert widget.output_actions.save_to_file() is None
 
     def test_suggested_filename(self, widget):
-        assert widget.actions.suggested_filename() == "timestamp.txt"
+        assert widget.output_actions.suggested_filename() == "timestamp.txt"

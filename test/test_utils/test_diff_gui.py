@@ -68,7 +68,7 @@ class TestDiffGUI:
         widget.left_edit.setPlainText("a")
         widget.right_edit.setPlainText("b")
         _compare(widget)
-        widget.actions.copy()
+        widget.output_actions.copy()
         assert QApplication.clipboard().text() != ""
 
     def test_build_summary_line_identical(self, app):

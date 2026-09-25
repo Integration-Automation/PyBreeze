@@ -67,8 +67,8 @@ class TestHttpStatusGUI:
 
     def test_has_output_actions(self, widget):
         # The reference table is always content, so save/copy operate on it.
-        assert widget.actions.suggested_filename() == "http_status.txt"
-        widget.actions.copy()
+        assert widget.output_actions.suggested_filename() == "http_status.txt"
+        widget.output_actions.copy()
         assert "200 OK" in QApplication.clipboard().text()
 
 

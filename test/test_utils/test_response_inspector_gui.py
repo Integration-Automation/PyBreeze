@@ -65,7 +65,7 @@ class TestResponseInspectorGUI:
     def test_copy_output(self, app, widget):
         widget.input_edit.setPlainText('{"a": 1}')
         widget.analyze()
-        widget.actions.copy()
+        widget.output_actions.copy()
         assert '"a": 1' in QApplication.clipboard().text()
 
     def test_build_report_text_minimal(self, app):

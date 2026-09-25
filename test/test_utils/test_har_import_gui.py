@@ -130,17 +130,17 @@ class TestHarImportGeneration:
 
     def test_suggested_filename_follows_the_target(self, loaded):
         self._select_target(loaded, "apitestka_action")
-        assert loaded.actions.suggested_filename() == "actions.json"
+        assert loaded.output_actions.suggested_filename() == "actions.json"
         self._select_target(loaded, "pytest")
-        assert loaded.actions.suggested_filename() == "session.py"
+        assert loaded.output_actions.suggested_filename() == "session.py"
 
     def test_copy_output(self, app, loaded):
         loaded.generate_all()
-        loaded.actions.copy()
+        loaded.output_actions.copy()
         assert "/v1/items" in QApplication.clipboard().text()
 
     def test_save_before_generating_is_noop(self, loaded):
-        assert loaded.actions.save_to_file() is None
+        assert loaded.output_actions.save_to_file() is None
 
 
 class TestHarImportFileDialog:
@@ -231,7 +231,7 @@ class TestWhatTheOutputBelongsTo:
         assert loaded.load_text(other)
 
         assert loaded.output_edit.toPlainText() == ""
-        assert not loaded.actions._has_output()
+        assert not loaded.output_actions._has_output()
 
     def test_a_file_that_cannot_be_read_unlists_the_previous_one(self, loaded, tmp_path):
         with patch(
@@ -243,7 +243,7 @@ class TestWhatTheOutputBelongsTo:
         assert loaded.entry_list.count() == 0
         loaded.generate_all()
         assert "/v1/items" not in loaded.output_edit.toPlainText()
-        assert not loaded.actions._has_output()
+        assert not loaded.output_actions._has_output()
 
     def test_choosing_another_target_generates_again(self, loaded):
         loaded.generate_all()
@@ -251,7 +251,7 @@ class TestWhatTheOutputBelongsTo:
         loaded.target_select.setCurrentIndex(loaded.target_select.findData("apitestka_action"))
 
         assert len(json.loads(loaded.output_edit.toPlainText())) == 2
-        assert loaded.actions.suggested_filename() == "actions.json"
+        assert loaded.output_actions.suggested_filename() == "actions.json"
 
     def test_choosing_a_target_before_generating_generates_nothing(self, loaded):
         loaded.target_select.setCurrentIndex(loaded.target_select.findData("pytest"))
@@ -271,8 +271,8 @@ class TestWhatTheOutputBelongsTo:
         requests_script = widget.output_edit.toPlainText()
 
         widget.target_select.setCurrentIndex(widget.target_select.findData("apitestka_action"))
-        assert not widget.actions._has_output()
+        assert not widget.output_actions._has_output()
         widget.target_select.setCurrentIndex(widget.target_select.findData("requests"))
 
         assert widget.output_edit.toPlainText() == requests_script
-        assert widget.actions._has_output()
+        assert widget.output_actions._has_output()

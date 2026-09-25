@@ -46,7 +46,7 @@ class TestHashGUI:
     def test_copy_output(self, app, widget):
         widget.input_edit.setPlainText("hello")
         widget.compute()
-        widget.actions.copy()
+        widget.output_actions.copy()
         assert hashlib.sha256(b"hello").hexdigest() in QApplication.clipboard().text()
 
     def test_build_hash_text_formats_lines(self):

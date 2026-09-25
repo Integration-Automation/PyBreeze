@@ -86,7 +86,7 @@ class TestRegexGUI:
         widget.pattern_edit.setText(r"\d+")
         widget.text_edit.setPlainText("a1")
         run(widget)
-        widget.actions.copy()
+        widget.output_actions.copy()
         assert "'1'" in QApplication.clipboard().text()
 
     def test_build_matches_text_no_matches(self, app):

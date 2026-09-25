@@ -157,7 +157,7 @@ class TestClosingTheTab:
 
         tab.close()
 
-        assert tab.thread.stopped
+        assert tab.launcher.stopped
 
 
 _CLOSE_WITH_A_TOOL_TAB_AND_DOCK = """
@@ -216,7 +216,7 @@ class TestStoppingBeforeTheServerStarts:
         monkeypatch.setattr(
             jupyter_lab_thread.JupyterLauncherThread, "run", lambda self: installing.wait(5))
         tab = jupyter_lab_widget.JupyterLabWidget()
-        launcher = tab.thread
+        launcher = tab.launcher
 
         tab.close()  # returns with the install still going
 

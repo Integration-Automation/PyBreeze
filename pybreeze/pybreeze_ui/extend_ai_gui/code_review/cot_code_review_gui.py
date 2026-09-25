@@ -72,7 +72,7 @@ class CoTCodeReviewGUI(QWidget):
 
         # 儲存回覆
         self.responses = {}
-        self.thread = None
+        self.request_thread = None
 
     def show_response(self, filename):
         if filename in self.responses:
@@ -96,7 +96,7 @@ class CoTCodeReviewGUI(QWidget):
 
         # Ignore re-submits while a run is in flight so we never drop a running
         # QThread or interleave two review passes into the same response store.
-        if self.thread is not None and self.thread.isRunning():
+        if self.request_thread is not None and self.request_thread.isRunning():
             return
 
         # A new run starts from nothing: answers about the previous code, or its
@@ -107,10 +107,10 @@ class CoTCodeReviewGUI(QWidget):
 
         # 啟動傳送 Thread
         self.send_button.setEnabled(False)
-        self.thread = SenderThread(files=self.files, code=code, url=url)
-        self.thread.update_response.connect(self.handle_response)
-        self.thread.finished.connect(self._enable_send)
-        self.thread.start()
+        self.request_thread = SenderThread(files=self.files, code=code, url=url)
+        self.request_thread.update_response.connect(self.handle_response)
+        self.request_thread.finished.connect(self._enable_send)
+        self.request_thread.start()
 
     def _enable_send(self) -> None:
         """Let the next request be sent, however this one ended.
@@ -136,7 +136,7 @@ class CoTCodeReviewGUI(QWidget):
         that long. The thread is cut off from this widget and kept until it
         ends: a QThread destroyed while running aborts the process.
         """
-        thread = self.thread
+        thread = self.request_thread
         if thread is not None and thread.isRunning():
             thread.requestInterruption()
             let_run_out(thread, thread.update_response)

@@ -105,6 +105,7 @@ ruff check pybreeze/                              # before committing non-trivia
 - A context menu or dialog built on each use with a parent (`QMenu(self)`, `SomeDialog(self)`) is deleted once `exec()` returns (`deleteLater()`, or `WA_DeleteOnClose` for a message box): its parent keeps it otherwise, one more per use
 - A process the IDE starts gets `child_environment()` or `utf8_subprocess_env()` (`utils/subprocess_util.py`) as its `env`, never `os.environ` as it is: a variable the IDE sets for itself alone has the value `IDE_ONLY` and stays out (`LOCUST_SKIP_MONKEY_PATCH`, which a load test must not inherit)
 - Import `je_auto_control` only where it is used, never at the top of a module the IDE loads as it starts: it makes the process system DPI aware as it imports, which keeps Qt from making the IDE per-monitor aware. The automation packages' GUIs and the SSH client (paramiko) are likewise imported by the entry that opens them, which keeps almost two seconds off the start; `test_startup_imports.py` fails when one of them is imported as the IDE starts
+- An instance attribute of a Qt class never takes the name of a member of its Qt base (`self.actions`, `self.thread`, `self.layout`, …): it hides the method from everything that calls it on the widget. `test_no_qt_member_shadowing.py` fails on one
 - Delete unused code immediately — no dead imports, unreachable branches, commented-out blocks, or `_old_` prefixes
 - Follow PEP 8 and standard Pythonic practice; `ruff` is the arbiter
 

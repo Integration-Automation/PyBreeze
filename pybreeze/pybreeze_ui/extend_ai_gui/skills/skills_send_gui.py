@@ -148,7 +148,7 @@ class SkillsSendGUI(QWidget):
 
         self.setLayout(layout)
 
-        self.thread = None  # 保存執行緒
+        self.request_thread = None  # 保存執行緒
         # 編輯區裡是哪個模板：換模板被拒時選單要回到這裡
         # The template in the edit area: where the selector goes back to when a switch is refused
         self._shown_template = self.prompt_select.currentText()
@@ -195,10 +195,10 @@ class SkillsSendGUI(QWidget):
         return reply == QMessageBox.StandardButton.Yes
 
     def send_prompt(self):
-        # Ignore re-submits while a request is in flight: reassigning self.thread
+        # Ignore re-submits while a request is in flight: reassigning self.request_thread
         # here would drop a still-running QThread (risking "destroyed while
         # running") and let a stale worker overwrite the panel.
-        if self.thread is not None and self.thread.isRunning():
+        if self.request_thread is not None and self.request_thread.isRunning():
             return
 
         api_url = self.api_url_input.text().strip()
@@ -218,13 +218,13 @@ class SkillsSendGUI(QWidget):
 
         # 啟動 QThread
         self.send_button.setEnabled(False)
-        self.thread = RequestThread(api_url, prompt_text)
-        self.thread.answered.connect(self.on_finished)
-        self.thread.error.connect(self.on_error)
+        self.request_thread = RequestThread(api_url, prompt_text)
+        self.request_thread.answered.connect(self.on_finished)
+        self.request_thread.error.connect(self.on_error)
         # However run() ends -- including an exception outside its handler --
         # the button comes back.
-        self.thread.finished.connect(self._enable_send)
-        self.thread.start()
+        self.request_thread.finished.connect(self._enable_send)
+        self.request_thread.start()
 
     def _enable_send(self) -> None:
         """Let the next request be sent, however this one ended.
@@ -251,7 +251,7 @@ class SkillsSendGUI(QWidget):
         panel does not wait for it: the request can take the whole read timeout,
         and waiting froze the IDE for that long.
         """
-        thread = self.thread
+        thread = self.request_thread
         if thread is not None and thread.isRunning():
             let_run_out(thread, thread.answered, thread.error)
         event.accept()

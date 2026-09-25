@@ -35,7 +35,7 @@ class TestCoTCloseEvent:
 
         gui = CoTCodeReviewGUI.__new__(CoTCodeReviewGUI)
         thread = _running_thread()
-        gui.thread = thread
+        gui.request_thread = thread
         event = MagicMock()
 
         CoTCodeReviewGUI.closeEvent(gui, event)
@@ -49,7 +49,7 @@ class TestCoTCloseEvent:
 
     def test_no_thread_just_accepts(self):
         gui = CoTCodeReviewGUI.__new__(CoTCodeReviewGUI)
-        gui.thread = None
+        gui.request_thread = None
         event = MagicMock()
 
         CoTCodeReviewGUI.closeEvent(gui, event)
@@ -60,7 +60,7 @@ class TestCoTCloseEvent:
         gui = CoTCodeReviewGUI.__new__(CoTCodeReviewGUI)
         thread = MagicMock()
         thread.isRunning.return_value = False
-        gui.thread = thread
+        gui.request_thread = thread
         event = MagicMock()
 
         CoTCodeReviewGUI.closeEvent(gui, event)
@@ -78,7 +78,7 @@ class TestSkillsCloseEvent:
 
         gui = SkillsSendGUI.__new__(SkillsSendGUI)
         thread = _running_thread()
-        gui.thread = thread
+        gui.request_thread = thread
         event = MagicMock()
 
         SkillsSendGUI.closeEvent(gui, event)
@@ -115,7 +115,7 @@ class TestSkillsCloseEvent:
 
     def test_no_thread_just_accepts(self):
         gui = SkillsSendGUI.__new__(SkillsSendGUI)
-        gui.thread = None
+        gui.request_thread = None
         event = MagicMock()
 
         SkillsSendGUI.closeEvent(gui, event)
@@ -177,6 +177,6 @@ class TestCoTWithoutCode:
 
         gui.start_sending()
 
-        assert gui.thread is None
+        assert gui.request_thread is None
         assert shown == [cot_mod.language_wrapper.language_word_dict.get("cot_gui_error_no_code")]
         gui.deleteLater()

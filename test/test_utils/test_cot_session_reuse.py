@@ -179,9 +179,9 @@ def test_closing_mid_review_does_not_wait(monkeypatch):
     answering = threading.Event()
     monkeypatch.setattr(code_review_thread.SenderThread, "run", lambda self: answering.wait(5))
     gui = CoTCodeReviewGUI()
-    gui.thread = code_review_thread.SenderThread(files=[], code="", url="https://review.example")
-    gui.thread.start()
-    thread = gui.thread
+    gui.request_thread = code_review_thread.SenderThread(files=[], code="", url="https://review.example")
+    gui.request_thread.start()
+    thread = gui.request_thread
 
     gui.close()  # returns while the request is still out
 
@@ -279,7 +279,7 @@ def test_sending_resolves_nothing_on_the_ui_thread(monkeypatch):
     gui.start_sending()
 
     assert looked_up == []
-    assert gui.thread is not None
+    assert gui.request_thread is not None
     gui.deleteLater()
 
 

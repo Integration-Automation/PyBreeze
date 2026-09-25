@@ -88,7 +88,7 @@ class HeaderAnalyzerGUI(QWidget):
         self.open_jwt_button.clicked.connect(self.open_jwt_in_decoder)
         self.open_jwt_button.setEnabled(False)
 
-        self.actions = OutputActions(
+        self.output_actions = OutputActions(
             self, self.output_edit, main_window=main_window,
             basename="headers", extension="txt",
             is_valid=lambda: self._analysis is not None)
@@ -99,7 +99,7 @@ class HeaderAnalyzerGUI(QWidget):
             self.output_label, self.output_edit, self.open_jwt_button,
         ):
             layout.addWidget(widget)
-        layout.addLayout(self.actions.button_row())
+        layout.addLayout(self.output_actions.button_row())
         self.setLayout(layout)
 
         if initial_headers:

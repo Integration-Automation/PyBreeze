@@ -53,7 +53,7 @@ class TimestampGUI(QWidget):
         self.output_edit = QTextEdit()
         self.output_edit.setReadOnly(True)
 
-        self.actions = OutputActions(
+        self.output_actions = OutputActions(
             self, self.output_edit, main_window=main_window,
             basename="timestamp", extension="txt", is_valid=lambda: self._valid_output)
 
@@ -63,7 +63,7 @@ class TimestampGUI(QWidget):
             self.output_label, self.output_edit,
         ):
             layout.addWidget(widget)
-        layout.addLayout(self.actions.button_row())
+        layout.addLayout(self.output_actions.button_row())
         self.setLayout(layout)
 
     def convert(self) -> None:

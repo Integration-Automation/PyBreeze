@@ -33,11 +33,11 @@ class JupyterLabWidget(QWidget):
         self.browser.hide()
         layout.addWidget(self.browser)
 
-        self.thread = JupyterLauncherThread(python_exe=python_exe)
-        self.thread.status_update.connect(self.update_status)
-        self.thread.server_ready.connect(self.load_lab)
-        self.thread.error_occurred.connect(self.show_error)
-        self.thread.start()
+        self.launcher = JupyterLauncherThread(python_exe=python_exe)
+        self.launcher.status_update.connect(self.update_status)
+        self.launcher.server_ready.connect(self.load_lab)
+        self.launcher.error_occurred.connect(self.show_error)
+        self.launcher.start()
 
     def update_status(self, text):
         # status_label is removed once the lab loads; a late status/error signal
@@ -77,17 +77,17 @@ class JupyterLabWidget(QWidget):
         JupyterLab process behind for every tab that had finished loading --
         holding its port, and reachable for as long as the machine was up.
         """
-        if self.thread.isRunning():
+        if self.launcher.isRunning():
             # Still installing or starting: cut off from this tab first, so a
             # late status or error cannot reach it, and kept until it ends
             # rather than waited for -- an install can take minutes, and a
             # QThread destroyed while running aborts the process. (Not
             # blockSignals: that would also block the ``finished`` that lets
             # the keeper release it.)
-            let_run_out(self.thread, self.thread.status_update,
-                        self.thread.server_ready, self.thread.error_occurred)
+            let_run_out(self.launcher, self.launcher.status_update,
+                        self.launcher.server_ready, self.launcher.error_occurred)
         # After this the launcher starts no server, even one still installing.
-        self.thread.stop()
+        self.launcher.stop()
         event.accept()
 
 

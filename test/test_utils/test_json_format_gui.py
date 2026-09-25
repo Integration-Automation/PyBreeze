@@ -54,5 +54,5 @@ class TestJsonFormatGUI:
     def test_copy_output(self, app, widget):
         widget.input_edit.setPlainText('{"a":1}')
         widget.minify()
-        widget.actions.copy()
+        widget.output_actions.copy()
         assert '{"a":1}' in QApplication.clipboard().text()

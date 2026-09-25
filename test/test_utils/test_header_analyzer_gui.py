@@ -86,13 +86,13 @@ class TestHeaderAnalyzerGUI:
     def test_copy_output(self, app, widget):
         widget.input_edit.setPlainText(_RESPONSE)
         widget.analyze()
-        widget.actions.copy()
+        widget.output_actions.copy()
         assert "nginx/1.25.3" in QApplication.clipboard().text()
 
     def test_save_after_no_headers_is_noop(self, widget):
         widget.input_edit.setPlainText("just some prose")
         widget.analyze()
-        assert widget.actions.save_to_file() is None
+        assert widget.output_actions.save_to_file() is None
 
 
 class _FakeTabWidget:

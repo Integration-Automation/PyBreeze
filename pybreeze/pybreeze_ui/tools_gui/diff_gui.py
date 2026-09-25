@@ -116,7 +116,7 @@ class DiffGUI(QWidget):
         self.output_edit.setReadOnly(True)
         self._highlighter = UnifiedDiffHighlighter(self.output_edit.document())
 
-        self.actions = OutputActions(
+        self.output_actions = OutputActions(
             self, self.output_edit, main_window=main_window,
             basename="diff", extension="txt")
 
@@ -125,7 +125,7 @@ class DiffGUI(QWidget):
         layout.addWidget(self.compare_button)
         layout.addWidget(self.summary_label)
         layout.addWidget(self.output_edit)
-        layout.addLayout(self.actions.button_row())
+        layout.addLayout(self.output_actions.button_row())
         self.setLayout(layout)
         self._compare_thread: DiffThread | None = None
 

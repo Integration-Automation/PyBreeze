@@ -70,7 +70,7 @@ class JwtDecoderGUI(QWidget):
         self.output_edit.setReadOnly(True)
         use_fixed_pitch_font(self.output_edit)
 
-        self.actions = OutputActions(
+        self.output_actions = OutputActions(
             self, self.output_edit, main_window=main_window,
             basename="jwt", extension="txt", is_valid=lambda: self._valid_output)
 
@@ -80,7 +80,7 @@ class JwtDecoderGUI(QWidget):
             self.output_label, self.output_edit,
         ):
             layout.addWidget(widget)
-        layout.addLayout(self.actions.button_row())
+        layout.addLayout(self.output_actions.button_row())
         self.setLayout(layout)
 
         if initial_token:

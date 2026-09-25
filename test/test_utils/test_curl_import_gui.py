@@ -60,12 +60,12 @@ class TestCurlImportGUI:
     def test_copy_output_sets_clipboard(self, app, widget):
         widget.input_edit.setPlainText("curl https://example.com/api")
         widget.convert()
-        widget.actions.copy()
+        widget.output_actions.copy()
         assert "import requests" in QApplication.clipboard().text()
 
     def test_copy_with_empty_output_is_safe(self, widget):
         widget.output_edit.setPlainText("")
-        widget.actions.copy()  # must not raise
+        widget.output_actions.copy()  # must not raise
 
     def test_json_body_conversion(self, widget):
         widget.input_edit.setPlainText(
@@ -149,34 +149,34 @@ class TestCurlImportActions:
         with patch(
             "je_editor.EditorWidget", _FakeEditor
         ):
-            editor = gui.actions.open_in_editor()
+            editor = gui.output_actions.open_in_editor()
         assert len(window.tab_widget.added) == 1
         assert "import requests" in editor.code_edit.text
 
     def test_open_in_editor_without_code_is_noop(self, widget_with_window):
         gui, window = widget_with_window
-        assert gui.actions.open_in_editor() is None
+        assert gui.output_actions.open_in_editor() is None
         assert window.tab_widget.added == []
 
     def test_open_after_parse_error_is_noop(self, widget_with_window):
         gui, window = widget_with_window
         gui.input_edit.setPlainText("wget https://x")
         gui.convert()
-        assert gui.actions.open_in_editor() is None
+        assert gui.output_actions.open_in_editor() is None
         assert window.tab_widget.added == []
 
     def test_open_in_editor_without_window_is_safe(self, widget):
         widget.input_edit.setPlainText("curl https://x")
         widget.convert()
-        assert widget.actions.open_in_editor() is None  # no main window
+        assert widget.output_actions.open_in_editor() is None  # no main window
 
     def test_suggested_filename_python(self, widget):
         self._select_target(widget, "requests")
-        assert widget.actions.suggested_filename() == "request.py"
+        assert widget.output_actions.suggested_filename() == "request.py"
 
     def test_suggested_filename_json(self, widget):
         self._select_target(widget, "apitestka_action")
-        assert widget.actions.suggested_filename() == "action.json"
+        assert widget.output_actions.suggested_filename() == "action.json"
 
     def test_save_to_file_writes(self, widget, tmp_path):
         widget.input_edit.setPlainText("curl https://x")
@@ -186,7 +186,7 @@ class TestCurlImportActions:
             "pybreeze.pybreeze_ui.tools_gui.output_actions.QFileDialog.getSaveFileName",
             return_value=(str(target), "Python (*.py)"),
         ):
-            result = widget.actions.save_to_file()
+            result = widget.output_actions.save_to_file()
         assert result == str(target)
         assert "import requests" in target.read_text(encoding="utf-8")
 
@@ -197,12 +197,12 @@ class TestCurlImportActions:
             "pybreeze.pybreeze_ui.tools_gui.output_actions.QFileDialog.getSaveFileName",
             return_value=("", ""),
         ):
-            assert widget.actions.save_to_file() is None
+            assert widget.output_actions.save_to_file() is None
 
     def test_save_after_parse_error_is_noop(self, widget):
         widget.input_edit.setPlainText("wget https://x")
         widget.convert()
-        assert widget.actions.save_to_file() is None
+        assert widget.output_actions.save_to_file() is None
 
 
 class TestCurlImportOpenUrlInBuilder:

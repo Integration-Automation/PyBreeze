@@ -61,7 +61,7 @@ class HttpStatusGUI(QWidget):
         self.output_edit = QTextEdit()
         self.output_edit.setReadOnly(True)
 
-        self.actions = OutputActions(
+        self.output_actions = OutputActions(
             self, self.output_edit, main_window=main_window,
             basename="http_status", extension="txt")
 
@@ -69,7 +69,7 @@ class HttpStatusGUI(QWidget):
         layout.addWidget(self.search_label)
         layout.addWidget(self.search_edit)
         layout.addWidget(self.output_edit)
-        layout.addLayout(self.actions.button_row())
+        layout.addLayout(self.output_actions.button_row())
         self.setLayout(layout)
 
         # Setting the text triggers refresh; an empty value shows the whole table.

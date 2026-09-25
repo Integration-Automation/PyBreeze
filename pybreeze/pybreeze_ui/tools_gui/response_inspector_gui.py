@@ -118,7 +118,7 @@ class ResponseInspectorGUI(QWidget):
         self.open_body_button.setEnabled(False)
 
         # Shared copy / open-in-editor / save actions, valid once analysed.
-        self.actions = OutputActions(
+        self.output_actions = OutputActions(
             self, self.output_edit, main_window=main_window,
             basename="response", extension="txt",
             is_valid=lambda: self._analysis is not None)
@@ -136,7 +136,7 @@ class ResponseInspectorGUI(QWidget):
         layout.addWidget(self.output_label)
         layout.addWidget(self.output_edit)
         layout.addLayout(cross_tool)
-        layout.addLayout(self.actions.button_row())
+        layout.addLayout(self.output_actions.button_row())
         self.setLayout(layout)
 
     def analyze(self) -> None:

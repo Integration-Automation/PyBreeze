@@ -91,7 +91,7 @@ class HarImportGUI(QWidget):
         use_fixed_pitch_font(self.output_edit)
         self.output_edit.setReadOnly(True)
 
-        self.actions = OutputActions(
+        self.output_actions = OutputActions(
             self, self.output_edit, main_window=main_window,
             basename=lambda: "actions" if self.selected_target() == _JSON_TARGET else "session",
             extension=lambda: "json" if self.selected_target() == _JSON_TARGET else "py",
@@ -106,7 +106,7 @@ class HarImportGUI(QWidget):
         layout.addLayout(generate_row)
         layout.addWidget(self.output_label)
         layout.addWidget(self.output_edit)
-        layout.addLayout(self.actions.button_row())
+        layout.addLayout(self.output_actions.button_row())
         self.setLayout(layout)
 
     def selected_target(self) -> str:

@@ -58,7 +58,7 @@ class TestQueryJsonGUI:
     def test_copy_output(self, app, widget):
         widget.input_edit.setPlainText("a=1&b=2")
         widget.convert_to_json()
-        widget.actions.copy()
+        widget.output_actions.copy()
         assert "a" in QApplication.clipboard().text()
 
 

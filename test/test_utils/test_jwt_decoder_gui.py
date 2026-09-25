@@ -63,7 +63,7 @@ class TestJwtDecoderGUI:
     def test_copy_output(self, app, widget):
         widget.input_edit.setPlainText(_make_jwt({"alg": "HS256"}, {"sub": "42"}))
         widget.decode()
-        widget.actions.copy()
+        widget.output_actions.copy()
         assert '"sub": "42"' in QApplication.clipboard().text()
 
     def test_build_decoded_text_without_timestamps(self, app):
