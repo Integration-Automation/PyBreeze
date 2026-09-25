@@ -425,3 +425,17 @@ def test_a_header_entry_that_is_not_an_object_is_skipped():
     entry = parse_har(_har(_entry(headers=["X-Stray", {"name": "Accept", "value": "text/plain"}])))[0]
 
     assert entry.request.headers == {"Accept": "text/plain"}
+
+
+def test_a_form_parameter_without_a_name_is_left_out():
+    post = {"mimeType": "application/x-www-form-urlencoded",
+            "params": [{"value": "orphan"}, "not a parameter", {"name": "kept", "value": "1"}]}
+    entry = parse_har(_har(_entry(method="POST", post_data=post)))[0]
+
+    assert entry.request.data_parts == ["kept=1"]
+
+
+def test_a_body_with_no_text_sends_nothing():
+    entry = parse_har(_har(_entry(method="POST", post_data={"mimeType": "text/plain", "text": ""})))[0]
+
+    assert entry.request.data_parts == []

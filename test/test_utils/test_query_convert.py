@@ -138,3 +138,15 @@ class TestNothingIsLostWithoutAWord:
 
         with pytest.raises(UrlConvertException, match="twice"):
             json_to_url('{"scheme": "http", "host": "a", "host": "b"}')
+
+
+@pytest.mark.parametrize(("query", "round_trips"), [
+    ("", True),                  # nothing to split: the importers rely on this
+    ("a=1&b=2", True),
+    ("flag&q=1", False),         # a valueless key would gain "="
+    ("r=/x", False),             # "/" would be escaped
+])
+def test_which_queries_round_trip(query, round_trips):
+    from pybreeze.utils.query_tools.query_convert import query_round_trips
+
+    assert query_round_trips(query) is round_trips
