@@ -74,7 +74,8 @@ def test_a_long_script_goes_as_a_file_and_the_file_goes_after(app, reporter):
     report, written, manager = _run(app, reporter, script)
 
     assert report == {"flag": "--execute_file", "count": 600, "last": actions[-1]}
-    assert written is not None and not written.exists()
+    assert written is not None
+    assert not written.exists()
     assert manager._script_file is None
 
 

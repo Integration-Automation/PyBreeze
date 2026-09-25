@@ -35,7 +35,8 @@ def test_a_file_over_the_limit_is_refused_as_a_read_error(tmp_path):
     with pytest.raises(FileTooLargeError) as raised:
         read_text_capped(path, max_bytes=10)
 
-    assert isinstance(raised.value, OSError) and "not opened" in raised.value.strerror
+    assert isinstance(raised.value, OSError)
+    assert "not opened" in raised.value.strerror
 
 
 def test_the_har_tab_says_why_it_did_not_open_a_huge_export(app, tmp_path, monkeypatch):
@@ -69,6 +70,7 @@ def test_the_diagram_editor_says_why_it_did_not_open_a_huge_file(app, tmp_path, 
 
     editor._open_diagram()
 
-    assert said and "not opened" in said[0]
+    assert said
+    assert "not opened" in said[0]
     assert editor._current_path is None
     editor.deleteLater()

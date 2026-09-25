@@ -84,7 +84,8 @@ class TestSaving:
 
         button.click()
 
-        assert second.is_file() and not first.exists()
+        assert second.is_file()
+        assert not first.exists()
         assert editor._current_path == second
 
 
@@ -210,7 +211,8 @@ class TestExporting:
         renderer.render(painter, QRectF(0, 0, image.width(), image.height()))
         painter.end()
         middle = QColor(image.pixel(image.width() // 2, image.height() // 2))
-        assert middle.red() > 200 and middle.green() < 60
+        assert middle.red() > 200
+        assert middle.green() < 60
 
     @pytest.mark.parametrize("kind", ["png", "svg"])
     def test_an_export_that_fails_leaves_the_previous_one(self, editor, tmp_path, monkeypatch, kind):

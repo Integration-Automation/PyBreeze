@@ -180,8 +180,9 @@ class TestACookieFile:
         from pybreeze.utils.curl_import.script_templates import to_apitestka_action_json
         from pybreeze.utils.exception.exceptions import CurlParseException
 
+        request = parse_curl("curl -b cookies.txt https://h/")
         with pytest.raises(CurlParseException):
-            to_apitestka_action_json(parse_curl("curl -b cookies.txt https://h/"))
+            to_apitestka_action_json(request)
 
     def test_an_empty_name_is_no_file_so_the_json_action_is_made(self):
         # curl -b '' reads no file: it only switches the cookie engine on

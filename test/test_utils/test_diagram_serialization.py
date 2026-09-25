@@ -480,10 +480,14 @@ class TestTheUndoScope:
         from pybreeze.pybreeze_ui.diagram_editor.diagram_items import DiagramNode, NodeShape
 
         scene = DiagramScene()
-        with pytest.raises(RuntimeError):
+
+        def half_done() -> None:
             with scene.undo_scope("Half done"):
                 scene.addItem(DiagramNode(x=0, y=0, text="A", shape=NodeShape.RECTANGLE))
                 raise RuntimeError("something in the middle went wrong")
+
+        with pytest.raises(RuntimeError):
+            half_done()
 
         assert scene._pending_undo_snapshot is None
         pushed = scene.undo_stack.count()

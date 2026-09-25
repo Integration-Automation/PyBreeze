@@ -103,6 +103,12 @@ class _Listener:
         self._thread.join(5)
 
 
+def _read(opener: urllib.request.OpenerDirector, url: str) -> bytes:
+    """The whole body of *url*, fetched through *opener*."""
+    with opener.open(url, timeout=3) as response:
+        return response.read()
+
+
 def _session() -> requests.Session:
     """``public_session()``, ignoring any proxy this machine has set."""
     session = public_session()
@@ -373,8 +379,9 @@ class TestTheOverallDeadline:
         server, thread = self._trickling_headers(stop)
         started = time.monotonic()
         try:
+            url = f"http://service.test:{server.getsockname()[1]}/"
             with pytest.raises(requests.exceptions.ReadTimeout), overall_deadline(1), _session() as session:
-                session.get(f"http://service.test:{server.getsockname()[1]}/", timeout=(3, 3), stream=True)
+                session.get(url, timeout=(3, 3), stream=True)
             assert time.monotonic() - started < 4
         finally:
             stop.set()
@@ -400,8 +407,9 @@ class TestTheOverallDeadline:
         opener = urllib.request.build_opener(PublicHTTPHandler())
         started = time.monotonic()
         try:
+            url = f"http://service.test:{server.getsockname()[1]}/"
             with pytest.raises(requests.exceptions.ReadTimeout), overall_deadline(1):
-                opener.open(f"http://service.test:{server.getsockname()[1]}/", timeout=3).read()
+                _read(opener, url)
             assert time.monotonic() - started < 4
         finally:
             stop.set()
@@ -435,8 +443,9 @@ class TestTheOverallDeadline:
         opener = urllib.request.build_opener(PublicHTTPHandler())
         started = time.monotonic()
         try:
+            url = f"http://service.test:{server.getsockname()[1]}/"
             with pytest.raises(requests.exceptions.ReadTimeout), overall_deadline(1):
-                opener.open(f"http://service.test:{server.getsockname()[1]}/", timeout=3).read()
+                _read(opener, url)
             assert time.monotonic() - started < 4
         finally:
             stop.set()

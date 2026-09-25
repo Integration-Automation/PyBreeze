@@ -207,7 +207,8 @@ class TestResponseInspectorHeaderHandOff:
         gui.open_headers_in_analyzer()
 
         report = window.tab_widget.added[0][0].output_edit.toPlainText()
-        assert "analysed/1" in report and "pasted-later/2" not in report
+        assert "analysed/1" in report
+        assert "pasted-later/2" not in report
 
     def test_open_headers_before_analyze_is_noop(self, widget_with_window):
         gui, window = widget_with_window
@@ -259,4 +260,5 @@ def test_the_report_lists_every_value_of_a_repeated_header(app):
     text = build_report_text(analyze_response(
         "HTTP/1.1 200 OK\nSet-Cookie: a=1\nSet-Cookie: b=2\n\nok"))
 
-    assert "Set-Cookie: a=1" in text and "Set-Cookie: b=2" in text
+    assert "Set-Cookie: a=1" in text
+    assert "Set-Cookie: b=2" in text

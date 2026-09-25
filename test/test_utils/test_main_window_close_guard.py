@@ -55,5 +55,6 @@ def test_every_other_tool_tab_is_still_closed(monkeypatch):
     # auto-save threads -- never ran.
     PyBreezeMainWindow._close_tool_tabs_and_docks(window)
 
-    assert before in closed and after in closed
+    assert before in closed
+    assert after in closed
     window.deleteLater()

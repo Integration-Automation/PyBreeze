@@ -290,7 +290,8 @@ class TestTheMenu:
             # The Type column read "dir" / "file"
             folder, file = widget.make_item("a", "dir", 0, "/a"), widget.make_item("b", "file", 5, "/b")
             assert (folder.text(1), file.text(1)) == ("資料夾", "檔案")
-            assert tree_mod.is_folder(folder) and tree_mod.is_file(file)
+            assert tree_mod.is_folder(folder)
+            assert tree_mod.is_file(file)
         finally:
             widget.close()
             widget.deleteLater()
@@ -354,7 +355,8 @@ class TestDeletingAFolder:
 
         word = tree_mod.language_wrapper.language_word_dict
         expected = word.get("ssh_file_viewer_message_folder_not_removed").format(error="Failure")
-        assert len(shown) == 1 and expected in shown[0]
+        assert len(shown) == 1
+        assert expected in shown[0]
         assert _child(root, "src").text(3) == "/src"
 
     def test_a_file_refusal_is_shown_as_it_is(self, app, tree, monkeypatch):
@@ -370,7 +372,9 @@ class TestDeletingAFolder:
         widget.action_delete(_child(root, "notes.txt"))
         _wait_for(lambda: _idle(widget))
 
-        assert len(shown) == 1 and "empty" not in shown[0] and "Permission denied" in shown[0]
+        assert len(shown) == 1
+        assert "empty" not in shown[0]
+        assert "Permission denied" in shown[0]
 
 
 class TestTheKeys:

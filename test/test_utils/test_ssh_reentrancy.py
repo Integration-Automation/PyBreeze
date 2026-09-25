@@ -317,7 +317,8 @@ class TestTheRealWrapperGivenUpOn:
         worker.join(WAIT_SECONDS)
 
         assert raised == [None]
-        assert wrapper.connected and not client.closed
+        assert wrapper.connected
+        assert not client.closed
 
     def test_disconnect_while_connecting_reports_no_failure(self, app, monkeypatch):
         release = threading.Event()
@@ -402,8 +403,9 @@ class TestSha1IsRefused:
         monkeypatch.setattr(sftp_session.paramiko, "SSHClient", Client)
         monkeypatch.setattr(sftp_session, "apply_host_key_policy", lambda _client, _parent: None)
 
+        wrapper = sftp_session.SFTPClientWrapper()
         with pytest.raises(OSError):
-            sftp_session.SFTPClientWrapper().connect("host", 22, "user", "pw")
+            wrapper.connect("host", 22, "user", "pw")
 
         assert connects[0]["disabled_algorithms"] is sftp_session.SHA1_ALGORITHMS
 

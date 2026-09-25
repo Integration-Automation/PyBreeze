@@ -500,7 +500,8 @@ class TestCompileThenRun:
         text = window.code_result.toPlainText()
         # It said "[Compile failed] exit code 1"
         assert "[Stopped]" in text
-        assert "[Compile failed]" not in text and "[Run]" not in text
+        assert "[Compile failed]" not in text
+        assert "[Run]" not in text
 
     def test_stop_just_after_the_compile_runs_nothing(self, qt_app, tmp_path):
         # Once the compiler had exited, Stop found nothing to stop and the binary ran
@@ -521,7 +522,8 @@ class TestCompileThenRun:
         _run_events_until(qt_app, lambda: ended)
 
         text = window.code_result.toPlainText()
-        assert "[Stopped]" in text and "[Run]" not in text
+        assert "[Stopped]" in text
+        assert "[Run]" not in text
 
 
 def _logging_package(folder: Path, log: Path, seconds: float) -> None:

@@ -125,7 +125,8 @@ class TestSaving:
         dialog.save()
         assert dialog.result() != QDialog.DialogCode.Accepted
         # It said so: the reason used to go to the log only
-        assert warned and str(prthinker_setting.setting_path()) in warned[0]
+        assert warned
+        assert str(prthinker_setting.setting_path()) in warned[0]
 
     def test_extra_arguments_with_an_open_quote_are_not_saved(self, dialog, data_dir, monkeypatch):
         # Saved, they were dropped whole at run time, and the review ran

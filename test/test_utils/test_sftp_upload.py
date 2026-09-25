@@ -113,8 +113,9 @@ class TestTheWrapper:
         sftp = FakeSftp({"/etc/app/config.yaml": b"old config"})
         sftp.fail_put = True
 
+        wrapper = _wrapper(sftp)
         with pytest.raises(OSError):
-            _wrapper(sftp).upload(local_file, "/etc/app/config.yaml", replace=True)
+            wrapper.upload(local_file, "/etc/app/config.yaml", replace=True)
 
         assert sftp.files == {"/etc/app/config.yaml": b"old config"}
 
@@ -163,7 +164,8 @@ class TestTheTree:
 
         asked = self._upload(app, monkeypatch, sftp, local_file, QMessageBox.StandardButton.No)
 
-        assert len(asked) == 1 and "/config.yaml" in asked[0]
+        assert len(asked) == 1
+        assert "/config.yaml" in asked[0]
         assert sftp.files == {"/config.yaml": b"old config"}
 
     def test_a_yes_replaces_it(self, app, monkeypatch, local_file):

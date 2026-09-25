@@ -548,7 +548,8 @@ class TestParseCurlForm:
     def test_form_string_flag(self):
         request = parse_curl("curl --form-string 'a=1' https://x")
         assert request.form_strings == ["a=1"]
-        assert request.has_form and request.has_body
+        assert request.has_form
+        assert request.has_body
 
     def test_form_string_takes_an_at_sign_literally(self):
         from pybreeze.utils.curl_import.request_body import form_parts

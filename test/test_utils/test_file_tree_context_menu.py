@@ -635,7 +635,8 @@ class TestDeletingAFolder:
 
         _action_delete(tree, FakeWindow(), link)
 
-        assert not link.exists() and not os.path.lexists(link)
+        assert not link.exists()
+        assert not os.path.lexists(link)
         assert (target / "keep.txt").read_text(encoding="utf-8") == "keep"
 
 
@@ -655,7 +656,8 @@ def test_a_rename_keeps_the_unsaved_mark_of_an_edited_tab(tree, tmp_path, monkey
     _action_rename(tree, FakeWindow(), original)
 
     assert (tmp_path / "b.py").is_file()
-    assert editor.renamed and editor._is_modified
+    assert editor.renamed
+    assert editor._is_modified
 
 
 
@@ -695,7 +697,8 @@ class TestRevealing:
 
         ctx._action_reveal_in_explorer(tree, tmp_path)
 
-        assert len(warnings) == 1 and "xdg-open" in warnings[0]
+        assert len(warnings) == 1
+        assert "xdg-open" in warnings[0]
 
 
 class TestTheMenuEntries:

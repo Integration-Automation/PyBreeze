@@ -71,11 +71,14 @@ class TestHarImportLoading:
 
     def test_entry_rows_describe_the_request(self, loaded):
         first = loaded.entry_list.item(0).text()
-        assert "GET" in first and "/v1/items?page=1" in first and "200" in first
+        assert "GET" in first
+        assert "/v1/items?page=1" in first
+        assert "200" in first
 
     def test_summary_reports_counts_and_hosts(self, loaded):
         summary = loaded.summary_label.text()
-        assert "3" in summary and "2" in summary
+        assert "3" in summary
+        assert "2" in summary
         assert "api.example.com" in summary
 
     def test_invalid_har_reports_an_error(self, widget):

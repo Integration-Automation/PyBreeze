@@ -464,7 +464,8 @@ class TestAnEditedPromptThatReachesIntoAPlaceholder:
 
         prompt = build_prompt("linter.md", {CODE_DIFF: CODE})
 
-        assert "{literal}" in prompt and CODE in prompt
+        assert "{literal}" in prompt
+        assert CODE in prompt
 
 
 def _prompt_editor():

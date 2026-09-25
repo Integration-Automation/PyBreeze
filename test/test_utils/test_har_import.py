@@ -93,8 +93,9 @@ class TestParseHarErrors:
             parse_har("[1, 2, 3]")
 
     def test_no_usable_entries(self):
+        text = _har()
         with pytest.raises(HarParseException):
-            parse_har(_har())
+            parse_har(text)
 
     def test_an_entry_with_a_malformed_url_is_skipped(self):
         # Listing it raised ValueError out of the tab, which kept showing the
@@ -253,7 +254,9 @@ class TestSummary:
 
     def test_entry_summary_line(self):
         line = parse_har(_har(_entry(url="https://x/api/items?a=1")))[0].summary()
-        assert "GET" in line and "/api/items?a=1" in line and "200" in line
+        assert "GET" in line
+        assert "/api/items?a=1" in line
+        assert "200" in line
 
 
 class TestUniqueTestNames:
@@ -292,7 +295,8 @@ class TestGenerateHarScript:
     def test_requests_script_covers_every_request(self):
         code = generate_har_script("requests", self._requests("https://x/one", "https://x/two"))
         assert code.count("import requests") == 1
-        assert "https://x/one" in code and "https://x/two" in code
+        assert "https://x/one" in code
+        assert "https://x/two" in code
 
     def test_pytest_script_defines_one_test_per_request(self):
         code = generate_har_script("pytest", self._requests("https://x/api/a", "https://x/api/b"))
@@ -324,7 +328,8 @@ class TestGenerateHarScript:
         code = generate_har_script(
             "loaddensity_python", self._requests("https://x/api/a", "https://x/api/b"))
         assert code.count("start_test(") == 2
-        assert "https://x/api/a" in code and "https://x/api/b" in code
+        assert "https://x/api/a" in code
+        assert "https://x/api/b" in code
 
     def test_unknown_target_falls_back_to_requests(self):
         code = generate_har_script("nonsense", self._requests("https://x/one", "https://x/two"))
@@ -356,8 +361,9 @@ class TestWhatReachesTheGeneratedCode:
     """A recording's method and URL end up in code; nothing in them may become code."""
 
     def test_a_method_that_is_not_a_token_is_refused(self):
+        text = _har(_entry(method="GET():\n    __import__('os').system('calc')\ndef t"))
         with pytest.raises(HarParseException, match="not an HTTP method"):
-            parse_har(_har(_entry(method="GET():\n    __import__('os').system('calc')\ndef t")))
+            parse_har(text)
 
     @pytest.mark.parametrize("bad", [
         {"url": "https://x/a?q=\ud800"},

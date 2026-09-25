@@ -175,7 +175,8 @@ class TestTheModelName:
              "model_name": "the-model"})
 
         assert not [name for name in environment if name.endswith(("_MODEL", "_MODEL_NAME"))]
-        assert logged and "the-model" in logged[0]
+        assert logged
+        assert "the-model" in logged[0]
 
 
 class TestRuleRetrieval:

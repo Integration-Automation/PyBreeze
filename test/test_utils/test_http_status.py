@@ -45,7 +45,8 @@ class TestSearch:
     def test_by_code_prefix(self):
         results = search("40")
         codes = {info.code for info in results}
-        assert 404 in codes and 400 in codes
+        assert 404 in codes
+        assert 400 in codes
         assert all(str(info.code).startswith("40") for info in results)
 
     def test_by_exact_code(self):

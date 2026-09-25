@@ -83,7 +83,8 @@ class TestCompileThenRun:
         [(command, build_dir)] = runs
         built = Path(command[0])
         assert built.name == "main" + (".exe" if sys.platform == "win32" else "")
-        assert built.parent == Path(build_dir) and built.parent != tmp_path
+        assert built.parent == Path(build_dir)
+        assert built.parent != tmp_path
         assert f"[Run] {built}" in window.code_result.toPlainText()
 
     def test_a_failed_compile_is_reported_and_nothing_runs(self, qt_app, tmp_path, monkeypatch):
@@ -120,7 +121,8 @@ class TestCompileThenRun:
         runner.run_file(config, str(tmp_path / "main.c"))
 
         assert "[Error] Command not found" in window.code_result.toPlainText()
-        assert runner.process is None and runs == []
+        assert runner.process is None
+        assert runs == []
 
 
 class TestRunArguments:

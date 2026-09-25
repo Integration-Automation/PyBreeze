@@ -162,7 +162,8 @@ class TestInstallingPrthinker:
         install_menu.install_prthinker(object())
 
         (run,) = _runs(processes)
-        assert run[0] == "pip" and run[1][2].startswith(str(tmp_path))
+        assert run[0] == "pip"
+        assert run[1][2].startswith(str(tmp_path))
 
     def test_a_folder_that_is_not_its_source_is_not_saved(self, app, processes, monkeypatch, tmp_path):
         from PySide6.QtWidgets import QFileDialog, QMessageBox

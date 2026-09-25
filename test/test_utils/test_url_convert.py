@@ -150,8 +150,9 @@ class TestAPortOfOtherDigits:
     @pytest.mark.parametrize("port", ["²", "٣"])
     def test_it_is_refused(self, port):
         # "²".isdigit() holds: int() raised past the builder, and "٣" became port 3
+        text = json.dumps({"scheme": "http", "host": "h", "port": port})
         with pytest.raises(UrlConvertException):
-            json_to_url(json.dumps({"scheme": "http", "host": "h", "port": port}))
+            json_to_url(text)
 
 
 class TestAPortOutOfRange:

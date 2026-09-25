@@ -127,7 +127,8 @@ class TestWhyAKeyDidNotLoad:
 
         for key in (ssh_key_loader.UNSUPPORTED_KEY, ssh_key_loader.PASSPHRASE_NEEDED, ssh_key_loader.PASSPHRASE_WRONG,
                     ssh_key_loader.PUTTY_KEY):
-            assert english_word_dict.get(key) and traditional_chinese_word_dict.get(key)
+            assert english_word_dict.get(key)
+            assert traditional_chinese_word_dict.get(key)
 
 
 def _pkcs8_key_file(tmp_path, kind: str, passphrase: bytes | None):

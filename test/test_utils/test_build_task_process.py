@@ -134,7 +134,8 @@ class TestTheReportMailSaysHowItWent:
         assert "[Mail] The test report was sent" in text
         ((path, not_before),) = asked
         # The report the child writes in the directory it starts in, from this run on
-        assert os.path.isabs(path) and path.endswith("default_name.html")
+        assert os.path.isabs(path)
+        assert path.endswith("default_name.html")
         assert not_before >= before
 
     def test_a_report_not_sent_says_why(self, qt_app, monkeypatch):
@@ -202,7 +203,8 @@ class TestRunningWithoutAScriptTab:
 
         process_executor_utils.build_process(main_window, "je_api_testka", exec_str="{}")
 
-        assert started and started[0][2] == "{}"
+        assert started
+        assert started[0][2] == "{}"
         assert main_window.current_run_code_window == []
 
 

@@ -132,7 +132,8 @@ class TestWhereTheLogGoes:
             test_logger.removeHandler(handler)
 
         text = log_file.read_text(encoding="utf-8")
-        assert "first run" in text and "second run" in text
+        assert "first run" in text
+        assert "second run" in text
 
     def test_a_file_that_cannot_be_opened_turns_logging_off_not_the_caller(self, tmp_path):
         import pytest

@@ -179,7 +179,8 @@ class TestABoundedQueue:
         reader.start()
         reader.join(0.5)
 
-        assert reader.is_alive() and target.qsize() == 3
+        assert reader.is_alive()
+        assert target.qsize() == 3
         got = [target.get(timeout=2) for _ in range(10)]
         reader.join(2)
         assert got == [f"{i}\n" for i in range(10)]

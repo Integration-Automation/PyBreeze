@@ -82,4 +82,5 @@ def test_a_failed_write_is_reported_not_raised(window, monkeypatch):
 
     menu.create_template(window)
 
-    assert window.told and window.told[-1][0] == "warning"
+    assert window.told
+    assert window.told[-1][0] == "warning"

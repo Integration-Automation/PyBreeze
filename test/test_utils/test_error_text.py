@@ -180,7 +180,8 @@ class TestTheNetworkReasons:
 
         tree._on_connect_failed(exception_tags.host_key_rejected_error.format(hostname="example.org"))
 
-        assert len(shown) == 1 and "已拒絕 example.org 的主機金鑰。" in shown[0]
+        assert len(shown) == 1
+        assert "已拒絕 example.org 的主機金鑰。" in shown[0]
         tree.close()
         tree.deleteLater()
 
@@ -213,5 +214,6 @@ class TestADiagramFile:
 
         editor._open_diagram()
 
-        assert len(shown) == 1 and "架構圖檔案應該是一個物件，而不是 list" in shown[0]
+        assert len(shown) == 1
+        assert "架構圖檔案應該是一個物件，而不是 list" in shown[0]
         editor.deleteLater()

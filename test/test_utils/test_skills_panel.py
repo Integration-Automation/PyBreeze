@@ -117,4 +117,5 @@ class TestSending:
 
         panel.send_prompt()
 
-        assert len(sent) == 1 and _PASTED.strip() in sent[0]
+        assert len(sent) == 1
+        assert _PASTED.strip() in sent[0]

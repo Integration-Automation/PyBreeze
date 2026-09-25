@@ -65,7 +65,8 @@ class TestReplaceWritten:
 
         replace_written(tmp_path / "out.png", write)
 
-        assert given[0].suffix == ".png" and given[0].parent == tmp_path
+        assert given[0].suffix == ".png"
+        assert given[0].parent == tmp_path
         assert (tmp_path / "out.png").read_bytes() == b"new"
         assert list(tmp_path.iterdir()) == [tmp_path / "out.png"]
 

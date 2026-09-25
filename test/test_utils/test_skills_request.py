@@ -80,7 +80,8 @@ class TestWhatARequestReports:
         answered, errors = _run(monkeypatch, FakeResponse(302, location="https://elsewhere.example"))
 
         assert errors == []
-        assert "302" in answered[0] and "Redirect (not followed) to https://elsewhere.example" in answered[0]
+        assert "302" in answered[0]
+        assert "Redirect (not followed) to https://elsewhere.example" in answered[0]
 
     def test_a_redirect_shows_only_the_host_it_names(self, monkeypatch):
         # A trailing-slash redirect repeats the query, and the token in it was shown
@@ -88,26 +89,31 @@ class TestWhatARequestReports:
             301, location="https://user:pw@api.example:8443/x/?key=SECRET"))
 
         assert "https://api.example:8443" in answered[0]
-        assert "SECRET" not in answered[0] and "pw" not in answered[0] and "/x/" not in answered[0]
+        assert "SECRET" not in answered[0]
+        assert "pw" not in answered[0]
+        assert "/x/" not in answered[0]
 
     @pytest.mark.parametrize("status", [401, 403])
     def test_a_refusal_is_an_error(self, monkeypatch, status):
         answered, errors = _run(monkeypatch, FakeResponse(status, "no"))
 
         assert answered == []
-        assert str(status) in errors[0] and "Authentication/Authorization failed" in errors[0]
+        assert str(status) in errors[0]
+        assert "Authentication/Authorization failed" in errors[0]
 
     def test_a_server_error_is_an_error_with_its_body(self, monkeypatch):
         answered, errors = _run(monkeypatch, FakeResponse(503, "overloaded"))
 
         assert answered == []
-        assert "503" in errors[0] and "Server error: overloaded" in errors[0]
+        assert "503" in errors[0]
+        assert "Server error: overloaded" in errors[0]
 
     def test_another_client_error_is_shown_with_its_body(self, monkeypatch):
         answered, errors = _run(monkeypatch, FakeResponse(422, "bad field"))
 
         assert errors == []
-        assert "422" in answered[0] and "bad field" in answered[0]
+        assert "422" in answered[0]
+        assert "bad field" in answered[0]
 
     def test_a_failed_request_is_an_error(self, monkeypatch):
         answered, errors = _run(monkeypatch, requests.ConnectionError("refused"))
@@ -126,4 +132,5 @@ def test_a_failed_request_does_not_log_the_url(monkeypatch):
     _run(monkeypatch, requests.ConnectionError(
         "Max retries exceeded with url: /v1?token=not-a-real-token"))
 
-    assert logged and all("not-a-real-token" not in line for line in logged)
+    assert logged
+    assert all("not-a-real-token" not in line for line in logged)

@@ -251,7 +251,8 @@ def test_a_failed_step_does_not_log_the_url(monkeypatch):
                           url="https://example.com/api?token=not-a-real-token")
     thread._run_templates(_Refusing(), "print('x')")
 
-    assert logged and all("not-a-real-token" not in line for line in logged)
+    assert logged
+    assert all("not-a-real-token" not in line for line in logged)
 
 
 def _sending_gui(monkeypatch):

@@ -66,7 +66,8 @@ def test_either_yaml_extension_runs(app, tmp_path, chosen, name):
 def test_the_dialog_is_given_the_yaml_filter(app, chosen):
     menu.check_file(None)
 
-    assert "*.yaml" in chosen["filter"] and "*.yml" in chosen["filter"]
+    assert "*.yaml" in chosen["filter"]
+    assert "*.yml" in chosen["filter"]
 
 
 def test_another_file_is_refused(app, tmp_path, chosen):
@@ -83,7 +84,8 @@ def test_another_file_is_refused(app, tmp_path, chosen):
 def test_cancelling_does_nothing(app, chosen):
     menu.check_file(None)
 
-    assert chosen["ran"] == [] and chosen["told"] == 0
+    assert chosen["ran"] == []
+    assert chosen["told"] == 0
 
 
 def test_its_help_opens_the_github_page(app, monkeypatch):

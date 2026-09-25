@@ -219,8 +219,9 @@ class TestApitestkaActionJson:
         # The upload, or the body read from a file, was left out without a word
         from pybreeze.utils.exception.exceptions import CurlParseException
 
+        request = parse_curl(command)
         with pytest.raises(CurlParseException):
-            to_apitestka_action_json(parse_curl(command))
+            to_apitestka_action_json(request)
 
 
 class TestLoadDensityPython:

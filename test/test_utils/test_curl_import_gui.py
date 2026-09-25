@@ -297,7 +297,8 @@ class TestCurlImportOpenHeadersInAnalyzer:
         gui.open_headers_in_analyzer()
 
         output = window.tab_widget.added[0][0].output_edit.toPlainText()
-        assert "Cookie: a=1" in output and "c=3" not in output
+        assert "Cookie: a=1" in output
+        assert "c=3" not in output
 
     def test_open_headers_before_convert_is_noop(self, widget_with_window):
         gui, window = widget_with_window

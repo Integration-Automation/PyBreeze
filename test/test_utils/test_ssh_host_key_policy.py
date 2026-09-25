@@ -79,7 +79,8 @@ def test_two_tabs_accepting_two_hosts_keep_both(asked, keys):
     policy.missing_host_key(second, "two.example", keys[1])
 
     known = paramiko.HostKeys(str(policy_mod._known_hosts_path()))
-    assert known.lookup("one.example") and known.lookup("two.example")
+    assert known.lookup("one.example")
+    assert known.lookup("two.example")
 
 
 def test_another_key_for_a_known_host_is_still_asked_about(asked, keys):

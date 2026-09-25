@@ -41,7 +41,8 @@ def test_a_failed_sftp_listing_shows_the_servers_text_as_text(app, monkeypatch):
 
     tree._on_connect_failed('Indecipherable protocol version "<img src=x>"')
 
-    assert "&lt;img src=x&gt;" in shown[0] and "<img" not in shown[0]
+    assert "&lt;img src=x&gt;" in shown[0]
+    assert "<img" not in shown[0]
     tree.close()
 
 
@@ -66,4 +67,5 @@ def test_the_file_trees_messages_show_names_as_text(app, tmp_path, monkeypatch):
 
     ctx._inside(None, tmp_path, "/<b>x</b>")
 
-    assert "&lt;b&gt;" in shown[0] and "<b>" not in shown[0]
+    assert "&lt;b&gt;" in shown[0]
+    assert "<b>" not in shown[0]

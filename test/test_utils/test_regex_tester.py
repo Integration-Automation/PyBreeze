@@ -23,7 +23,8 @@ class TestBuildFlags:
     def test_multiple(self):
         import re
         combined = build_flags(["IGNORECASE", "DOTALL"])
-        assert combined & re.IGNORECASE and combined & re.DOTALL
+        assert combined & re.IGNORECASE
+        assert combined & re.DOTALL
 
     def test_unknown_ignored(self):
         assert build_flags(["NOPE"]) == 0
@@ -193,7 +194,8 @@ class TestTheWorkerProcess:
         regex_tester.stop_running_workers()
         worker.join(20)
 
-        assert failures and time.monotonic() - started < 10
+        assert failures
+        assert time.monotonic() - started < 10
         assert not regex_tester._RUNNING
 
     def test_the_packaged_builds_spawned_worker_finds_matches(self):
@@ -261,5 +263,6 @@ class TestWhatTheSpawnedWorkerSends:
         _matches_into_pipe(pipe, "(", "abc", [])
 
         ((kind, message),) = pipe.sent
-        assert kind == "error" and message
+        assert kind == "error"
+        assert message
         assert pipe.closed

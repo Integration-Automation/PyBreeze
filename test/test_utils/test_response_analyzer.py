@@ -180,7 +180,8 @@ class TestHeadersAsHttpDefinesThem:
         # It ended the headers, and everything after it was read as the body
         analysis = analyze_response(':status: 404\ncontent-type: application/json\n\n{"a": 1}')
 
-        assert analysis.status is not None and analysis.status.code == 404
+        assert analysis.status is not None
+        assert analysis.status.code == 404
         assert analysis.headers == {"content-type": "application/json"}
         assert analysis.is_json_body
 

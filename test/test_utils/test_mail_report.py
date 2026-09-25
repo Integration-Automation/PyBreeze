@@ -140,26 +140,28 @@ class TestSendReport:
         assert reason == "the run wrote no absent.html"
         assert reason in _logged(logger)
 
-    def test_a_failed_login_is_logged_and_the_connection_closed(self, mail_thunder, logger, report):
-        FakeSmtp.logs_in = False
+    def test_a_failed_login_is_logged_and_the_connection_closed(self, mail_thunder, logger, report, monkeypatch):
+        monkeypatch.setattr(FakeSmtp, "logs_in", False)
 
         mail.send_report(report)
 
         (smtp,) = FakeSmtp.instances
-        assert smtp.sent == [] and smtp.quit_called
+        assert smtp.sent == []
+        assert smtp.quit_called
         assert mail.send_html_exception_tag in _logged(logger)
 
     @pytest.mark.parametrize("error", [ConnectionRefusedError("refused"), MailThunderException("bad")])
-    def test_a_failed_send_is_logged_and_the_connection_closed(self, mail_thunder, logger, report, error):
-        FakeSmtp.send_error = error
+    def test_a_failed_send_is_logged_and_the_connection_closed(
+            self, mail_thunder, logger, report, error, monkeypatch):
+        monkeypatch.setattr(FakeSmtp, "send_error", error)
 
         mail.send_report(report)
 
         assert FakeSmtp.instances[0].quit_called
         assert "Failed to send report" in _logged(logger)
 
-    def test_an_unreachable_server_is_logged(self, mail_thunder, logger, report):
-        FakeSmtp.connect_error = TimeoutError("timed out")
+    def test_an_unreachable_server_is_logged(self, mail_thunder, logger, report, monkeypatch):
+        monkeypatch.setattr(FakeSmtp, "connect_error", TimeoutError("timed out"))
 
         mail.send_report(report)
 
@@ -216,13 +218,14 @@ class TestTheAnswer:
 
         assert mail.send_report(report) == "no mail user is set"
 
-    def test_login_failed(self, mail_thunder, logger, report):
-        FakeSmtp.logs_in = False
+    def test_login_failed(self, mail_thunder, logger, report, monkeypatch):
+        monkeypatch.setattr(FakeSmtp, "logs_in", False)
 
         assert mail.send_report(report) == "the mail server login failed"
 
-    def test_send_failed_names_only_the_error_kind(self, mail_thunder, logger, report):
-        FakeSmtp.send_error = ConnectionRefusedError("refused by mail.example.com for tester@example.com")
+    def test_send_failed_names_only_the_error_kind(self, mail_thunder, logger, report, monkeypatch):
+        monkeypatch.setattr(
+            FakeSmtp, "send_error", ConnectionRefusedError("refused by mail.example.com for tester@example.com"))
 
         reason = mail.send_report(report)
 

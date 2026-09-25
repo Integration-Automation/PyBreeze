@@ -33,7 +33,8 @@ class TestParseMermaidNeverCrashes:
     def test_arbitrary_text(self, text):
         result = parse_mermaid(text)
         assert isinstance(result, dict)
-        assert "nodes" in result and "connections" in result
+        assert "nodes" in result
+        assert "connections" in result
 
     @_FUZZ
     @given(st.text(alphabet="ABCD-->.=<>|&()[]{}\"/\\ \n;", max_size=120))
