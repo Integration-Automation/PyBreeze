@@ -20,7 +20,8 @@ File Menu
    * - **New File**
      - Asks for a name and a place, and creates an empty file there (it is not opened).
    * - **Open File**
-     - Opens a file into the editor tab in front, replacing what it shows.
+     - Opens a file into the editor tab in front, replacing what it shows, without asking
+       about unsaved text there (see :doc:`ui_overview`).
    * - **Open Folder**
      - Makes a folder the working folder: the file tree shows it, and its settings are
        loaded (see :doc:`getting_started`).

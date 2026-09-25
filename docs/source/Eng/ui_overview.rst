@@ -42,10 +42,19 @@ Located on the left side of the window. Provides a file browser for navigating y
 directory. You can:
 
 - Browse files and folders
-- Double-click to open files in the editor
+- Click a file to open it in the editor tab in front, in place of what that tab shows
+  (unsaved text there is lost without a question, see the note below); a file already
+  open in a tab switches to that tab instead
 - Right-click any file or folder to access the context menu (see below)
 - Press **F2** to rename, or **Delete** to delete, the item in focus while the tree has
   the focus
+
+.. note::
+
+   With JEditor 1.0.27, opening a file into a tab -- a click in the tree, or **File > Open
+   File** -- does not ask about the text that tab holds. A tab with a file saves it every
+   few seconds, but a new tab's text, or the last seconds of typing, is gone. Open a new
+   tab first (**Tab > Add Editor Tab**) to keep it.
 
 File Tree Context Menu
 """"""""""""""""""""""
