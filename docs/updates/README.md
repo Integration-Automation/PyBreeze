@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-100 | 2026-09-25 | Coverage counts the tests that start the real main window in a child | #ci #test #coverage | [2026-09-c](2026-09-c.md) |
 | U-20260925-99 | 2026-09-25 | The JupyterLab tab test no longer crashes the test run on exit | #test #fix #jupyter | [2026-09-c](2026-09-c.md) |
 | U-20260925-98 | 2026-09-25 | Installing JupyterLab for the tab is tested | #test #jupyter | [2026-09-c](2026-09-c.md) |
 | U-20260925-97 | 2026-09-25 | The SSH terminal's key authentication and input checks are tested | #test #ssh | [2026-09-c](2026-09-c.md) |
@@ -502,4 +503,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
-| [2026-09-c.md](2026-09-c.md) | 2026-09 | 99 |
+| [2026-09-c.md](2026-09-c.md) | 2026-09 | 100 |
