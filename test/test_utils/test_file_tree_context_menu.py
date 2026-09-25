@@ -690,7 +690,7 @@ class TestRevealing:
 
     def test_a_missing_file_manager_is_shown_not_raised(self, tree, tmp_path, monkeypatch, warnings):
         # No xdg-open: FileNotFoundError left the slot as a traceback
-        def missing(_command):
+        def missing(_command, **_options):
             raise FileNotFoundError(2, "No such file or directory", "xdg-open")
 
         monkeypatch.setattr(ctx.subprocess, "Popen", missing)

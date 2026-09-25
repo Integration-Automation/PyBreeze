@@ -22,6 +22,7 @@ from je_editor.pyside_ui.main_ui.editor.editor_widget_dock import FullEditorWidg
 
 from pybreeze.pybreeze_ui.plain_text import as_text
 from pybreeze.utils.logging.logger import pybreeze_logger
+from pybreeze.utils.subprocess_util import child_environment
 
 
 def _perform_file_op(tree_view: QTreeView, operation: Callable[[], None]) -> bool:
@@ -479,7 +480,7 @@ def _action_reveal_in_explorer(tree_view: QTreeView, path: Path | None) -> None:
     command = reveal_command(path)
     # A file manager started on a path the user picked in the tree. shell=False,
     # fixed argv[0]; a missing xdg-open is shown, not raised out of the slot.
-    _perform_file_op(tree_view, lambda: subprocess.Popen(command))  # nosec B603 B607  # nosemgrep  # noqa: S603
+    _perform_file_op(tree_view, lambda: subprocess.Popen(command, env=child_environment()))  # nosec B603 B607  # nosemgrep  # noqa: S603
 
 
 def _inside(tree_view: QTreeView, parent: Path, name: str, *, single: bool = False) -> Path | None:

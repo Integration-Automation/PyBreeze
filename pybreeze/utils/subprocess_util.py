@@ -77,7 +77,7 @@ def stop_tree(process: subprocess.Popen) -> None:
             subprocess.run(  # nosec B603 — fixed argument list, no shell
                 [taskkill, "/T", "/F", "/PID", str(process.pid)],
                 capture_output=True, timeout=_TREE_KILL_SECONDS, check=False, shell=False,
-                creationflags=no_window_creationflags())
+                env=child_environment(), creationflags=no_window_creationflags())
         else:
             os.killpg(process.pid, signal.SIGTERM)
     except (OSError, subprocess.SubprocessError) as error:

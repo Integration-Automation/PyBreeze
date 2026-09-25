@@ -12,7 +12,7 @@ from je_editor import JEditorExecException, language_wrapper
 
 from pybreeze.extend.process_executor.python_task_process_manager import default_interpreter
 from pybreeze.utils.logging.logger import pybreeze_logger
-from pybreeze.utils.subprocess_util import child_environment, no_window_creationflags
+from pybreeze.utils.subprocess_util import child_environment, no_window_creationflags, utf8_subprocess_env
 
 JUPYTER_STARTUP_TIMEOUT = 60
 # How much of a failure's reason the tab shows: pip's stderr can run long
@@ -59,6 +59,7 @@ def is_jupyter_installed(python_exe: str) -> bool:
         capture_output=True,
         timeout=30,
         check=False,
+        env=child_environment(),
         creationflags=no_window_creationflags(),
     )
     return result.returncode == 0
@@ -100,7 +101,11 @@ class JupyterLauncherThread(QThread):
                     "install",
                     "jupyterlab",
                     "-U"
-                ], capture_output=True, text=True, timeout=300, check=False,
+                ], capture_output=True, timeout=300, check=False,
+                    # pip told to write UTF-8 and read as such: an interpreter in UTF-8
+                    # mode (the default from Python 3.15) writes it whatever the code
+                    # page, and read in the code page its reason was lost
+                    env=utf8_subprocess_env(), encoding="utf-8", errors="replace",
                     creationflags=no_window_creationflags())
 
                 if result.returncode != 0:

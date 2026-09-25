@@ -25,7 +25,7 @@ from pybreeze.utils.exception.exception_tags import (
 )
 from pybreeze.utils.exception.exceptions import RegexTesterException
 from pybreeze.utils.logging.logger import pybreeze_logger
-from pybreeze.utils.subprocess_util import no_window_creationflags
+from pybreeze.utils.subprocess_util import child_environment, no_window_creationflags
 
 # Cap on reported matches, so a pattern that matches everywhere cannot flood
 # the output. It bounds how many matches are reported, not how long one takes.
@@ -259,7 +259,7 @@ def _run_worker(job: bytes, timeout_seconds: float) -> bytes:
         process = subprocess.Popen(  # nosec B603 — fixed argument list, no shell
             [sys.executable, "-I", "-S", "-c", _WORKER_SCRIPT],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-            shell=False, creationflags=no_window_creationflags())
+            shell=False, env=child_environment(), creationflags=no_window_creationflags())
     except OSError as error:
         raise _worker_failed(repr(error)) from error
     _register(process)

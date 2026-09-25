@@ -401,6 +401,33 @@ class TestInstallingJupyterLab:
         assert seen["ready"] == ["http://localhost:58888/lab"]
         assert seen["errors"] == []
 
+    def test_what_pip_says_reaches_the_tab_in_any_language(self, qt_app, monkeypatch, tmp_path):
+        # An interpreter in UTF-8 mode (every Python from 3.15, PEP 686) writes
+        # UTF-8 whatever the IDE's code page is: read in the code page, the tab
+        # showed a codec error instead of the reason
+        import sys
+
+        from pybreeze.pybreeze_ui.jupyter_lab_gui import jupyter_lab_thread as mod
+
+        fake_pip = tmp_path / "pip"
+        fake_pip.mkdir()
+        (fake_pip / "__init__.py").write_text("", encoding="utf-8")
+        (fake_pip / "__main__.py").write_text(
+            "import sys\n"
+            "sys.stderr.buffer.write('錯誤：找不到 jupyterlab 的版本'.encode('utf-8'))\n"
+            "sys.exit(1)\n", encoding="utf-8")
+        monkeypatch.setenv("PYTHONPATH", str(tmp_path))
+        monkeypatch.setattr(mod.pybreeze_logger, "error", lambda *args: None)
+        monkeypatch.setattr(mod, "is_jupyter_installed", lambda exe: False)
+        thread = mod.JupyterLauncherThread(python_exe=sys.executable)
+        monkeypatch.setattr(thread, "_start_server", lambda exe, port: pytest.fail("a server was started"))
+        errors: list = []
+        thread.error_occurred.connect(errors.append)
+
+        thread.run()
+
+        assert errors == ["錯誤：找不到 jupyterlab 的版本"]
+
     def test_a_failed_install_says_why_and_starts_no_server(self, qt_app, monkeypatch):
         monkeypatch.setattr("pybreeze.pybreeze_ui.jupyter_lab_gui.jupyter_lab_thread.pybreeze_logger.error",
                             lambda *args: None)
