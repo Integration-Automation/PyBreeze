@@ -69,25 +69,25 @@ class JsonFormatGUI(QWidget):
             self.input_edit.setPlainText(initial_json)
             self.format_json()
 
+    # A few megabytes take seconds to lay out and show
+    @busy_cursor()
     def _run(self, transform) -> None:
         """Apply a JSON transform, showing the result or a friendly error."""
-        # A few megabytes take seconds to lay out and show
-        with busy_cursor():
-            word = language_wrapper.language_word_dict
-            text = exact_text(self.input_edit).strip()
-            if not text:
-                self._valid_output = False
-                self.output_edit.setPlainText(word.get("json_format_empty_hint"))
-                return
-            try:
-                result = transform(text)
-            except ITEJsonException as error:
-                pybreeze_logger.info("json_format_gui.py transform failed: %r", error)
-                self._valid_output = False
-                self.output_edit.setPlainText(word.get("json_format_error").format(error=error_text(str(error))))
-                return
-            self._valid_output = True
-            self.output_edit.setPlainText(result)
+        word = language_wrapper.language_word_dict
+        text = exact_text(self.input_edit).strip()
+        if not text:
+            self._valid_output = False
+            self.output_edit.setPlainText(word.get("json_format_empty_hint"))
+            return
+        try:
+            result = transform(text)
+        except ITEJsonException as error:
+            pybreeze_logger.info("json_format_gui.py transform failed: %r", error)
+            self._valid_output = False
+            self.output_edit.setPlainText(word.get("json_format_error").format(error=error_text(str(error))))
+            return
+        self._valid_output = True
+        self.output_edit.setPlainText(result)
 
     def format_json(self) -> None:
         """Pretty-print the input JSON."""
