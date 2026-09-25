@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-34 | 2026-09-26 | let_run_out is tested with a signal whose disconnect raises | #test #threads | [2026-09-d](2026-09-d.md) |
 | U-20260926-33 | 2026-09-26 | The output reader facing a queue nobody empties, and an escape cut off by the end, are tested | #test #run | [2026-09-d](2026-09-d.md) |
 | U-20260926-32 | 2026-09-26 | An automation run from the editor tab in front, and start_process, are tested | #test #run | [2026-09-d](2026-09-d.md) |
 | U-20260926-31 | 2026-09-26 | A week date, a missing translation, dir(pybreeze), undo merging by key and a bare -F field are tested | #test | [2026-09-d](2026-09-d.md) |
@@ -572,4 +573,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
-| [2026-09-d.md](2026-09-d.md) | 2026-09 | 53 |
+| [2026-09-d.md](2026-09-d.md) | 2026-09 | 54 |

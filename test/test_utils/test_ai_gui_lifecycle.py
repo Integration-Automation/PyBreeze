@@ -180,3 +180,24 @@ class TestCoTWithoutCode:
         assert gui.request_thread is None
         assert shown == [cot_mod.language_wrapper.language_word_dict.get("cot_gui_error_no_code")]
         gui.deleteLater()
+
+
+def test_a_signal_whose_disconnect_raises_does_not_stop_the_rest(qapp, monkeypatch):
+    # Older PySide6 versions raised when nothing was connected; the thread must still be kept
+    from PySide6.QtCore import QThread
+
+    from pybreeze.pybreeze_ui import thread_keeper
+
+    logged: list = []
+    monkeypatch.setattr(thread_keeper.pybreeze_logger, "debug", lambda *args: logged.append(args))
+    refusing = MagicMock()
+    refusing.disconnect.side_effect = RuntimeError("Failed to disconnect signal")
+    after = MagicMock()
+    thread = QThread()
+
+    thread_keeper.let_run_out(thread, refusing, after)
+
+    after.disconnect.assert_called_once()
+    assert thread_keeper.is_kept(thread)
+    assert logged
+    thread_keeper._OUTLIVING_THEIR_WIDGET.discard(thread)
