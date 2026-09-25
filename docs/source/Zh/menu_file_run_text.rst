@@ -149,7 +149,7 @@ Tab 與 Dock 選單
 - **Console Widget** -- 互動式 Shell（``cmd``、PowerShell、``bash`` 或 ``sh``）
 - **Toggle Split View**\ （同一份文件顯示兩次）與 **Toggle Minimap**，作用在前景分頁
 - **Snippet Editor** -- ``.jeditor/snippets.json`` 中的程式碼片段
-- **Tools Tab** -- IPython（Jupyter，在 IDE 自己的 Python 中）、變數檢視器、FrontEngine、ChatUI、TODO 面板、
+- **Tools Tab** -- IPython（Jupyter，在 IDE 自己的 Python 中）、變數檢視器（JEditor 1.0.27 中是空的：沒有東西提供變數給它）、FrontEngine、ChatUI、TODO 面板、
   目前 Python 檔的大綱，以及 JupyterLab（見 :doc:`jupyter_lab`）
 - **Git Tab** -- Git 用戶端、分支樹檢視器、程式碼差異檢視器，以及目前檔案與 ``HEAD`` 或暫存版本的差異
 - **Dock > Tools** 另有 **Problems**\ （``ruff`` 找到的問題）與 **Tests**\ （在工作資料夾執行 ``pytest``）

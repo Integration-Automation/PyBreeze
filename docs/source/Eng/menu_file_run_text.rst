@@ -167,7 +167,8 @@ Tab and Dock Menus
 - **Toggle Split View** (the same document twice) and **Toggle Minimap**, for the tab in
   front
 - **Snippet Editor** -- the snippets in ``.jeditor/snippets.json``
-- **Tools Tab** -- IPython (Jupyter, inside the IDE's own Python), the variable inspector,
+- **Tools Tab** -- IPython (Jupyter, inside the IDE's own Python), the variable inspector
+  (empty with JEditor 1.0.27: nothing gives it variables to show),
   FrontEngine, ChatUI, the TODO panel, the outline of the current Python file, and
   JupyterLab (see :doc:`jupyter_lab`)
 - **Git Tab** -- the Git client, the branch tree viewer, the code diff viewer, and the

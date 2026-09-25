@@ -73,7 +73,7 @@ PyBreeze 开箱即用，涵盖自动化测试的完整范围：
 ### IDE 核心
 
 - **自动化关键字集** — 在 JEditor 的语言支持之上，为 `.json` 注册了 `AT_*` / GUI / Web / Load 关键字集，为 `.yml` 和 `.yaml` 注册了 TestPioneer 的结构定义。JEditor 目前还不会为它们着色：它用自己针对这些扩展名的规则高亮，不会用到注册的关键字
-- **代码编辑器** — 基于 [JEditor](https://github.com/Integration-Automation/JEDITOR) 构建：标签页、项目树、格式检查、调试器、终端、变量查看器以及 git 客户端面板
+- **代码编辑器** — 基于 [JEditor](https://github.com/Integration-Automation/JEDITOR) 构建：标签页、项目树、格式检查、调试器、终端以及 git 客户端面板
 - **脚本执行** — 单个或批量运行，每次运行都有自己的窗口和 Stop 按钮（Run ▸ Stop All Program 会全部停止）；动作文件以路径传入，而前台标签页中的脚本若超出 Windows 命令行的长度上限（约 32 KB），会改经临时文件传递
 - **报告生成** — 运行后生成 HTML / JSON / XML 报告，可选以邮件发送
 - **集成 JupyterLab** — 以标签页方式启动，使用与运行脚本相同的解释器；那里没有 JupyterLab 时会自动安装

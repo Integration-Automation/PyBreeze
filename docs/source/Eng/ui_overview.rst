@@ -137,7 +137,8 @@ Dock Widgets
 Panels can be opened as **dock widgets** instead of tabs from the **Dock** menu, and
 arranged freely around the main window:
 
-- **Editor** -- a docked editor, IPython (Jupyter) and the variable inspector
+- **Editor** -- a docked editor, IPython (Jupyter) and the variable inspector (empty for now,
+  see :doc:`menu_file_run_text`)
 - **Git** -- the Git client, branch tree viewer and code diff viewer
 - **AI** -- Chat UI, AI Code Review, CoT Prompt Editor, CoT Code Review, Skill Prompt
   Editor and Skill Send

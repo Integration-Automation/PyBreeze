@@ -73,7 +73,7 @@ PyBreeze 開箱即用，涵蓋自動化測試的完整範疇：
 ### IDE 核心
 
 - **自動化關鍵字集** — 在 JEditor 的語言支援之上，`AT_*`／GUI／Web／Load 關鍵字集註冊給 `.json`，TestPioneer 的結構描述註冊給 `.yml` 與 `.yaml`。JEditor 目前還不會為它們上色：它用自己針對這些副檔名的規則高亮，不會用到註冊的關鍵字
-- **程式碼編輯器** — 以 [JEditor](https://github.com/Integration-Automation/JEDITOR) 為基礎：分頁、專案樹、格式檢查、除錯器、終端機、變數檢視器與 git 用戶端面板
+- **程式碼編輯器** — 以 [JEditor](https://github.com/Integration-Automation/JEDITOR) 為基礎：分頁、專案樹、格式檢查、除錯器、終端機與 git 用戶端面板
 - **腳本執行** — 單一或批次執行，每次執行都有自己的視窗與 Stop 按鈕（Run ▸ Stop All Program 會全部停止）；動作檔以路徑傳入，而目前分頁中的腳本若超過 Windows 命令列長度上限（約 32 KB），會改用暫存檔傳遞
 - **報告產生** — 執行後產生 HTML／JSON／XML 報告，並可選擇以電子郵件寄送
 - **整合 JupyterLab** — 以分頁方式啟動，使用與執行腳本相同的直譯器；那裡沒有 JupyterLab 時會自動安裝

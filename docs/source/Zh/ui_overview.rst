@@ -120,7 +120,7 @@ PyBreeze 提供基於分頁和停靠面板的介面，使用 PySide6（Qt for Py
 
 面板可以從 **Dock** 選單以 **停靠面板** 開啟，而不是分頁，並可在主視窗周圍自由排列：
 
-- **Editor** -- 停靠式編輯器、IPython（Jupyter）與變數檢視器
+- **Editor** -- 停靠式編輯器、IPython（Jupyter）與變數檢視器（目前是空的，見 :doc:`menu_file_run_text`）
 - **Git** -- Git 用戶端、分支樹檢視器與程式碼差異檢視器
 - **AI** -- Chat UI、AI Code Review、CoT Prompt Editor、CoT Code Review、Skill Prompt Editor 與 Skill Send
 - **Tools** -- 瀏覽器、FrontEngine、主控台、TODO 面板、Problems、Tests 與大綱
