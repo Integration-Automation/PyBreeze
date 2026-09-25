@@ -201,3 +201,23 @@ def test_a_signal_whose_disconnect_raises_does_not_stop_the_rest(qapp, monkeypat
     assert thread_keeper.is_kept(thread)
     assert logged
     thread_keeper._OUTLIVING_THEIR_WIDGET.discard(thread)
+
+
+def test_a_slot_for_a_widget_already_gone_does_nothing(qapp):
+    import gc
+    import weakref
+
+    from PySide6.QtWidgets import QWidget
+
+    from pybreeze.pybreeze_ui.thread_keeper import if_alive
+
+    acted: list = []
+    widget = QWidget()
+    alive = weakref.ref(widget)
+    if_alive(alive, lambda _widget: acted.append("acted"))
+    del widget
+    gc.collect()
+
+    if_alive(alive, lambda _widget: acted.append("acted"))
+
+    assert acted == ["acted"]  # only while it existed
