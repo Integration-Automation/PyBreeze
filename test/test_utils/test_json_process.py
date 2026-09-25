@@ -21,8 +21,9 @@ class TestReformatJson:
         assert '"z"' in lines[3]
 
     def test_indentation(self):
-        result = reformat_json('{"key": "value"}')
-        assert "    " in result  # 4-space indent
+        # Four spaces a level: the test that a four-space run appears passed any wider indent
+        result = reformat_json('{"key": "value", "n": [1]}')
+        assert result == '{\n    "key": "value",\n    "n": [\n        1\n    ]\n}'
 
     def test_nested_json(self):
         input_json = '{"outer": {"inner": "value"}}'

@@ -39,7 +39,7 @@ class TestApplySgr:
         assert apply_sgr(styled, "22;23") == TextStyle(foreground=1, background=2, underline=True, inverse=True)
         assert apply_sgr(styled, "39;49;24;27") == TextStyle(bold=True, italic=True)
 
-    @pytest.mark.parametrize("parameters", ["38;5", "38;5;256", "38;2;1;2", "38;2;1;2;300", "38;9;1", "38", "5", "1000"])
+    @pytest.mark.parametrize("parameters", ["38;5", "38;5;256", "38;2", "38;2;1", "38;2;1;2", "38;2;1;2;300", "38;9;1", "38", "5", "1000"])
     def test_what_cannot_be_read_changes_nothing(self, parameters):
         styled = TextStyle(foreground=3)
 
@@ -59,6 +59,8 @@ class TestApplySgr:
     @pytest.mark.parametrize(("parameters", "expected"), [
         ("1;38;5;196", TextStyle(bold=True, foreground=196)),
         ("1;4;48;2;10;20;30", TextStyle(bold=True, underline=True, background=(10, 20, 30))),
+        # From the fifth parameter on, where start | 4 is not start + 4
+        ("1;3;4;38;2;10;20;30", TextStyle(bold=True, italic=True, underline=True, foreground=(10, 20, 30))),
     ])
     def test_an_extended_colour_after_other_parameters(self, parameters, expected):
         assert apply_sgr(PLAIN, parameters) == expected

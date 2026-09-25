@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-92 | 2026-09-26 | An RGB colour from the fifth SGR parameter, a cut-off RGB colour and Reformat's indent are tested | #test #ssh #tools | [2026-09-e](2026-09-e.md) |
 | U-20260926-91 | 2026-09-26 | pretty_json_or_none has tests of its own: its layout, characters and numbers as written, and what it turns away | #test #tools | [2026-09-e](2026-09-e.md) |
 | U-20260926-90 | 2026-09-26 | A query with an empty value round-trips, and the Query to JSON layout is compared in full | #test #tools | [2026-09-e](2026-09-e.md) |
 | U-20260926-89 | 2026-09-26 | An extended colour after other SGR parameters, a parameter too long to read and one of five digits are tested | #test #ssh | [2026-09-e](2026-09-e.md) |
@@ -631,4 +632,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
 | [2026-09-d.md](2026-09-d.md) | 2026-09 | 91 |
-| [2026-09-e.md](2026-09-e.md) | 2026-09 | 20 |
+| [2026-09-e.md](2026-09-e.md) | 2026-09 | 21 |
