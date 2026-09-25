@@ -169,7 +169,7 @@ call_X_multi_file_and_send()   → run_dir_files_with_package(..., True)
 
 ## 5. 選單層 `pybreeze_ui/menu/`
 
-`build_menubar.py:add_menu_to_menubar()` 是唯一入口，依序建構 15 個選單建構器。`menu_utils.py` 的 `open_web_browser()` 讓各選單的 Help 連結開成內嵌瀏覽器分頁；`extend_jeditor_tab_menu/jupyter_lab_tab.py` 的 `extend_tab_tools_menu()` 把 JupyterLab 分頁加進 JEditor 的分頁選單。
+`build_menubar.py:add_menu_to_menubar()` 是唯一入口，依序建構 15 個選單建構器。`menu_utils.py` 的 `open_web_browser()` 讓各選單的 Help 連結開成內嵌瀏覽器分頁；`busy_cursor()` 在選單項目於 UI 執行緒建 widget 時顯示等待游標（第一個瀏覽器分頁要啟動 Chromium，約 2.5 秒；SSH 第一次開要 import paramiko，約 0.7 秒），Tools 的分頁與 dock、自動化套件的 GUI 與 Help 頁都經過它；`extend_jeditor_tab_menu/jupyter_lab_tab.py` 的 `extend_tab_tools_menu()` 把 JupyterLab 分頁加進 JEditor 的分頁選單。
 
 ### 5.1 `automation_menu_factory.py` — 選單工廠
 
@@ -462,7 +462,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 18. 測試與 CI
 
-- **單元測試** `test/test_utils/` — 150 個 `test_*.py`、2714 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
+- **單元測試** `test/test_utils/` — 151 個 `test_*.py`、2720 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
 - **整合測試** `test/unit_test/start_automation/` — 以 `debug_mode=True` 啟動 IDE，10 秒後自動關閉，驗證啟動流程與 extend tab
 - **CI** `.github/workflows/{dev,stable}.yml` — `unit-tests` job 跑 Windows runner、Python 3.10–3.14 矩陣，3.12 那一腳額外上傳 `coverage-xml` artifact；`sonarcloud` job 跑 ubuntu、`needs: unit-tests`。每日 02:00 排程 + push/PR 觸發。`stable.yml` 另有 `publish` job 負責版號遞增與 PyPI 發布
 - **覆蓋率** `.coveragerc` — `relative_files = True` 是必要的：報告在 Windows 產生、由 Linux 上的 scanner 讀取，路徑不能帶機器資訊。`patch = subprocess` 也是必要的：pytest-cov 7 不再量測子行程，沒有它，測試在子直譯器裡建出的真主視窗（`started_window.py`）一行都不算。目前整體語句 96%、連分支 95%（`tools_gui` 99%、`utils/` 98%、`dialog` 100%；`menu` 97%、`connect_gui` 96%、`diagram_editor` 96%、`extend_ai_gui` 95%、`extend/` 94%、`jupyter_lab_gui` 92%；最低的是 `editor_main` 90%）。coverage 只追蹤 Python 自己開的執行緒，`test/test_utils/conftest.py` 讓每個 `QThread` 子類別的 `run` 在 Qt 的執行緒上裝上 coverage 的 tracer，否則沒有一個 `QThread.run` 算得到

@@ -16,6 +16,7 @@ from pybreeze.pybreeze_ui.extend_ai_gui.prompt_edit_gui.cot_prompt_editor_widget
 from pybreeze.pybreeze_ui.extend_ai_gui.prompt_edit_gui.skills_prompt_editor_widget import \
     SkillPromptEditor
 from pybreeze.pybreeze_ui.extend_ai_gui.skills.skills_send_gui import SkillsSendGUI
+from pybreeze.pybreeze_ui.menu.menu_utils import busy_cursor
 from pybreeze.pybreeze_ui.tools_gui.curl_import_gui import CurlImportGUI
 from pybreeze.pybreeze_ui.tools_gui.diff_gui import DiffGUI
 from pybreeze.pybreeze_ui.tools_gui.json_format_gui import JsonFormatGUI
@@ -220,10 +221,9 @@ def _open_tab_handler(
     """Return a handler opening *widget_key*'s widget as a new tab."""
 
     def handler() -> None:
-        ui_we_want_to_set.tab_widget.addTab(
-            _WIDGET_FACTORIES[widget_key](ui_we_want_to_set),
-            language_wrapper.language_word_dict.get(label_key),
-        )
+        with busy_cursor():
+            widget = _WIDGET_FACTORIES[widget_key](ui_we_want_to_set)
+        ui_we_want_to_set.tab_widget.addTab(widget, language_wrapper.language_word_dict.get(label_key))
 
     return handler
 
@@ -290,7 +290,8 @@ def add_dock(ui_we_want_to_set: PyBreezeMainWindow, widget_type: str | None = No
     title_key = _DOCK_TITLES.get(widget_type)
     if title_key is not None:
         dock_widget.setWindowTitle(language_wrapper.language_word_dict.get(title_key))
-        dock_widget.setWidget(_WIDGET_FACTORIES[widget_type](ui_we_want_to_set))
+        with busy_cursor():
+            dock_widget.setWidget(_WIDGET_FACTORIES[widget_type](ui_we_want_to_set))
 
     # 如果成功建立了 widget，將其加到主視窗右側 Dock 區域
     # If widget is created, add it to the right dock area of the main window

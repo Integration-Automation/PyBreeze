@@ -10,7 +10,7 @@ from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QMenu, QMessageBox, QWidget
 from je_editor import language_wrapper
 
-from pybreeze.pybreeze_ui.menu.menu_utils import open_web_browser
+from pybreeze.pybreeze_ui.menu.menu_utils import busy_cursor, open_web_browser
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.pybreeze_ui.plain_text import as_text
 
@@ -108,10 +108,13 @@ def _add_project_menu(menu: QMenu, create_project: Callable[[], None], label_key
 
 def _add_gui_action(
         ui: PyBreezeMainWindow, menu: QMenu, widget_factory: Callable[[], QWidget], label: str) -> None:
+    def open_gui() -> None:
+        with busy_cursor():
+            widget = widget_factory()
+        ui.tab_widget.addTab(widget, label)
+
     action = QAction(label, menu)
-    action.triggered.connect(
-        lambda checked=False: ui.tab_widget.addTab(widget_factory(), label)
-    )
+    action.triggered.connect(open_gui)
     menu.addAction(action)
 
 
