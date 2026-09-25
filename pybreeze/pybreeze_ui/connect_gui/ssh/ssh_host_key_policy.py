@@ -181,8 +181,14 @@ class InteractiveHostKeyPolicy(paramiko.MissingHostKeyPolicy):
             if _is_trusted_on_disk(hostname, key):
                 client.get_host_keys().add(hostname, key_type, key)
                 return
-            if _declined_just_now(hostname, fingerprint) or not self._asked(title, message):
+            # Only a No the user gave starts the ten seconds: renewed by each
+            # refusal made from it, they slid on while Connect was clicked
+            # again, and the question never came back
+            declined = _declined_just_now(hostname, fingerprint)
+            if not declined and not self._asked(title, message):
                 _RECENT_DECLINES[(hostname, fingerprint)] = time.monotonic()
+                declined = True
+            if declined:
                 pybreeze_logger.warning(
                     "SSH host key for %s rejected by user (%s)", hostname, fingerprint
                 )

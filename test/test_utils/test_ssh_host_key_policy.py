@@ -177,14 +177,18 @@ class TestTheQuestionBoxItself:
         assert seen == [("Unknown host", as_text(message), True)]
 
 
-def test_a_no_is_forgotten_after_its_ten_seconds(asked, keys, monkeypatch):
+def test_a_no_is_remembered_for_ten_seconds_and_then_forgotten(asked, keys, monkeypatch):
     now = [1000.0]
     monkeypatch.setattr(policy_mod.time, "monotonic", lambda: now[0])
     asked["answer"] = False
 
     with pytest.raises(paramiko.SSHException):
         _meet("host.example", keys[0])
-    now[0] += 11
+    now[0] += 9.5
+    with pytest.raises(paramiko.SSHException):
+        _meet("host.example", keys[0])
+    assert asked["count"] == 1  # still the same Connect's other half: not asked
+    now[0] += 1.0
     with pytest.raises(paramiko.SSHException):
         _meet("host.example", keys[0])
 

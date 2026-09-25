@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-78 | 2026-09-26 | A refused host key is asked about again ten seconds after the user's No, however often Connect was clicked | #fix #ssh #security | [2026-09-e](2026-09-e.md) |
 | U-20260926-77 | 2026-09-26 | The host-key question box's answer, and a No forgotten after ten seconds, are tested | #test #security #ssh | [2026-09-e](2026-09-e.md) |
 | U-20260926-76 | 2026-09-26 | The read-deadline test's clock starts at 1000, so a deadline computed from the wrong start is caught | #test #network | [2026-09-e](2026-09-e.md) |
 | U-20260926-75 | 2026-09-26 | Settings JSON that is not an object, a pixel-sized font, a step answering twice and a second lab load are tested | #test | [2026-09-e](2026-09-e.md) |
@@ -617,4 +618,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
 | [2026-09-d.md](2026-09-d.md) | 2026-09 | 91 |
-| [2026-09-e.md](2026-09-e.md) | 2026-09 | 6 |
+| [2026-09-e.md](2026-09-e.md) | 2026-09 | 7 |
