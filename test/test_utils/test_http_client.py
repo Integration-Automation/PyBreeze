@@ -63,6 +63,10 @@ class TestReadCappedText:
         resp = FakeResponse(b"x" * 100)
         assert len(read_capped_text(resp, max_bytes=100)) == 100
 
+    def test_one_byte_over_the_cap_is_refused(self):
+        with pytest.raises(ResponseTooLargeError):
+            read_capped_text(FakeResponse(b"x" * 101), max_bytes=100)
+
     def test_by_default_an_answer_may_take_five_minutes_as_the_guide_says(self):
         # docs/source/*/ai_tools.rst: a request past five minutes is stopped
         import inspect

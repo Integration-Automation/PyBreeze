@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-70 | 2026-09-26 | An answer one byte over the cap, and a failure before the deadline, are tested | #test #network | [2026-09-d](2026-09-d.md) |
 | U-20260926-69 | 2026-09-26 | Test pressed again during a regex run, and the Diff tab closed mid-comparison, are tested | #test #threads | [2026-09-d](2026-09-d.md) |
 | U-20260926-68 | 2026-09-26 | The Dock menu's entries, a HAR summary of many hosts, a cURL request with no headers and a package with no project folder are tested | #test #menu | [2026-09-d](2026-09-d.md) |
 | U-20260926-67 | 2026-09-26 | The eight known Codacy false positives are marked where they are, each with its reason | #quality | [2026-09-d](2026-09-d.md) |
@@ -608,4 +609,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
-| [2026-09-d.md](2026-09-d.md) | 2026-09 | 89 |
+| [2026-09-d.md](2026-09-d.md) | 2026-09 | 90 |

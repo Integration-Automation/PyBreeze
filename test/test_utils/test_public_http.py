@@ -341,6 +341,16 @@ class TestTheDeadlineItself:
         deadline.watch(None)
         deadline.end()
 
+    def test_a_failure_before_the_time_is_up_is_reported_as_itself(self):
+        # Not as "took too long": the host refused, say, well inside the minutes allowed
+        from pybreeze.utils.network.public_http import overall_deadline
+
+        refused = requests.exceptions.ConnectionError("refused")
+        with pytest.raises(requests.exceptions.ConnectionError) as raised, overall_deadline(60):
+            raise refused
+
+        assert raised.value is refused
+
 
 class TestTheOverallDeadline:
     """A read timeout restarts with every byte; the deadline bounds the whole request."""
