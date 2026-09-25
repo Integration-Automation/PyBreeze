@@ -54,3 +54,14 @@ class TestFindVenvPath:
             assert str(result).endswith("Scripts")
         else:
             assert str(result).endswith("bin")
+
+    def test_on_posix_it_looks_in_bin(self, tmp_path, monkeypatch):
+        from types import SimpleNamespace
+
+        from pybreeze.extend.process_executor import python_task_process_manager as mod
+
+        (tmp_path / ".venv" / "bin").mkdir(parents=True)
+        monkeypatch.setattr(mod, "sys", SimpleNamespace(platform="linux"))
+        monkeypatch.chdir(tmp_path)
+
+        assert mod.find_venv_path() == tmp_path / ".venv" / "bin"
