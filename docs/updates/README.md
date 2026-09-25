@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-123 | 2026-09-25 | A test checks that the published package holds every module and data file | #test #packaging | [2026-09-d](2026-09-d.md) |
 | U-20260925-122 | 2026-09-25 | Assertions in the two diagram test files put the actual value first | #refactor #test #sonarcloud | [2026-09-d](2026-09-d.md) |
 | U-20260925-121 | 2026-09-25 | The rest of SonarCloud's test findings on main: one condition per assertion, one call under pytest.raises, monkeypatch | #refactor #test #sonarcloud | [2026-09-d](2026-09-d.md) |
 | U-20260925-120 | 2026-09-25 | SonarCloud's last findings in the package, after main's analysis of the release | #refactor #sonarcloud | [2026-09-d](2026-09-d.md) |
@@ -526,4 +527,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
-| [2026-09-d.md](2026-09-d.md) | 2026-09 | 7 |
+| [2026-09-d.md](2026-09-d.md) | 2026-09 | 8 |
