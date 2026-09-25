@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-91 | 2026-09-25 | The diagram canvas's clicks and keys are tested | #test #diagram | [2026-09-c](2026-09-c.md) |
 | U-20260925-90 | 2026-09-25 | The diagram canvas's zoom and grid are tested | #test #diagram | [2026-09-c](2026-09-c.md) |
 | U-20260925-89 | 2026-09-25 | A node and an image resize through one function | #refactor #diagram | [2026-09-c](2026-09-c.md) |
 | U-20260925-88 | 2026-09-25 | Fixture decorators without empty parentheses | #refactor #test | [2026-09-c](2026-09-c.md) |
@@ -493,4 +494,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
-| [2026-09-c.md](2026-09-c.md) | 2026-09 | 90 |
+| [2026-09-c.md](2026-09-c.md) | 2026-09 | 91 |
