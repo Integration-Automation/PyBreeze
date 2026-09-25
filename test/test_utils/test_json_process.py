@@ -171,3 +171,31 @@ class TestWhatCannotBeWrittenBack:
 
         with pytest.raises(ITEJsonException):
             getattr(json_process, operation)("[[1]]")
+
+
+class TestPrettyJsonOrNone:
+    """For text that may be anything (a response body, a token's segment): laid out, or None."""
+
+    def test_laid_out_by_four_with_characters_and_numbers_as_written(self):
+        from pybreeze.utils.json_format.json_process import pretty_json_or_none
+
+        shown = pretty_json_or_none('{"名稱": 1e400, "b": [1]}')
+
+        assert shown == '{\n    "名稱": 1e400,\n    "b": [\n        1\n    ]\n}'
+
+    def test_the_keys_are_sorted_only_when_asked(self):
+        from pybreeze.utils.json_format.json_process import pretty_json_or_none
+
+        assert pretty_json_or_none('{"b": 1, "a": 2}', sort_keys=True) == '{\n    "a": 2,\n    "b": 1\n}'
+        assert pretty_json_or_none('{"b": 1, "a": 2}') == '{\n    "b": 1,\n    "a": 2\n}'
+
+    @pytest.mark.parametrize("text", [
+        "not json",
+        '{"a": 1, "a": 2}',          # a key repeated
+        "NaN",
+        "[" * 100_000 + "]" * 100_000,  # nested past the recursion limit
+    ], ids=["text", "repeated key", "NaN", "too deep"])
+    def test_what_is_not_json_it_accepts_is_none(self, text):
+        from pybreeze.utils.json_format.json_process import pretty_json_or_none
+
+        assert pretty_json_or_none(text) is None
