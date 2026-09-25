@@ -467,6 +467,27 @@ class TestAPluginThatDoesNotFollowTheRules:
 
         assert submenu_action_texts(window.plugin_menu)
 
+    def test_an_entry_that_cannot_be_built_costs_only_itself(self, window, monkeypatch):
+        # Anything a plugin's metadata makes the entry raise is logged; the next plugin still gets its entry
+        built = plugin_menu._add_plugin_entry
+        logged: list = []
+
+        def add(window_, meta):
+            if meta["name"] == "Broken":
+                raise KeyError("version")
+            built(window_, meta)
+
+        monkeypatch.setattr(plugin_menu, "_add_plugin_entry", add)
+        monkeypatch.setattr(plugin_menu.pybreeze_logger, "error", lambda *args: logged.append(args))
+        monkeypatch.setattr(
+            plugin_menu, "get_all_plugin_metadata",
+            lambda: [{"name": "Broken"}, {"name": "French", "version": "1.0", "author": "someone"}])
+        set_plugin_menu(window)
+
+        assert "French" in labels(window.plugin_menu)
+        assert "Broken" not in labels(window.plugin_menu)
+        assert logged
+
     def test_run_configs_with_none_and_text_names_sort(self, window, monkeypatch):
         # sorted() raised comparing None with a string
         monkeypatch.setattr(

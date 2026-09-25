@@ -295,3 +295,45 @@ def test_a_new_run_clears_the_last_runs_answers(monkeypatch):
     assert gui.response_selector.count() == 0
     assert gui.response_view.toPlainText() == ""
     gui.deleteLater()
+
+
+def test_a_name_that_is_not_a_step_of_the_chain_is_skipped():
+    _qt_app()
+    from pybreeze.pybreeze_ui.extend_ai_gui.code_review.code_review_thread import SenderThread
+
+    thread = SenderThread(files=["not_a_step.md", "linter.md"], code="print('x')", url="https://example.com/api")
+    shown: list = []
+    thread.update_response.connect(lambda name, _reply: shown.append(name))
+    session = _FakeSession()
+
+    thread._run_templates(session, "print('x')")
+
+    assert len(session.post_calls) == 1
+    assert shown == ["linter.md"]
+
+
+def test_a_second_start_while_a_review_runs_is_ignored(monkeypatch):
+    _qt_app()
+    from pybreeze.pybreeze_ui.extend_ai_gui.code_review import cot_code_review_gui
+    from pybreeze.pybreeze_ui.extend_ai_gui.code_review.cot_code_review_gui import CoTCodeReviewGUI
+
+    class Running:
+        @staticmethod
+        def isRunning() -> bool:
+            return True
+
+    def second_review(*_args, **_kwargs):
+        raise AssertionError("a second review was started")
+
+    gui = CoTCodeReviewGUI()
+    running = Running()
+    gui.request_thread = running
+    monkeypatch.setattr(cot_code_review_gui, "SenderThread", second_review)
+    gui.url_input.setText("https://example.com/api")
+    gui.code_paste_area.setPlainText("print('x')")
+
+    gui.start_sending()
+
+    assert gui.request_thread is running
+    gui.request_thread = None
+    gui.deleteLater()
