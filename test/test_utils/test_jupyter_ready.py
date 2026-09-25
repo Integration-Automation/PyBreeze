@@ -363,7 +363,14 @@ class TestTheTab:
         return jupyter_lab_widget.JupyterLabWidget()
 
     def test_the_lab_replaces_the_status_and_a_late_status_is_ignored(self, qt_app, monkeypatch):
+        from PySide6.QtCore import QCoreApplication, QEvent
+
         tab = self._tab(monkeypatch)
+        # Recorded, not loaded: a page Chromium had loaded, in a view still alive
+        # when the test process ended, crashed the interpreter on its way out
+        # (exit 139 after every test had passed)
+        loaded: list[str] = []
+        tab.browser.setUrl = lambda url: loaded.append(url.toString())
         tab.update_status("Loading...")
         assert tab.status_label.text() == "Loading..."
 
@@ -372,6 +379,7 @@ class TestTheTab:
         tab.show_error("too late to matter")
 
         assert tab.status_label is None
-        assert tab.browser.url().toString() == "http://localhost:58888/lab"
-        tab.close()
-        tab.deleteLater()
+        assert loaded == ["http://localhost:58888/lab"]
+        assert tab.browser.isVisibleTo(tab)
+        tab.close()  # deleted on close; the delete is carried out here, not at exit
+        QCoreApplication.sendPostedEvents(tab, QEvent.Type.DeferredDelete)
