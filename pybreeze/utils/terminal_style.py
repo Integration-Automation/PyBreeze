@@ -28,8 +28,10 @@ _DEFAULT_FOREGROUND = 39
 _DEFAULT_BACKGROUND = 49
 _EXTENDED_FOREGROUND = 38
 _EXTENDED_BACKGROUND = 48
+_FOREGROUND = "foreground"
+_BACKGROUND = "background"
 # Parameter runs that pick one of the 16 basic colours: first, attribute, first colour
-_COLOUR_RUNS = ((30, "foreground", 0), (90, "foreground", 8), (40, "background", 0), (100, "background", 8))
+_COLOUR_RUNS = ((30, _FOREGROUND, 0), (90, _FOREGROUND, 8), (40, _BACKGROUND, 0), (100, _BACKGROUND, 8))
 _RUN_LENGTH = 8
 _PALETTE_FORM = 5  # ESC[38;5;<index>m: one of 256 colours
 _RGB_FORM = 2      # ESC[38;2;<red>;<green>;<blue>m
@@ -108,18 +110,24 @@ def _extended_colour(numbers: list[int], start: int) -> tuple[Colour | None, int
     return None, len(numbers)  # the rest cannot be read
 
 
-def _colour_parameter(style: TextStyle, number: int) -> TextStyle:
-    """*style* after one of the basic colour parameters (30–49, 90–107), or as it was."""
+def _colour_change(number: int) -> tuple[str, Colour | None] | None:
+    """The attribute a basic colour parameter (30–49, 90–107) sets and its colour; ``None`` for another."""
     for first, attribute, offset in _COLOUR_RUNS:
         if first <= number < first + _RUN_LENGTH:
-            colour = number - first + offset
-            if attribute == "foreground":
-                return replace(style, foreground=colour)
-            return replace(style, background=colour)
+            return attribute, number - first + offset
     if number == _DEFAULT_FOREGROUND:
-        return replace(style, foreground=None)
+        return _FOREGROUND, None
     if number == _DEFAULT_BACKGROUND:
-        return replace(style, background=None)
+        return _BACKGROUND, None
+    return None
+
+
+def _colour_parameter(style: TextStyle, number: int) -> TextStyle:
+    """*style* after one of the basic colour parameters (30–49, 90–107), or as it was."""
+    change = _colour_change(number)
+    if change is not None:
+        attribute, colour = change
+        style = replace(style, **{attribute: colour})
     return style
 
 
@@ -145,7 +153,7 @@ def apply_sgr(style: TextStyle, parameters: str) -> TextStyle:
         elif number in (_EXTENDED_FOREGROUND, _EXTENDED_BACKGROUND):
             colour, index = _extended_colour(numbers, index)
             if colour is not None:
-                attribute = "foreground" if number == _EXTENDED_FOREGROUND else "background"
+                attribute = _FOREGROUND if number == _EXTENDED_FOREGROUND else _BACKGROUND
                 style = replace(style, **{attribute: colour})
         else:
             style = _colour_parameter(style, number)
