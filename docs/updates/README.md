@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-22 | 2026-09-26 | The AI panels' response cap is tested against compressed bombs, and CVE-2026-44432 found not to reach it | #test #security #network | [2026-09-d](2026-09-d.md) |
 | U-20260926-21 | 2026-09-26 | The regex tester's group-nesting scan and a worker that cannot start or dies part-way are tested | #test #regex | [2026-09-d](2026-09-d.md) |
 | U-20260926-20 | 2026-09-26 | Refactor: one grid-snapping check for diagram nodes and images | #refactor #diagram | [2026-09-d](2026-09-d.md) |
 | U-20260926-19 | 2026-09-26 | Snapping a diagram node or image to the grid is tested | #test #diagram | [2026-09-d](2026-09-d.md) |
@@ -560,4 +561,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
-| [2026-09-d.md](2026-09-d.md) | 2026-09 | 41 |
+| [2026-09-d.md](2026-09-d.md) | 2026-09 | 42 |

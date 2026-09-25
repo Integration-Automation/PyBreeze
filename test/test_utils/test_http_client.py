@@ -239,3 +239,63 @@ class TestTheWatchdog:
 
         assert watchdog.fired
         watchdog.cancel()
+
+
+def _compressed(encoding: str, megabytes: int) -> bytes:
+    """*megabytes* of zeros compressed as HTTP's *encoding* names it, built a megabyte at a time."""
+    import zlib
+
+    block = bytes(1024 * 1024)
+    if encoding == "br":
+        brotli = pytest.importorskip("brotli")
+        compressor = brotli.Compressor(quality=5)
+        return b"".join(compressor.process(block) for _ in range(megabytes)) + compressor.finish()
+    compressor = zlib.compressobj(wbits=31 if encoding == "gzip" else 15)
+    return b"".join(compressor.compress(block) for _ in range(megabytes)) + compressor.flush()
+
+
+class TestACompressedBomb:
+    """The cap counts what the body decodes to, and decoding stops with it.
+
+    A body of a few hundred bytes can decode to hundreds of megabytes. urllib3
+    before 2.7.0 decoded all the rest of a Brotli body on the second read
+    (CVE-2026-44432); read chunk by chunk here, it did not, and this keeps it so.
+    """
+
+    @pytest.mark.parametrize("encoding", ["gzip", "deflate", "br"])
+    def test_it_is_refused_at_the_cap_without_being_decoded_whole(self, encoding):
+        import http.server
+        import threading
+        import tracemalloc
+
+        import requests
+
+        payload = _compressed(encoding, 128)
+
+        class Bomb(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Encoding", encoding)
+                self.send_header("Content-Length", str(len(payload)))
+                self.end_headers()
+                self.wfile.write(payload)
+
+            def log_message(self, *_args):
+                pass
+
+        server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Bomb)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        tracemalloc.start()
+        try:
+            response = requests.get(  # noqa: S113 — a loopback server this test started; timeout given
+                f"http://127.0.0.1:{server.server_port}/", stream=True, timeout=(5, 30))
+            with pytest.raises(ResponseTooLargeError):
+                read_capped_text(response, max_bytes=1024 * 1024)
+            _current, peak = tracemalloc.get_traced_memory()
+        finally:
+            tracemalloc.stop()
+            server.shutdown()
+            server.server_close()
+
+        assert peak < 32 * 1024 * 1024
