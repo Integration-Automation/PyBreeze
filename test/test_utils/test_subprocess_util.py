@@ -154,3 +154,41 @@ class TestStoppingATree:
         subprocess_util.stop_tree(child)
 
         assert child.terminated
+
+
+class TestOnPosix:
+    """What the POSIX branches do, run on any platform with ``sys.platform`` stood in for (CI is Windows)."""
+
+    @pytest.fixture
+    def posix(self, monkeypatch):
+        from types import SimpleNamespace
+
+        from pybreeze.utils import subprocess_util
+
+        monkeypatch.setattr(subprocess_util, "sys", SimpleNamespace(platform="linux"))
+        return subprocess_util
+
+    def test_a_child_gets_no_window_flag_and_a_session_of_its_own(self, posix):
+        assert posix.no_window_creationflags() == 0
+        assert posix.own_session_options() == {"start_new_session": True}
+
+    def test_stopping_a_tree_signals_the_process_group(self, posix, monkeypatch):
+        import signal
+
+        signalled: list = []
+
+        class Running:
+            pid = 4242
+
+            def poll(self):
+                return 0 if signalled else None
+
+            def terminate(self):
+                raise AssertionError("the group was signalled; the child needs no terminate")
+
+        monkeypatch.setattr(posix.os, "killpg", lambda pid, sig: signalled.append((pid, sig)), raising=False)
+        monkeypatch.setattr(posix.subprocess, "run", lambda *a, **k: pytest.fail("taskkill was run"))
+
+        posix.stop_tree(Running())
+
+        assert signalled == [(4242, signal.SIGTERM)]
