@@ -63,6 +63,15 @@ class TestReadCappedText:
         resp = FakeResponse(b"x" * 100)
         assert len(read_capped_text(resp, max_bytes=100)) == 100
 
+    def test_by_default_an_answer_may_take_five_minutes_as_the_guide_says(self):
+        # docs/source/*/ai_tools.rst: a request past five minutes is stopped
+        import inspect
+
+        from pybreeze.utils.network.http_client import DEFAULT_MAX_READ_SECONDS
+
+        assert DEFAULT_MAX_READ_SECONDS == 5 * 60
+        assert inspect.signature(read_capped_text).parameters["max_seconds"].default == DEFAULT_MAX_READ_SECONDS
+
     def test_by_default_an_answer_of_a_few_megabytes_is_read_and_16_mb_is_the_cap(self):
         from pybreeze.utils.network.http_client import DEFAULT_MAX_RESPONSE_BYTES
 
