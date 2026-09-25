@@ -122,9 +122,11 @@ class TestLabelsAreTold:
         from pybreeze.pybreeze_ui.menu.tools.tools_menu import _DOCK_ACTIONS, _TAB_ACTIONS
 
         for *_start, action_key, _label_key in _TAB_ACTIONS:
-            assert EN[action_key].endswith(" Tab") and ZH[action_key].endswith("分頁"), action_key
+            assert EN[action_key].endswith(" Tab"), action_key
+            assert ZH[action_key].endswith("分頁"), action_key
         for *_start, action_key in _DOCK_ACTIONS:
-            assert EN[action_key].endswith(" Dock") and ZH[action_key].endswith("停駐窗格"), action_key
+            assert EN[action_key].endswith(" Dock"), action_key
+            assert ZH[action_key].endswith("停駐窗格"), action_key
 
     def test_a_tab_is_titled_as_its_menu_entry_names_it(self):
         # The Regex tab was "Regex" in Traditional Chinese, opened by 正規表示式測試器分頁

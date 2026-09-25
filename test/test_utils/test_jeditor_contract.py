@@ -149,7 +149,8 @@ class TestTheShapesPyBreezeCalls:
 
         assert "actually_color_dict.get(color)" in inspect.getsource(PythonHighlighter._make_format)
         for key in (JSON_KEYWORD_COLOUR, YAML_KEYWORD_COLOUR):
-            assert key in DARK_COLORS and key in LIGHT_COLORS, key
+            assert key in DARK_COLORS, key
+            assert key in LIGHT_COLORS, key
 
     def test_the_widgets_build_without_arguments(self):
         from PySide6.QtWidgets import QDockWidget, QWidget
@@ -158,7 +159,8 @@ class TestTheShapesPyBreezeCalls:
         browser = _internal(
             "je_editor.pyside_ui.main_ui.plugin_browser.plugin_browser_widget",
             "PluginBrowserWidget")
-        assert issubclass(dock, QDockWidget) and not _parameters(dock.__init__)
+        assert issubclass(dock, QDockWidget)
+        assert not _parameters(dock.__init__)
         assert issubclass(browser, QWidget)
         assert all(
             parameter.default is not inspect.Parameter.empty
@@ -174,7 +176,8 @@ class TestTheShapesPyBreezeCalls:
         assert isinstance(_internal(module, "file_is_open_manager_dict"), dict)
         thread = _internal("je_editor.pyside_ui.code.auto_save.auto_save_thread", "CodeEditSaveThread")
         source = inspect.getsource(thread)
-        assert "self.still_run" in source and "self.file" in source
+        assert "self.still_run" in source
+        assert "self.file" in source
 
     def test_a_rename_can_move_what_an_editor_tab_follows_its_file_with(self):
         # The file tree moves the tab's watcher, as open_an_file does, and

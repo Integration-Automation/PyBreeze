@@ -291,8 +291,10 @@ class TestThePluginMenu:
             plugin_menu.QMessageBox, "exec", lambda self: shown.append(self.text()))
         plugin_menu._make_about_callback(None, "Go", "2.1", "someone")()
 
-        assert "版本" in shown[0] and "作者" in shown[0]
-        assert "Version" not in shown[0] and "Author" not in shown[0]
+        assert "版本" in shown[0]
+        assert "作者" in shown[0]
+        assert "Version" not in shown[0]
+        assert "Author" not in shown[0]
 
     def test_the_about_dialog_shows_markup_as_text(self, app, monkeypatch):
         # A plugin's name or author went to the box as markup, <img> and all

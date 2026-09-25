@@ -64,7 +64,8 @@ def test_ai_code_review_sends_the_code_as_a_form_field(session, method):
 @pytest.mark.parametrize("method", ["GET", "DELETE"])
 def test_ai_code_review_sends_the_url_alone_otherwise(session, method):
     ai_code_review_gui.ReviewRequestThread(method, _URL, "print(1)").run()
-    assert "data" not in session.sent[0][1] and "json" not in session.sent[0][1]
+    assert "data" not in session.sent[0][1]
+    assert "json" not in session.sent[0][1]
 
 
 def test_skill_send_posts_the_prompt_as_json_code(session):

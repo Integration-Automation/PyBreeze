@@ -411,7 +411,8 @@ class TestTheKeys:
 
         self._shortcut(widget, "Del").activated.emit()
 
-        assert reported and "Socket is closed" in reported[0]
+        assert reported
+        assert "Socket is closed" in reported[0]
 
 
 class TestDownloadAndUpload:

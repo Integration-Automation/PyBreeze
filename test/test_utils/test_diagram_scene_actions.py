@@ -131,7 +131,8 @@ class TestDelete:
 
         assert scene.get_all_connections() == []
         assert len(scene.get_all_nodes()) == 2
-        assert first.connections == [] and second.connections == []
+        assert first.connections == []
+        assert second.connections == []
 
     def test_nothing_selected_leaves_no_undo_step(self, scene):
         _two_nodes(scene)
@@ -187,6 +188,7 @@ class TestDistributeVertically:
         scene.distribute_v()
 
         tops = [node.pos().y() for node in nodes]
-        assert tops[0] == 0 and tops[2] == 400
+        assert tops[0] == 0
+        assert tops[2] == 400
         assert tops[1] - 40 == pytest.approx(400 - (tops[1] + 20))
         assert [node.pos().x() for node in nodes] == [0, 10, 20]

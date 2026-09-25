@@ -251,9 +251,10 @@ class TestThePanelThatAsked:
 
         monkeypatch.setattr(policy_mod, "host_key_asker", Asker)
         panel = QWidget()
+        policy = policy_mod.InteractiveHostKeyPolicy(panel)
+        client = paramiko.SSHClient()
         with pytest.raises(paramiko.SSHException):  # the answer was No
-            policy_mod.InteractiveHostKeyPolicy(panel).missing_host_key(
-                paramiko.SSHClient(), "host.example", keys[0])
+            policy.missing_host_key(client, "host.example", keys[0])
 
         assert parents == [panel]
         panel.deleteLater()
@@ -268,6 +269,7 @@ class TestThePanelThatAsked:
         del panel
         gc.collect()
 
+        client = paramiko.SSHClient()
         with pytest.raises(paramiko.SSHException):
-            policy.missing_host_key(paramiko.SSHClient(), "host.example", keys[0])
+            policy.missing_host_key(client, "host.example", keys[0])
         assert asked["count"] == 0  # nobody was asked on its behalf

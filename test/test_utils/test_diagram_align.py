@@ -76,7 +76,8 @@ def test_distributing_leaves_equal_gaps_between_the_outer_two(scene):
 
     lefts = [node.pos().x() for node in nodes]
     gaps = [lefts[1] - (lefts[0] + 100), lefts[2] - (lefts[1] + 60)]
-    assert lefts[0] == 0 and lefts[2] == 400
+    assert lefts[0] == 0
+    assert lefts[2] == 400
     assert gaps[0] == pytest.approx(gaps[1])
 
 

@@ -253,14 +253,16 @@ class TestEveryCheckedAddressIsTried:
 
     def test_requests_fails_when_no_address_answers(self, two_addresses, loopback_allowed):
         # After the last address the error is the connection's own, not a hang or a None raised
+        url = f"http://two.test:{self._closed_port()}/"
         with _session() as session, pytest.raises(requests.ConnectionError):
-            session.get(f"http://two.test:{self._closed_port()}/", timeout=(3, 3))
+            session.get(url, timeout=(3, 3))
 
     def test_urllib_fails_when_no_address_answers(self, two_addresses, loopback_allowed):
         opener = urllib.request.build_opener(PublicHTTPHandler())
+        url = f"http://two.test:{self._closed_port()}/"
 
         with pytest.raises(urllib.error.URLError):
-            opener.open(f"http://two.test:{self._closed_port()}/", timeout=3)
+            opener.open(url, timeout=3)
 
     def test_one_blocked_address_still_refuses_the_name(self, two_addresses, listener):
         with _session() as session, pytest.raises(requests.ConnectionError):

@@ -306,7 +306,8 @@ class TestFileDialogFilters:
         monkeypatch.setattr(language_wrapper, "language_word_dict", pybreeze_traditional_chinese_word_dict)
         filters = self._filters(editor, monkeypatch)
 
-        assert "所有檔案 (*)" in filters["open"] and "所有檔案 (*)" in filters["image"]
+        assert "所有檔案 (*)" in filters["open"]
+        assert "所有檔案 (*)" in filters["image"]
         assert filters["open"] == filters["save"]
         assert all("Image" not in text and "Files" not in text for text in filters.values()), filters
 
