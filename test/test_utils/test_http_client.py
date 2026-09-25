@@ -122,7 +122,7 @@ class TestSucceeded:
     def test_a_2xx_is_an_answer(self, status):
         assert succeeded(SimpleNamespace(status_code=status))
 
-    @pytest.mark.parametrize("status", [199, 301, 302, 304, 400, 404, 500])
+    @pytest.mark.parametrize("status", [199, 300, 301, 302, 304, 400, 404, 500])
     def test_anything_else_is_not(self, status):
         # 3xx included, although requests calls it "ok"
         assert not succeeded(SimpleNamespace(status_code=status))

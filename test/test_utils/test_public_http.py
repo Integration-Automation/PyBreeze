@@ -209,6 +209,24 @@ class TestUrllibOpener:
 
         assert listener.received[0].startswith(b"GET http://rebind.test/i.png HTTP/1.1\r\n")
 
+    def test_a_proxy_is_used_whatever_its_name_sorts_against_the_hosts(self, dns, listener, monkeypatch):
+        # Found through the host names differing, not their order: a proxy named
+        # after the host (zproxy.test, rebind.test) must be used just the same
+        looked_up = socket.getaddrinfo
+
+        def with_the_proxy(host, port=None, *args, **kwargs):
+            if host == "zproxy.test":
+                return _answer("127.0.0.1", port)
+            return looked_up(host, port, *args, **kwargs)
+
+        monkeypatch.setattr(socket, "getaddrinfo", with_the_proxy)
+        opener = urllib.request.build_opener(
+            urllib.request.ProxyHandler({"http": f"http://zproxy.test:{listener.port}"}),
+            PublicHTTPHandler(), PublicHTTPSHandler())
+
+        with opener.open("http://rebind.test/i.png", timeout=3) as reply:
+            assert reply.read() == b"ok"
+
     def test_https_through_a_proxy_is_left_to_the_proxy(self, dns, listener):
         # The proxy connects to the name; there is no address here to pin
         opener = urllib.request.build_opener(
