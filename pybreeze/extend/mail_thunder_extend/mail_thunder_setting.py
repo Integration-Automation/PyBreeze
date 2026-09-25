@@ -47,7 +47,7 @@ def send_after_test(
             outcome = send_report(html_report_path, not_before=not_before)
         # The last stop on this thread: anything je_mail_thunder raises past
         # send_report must still reach on_done, or the run window never says
-        except Exception as error:  # noqa: BLE001 — logged, and reported to the run window
+        except Exception as error:  # noqa: BLE001 — logged and reported to the run window
             pybreeze_logger.error("Sending the report failed: %r", error)
             outcome = f"sending failed ({type(error).__name__})"
         if on_done is not None:

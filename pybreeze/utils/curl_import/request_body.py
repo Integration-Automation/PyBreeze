@@ -75,8 +75,11 @@ def _exact_float(text: str) -> float:
     :raises ValueError: when it is not (too many digits, or out of range)
     """
     value = float(text)
-    if not math.isfinite(value) or Decimal(repr(value)) != Decimal(text):
-        raise ValueError(f"{text} does not survive as a float")
+    survives = f"{text} does not survive as a float"
+    if not math.isfinite(value):
+        raise ValueError(survives)
+    if Decimal(repr(value)) != Decimal(text):
+        raise ValueError(survives)
     return value
 
 

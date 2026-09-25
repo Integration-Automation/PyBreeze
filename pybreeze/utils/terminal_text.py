@@ -25,11 +25,12 @@ ANSI_ESCAPE_PATTERN = re.compile(
 # Backspace is applied first (_apply_backspaces)
 _CONTROL_CHARACTER = re.compile('[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]')
 
-# The end of a read that stops inside an escape sequence: a lone ESC, a CSI
-# still waiting for its final byte, a control string still waiting for its
-# terminator (or the second byte of ST), or a character-set escape still
-# waiting for its final byte
-_INCOMPLETE_ESCAPE = re.compile(r'\x1B(?:\[[0-?]*[ -/]*|[\]PX^_][^\x07\x1B]*\x1B?|[ -/]+)?\Z')
+# The end of a read that stops inside an escape sequence: a lone ESC, or ESC and
+# one of these, still waiting for the rest
+_UNFINISHED_CSI = r'\[[0-?]*[ -/]*'  # a CSI without its final byte
+_UNFINISHED_STRING = r'[\]PX^_][^\x07\x1B]*\x1B?'  # a control string without its terminator (or ST's second byte)
+_UNFINISHED_CHARSET = r'[ -/]+'  # a character-set escape without its final byte
+_INCOMPLETE_ESCAPE = re.compile(rf'\x1B(?:{_UNFINISHED_CSI}|{_UNFINISHED_STRING}|{_UNFINISHED_CHARSET})?\Z')
 # Longest such tail held back for the next read; anything longer is shown as is
 _MAX_PENDING_ESCAPE = 256
 

@@ -4,6 +4,7 @@ from je_editor import traditional_chinese_word_dict
 
 _COT_PROMPT_EDITOR = "CoT 提示詞編輯器"
 _SKILL_PROMPT_EDITOR = "Skill 提示詞編輯器"
+_RESULT_LABEL = "結果："
 
 # PyBreeze-specific Traditional Chinese translations
 pybreeze_traditional_chinese_word_dict = {
@@ -169,8 +170,8 @@ pybreeze_traditional_chinese_word_dict = {
     "ssh_command_widget_dialog_title_key_error": "金鑰錯誤",
     "ssh_command_widget_dialog_message_key_file_not_exist": "金鑰檔案不存在。",
     "ssh_command_widget_error_message_unsupported_private_key": "不支援或無效的私鑰。",
-    "ssh_key_error_passphrase_needed": "這把私鑰有密語保護：請在密語欄輸入。",
-    "ssh_key_error_passphrase_wrong": "私鑰的密語不對。",
+    "ssh_key_error_passphrase_needed": "這把私鑰有密語保護：請在密語欄輸入。",  # NOSONAR S2068 — a message, not a credential
+    "ssh_key_error_passphrase_wrong": "私鑰的密語不對。",  # NOSONAR S2068 — a message, not a credential
     "ssh_key_error_putty_key": "這是 PuTTY 金鑰（.ppk），這裡無法使用：請在 PuTTYgen 載入它，"
                                "選 Conversions > Export OpenSSH key 匯出，再選擇匯出的檔案。",
     "ssh_command_widget_error_message_key_auth_failed": "金鑰驗證失敗",
@@ -495,7 +496,7 @@ pybreeze_traditional_chinese_word_dict = {
     "ctrl_enter_when_not_json": "Ctrl+Enter（輸入不是 JSON 物件時）",
     "query_json_to_json_button": "Query → JSON",
     "query_json_to_query_button": "JSON → Query",
-    "query_json_output_label": "結果：",
+    "query_json_output_label": _RESULT_LABEL,
     "query_json_error": "無法轉換：{error}",
     "query_json_empty_hint": "請在上方輸入查詢字串或 JSON 物件。",
     # URL 解析／組建器 — 選單
@@ -509,7 +510,7 @@ pybreeze_traditional_chinese_word_dict = {
         "https://user@host:8080/path?a=1#frag   或   {\"scheme\": \"https\", \"host\": \"host\"}",
     "url_builder_to_json_button": "URL → JSON",
     "url_builder_to_url_button": "JSON → URL",
-    "url_builder_output_label": "結果：",
+    "url_builder_output_label": _RESULT_LABEL,
     "url_builder_parse_error": "無法解析這個 URL：{error}",
     "url_builder_error": "無法組建 URL：{error}",
     "url_builder_empty_hint": "請在上方輸入 URL 或描述 URL 各部分的 JSON 物件。",
@@ -569,7 +570,7 @@ pybreeze_traditional_chinese_word_dict = {
     "json_format_input_placeholder": "{\"a\": 1, \"b\": [2, 3]}",
     "json_format_format_button": "格式化",
     "json_format_minify_button": "壓縮",
-    "json_format_output_label": "結果：",
+    "json_format_output_label": _RESULT_LABEL,
     "json_format_error": "無效的 JSON：{error}",
     "json_format_empty_hint": "請在上方貼上 JSON，再按格式化或壓縮。",
     # 回應檢視器 — 選單

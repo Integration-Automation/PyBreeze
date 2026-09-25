@@ -271,7 +271,7 @@ def _unwatch(editor: EditorWidget) -> None:
     Done before the file moves: once it is gone, Windows does not let go of
     the old name.
     """
-    watcher = editor._file_watcher  # noqa: SLF001 — JEditor's own watcher, handled as open_an_file handles it (test_jeditor_contract.py)
+    watcher = editor._file_watcher  # noqa: SLF001 — JEditor's own watcher; handled as open_an_file handles it (test_jeditor_contract.py)
     watched = watcher.files()
     if watched:
         watcher.removePaths(watched)

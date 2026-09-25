@@ -9,6 +9,7 @@ from pybreeze.utils.exception.error_templates import (
 
 _COT_PROMPT_EDITOR = "CoT Prompt Editor"
 _SKILL_PROMPT_EDITOR = "Skill Prompt Editor"
+_RESULT_LABEL = "Result:"
 
 # PyBreeze-specific English translations
 pybreeze_english_word_dict = {
@@ -533,7 +534,7 @@ pybreeze_english_word_dict = {
     "ctrl_enter_when_not_json": "Ctrl+Enter, when the input is not a JSON object",
     "query_json_to_json_button": "Query → JSON",
     "query_json_to_query_button": "JSON → Query",
-    "query_json_output_label": "Result:",
+    "query_json_output_label": _RESULT_LABEL,
     "query_json_error": "Could not convert: {error}",
     "query_json_empty_hint": "Enter a query string or a JSON object above.",
     # URL Parser / Builder — Menu
@@ -547,7 +548,7 @@ pybreeze_english_word_dict = {
         "https://user@host:8080/path?a=1#frag   or   {\"scheme\": \"https\", \"host\": \"host\"}",
     "url_builder_to_json_button": "URL → JSON",
     "url_builder_to_url_button": "JSON → URL",
-    "url_builder_output_label": "Result:",
+    "url_builder_output_label": _RESULT_LABEL,
     "url_builder_parse_error": "Could not read the URL: {error}",
     "url_builder_error": "Could not build URL: {error}",
     "url_builder_empty_hint": "Enter a URL or a JSON object of URL parts above.",
@@ -607,7 +608,7 @@ pybreeze_english_word_dict = {
     "json_format_input_placeholder": "{\"a\": 1, \"b\": [2, 3]}",
     "json_format_format_button": "Format",
     "json_format_minify_button": "Minify",
-    "json_format_output_label": "Result:",
+    "json_format_output_label": _RESULT_LABEL,
     "json_format_error": "Invalid JSON: {error}",
     "json_format_empty_hint": "Paste JSON above, then format or minify.",
     # Response Inspector — Menu

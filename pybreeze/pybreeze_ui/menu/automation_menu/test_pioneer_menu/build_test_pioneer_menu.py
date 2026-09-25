@@ -82,7 +82,7 @@ def create_template(ui_we_want_to_set: PyBreezeMainWindow) -> None:
             return
     try:
         create_template_dir(project_path=str(project), parent_name=_TEMPLATE_DIR)
-    except Exception as error:  # noqa: BLE001 — TestPioneer raises its unexported ProjectException, a bare Exception subclass, for a write it could not make; it is logged and reported
+    except Exception as error:  # noqa: BLE001 — TestPioneer raises its unexported ProjectException (a bare Exception subclass) for a write it could not make; it is logged and reported
         pybreeze_logger.error("TestPioneer template not created in %s: %r", project, error)
         QMessageBox.warning(
             ui_we_want_to_set, title,

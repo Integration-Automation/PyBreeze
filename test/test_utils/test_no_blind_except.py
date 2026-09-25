@@ -41,3 +41,15 @@ def test_every_blind_catch_re_raises_or_says_why():
                 continue
             offenders.append(f"{path.relative_to(PACKAGE.parent)}:{node.lineno}")
     assert offenders == []
+
+
+def test_no_noqa_reason_has_a_comma():
+    # SonarCloud reads what follows a comma in "# noqa: CODE — reason" as more
+    # rule codes, and reports the comment as a malformed suppression (S7632)
+    offenders = []
+    for path in sorted(PACKAGE.rglob("*.py")):
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            _, marker, rest = line.partition("# noqa:")
+            if marker and "," in rest.partition("—")[2]:
+                offenders.append(f"{path.relative_to(PACKAGE)}:{number}")
+    assert not offenders, offenders

@@ -103,10 +103,7 @@ def save_current_file_for_run(main_window: PyBreezeMainWindow) -> str | None:
 def _save(main_window: PyBreezeMainWindow, widget: EditorWidget) -> str | None:
     """Write *widget* to its file, or through Save As; the path, or None if cancelled."""
     if not widget.current_file:
-        if not choose_file_get_save_file_path(main_window):
-            return None
-        # The save dialog can be accepted without a path being set.
-        return widget.current_file or None
+        return _save_as(main_window, widget)
     write_file_with_encoding(
         str(widget.current_file), widget.code_edit.toPlainText(),
         getattr(widget, "file_encoding", DEFAULT_ENCODING),
@@ -117,6 +114,14 @@ def _save(main_window: PyBreezeMainWindow, widget: EditorWidget) -> str | None:
     widget.mark_ignore_next_file_change()
     widget.mark_saved()
     return widget.current_file
+
+
+def _save_as(main_window: PyBreezeMainWindow, widget: EditorWidget) -> str | None:
+    """Save a tab that has no file through JEditor's Save As; its new path, or None if cancelled."""
+    if not choose_file_get_save_file_path(main_window):
+        return None
+    # The dialog sets the tab's file; it can be accepted without a path being set.
+    return widget.current_file or None
 
 
 def run_current_file_with(main_window: PyBreezeMainWindow, run_config: dict) -> None:

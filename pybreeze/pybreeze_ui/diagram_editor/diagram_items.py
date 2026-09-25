@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from enum import Enum, auto
+from typing import TypeVar
 
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import (
@@ -155,8 +156,11 @@ _MIN_LINE_WIDTH = 0.5
 _MAX_LINE_WIDTH = 10.0
 
 
-def _number(value: object, fallback: float) -> float:
-    """Return *value* as a float, or *fallback* when it is not a finite number."""
+_Fallback = TypeVar("_Fallback")
+
+
+def _number(value: object, fallback: _Fallback) -> float | _Fallback:
+    """Return *value* as a float, or *fallback* (a number, or ``None``) when it is not a finite number."""
     try:
         number = float(value)
     except (TypeError, ValueError):

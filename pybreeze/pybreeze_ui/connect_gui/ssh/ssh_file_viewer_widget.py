@@ -238,11 +238,12 @@ class SSHFileTreeManager(QWidget):
         if transfer_running:
             let_run_out(transfer, transfer.done, transfer.failed, transfer.cancelled)
             transfer.finished.connect(self.client.close)
-        for listing in list(self._listings):
+        # Over copies: a thread's slot may drop it from its set
+        for listing in tuple(self._listings):
             if listing.isRunning():
                 let_run_out(listing, listing.listed, listing.failed)
         self._listings.clear()
-        for call in list(self._calls):
+        for call in tuple(self._calls):
             if call.isRunning():
                 let_run_out(call, call.done, call.failed)
         self._calls.clear()

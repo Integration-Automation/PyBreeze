@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-87 | 2026-09-25 | SonarCloud's open issues in pybreeze/ dealt with | #refactor #quality | [2026-09-c](2026-09-c.md) |
 | U-20260925-86 | 2026-09-25 | An arrow's label is read in linear time | #fix #diagram | [2026-09-c](2026-09-c.md) |
 | U-20260925-85 | 2026-09-25 | The PDF of the guide keeps its Chinese half | #fix #docs | [2026-09-c](2026-09-c.md) |
 | U-20260925-84 | 2026-09-25 | A run whose window was closed can be stopped from the Run menu | #test #run | [2026-09-c](2026-09-c.md) |
@@ -489,4 +490,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
-| [2026-09-c.md](2026-09-c.md) | 2026-09 | 86 |
+| [2026-09-c.md](2026-09-c.md) | 2026-09 | 87 |
