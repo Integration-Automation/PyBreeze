@@ -292,3 +292,86 @@ def test_the_server_is_told_not_to_move_to_another_port(monkeypatch):
 
     assert "--ServerApp.port_retries=0" in started[0]
     assert "--ServerApp.port=8888" in started[0]
+
+
+class TestInstallingJupyterLab:
+    """When the interpreter has no JupyterLab, it is installed there first."""
+
+    @staticmethod
+    def _launch(monkeypatch, pip_result, during_pip=None):
+        from types import SimpleNamespace
+
+        from pybreeze.pybreeze_ui.jupyter_lab_gui import jupyter_lab_thread as mod
+
+        seen: dict = {"pip": [], "started": [], "status": [], "errors": [], "ready": []}
+        thread = mod.JupyterLauncherThread(python_exe="C:/envs/lab/python.exe")
+
+        def run(args, **options):
+            seen["pip"].append((args, options.get("timeout")))
+            if during_pip is not None:
+                during_pip(thread)
+            return SimpleNamespace(returncode=pip_result[0], stderr=pip_result[1])
+
+        monkeypatch.setattr(mod, "is_jupyter_installed", lambda exe: False)
+        monkeypatch.setattr(mod.subprocess, "run", run)
+        monkeypatch.setattr(mod, "find_free_port", lambda: 58888)
+        monkeypatch.setattr(thread, "_start_server", lambda exe, port: seen["started"].append((exe, port)) or object())
+        monkeypatch.setattr(thread, "_wait_until_ready", lambda port: None)
+        thread.status_update.connect(seen["status"].append)
+        thread.error_occurred.connect(seen["errors"].append)
+        thread.server_ready.connect(seen["ready"].append)
+        thread.run()
+        return seen
+
+    def test_it_is_installed_into_the_interpreter_the_lab_runs_in(self, qt_app, monkeypatch):
+        from je_editor import language_wrapper
+
+        seen = self._launch(monkeypatch, (0, ""))
+
+        assert seen["pip"] == [(["C:/envs/lab/python.exe", "-m", "pip", "install", "jupyterlab", "-U"], 300)]
+        assert seen["status"][0] == language_wrapper.language_word_dict.get("jupyterlab_downloading")
+        assert seen["started"] == [("C:/envs/lab/python.exe", 58888)]
+        assert seen["ready"] == ["http://localhost:58888/lab"]
+        assert seen["errors"] == []
+
+    def test_a_failed_install_says_why_and_starts_no_server(self, qt_app, monkeypatch):
+        monkeypatch.setattr("pybreeze.pybreeze_ui.jupyter_lab_gui.jupyter_lab_thread.pybreeze_logger.error",
+                            lambda *args: None)
+
+        seen = self._launch(monkeypatch, (1, "ERROR: No matching distribution found for jupyterlab"))
+
+        assert seen["errors"] == ["ERROR: No matching distribution found for jupyterlab"]
+        assert seen["started"] == []
+        assert seen["ready"] == []
+
+    def test_a_tab_closed_during_the_install_gets_no_server(self, qt_app, monkeypatch):
+        seen = self._launch(monkeypatch, (0, ""), during_pip=lambda thread: thread.stop())
+
+        assert seen["started"] == []
+        assert seen["ready"] == []
+        assert seen["errors"] == []
+
+
+class TestTheTab:
+    @staticmethod
+    def _tab(monkeypatch):
+        from pybreeze.extend_multi_language.update_language_dict import update_language_dict
+        from pybreeze.pybreeze_ui.jupyter_lab_gui import jupyter_lab_widget
+
+        update_language_dict()
+        monkeypatch.setattr(jupyter_lab_widget.JupyterLauncherThread, "start", lambda self: None)
+        return jupyter_lab_widget.JupyterLabWidget()
+
+    def test_the_lab_replaces_the_status_and_a_late_status_is_ignored(self, qt_app, monkeypatch):
+        tab = self._tab(monkeypatch)
+        tab.update_status("Loading...")
+        assert tab.status_label.text() == "Loading..."
+
+        tab.load_lab("http://localhost:58888/lab")
+        tab.update_status("Loading... (3s / 60s)")  # queued before the lab was ready
+        tab.show_error("too late to matter")
+
+        assert tab.status_label is None
+        assert tab.browser.url().toString() == "http://localhost:58888/lab"
+        tab.close()
+        tab.deleteLater()
