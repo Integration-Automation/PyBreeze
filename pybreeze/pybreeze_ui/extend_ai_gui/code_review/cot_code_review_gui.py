@@ -31,7 +31,7 @@ class CoTCodeReviewGUI(QWidget):
         url_layout.addWidget(self.url_input)
         layout.addLayout(url_layout)
 
-        # 傳送資料區域
+        # 要審查的程式碼 / The code to review; each step's prompt quotes it
         self.code_paste_area = QTextEdit()
         use_fixed_pitch_font(self.code_paste_area)
         self.code_paste_area.setPlaceholderText(

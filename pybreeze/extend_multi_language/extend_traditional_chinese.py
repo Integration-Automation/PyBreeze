@@ -359,7 +359,7 @@ pybreeze_traditional_chinese_word_dict = {
     "cot_gui_placeholder_code_paste_area": "在這裡貼上要審查的程式碼",
     "cot_gui_label_step": "步驟：",
     "cot_gui_placeholder_no_answers": "還沒有回覆",
-    "cot_gui_label_prompt_area": "傳送資料區域",
+    "cot_gui_label_prompt_area": "要審查的程式碼",
     "cot_gui_label_response_area": "回傳區域",
     "cot_gui_button_send": "開始傳送",
     "cot_gui_warning_title": "警告",

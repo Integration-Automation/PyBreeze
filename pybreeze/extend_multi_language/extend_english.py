@@ -369,7 +369,7 @@ pybreeze_english_word_dict = {
     "cot_gui_placeholder_code_paste_area": "Paste the code to review here",
     "cot_gui_label_step": "Step:",
     "cot_gui_placeholder_no_answers": "No answers yet",
-    "cot_gui_label_prompt_area": "Prompt Area",
+    "cot_gui_label_prompt_area": "Code to Review",
     "cot_gui_label_response_area": "Response Area",
     "cot_gui_button_send": "Start Sending",
     "cot_gui_warning_title": "Warning",
