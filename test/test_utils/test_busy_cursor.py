@@ -112,3 +112,15 @@ class TestTheEntriesThatBuildWidgets:
         assert seen == [Qt.CursorShape.WaitCursor]
         assert window.tab_widget.tabText(0) == "Docs0"
         assert _cursor_shape() is None
+
+    def test_a_jupyterlab_tab(self, window, monkeypatch):
+        from pybreeze.pybreeze_ui.menu.extend_jeditor_tab_menu import jupyter_lab_tab
+
+        seen: list = []
+        monkeypatch.setattr(jupyter_lab_tab, "JupyterLabWidget", _recording_factory(seen))
+
+        jupyter_lab_tab.add_jupyterlab_tab(window)
+
+        assert seen == [Qt.CursorShape.WaitCursor]
+        assert window.tab_widget.count() == 1
+        assert _cursor_shape() is None

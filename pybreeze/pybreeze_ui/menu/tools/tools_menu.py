@@ -277,9 +277,8 @@ def extend_dock_menu(ui_we_want_to_set: PyBreezeMainWindow):
 
 
 def add_dock(ui_we_want_to_set: PyBreezeMainWindow, widget_type: str | None = None):
-    jeditor_logger.info("build_dock_menu.py add_dock_widget "
-                        f"ui_we_want_to_set: {ui_we_want_to_set} "
-                        f"widget_type: {widget_type}")
+    jeditor_logger.info("build_dock_menu.py add_dock_widget ui_we_want_to_set: %s widget_type: %s",
+                        ui_we_want_to_set, widget_type)
 
     # 建立一個可銷毀的 Dock 容器
     # Create a destroyable dock container

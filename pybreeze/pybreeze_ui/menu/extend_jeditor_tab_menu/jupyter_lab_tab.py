@@ -7,6 +7,7 @@ from PySide6.QtWidgets import QMenu
 from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.jupyter_lab_gui.jupyter_lab_widget import JupyterLabWidget
+from pybreeze.pybreeze_ui.menu.menu_utils import busy_cursor
 from pybreeze.utils.logging.logger import pybreeze_logger
 
 if TYPE_CHECKING:
@@ -23,8 +24,11 @@ def extend_tab_tools_menu(ui_we_want_to_set: PyBreezeMainWindow):
     jeditor_tab_menu.addAction(jeditor_tab_menu.add_jupyterlab_action)
 
 def add_jupyterlab_tab(ui_we_want_to_set: PyBreezeMainWindow):
-    pybreeze_logger.info(f"jupyter_lab_tab.py add jupyter tab ui_we_want_to_set: {ui_we_want_to_set}")
+    pybreeze_logger.info("jupyter_lab_tab.py add jupyter tab ui_we_want_to_set: %s", ui_we_want_to_set)
+    # Its web view starts Chromium the first time, which takes seconds
+    with busy_cursor():
+        tab = JupyterLabWidget(getattr(ui_we_want_to_set, "python_compiler", None))
     ui_we_want_to_set.tab_widget.addTab(
-        JupyterLabWidget(getattr(ui_we_want_to_set, "python_compiler", None)),
+        tab,
         f"{language_wrapper.language_word_dict.get('tab_menu_jupyterlab_tab_name')} "
         f"{ui_we_want_to_set.tab_widget.count()}")
