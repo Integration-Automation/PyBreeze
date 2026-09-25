@@ -643,9 +643,11 @@ def _is_running(pid: int) -> bool:
     """Whether a process with *pid* is still there (not os.kill: on Windows that ends it)."""
     import subprocess
 
+    # Read as bytes: tasklist writes the console code page (its "no tasks" note in
+    # cp950 here), which is not UTF-8 in UTF-8 mode; a pid is ASCII in all of them
     listed = subprocess.run(["tasklist", "/FI", f"PID eq {pid}", "/NH"], capture_output=True,
-                            text=True, timeout=30, check=False)
-    return str(pid) in listed.stdout
+                            timeout=30, check=False)
+    return str(pid).encode("ascii") in listed.stdout
 
 
 @pytest.mark.skipif(os.name != "nt", reason="checked with tasklist")

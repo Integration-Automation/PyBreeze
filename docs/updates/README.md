@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-46 | 2026-09-26 | A test helper reads tasklist as bytes, so the run tests pass in UTF-8 mode | #test #python-3.15 | [2026-09-d](2026-09-d.md) |
 | U-20260926-45 | 2026-09-26 | Every child process gets its environment, and JupyterLab's pip install is read as UTF-8 | #fix #subprocess #jupyter #python-3.15 | [2026-09-d](2026-09-d.md) |
 | U-20260926-44 | 2026-09-26 | A run config's "locale" encoding stays the machine's code page in UTF-8 mode | #fix #plugins #python-3.15 | [2026-09-d](2026-09-d.md) |
 | U-20260926-43 | 2026-09-26 | if_alive is tested with a widget that is already gone | #test #threads | [2026-09-d](2026-09-d.md) |
@@ -584,4 +585,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
-| [2026-09-d.md](2026-09-d.md) | 2026-09 | 65 |
+| [2026-09-d.md](2026-09-d.md) | 2026-09 | 66 |
