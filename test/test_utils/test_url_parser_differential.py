@@ -129,8 +129,11 @@ def test_a_url_with_an_underscore_label_and_a_unicode_one_is_not_ambiguous(publi
     assert validate_url("https://under_score.bücher.example/") == "https://under_score.bücher.example/"
 
 
-@pytest.mark.parametrize("url", ["http://example.com/a\\b", "http://example.com/?q=a\\b", "http://example.com/a\x7fb"])
-def test_a_backslash_or_delete_anywhere_is_refused_even_where_both_read_one_host(public_dns, url):
+@pytest.mark.parametrize("url", [
+    "http://example.com/a\\b", "http://example.com/?q=a\\b", "http://example.com/a\x7fb",
+    "http://example.com/a\x01b", "http://example.com/?q=\x08",
+])
+def test_a_backslash_or_a_control_character_is_refused_even_where_both_read_one_host(public_dns, url):
     # The parsers agree on the host here; only the character check stands in the way
     from pybreeze.utils.exception.exception_tags import url_unsafe_characters_error
 
