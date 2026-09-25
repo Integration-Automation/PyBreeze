@@ -9,6 +9,7 @@ import os
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest
+from je_editor import language_wrapper
 from PySide6.QtCore import QEvent, QPointF, Qt
 from PySide6.QtGui import QKeyEvent
 from PySide6.QtWidgets import QApplication, QGraphicsLineItem, QGraphicsSceneMouseEvent
@@ -103,6 +104,56 @@ class TestDrawingAConnection:
         assert scene.get_all_connections() == []
         assert _dashed_lines(scene) == []
         assert scene.mode == ToolMode.SELECT
+
+
+class TestAddingByClicking:
+    @pytest.mark.parametrize("mode", [ToolMode.ADD_RECT, ToolMode.ADD_ROUNDED_RECT,
+                                      ToolMode.ADD_ELLIPSE, ToolMode.ADD_DIAMOND])
+    def test_a_click_adds_that_shape_centred_on_it_in_one_undo_step(self, scene, mode):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import _MODE_SHAPE_MAP
+
+        scene.mode = mode
+        _click(scene, 200, 100)
+
+        (node,) = scene.get_all_nodes()
+        assert node.shape_type == _MODE_SHAPE_MAP[mode]
+        assert node.center_pos() == QPointF(200, 100)
+        assert scene.mode == ToolMode.SELECT  # one node per pick of the tool
+        scene.undo_stack.undo()
+        assert scene.get_all_nodes() == []
+
+    def test_a_click_in_text_mode_adds_a_text_box(self, scene):
+        scene.mode = ToolMode.ADD_TEXT
+        _click(scene, 200, 100)
+
+        (node,) = scene.get_all_nodes()
+        assert node.text() == language_wrapper.language_word_dict.get("diagram_editor_new_text_text")
+        assert node.center_pos() == QPointF(200, 100)
+        assert scene.mode == ToolMode.SELECT
+
+    def test_a_right_press_adds_nothing(self, scene):
+        scene.mode = ToolMode.ADD_RECT
+        press = QGraphicsSceneMouseEvent(QEvent.Type.GraphicsSceneMousePress)
+        press.setScenePos(QPointF(200, 100))
+        press.setButton(Qt.MouseButton.RightButton)
+        scene.mousePressEvent(press)
+
+        assert scene.get_all_nodes() == []
+        assert scene.mode == ToolMode.ADD_RECT
+
+
+def test_the_dashed_line_follows_the_mouse_while_a_connection_is_drawn(scene):
+    first, _second = _two_nodes(scene)
+    scene.mode = ToolMode.ADD_CONNECTION
+    _click(scene, 50, 30)
+    move = QGraphicsSceneMouseEvent(QEvent.Type.GraphicsSceneMouseMove)
+    move.setScenePos(QPointF(250, 200))
+
+    scene.mouseMoveEvent(move)
+
+    (line,) = _dashed_lines(scene)
+    assert line.line().p1() == first.center_pos()
+    assert line.line().p2() == QPointF(250, 200)
 
 
 class TestDelete:
