@@ -12,3 +12,17 @@ updates:
     # Development work, dependency bumps included, goes to dev; main takes
     # releases only, and every push to main publishes to PyPI.
     target-branch: "dev"
+    # A new release waits 7 days before Dependabot proposes it, so a
+    # compromised version is more likely to be found and yanked first.
+    # Dependabot's own default is 3 days. Security updates are not delayed.
+    cooldown:
+      default-days: 7
+  # Workflow actions are pinned to commit SHAs with the version as a comment
+  # (test/test_utils/test_workflow_actions.py); Dependabot moves both together.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    target-branch: "dev"
+    cooldown:
+      default-days: 7
