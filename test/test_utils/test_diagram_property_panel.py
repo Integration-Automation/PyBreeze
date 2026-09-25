@@ -105,3 +105,79 @@ class TestAnImage:
 
         assert (picture.img_w, picture.img_h) == (200, 80)
         assert picture.text() == "logo"
+
+
+@pytest.fixture
+def node(app):
+    scene = DiagramScene()
+    box = DiagramNode(x=0, y=0, w=140, h=60, text="A")
+    scene.addItem(box)
+    panel = DiagramPropertyPanel(scene)
+    box.setSelected(True)
+    yield scene, box, panel
+    panel.deleteLater()
+    scene.deleteLater()
+
+
+class TestANode:
+    def test_its_text_shape_and_colours_follow_the_panel(self, node):
+        scene, box, panel = node
+
+        panel._node_text.setText("Start")
+        panel._node_text.editingFinished.emit()
+        panel._node_shape.setCurrentIndex(3)
+        panel._node_fill.color_changed.emit(QColor("#00ff00"))
+        panel._node_border.color_changed.emit(QColor("#0000ff"))
+
+        saved = box.to_dict(0)
+        assert (saved["text"], saved["shape"]) == ("Start", "DIAMOND")
+        assert (saved["fill_color"], saved["border_color"]) == ("#00ff00", "#0000ff")
+        assert scene.undo_stack.count() == 4
+
+    def test_leaving_the_text_box_unchanged_records_nothing(self, node):
+        # editingFinished comes with every focus change: a step for it would
+        # mark a saved diagram as changed
+        scene, _box, panel = node
+
+        panel._node_text.editingFinished.emit()
+
+        assert not scene.undo_stack.canUndo()
+
+    def test_an_edit_with_nothing_selected_changes_nothing(self, node):
+        scene, box, panel = node
+        box.setSelected(False)
+
+        panel._on_node_fill(QColor("#00ff00"))
+        panel._on_conn_label()
+        panel._on_img_caption()
+
+        assert box.to_dict(0)["fill_color"] != "#00ff00"
+        assert not scene.undo_stack.canUndo()
+
+
+class TestTheColourButton:
+    def test_a_colour_picked_is_shown_and_passed_on(self, node, monkeypatch):
+        from pybreeze.pybreeze_ui.diagram_editor import diagram_property_panel
+
+        _scene, box, panel = node
+        monkeypatch.setattr(diagram_property_panel.QColorDialog, "getColor",
+                            staticmethod(lambda *args: QColor("#123456")))
+
+        panel._node_fill._pick()
+
+        assert panel._node_fill.color() == QColor("#123456")
+        assert panel._node_fill.text() == "#123456"
+        assert box.to_dict(0)["fill_color"] == "#123456"
+
+    def test_a_cancelled_dialog_changes_nothing(self, node, monkeypatch):
+        from pybreeze.pybreeze_ui.diagram_editor import diagram_property_panel
+
+        scene, _box, panel = node
+        before = panel._node_fill.color()
+        monkeypatch.setattr(diagram_property_panel.QColorDialog, "getColor",
+                            staticmethod(lambda *args: QColor()))  # what Cancel returns
+
+        panel._node_fill._pick()
+
+        assert panel._node_fill.color() == before
+        assert not scene.undo_stack.canUndo()
