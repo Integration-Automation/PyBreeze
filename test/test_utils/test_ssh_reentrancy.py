@@ -406,3 +406,78 @@ class TestSha1IsRefused:
             sftp_session.SFTPClientWrapper().connect("host", 22, "user", "pw")
 
         assert connects[0]["disabled_algorithms"] is sftp_session.SHA1_ALGORITHMS
+
+
+class TestKeyAuthentication:
+    @staticmethod
+    def _key_file(tmp_path, password: str | None = None) -> str:
+        import paramiko
+
+        path = tmp_path / "id_rsa"
+        paramiko.RSAKey.generate(2048).write_private_key_file(str(path), password=password)
+        return str(path)
+
+    @staticmethod
+    def _use_key(widget, key_path: str, passphrase: str = "") -> None:
+        widget.login_widget.use_key_check.setChecked(True)
+        widget.login_widget.key_edit.setText(key_path)
+        widget.login_widget.pass_edit.setText(passphrase)
+
+    def test_it_refuses_sha1_as_the_password_does(self, app, monkeypatch, tmp_path):
+        import paramiko
+
+        client = FakeClient()
+        widget = _shell(monkeypatch, client)
+        widget._start_shell = lambda *args: None
+        self._use_key(widget, self._key_file(tmp_path))
+
+        widget.connect_ssh()
+        _wait_for(lambda: client.connect_options and not widget._connecting.isRunning())
+
+        assert client.connect_options["disabled_algorithms"] is shell_mod.SHA1_ALGORITHMS
+        assert isinstance(client.connect_options["pkey"], paramiko.RSAKey)
+        assert "password" not in client.connect_options
+
+    def test_a_key_needing_a_passphrase_says_so_and_connects_nothing(self, app, monkeypatch, tmp_path):
+        client = FakeClient()
+        widget = _shell(monkeypatch, client)
+        self._use_key(widget, self._key_file(tmp_path, password="secret"))
+
+        widget.connect_ssh()
+        _wait_for(lambda: not widget._connecting.isRunning())
+        _wait_for(lambda: widget.ssh_client is None)
+
+        from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_key_loader import PASSPHRASE_NEEDED
+
+        assert client.connect_options == {}
+        assert widget.word_dict.get(PASSPHRASE_NEEDED) in widget.terminal.toPlainText()
+
+
+class TestConnectInputs:
+    @staticmethod
+    def _warned(monkeypatch) -> list:
+        warned: list = []
+        monkeypatch.setattr(shell_mod.QMessageBox, "warning", lambda *args: warned.append(args[2]))
+        return warned
+
+    @pytest.mark.parametrize("empty", ["host_edit", "user_edit"])
+    def test_host_and_user_are_required(self, app, monkeypatch, empty):
+        widget = _shell(monkeypatch, FakeClient())
+        getattr(widget.login_widget, empty).setText("   ")
+        warned = self._warned(monkeypatch)
+
+        widget.connect_ssh()
+
+        assert len(warned) == 1
+        assert widget._connecting is None
+
+    def test_a_key_file_that_is_not_there_is_refused(self, app, monkeypatch, tmp_path):
+        widget = _shell(monkeypatch, FakeClient())
+        widget.login_widget.use_key_check.setChecked(True)
+        widget.login_widget.key_edit.setText(str(tmp_path / "missing_key"))
+        warned = self._warned(monkeypatch)
+
+        widget.connect_ssh()
+
+        assert len(warned) == 1
+        assert widget._connecting is None
