@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-110 | 2026-09-25 | Runs from a Chinese folder with Chinese output are tested end to end | #test #encoding | [2026-09-c](2026-09-c.md) |
 | U-20260925-109 | 2026-09-25 | The SSH widgets' optional login widget is typed as optional | #types #ssh | [2026-09-c](2026-09-c.md) |
 | U-20260925-108 | 2026-09-25 | No tool tab or panel hides a Qt method behind an attribute of the same name | #refactor #quality | [2026-09-c](2026-09-c.md) |
 | U-20260925-107 | 2026-09-25 | Opening the main window takes about 1 s instead of 3: the theme is applied once | #perf #startup | [2026-09-c](2026-09-c.md) |
@@ -512,4 +513,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
-| [2026-09-c.md](2026-09-c.md) | 2026-09 | 109 |
+| [2026-09-c.md](2026-09-c.md) | 2026-09 | 110 |
