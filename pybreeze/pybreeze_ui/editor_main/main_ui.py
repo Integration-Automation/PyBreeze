@@ -228,8 +228,9 @@ def start_editor(debug_mode: bool = False, theme: str | None = None, **kwargs) -
     # Qt objects on the worker and crashed the IDE later
     collect_garbage_on_gui_thread(new_ide)
     # Held until the application ends: the window is nobody else's
-    _window = open_main_window(new_ide, debug_mode=debug_mode, theme=theme, **kwargs)
+    window = open_main_window(new_ide, debug_mode=debug_mode, theme=theme, **kwargs)
     ret = new_ide.exec()
+    del window
     os._exit(ret)
 
 

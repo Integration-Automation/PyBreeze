@@ -33,7 +33,7 @@ PUTTY_KEY = "ssh_key_error_putty_key"
 _PUTTY_HEADER = b"PuTTY-User-Key-File-"
 
 # PKCS#8, which paramiko does not read (openssl genpkey, ssh-keygen -m PKCS8)
-_PKCS8_PLAIN = b"-----BEGIN PRIVATE KEY-----"
+_PKCS8_PLAIN = b"-----BEGIN PRIVATE KEY-----"  # nosemgrep  # gitleaks:allow — a format marker, not a key
 _PKCS8_ENCRYPTED = b"-----BEGIN ENCRYPTED PRIVATE KEY-----"
 
 

@@ -78,7 +78,8 @@ def _exact_float(text: str) -> float:
     survives = f"{text} does not survive as a float"
     if not math.isfinite(value):
         raise ValueError(survives)
-    if Decimal(repr(value)) != Decimal(text):
+    # Decimal compares by value: "1.5" round-trips and this is false
+    if Decimal(repr(value)) != Decimal(text):  # NOSONAR S2583
         raise ValueError(survives)
     return value
 
