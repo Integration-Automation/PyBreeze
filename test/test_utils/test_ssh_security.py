@@ -232,3 +232,26 @@ class TestSha1Algorithms:
         assert [name for name in offered if "sha1" in name or name.startswith("ssh-rsa")] == []
         # RSA keys still work, signed with SHA-2
         assert "rsa-sha2-256" in transport.preferred_pubkeys
+
+
+class TestWhetherAPassphraseDecryptsAKey:
+    def test_a_file_that_cannot_be_read_is_not_decrypted(self, tmp_path):
+        from pybreeze.pybreeze_ui.connect_gui.ssh import ssh_key_loader
+
+        assert ssh_key_loader._decrypts(str(tmp_path / "missing"), "anything") is False
+
+    def test_a_key_of_a_type_cryptography_cannot_use_was_decrypted(self, tmp_path, monkeypatch):
+        # Decrypted far enough to see its type: the passphrase was right
+        from cryptography.exceptions import UnsupportedAlgorithm
+
+        from pybreeze.pybreeze_ui.connect_gui.ssh import ssh_key_loader
+
+        key_file = tmp_path / "old_key"
+        key_file.write_bytes(b"-----BEGIN OPENSSH PRIVATE KEY-----\n")
+
+        def unsupported(_data, _password):
+            raise UnsupportedAlgorithm("no such key type")
+
+        monkeypatch.setattr(ssh_key_loader.serialization, "load_ssh_private_key", unsupported)
+
+        assert ssh_key_loader._decrypts(str(key_file), "right") is True
