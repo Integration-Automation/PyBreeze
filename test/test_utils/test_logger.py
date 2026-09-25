@@ -16,16 +16,28 @@ class TestPyBreezeLogger:
     def test_logger_has_handler(self):
         assert len(pybreeze_logger.handlers) > 0
 
-    def test_does_not_reconfigure_root_logger(self):
-        # A library must not force the root logger level or call basicConfig;
-        # that would override the host application's logging configuration.
-        import inspect
+    def test_does_not_reconfigure_root_logger(self, tmp_path):
+        # A library must not force the root logger level or add handlers to it
+        # (basicConfig does both): that overrides the host application's logging.
+        # A fresh interpreter, since this one has long imported the package.
+        import json
+        import subprocess
+        import sys
+        from pathlib import Path
 
-        from pybreeze.utils.logging import logger as logger_module
+        script = (
+            "import json, logging\n"
+            "root = logging.getLogger()\n"
+            "root.setLevel(logging.ERROR)\n"
+            "before = (root.level, list(root.handlers))\n"
+            "import pybreeze.utils.logging.logger\n"
+            "print(json.dumps({'level': root.level == before[0], 'handlers': root.handlers == before[1]}))\n")
+        environment = {**os.environ, "PYTHONPATH": str(Path(__file__).resolve().parents[2])}
+        completed = subprocess.run(  # noqa: S603 — this interpreter and a script built from literals
+            [sys.executable, "-c", script], capture_output=True, text=True, cwd=tmp_path,
+            env=environment, timeout=120, check=True)
 
-        source = inspect.getsource(logger_module)
-        assert "root.setLevel" not in source
-        assert "basicConfig" not in source
+        assert json.loads(completed.stdout.strip().splitlines()[-1]) == {"level": True, "handlers": True}
 
     def test_custom_handler_creation(self):
         with tempfile.TemporaryDirectory() as tmpdir:

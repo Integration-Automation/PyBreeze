@@ -297,9 +297,16 @@ class TestADock:
         assert dock.close() is True
 
     def test_the_dock_menu_builds_docks_that_ask(self, app):
-        import inspect
+        from PySide6.QtCore import Qt
+        from PySide6.QtWidgets import QMainWindow
 
-        from pybreeze.pybreeze_ui.menu.tools import tools_menu
+        from pybreeze.pybreeze_ui.closing import AskingDock
+        from pybreeze.pybreeze_ui.menu.tools.tools_menu import add_dock
 
-        assert "AskingDock()" in inspect.getsource(tools_menu.add_dock)
+        window = QMainWindow()
+        add_dock(window, "Hash")
+
+        (dock,) = [dock for dock in window.findChildren(AskingDock) if dock.widget() is not None]
+        assert window.dockWidgetArea(dock) == Qt.DockWidgetArea.RightDockWidgetArea
+        window.deleteLater()
 
