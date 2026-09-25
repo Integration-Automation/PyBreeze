@@ -91,9 +91,30 @@ def test_a_threshold_of_zero_is_never_reached(collector, monkeypatch):
     assert done == [0, 1]
 
 
-def test_the_ide_switches_collection_to_its_gui_thread():
-    import inspect
+def test_the_ide_switches_collection_to_its_gui_thread_before_building_the_window(monkeypatch):
+    # start_editor runs only in child IDEs that leave through os._exit, which
+    # coverage cannot follow: here its steps are recorded instead
+    from PySide6.QtWidgets import QApplication
 
     from pybreeze.pybreeze_ui.editor_main import main_ui
 
-    assert "collect_garbage_on_gui_thread(new_ide)" in inspect.getsource(main_ui.start_editor)
+    class Exited(Exception):
+        """os._exit, which would end the test run."""
+
+    def exit_process(code: int) -> None:
+        steps.append(("exit", code))
+        raise Exited
+
+    app = QApplication.instance() or QApplication([])
+    steps: list = []
+    monkeypatch.setattr(main_ui, "collect_garbage_on_gui_thread", lambda given: steps.append(("gc", given)))
+    monkeypatch.setattr(main_ui, "open_main_window",
+                        lambda given, **options: steps.append(("window", given, options)) or "the window")
+    monkeypatch.setattr(app, "exec", lambda: steps.append("event loop") or 3)
+    monkeypatch.setattr(main_ui.os, "_exit", exit_process)
+
+    with pytest.raises(Exited):
+        main_ui.start_editor(debug_mode=True, theme="dark_teal.xml")
+
+    assert steps == [("gc", app), ("window", app, {"debug_mode": True, "theme": "dark_teal.xml"}),
+                     "event loop", ("exit", 3)]

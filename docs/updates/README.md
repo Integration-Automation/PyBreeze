@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-38 | 2026-09-26 | start_editor's order of steps is tested by running it, not by reading its source | #test #gc | [2026-09-d](2026-09-d.md) |
 | U-20260926-37 | 2026-09-26 | The diagram editor's grid switches, Save with no file yet, and adding an image from a file are tested | #test #diagram | [2026-09-d](2026-09-d.md) |
 | U-20260926-36 | 2026-09-26 | A plugin entry that cannot be built, a JWT's dates in the Response Inspector, and CoT's skip and re-submit are tested | #test #plugins #ai | [2026-09-d](2026-09-d.md) |
 | U-20260926-35 | 2026-09-26 | An SFTP connect with a key file that cannot be loaded is tested | #test #ssh #sftp | [2026-09-d](2026-09-d.md) |
@@ -576,4 +577,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
-| [2026-09-d.md](2026-09-d.md) | 2026-09 | 57 |
+| [2026-09-d.md](2026-09-d.md) | 2026-09 | 58 |
