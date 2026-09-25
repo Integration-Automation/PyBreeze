@@ -502,3 +502,40 @@ class TestDownloadAndUpload:
 
         assert len(told) == 1
         assert client.made == []
+
+
+class TestConnecting:
+    def test_without_a_host_or_user_it_asks_for_them_and_starts_nothing(self, app, monkeypatch):
+        told: list = []
+        monkeypatch.setattr(QMessageBox, "warning", lambda *args: told.append(args[2]))
+        widget = tree_mod.SSHFileTreeManager()
+        widget.login_widget.host_edit.setText("   ")
+        widget.login_widget.user_edit.setText("me")
+
+        widget._connect()
+
+        assert told == [widget.word_dict.get("ssh_file_viewer_dialog_message_missing_input")]
+        assert widget._connecting is None
+        widget.close()
+        widget.deleteLater()
+
+    def test_a_root_that_cannot_be_listed_is_reported_as_a_failed_connect(self, app, monkeypatch):
+        # The session is up but "/" cannot be read (permissions, a dropped link)
+        told: list = []
+        monkeypatch.setattr(QMessageBox, "critical", lambda *args: told.append(args[2]))
+        widget = tree_mod.SSHFileTreeManager()
+
+        def refused(_path):
+            raise OSError("Permission denied")
+
+        monkeypatch.setattr(widget, "load_root", refused)
+        changes: list = []
+        widget.state_changed.connect(lambda: changes.append(True))
+
+        widget._on_connected()
+
+        (message,) = told
+        assert "Permission denied" in message
+        assert changes == [True]
+        widget.close()
+        widget.deleteLater()
