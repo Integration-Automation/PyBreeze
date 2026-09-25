@@ -169,7 +169,9 @@ class TestHowLongAnAnswerMayTake:
 
         from pybreeze.utils.network import http_client
 
-        clock = iter(range(0, 10_000, 7))
+        # From 1000, not 0: a deadline computed wrongly from the start time (1000 * 300,
+        # say) would be far off and never reached; from 0 it is 0 either way
+        clock = iter(range(1000, 20_000, 7))
         monkeypatch.setattr(http_client.time, "monotonic", lambda: next(clock))
         read: list = []
 
