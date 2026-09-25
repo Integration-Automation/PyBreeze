@@ -57,3 +57,85 @@ def test_a_tab_that_is_not_an_editor_says_what_is_needed(window, monkeypatch):
     menu._review_current_file(window)
 
     assert window.events == [("told", "prthinker_need_saved_file_message")]
+
+
+class TestReviewAPullRequest:
+    @staticmethod
+    def _answer(monkeypatch, number: int, chosen: bool) -> list:
+        asked: list = []
+
+        def get_int(*args):
+            asked.append(args[3:])  # the value it starts at, the lowest and the highest
+            return number, chosen
+
+        monkeypatch.setattr(menu.QInputDialog, "getInt", staticmethod(get_int))
+        return asked
+
+    def test_the_number_asked_for_is_reviewed(self, window, monkeypatch):
+        asked = self._answer(monkeypatch, 42, True)
+        monkeypatch.setattr(
+            menu, "review_pull_request", lambda _window, number: window.events.append(number) or True)
+
+        menu._review_pull_request(window)
+
+        assert window.events == [42]
+        assert asked == [(1, 1, 1000000)]
+
+    def test_cancelling_the_question_reviews_nothing(self, window, monkeypatch):
+        self._answer(monkeypatch, 1, False)
+        monkeypatch.setattr(
+            menu, "review_pull_request", lambda _window, number: window.events.append(number) or True)
+
+        menu._review_pull_request(window)
+
+        assert window.events == []
+
+    def test_without_a_repository_set_it_says_so(self, window, monkeypatch):
+        self._answer(monkeypatch, 7, True)
+        monkeypatch.setattr(menu, "review_pull_request", lambda _window, _number: False)
+
+        menu._review_pull_request(window)
+
+        assert window.events == [("told", "prthinker_need_repository_message")]
+
+
+class TestTheMenu:
+    def test_its_entries_and_what_they_open(self, window, monkeypatch):
+        from PySide6.QtWidgets import QMenu
+
+        from pybreeze.extend_multi_language.update_language_dict import update_language_dict
+
+        update_language_dict()
+        window.automation_menu = QMenu()
+        opened: list = []
+        monkeypatch.setattr(menu, "open_web_browser", lambda _window, url, _title: opened.append(url))
+        monkeypatch.setattr(menu, "_open_setting", lambda _window: opened.append("settings"))
+
+        menu.set_prthinker_menu(window)
+        window.prthinker_setting_action.trigger()
+        window.prthinker_doc_action.trigger()
+        window.prthinker_github_action.trigger()
+
+        labels = [action.text() for action in window.prthinker_menu.actions()]
+        assert labels == ["Review the current file", "Review a Pull Request", "Settings", "Help"]
+        assert opened == ["settings", menu.DOCUMENT_URL, menu.GITHUB_URL]
+        window.automation_menu.deleteLater()
+
+    def test_the_settings_open_as_a_dialog_of_the_window(self, window, monkeypatch):
+        shown: list = []
+
+        class Dialog:
+            def __init__(self, parent):
+                shown.append(parent)
+
+            def setAttribute(self, *_args):
+                shown.append("deleted on close")
+
+            def exec(self):
+                shown.append("shown")
+
+        monkeypatch.setattr(menu, "PRThinkerSettingDialog", Dialog)
+
+        menu._open_setting(window)
+
+        assert shown == [window, "deleted on close", "shown"]

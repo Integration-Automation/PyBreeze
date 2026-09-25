@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-93 | 2026-09-25 | The prthinker menu is tested beyond reviewing a file | #test #prthinker | [2026-09-c](2026-09-c.md) |
 | U-20260925-92 | 2026-09-25 | The property panel's node edits and colour button are tested | #test #diagram | [2026-09-c](2026-09-c.md) |
 | U-20260925-91 | 2026-09-25 | The diagram canvas's clicks and keys are tested | #test #diagram | [2026-09-c](2026-09-c.md) |
 | U-20260925-90 | 2026-09-25 | The diagram canvas's zoom and grid are tested | #test #diagram | [2026-09-c](2026-09-c.md) |
@@ -495,4 +496,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
-| [2026-09-c.md](2026-09-c.md) | 2026-09 | 92 |
+| [2026-09-c.md](2026-09-c.md) | 2026-09 | 93 |
