@@ -159,6 +159,16 @@ def run_current_file_with(main_window: PyBreezeMainWindow, run_config: dict) -> 
     code_window.runner.run_file(run_config, file_path)
 
 
+def _machine_encoding() -> str:
+    """The encoding of the machine's locale, in UTF-8 mode too.
+
+    ``locale.getpreferredencoding`` answers UTF-8 in UTF-8 mode, which Python
+    3.15 turns on by default (PEP 686); ``locale.getencoding`` (3.11+) does not.
+    """
+    getencoding = getattr(locale, "getencoding", None)
+    return getencoding() if getencoding is not None else locale.getpreferredencoding(False)
+
+
 def output_encoding(run_config: dict, default: str) -> str:
     """The encoding the program run by *run_config* writes: its ``encoding``, else *default*.
 
@@ -172,7 +182,7 @@ def output_encoding(run_config: dict, default: str) -> str:
     if not isinstance(named, str) or not named.strip():
         return default
     if named.strip().lower() == "locale":
-        return locale.getpreferredencoding(False)
+        return _machine_encoding()
     try:
         return codecs.lookup(named.strip()).name
     except LookupError:

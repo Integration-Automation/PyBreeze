@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-44 | 2026-09-26 | A run config's "locale" encoding stays the machine's code page in UTF-8 mode | #fix #plugins #python-3.15 | [2026-09-d](2026-09-d.md) |
 | U-20260926-43 | 2026-09-26 | if_alive is tested with a widget that is already gone | #test #threads | [2026-09-d](2026-09-d.md) |
 | U-20260926-42 | 2026-09-26 | A packaged build's regex route, and the key loader's passphrase check at its edges, are tested | #test #regex #ssh | [2026-09-d](2026-09-d.md) |
 | U-20260926-41 | 2026-09-26 | The READMEs say the SSH terminal and SFTP tree are tested against a real SSH server | #docs #ssh | [2026-09-d](2026-09-d.md) |
@@ -582,4 +583,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
-| [2026-09-d.md](2026-09-d.md) | 2026-09 | 63 |
+| [2026-09-d.md](2026-09-d.md) | 2026-09 | 64 |

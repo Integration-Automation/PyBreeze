@@ -7,6 +7,7 @@ installed.
 from __future__ import annotations
 
 import os
+import sys
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -516,7 +517,31 @@ class TestTheEncodingAProgramWrites:
 
         from pybreeze.pybreeze_ui.menu.plugin_menu.build_run_with_menu import output_encoding
 
-        assert output_encoding({"encoding": "locale"}, "utf-8") == locale.getpreferredencoding(False)
+        machines = locale.getencoding() if hasattr(locale, "getencoding") else locale.getpreferredencoding(False)
+        assert output_encoding({"encoding": "locale"}, "utf-8") == machines
+
+    @pytest.mark.skipif(sys.version_info < (3, 11), reason="locale.getencoding is new in 3.11")
+    def test_locale_means_this_machines_in_utf8_mode_too(self, tmp_path):
+        # Python 3.15 turns UTF-8 mode on by default (PEP 686), and in it
+        # getpreferredencoding answers UTF-8 whatever the machine's code page is:
+        # a Java program's MS950 output was then decoded as UTF-8
+        import codecs
+        import json
+        import subprocess
+        from pathlib import Path
+
+        script = (
+            "import json, locale\n"
+            "from pybreeze.pybreeze_ui.menu.plugin_menu.build_run_with_menu import output_encoding\n"
+            "print(json.dumps([output_encoding({'encoding': 'locale'}, 'utf-8'), locale.getencoding()]))\n")
+        environment = {**os.environ, "PYTHONPATH": str(Path(__file__).resolve().parents[2]),
+                       "QT_QPA_PLATFORM": "offscreen"}
+        completed = subprocess.run(  # noqa: S603 — this interpreter and a script built from literals
+            [sys.executable, "-X", "utf8", "-c", script], capture_output=True, text=True, cwd=tmp_path,
+            env=environment, timeout=120, check=True)
+        chosen, machines = json.loads(completed.stdout.strip().splitlines()[-1])
+
+        assert codecs.lookup(chosen).name == codecs.lookup(machines).name
 
     @pytest.mark.parametrize("named", ["no-such-codec", 5, "  "])
     def test_anything_else_keeps_the_default(self, named):
