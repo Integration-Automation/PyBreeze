@@ -177,7 +177,7 @@ pybreeze_english_word_dict = {
     "ssh_command_widget_dialog_title_key_error": "Key error",
     "ssh_command_widget_dialog_message_key_file_not_exist": "Key file does not exist.",
     "ssh_command_widget_error_message_unsupported_private_key": "Unsupported or invalid private key.",
-    "ssh_key_error_passphrase_needed": "The private key is protected by a passphrase: enter it in the Passphrase field.",
+    "ssh_key_error_passphrase_needed": "The private key is protected by a passphrase: enter it in the Passphrase field.",  # nosec B105  # NOSONAR S2068 — UI text
     "ssh_key_error_passphrase_wrong": "The passphrase for the private key is wrong.",
     "ssh_key_error_putty_key": "This is a PuTTY key (.ppk), which cannot be used here: load it in PuTTYgen, "
                                "choose Conversions > Export OpenSSH key, and pick the exported file.",
@@ -275,11 +275,11 @@ pybreeze_english_word_dict = {
     "ssh_login_widget_label_user": "User",
     "ssh_login_widget_label_key": "Key",
     "ssh_login_widget_label_password": "Password",
-    "ssh_login_widget_label_passphrase": "Passphrase",
+    "ssh_login_widget_label_passphrase": "Passphrase",  # nosec B105  # NOSONAR S2068 — UI text
     "ssh_login_widget_placeholder_host": "Host name or IP address",
     "ssh_login_widget_placeholder_username": "Username",
     "ssh_login_widget_placeholder_password": "Password",
-    "ssh_login_widget_placeholder_passphrase": "The key's passphrase, if it has one",
+    "ssh_login_widget_placeholder_passphrase": "The key's passphrase, if it has one",  # nosec B105  # NOSONAR S2068 — UI text
     "ssh_login_widget_placeholder_private_key": "Private key path (OpenSSH or PEM)",
     "ssh_login_widget_button_use_key_auth": "Use key auth",
     "ssh_login_widget_button_connect": "Connect",
