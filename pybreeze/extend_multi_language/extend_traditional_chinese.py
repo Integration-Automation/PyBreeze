@@ -265,11 +265,11 @@ pybreeze_traditional_chinese_word_dict = {
     "ssh_login_widget_label_user": "使用者",
     "ssh_login_widget_label_key": "金鑰",
     "ssh_login_widget_label_password": "密碼",
-    "ssh_login_widget_label_passphrase": "密語",
+    "ssh_login_widget_label_passphrase": "密語",  # nosec B105  # NOSONAR S2068 — UI text
     "ssh_login_widget_placeholder_host": "主機名稱或 IP 位址",
     "ssh_login_widget_placeholder_username": "使用者名稱",
     "ssh_login_widget_placeholder_password": "密碼",
-    "ssh_login_widget_placeholder_passphrase": "私鑰的密語（沒有就留空）",
+    "ssh_login_widget_placeholder_passphrase": "私鑰的密語（沒有就留空）",  # nosec B105  # NOSONAR S2068 — UI text
     "ssh_login_widget_placeholder_private_key": "私鑰路徑（OpenSSH 或 PEM）",
     "ssh_login_widget_button_use_key_auth": "使用金鑰驗證",
     "ssh_login_widget_button_connect": "連線",
