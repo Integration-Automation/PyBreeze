@@ -153,6 +153,44 @@ class TestAQuestionNobodyCanAnswer:
         assert answers == [False]
 
 
+class TestTheQuestionBoxItself:
+    """The other tests stand in for the asker; here its message box is only kept from showing."""
+
+    @pytest.mark.parametrize(("pressed", "trusted"), [("Yes", True), ("No", False)])
+    def test_only_yes_trusts_the_key(self, app, monkeypatch, pressed, trusted):
+        from PySide6.QtWidgets import QMessageBox
+
+        seen: list = []
+
+        def answer(box):
+            no_is_the_default = box.defaultButton() is box.button(QMessageBox.StandardButton.No)
+            seen.append((box.windowTitle(), box.text(), no_is_the_default))
+            return getattr(QMessageBox.StandardButton, pressed)
+
+        monkeypatch.setattr(policy_mod.QMessageBox, "exec", answer)
+
+        from pybreeze.pybreeze_ui.plain_text import as_text
+
+        message = "fingerprint <b>SHA256:x</b>"
+        assert policy_mod.HostKeyAsker().ask(None, "Unknown host", message) is trusted
+        # No is where the focus starts, and the message is shown as text, not markup
+        assert seen == [("Unknown host", as_text(message), True)]
+
+
+def test_a_no_is_forgotten_after_its_ten_seconds(asked, keys, monkeypatch):
+    now = [1000.0]
+    monkeypatch.setattr(policy_mod.time, "monotonic", lambda: now[0])
+    asked["answer"] = False
+
+    with pytest.raises(paramiko.SSHException):
+        _meet("host.example", keys[0])
+    now[0] += 11
+    with pytest.raises(paramiko.SSHException):
+        _meet("host.example", keys[0])
+
+    assert asked["count"] == 2  # asked again: a later Connect is a new question
+
+
 def test_a_store_that_fails_keeps_the_hosts_already_trusted(asked, keys, tmp_path, monkeypatch):
     # HostKeys.save emptied the file first: a failure part-way lost every host
     from pybreeze.utils.file_process import replace_file
