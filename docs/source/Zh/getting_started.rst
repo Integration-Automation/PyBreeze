@@ -39,8 +39,8 @@
 
    from pybreeze import start_editor
 
-   # 可用主題：dark_amber.xml（預設）、dark_teal.xml、
-   # dark_blue.xml、light_blue.xml 等
+   # UI Style 選單列出的任何主題：dark_teal.xml、
+   # dark_blue.xml、light_blue.xml……它會取代從 UI Style 選的主題。
    start_editor(theme="dark_teal.xml")
 
 參數說明
@@ -59,9 +59,10 @@
      - ``False``
      - 10 秒後自動關閉（用於 CI 測試）
    * - ``theme``
-     - str
-     - ``"dark_amber.xml"``
-     - Qt Material 主題名稱
+     - str 或 None
+     - ``None``
+     - Qt Material 主題名稱。它會取代從 **UI Style** 選的主題，並成為選定的主題。``None`` 表示用選定的主題
+       （還沒選過時是 ``dark_amber.xml``）。
 
 首次啟動
 --------

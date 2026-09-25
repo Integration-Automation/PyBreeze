@@ -43,7 +43,8 @@ with open(sys.argv[1], "w", encoding="utf-8") as handle:
 
 def run_started_window(
         tmp_path: Path, body: str, *, saved_language: str | None = None,
-        before_window: str = "") -> object:
+        before_window: str = "", saved_settings: dict | None = None,
+        build: str = _BUILD_WINDOW) -> object:
     """Start the IDE in a child, run *body* there, and return the ``result`` it set.
 
     *body* runs after the window is built and garbage has been collected, with
@@ -52,13 +53,17 @@ def run_started_window(
     where JEditor looks for its settings, so *saved_language* is written there
     as the saved language before the start. *before_window* runs after the
     application exists and before the window is built -- to register an
-    ``EDITOR_EXTEND_TAB``, say.
+    ``EDITOR_EXTEND_TAB``, say. *saved_settings* are further saved settings
+    (``{"ui_style": ...}``), and *build* replaces the code that builds
+    ``window`` -- to start it the way ``start_editor`` does, say.
     """
+    settings = dict(saved_settings or {})
     if saved_language is not None:
+        settings["language"] = saved_language
+    if settings:
         settings_dir = tmp_path / ".jeditor"
         settings_dir.mkdir()
-        (settings_dir / "user_setting.json").write_text(
-            json.dumps({"language": saved_language}), encoding="utf-8")
+        (settings_dir / "user_setting.json").write_text(json.dumps(settings), encoding="utf-8")
     result_file = tmp_path / "result.json"
     environment = {
         **os.environ,
@@ -67,7 +72,7 @@ def run_started_window(
             filter(None, [str(_REPOSITORY_ROOT), os.environ.get("PYTHONPATH")])),
     }
     completed = subprocess.run(  # noqa: S603 — fixed argv: this interpreter and a script built from literals
-        [sys.executable, "-c", _PRELUDE + before_window + _BUILD_WINDOW + body + _REPORT,
+        [sys.executable, "-c", _PRELUDE + before_window + build + body + _REPORT,
          str(result_file)],
         cwd=tmp_path, env=environment, capture_output=True, timeout=_START_TIMEOUT_SECONDS,
         check=False, shell=False,

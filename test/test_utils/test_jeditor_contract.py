@@ -46,6 +46,8 @@ INTERNAL = [
      "show_code_window/code_window.py, auto_control_menu/build_autocontrol_menu.py, tools_gui/diff_gui.py"),
     ("je_editor.utils.redirect_manager.redirect_manager_class", "RedirectStdErr",
      "code_result_logs.py"),
+    ("je_editor.pyside_ui.main_ui.save_settings.user_setting_file", "user_setting_dict",
+     "editor_main/main_ui.py"),
 ]
 
 # Names PyBreeze imports from je_editor's top level, i.e. from its __all__.
@@ -85,6 +87,14 @@ class TestTheShapesPyBreezeCalls:
         assert _parameters(EditorMain.__init__)[:3] == ["debug_mode", "show_system_tray_ray", "extend"]
         assert callable(EditorMain.clear_code_result)
         assert callable(EditorMain.startup_setting)
+
+    def test_the_startup_applies_the_saved_theme(self):
+        from je_editor import EditorMain
+
+        # open_main_window() gives start_editor's theme to startup_setting() as the saved one.
+        assert '"ui_style"' in inspect.getsource(EditorMain.startup_setting)
+        settings = _internal("je_editor.pyside_ui.main_ui.save_settings.user_setting_file", "user_setting_dict")
+        assert settings.get("ui_style") is not None
 
     def test_an_editor_tab_can_be_saved_the_way_a_run_saves_it(self):
         from je_editor import EditorWidget

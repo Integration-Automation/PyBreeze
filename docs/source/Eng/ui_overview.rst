@@ -148,6 +148,9 @@ at launch time:
 
    start_editor(theme="dark_teal.xml")
 
+The theme picked from **UI Style** is saved and used at the next start. A theme given to
+``start_editor`` replaces it, and is saved in its place.
+
 Multi-Language Support
 ----------------------
 

@@ -53,7 +53,8 @@ The layers are presentation (`pybreeze_ui/`), then execution (`extend/`), then f
   `multiprocessing.freeze_support()`: in the packaged executable the regex tester runs patterns in
   a spawned process, which re-runs the executable. From source it runs them in a plain worker script
   (`python -I -S -c`), so a launch script without the guard is safe.
-- **Programmatic**: `pybreeze.start_editor(debug_mode=False, theme="dark_amber.xml", **kwargs)`.
+- **Programmatic**: `pybreeze.start_editor(debug_mode=False, theme=None, **kwargs)`. A `theme` replaces
+  the one picked from UI Style (JEditor's saved `ui_style`) and is saved as it; `None` keeps the saved one.
   `debug_mode=True` adds an auto-close timer, which CI uses.
 - **Main window**: `PyBreezeMainWindow` exposes `tab_widget`, `current_run_code_window` and
   `python_compiler`.
@@ -148,6 +149,7 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
   | `DEFAULT_ENCODING`, `LINE_ENDING_LF` | `utils.encodings.text_codec` | `menu/plugin_menu/build_run_with_menu.py` |
   | `actually_color_dict` | `pyside_ui.main_ui.save_settings.user_color_setting_file` | `show_code_window/code_window.py`, `automation_menu/auto_control_menu/build_autocontrol_menu.py`, `tools_gui/diff_gui.py` (the diff's line colours: `diff_added_marker_color`, `diff_removed_marker_color`, `syntax_keyword_color`, `blame_annotation_color`) |
   | `RedirectStdErr` | `utils.redirect_manager.redirect_manager_class` | `code_result_logs.py` (the handler `EditorMain` hooks onto every logger to show records in Code Result; PyBreeze raises its level to `WARNING`) |
+  | `user_setting_dict` | `pyside_ui.main_ui.save_settings.user_setting_file` | `editor_main/main_ui.py` (`open_main_window()` makes a `theme` given to `start_editor()` the saved `ui_style`, which `EditorMain.startup_setting()` applies over any theme applied before it) |
 
   PyBreeze also relies on `EditorWidget`'s `current_file`, `code_edit`, `file_encoding`,
   `line_ending`, `mark_ignore_next_file_change()` and `mark_saved()`, on its private `_file_watcher`,

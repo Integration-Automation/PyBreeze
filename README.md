@@ -325,8 +325,8 @@ python exe/start_pybreeze.py      # from the exe directory
 ```python
 from pybreeze import start_editor
 
-start_editor()                              # default dark_amber theme
-start_editor(theme="dark_teal.xml")         # any qt_material theme
+start_editor()                              # the theme picked from UI Style (dark_amber until one is)
+start_editor(theme="dark_teal.xml")         # any qt_material theme; it becomes the picked one
 ```
 
 Once launched:

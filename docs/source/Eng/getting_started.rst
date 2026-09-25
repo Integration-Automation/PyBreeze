@@ -39,8 +39,8 @@ Launching PyBreeze
 
    from pybreeze import start_editor
 
-   # Available themes: dark_amber.xml (default), dark_teal.xml,
-   # dark_blue.xml, light_blue.xml, etc.
+   # Any theme the UI Style menu lists: dark_teal.xml, dark_blue.xml,
+   # light_blue.xml, ... It replaces the theme picked from UI Style.
    start_editor(theme="dark_teal.xml")
 
 Parameters
@@ -59,9 +59,11 @@ Parameters
      - ``False``
      - Auto-close after 10 seconds (for CI testing)
    * - ``theme``
-     - str
-     - ``"dark_amber.xml"``
-     - Qt Material theme name
+     - str or None
+     - ``None``
+     - Qt Material theme name. It replaces the theme picked from **UI Style** and is kept
+       as the picked one. ``None`` starts with the picked theme (``dark_amber.xml`` until
+       one is picked).
 
 First Launch
 ------------

@@ -12,6 +12,7 @@ from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QWidget
 from je_editor import EditorMain, EditorWidget, language_wrapper
 from je_editor.pyside_ui.main_ui.dock.destroy_dock import DestroyDock
+from je_editor.pyside_ui.main_ui.save_settings.user_setting_file import user_setting_dict
 from qt_material import apply_stylesheet
 
 from pybreeze.extend_multi_language.update_language_dict import update_language_dict
@@ -28,6 +29,9 @@ from pybreeze.utils.logging.logger import pybreeze_logger
 
 EDITOR_EXTEND_TAB: dict[str, type[QWidget]] = {
 }
+
+# The theme until one is picked from UI Style, as JEditor has it
+DEFAULT_THEME = "dark_amber.xml"
 
 
 def _close_guarded(widget: QWidget, *steps) -> None:
@@ -188,11 +192,13 @@ class PyBreezeMainWindow(EditorMain):
             app.quit()
 
 
-def start_editor(debug_mode: bool = False, theme: str = "dark_amber.xml", **kwargs) -> None:
+def start_editor(debug_mode: bool = False, theme: str | None = None, **kwargs) -> None:
     """
     Start editor instance
     :param debug_mode: enable debug mode with auto-close timer
-    :param theme: qt_material theme name (e.g. "dark_amber.xml", "dark_teal.xml", "light_blue.xml")
+    :param theme: qt_material theme name (e.g. "dark_teal.xml", "light_blue.xml"). It replaces
+        the theme picked from UI Style, and is kept as the picked one. ``None`` starts with the
+        picked theme, ``dark_amber.xml`` until one is picked
     :return: None
     """
     new_ide = QCoreApplication.instance()
@@ -207,17 +213,22 @@ def start_editor(debug_mode: bool = False, theme: str = "dark_amber.xml", **kwar
     os._exit(ret)
 
 
-def open_main_window(app: QApplication, debug_mode: bool = False, theme: str = "dark_amber.xml",
+def open_main_window(app: QApplication, debug_mode: bool = False, theme: str | None = None,
                      **kwargs) -> PyBreezeMainWindow:
     """Build the main window, style it, show it and apply the saved settings.
 
     :param app: the running application, which the theme is applied to
     :param debug_mode: close by itself after a while, as the startup tests need
-    :param theme: qt_material theme name
+    :param theme: qt_material theme name, which replaces the one picked from UI Style and is
+        kept as the picked one; ``None`` keeps the picked one
     :return: the window, which the caller keeps for as long as the IDE runs
     """
     window = PyBreezeMainWindow(debug_mode=debug_mode, **kwargs)
-    apply_stylesheet(app, theme=theme)
+    # startup_setting() applies the picked theme, over any applied before it:
+    # a theme given here was never seen until it became the picked one
+    if theme is not None:
+        user_setting_dict["ui_style"] = theme
+    apply_stylesheet(app, theme=user_setting_dict.get("ui_style", DEFAULT_THEME))
     window.showMaximized()
     try:
         window.startup_setting()

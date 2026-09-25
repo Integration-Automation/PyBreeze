@@ -143,6 +143,8 @@ PyBreeze 使用 `qt_material <https://github.com/UN-GCPDS/qt-material>`_ 進行�
 
    start_editor(theme="dark_teal.xml")
 
+從 **UI Style** 選的主題會被儲存，下次啟動時使用。傳給 ``start_editor`` 的主題會取代它，並改存成這一個。
+
 多語言支援
 ----------
 

@@ -325,8 +325,8 @@ python exe/start_pybreeze.py      # 从 exe 目录运行
 ```python
 from pybreeze import start_editor
 
-start_editor()                              # 默认 dark_amber 主题
-start_editor(theme="dark_teal.xml")         # 任意 qt_material 主题
+start_editor()                              # 在 UI Style 中选定的主题（尚未选择时为 dark_amber）
+start_editor(theme="dark_teal.xml")         # 任意 qt_material 主题；它会成为选定的主题
 ```
 
 启动后：
