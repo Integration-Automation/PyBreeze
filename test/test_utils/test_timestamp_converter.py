@@ -1,6 +1,8 @@
 """Tests for the epoch / ISO-8601 timestamp converter."""
 from __future__ import annotations
 
+import sys
+
 import pytest
 
 from pybreeze.utils.exception.exceptions import TimestampParseException
@@ -198,3 +200,16 @@ class TestADecimalEpochRoundsTowardThePast:
 
         with pytest.raises(TimestampParseException):
             convert_timestamp(text)
+
+
+class TestWhatOnlyFromisoformatReads:
+    """ISO forms the converter's own pattern does not take go to ``datetime.fromisoformat``."""
+
+    @pytest.mark.skipif(sys.version_info < (3, 11), reason="fromisoformat reads week dates from 3.11")
+    def test_a_week_date_is_read(self):
+        assert convert_timestamp("2026-W39-6T12:00").iso_utc == "2026-09-26T12:00:00+00:00"
+
+    @pytest.mark.skipif(sys.version_info >= (3, 11), reason="before 3.11 fromisoformat refuses week dates")
+    def test_before_3_11_a_week_date_is_refused(self):
+        with pytest.raises(TimestampParseException):
+            convert_timestamp("2026-W39-6T12:00")

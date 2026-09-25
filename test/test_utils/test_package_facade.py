@@ -70,3 +70,9 @@ def test_an_unknown_name_is_an_attribute_error():
         "    print(json.dumps({'raised': True}))\n")
 
     assert seen["raised"]
+
+
+def test_dir_lists_every_public_name():
+    import pybreeze
+
+    assert set(pybreeze.__all__) <= set(dir(pybreeze))

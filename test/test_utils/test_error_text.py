@@ -217,3 +217,11 @@ class TestADiagramFile:
         assert len(shown) == 1
         assert "架構圖檔案應該是一個物件，而不是 list" in shown[0]
         editor.deleteLater()
+
+
+def test_a_constant_with_no_translation_stays_as_it_is(app, monkeypatch):
+    # A language without the entry: the English the tool wrote is still shown
+    monkeypatch.setattr(error_text_mod.language_wrapper, "language_word_dict", {})
+    message = exception_tags.wrong_json_data_error
+
+    assert error_text(message) == message

@@ -207,3 +207,11 @@ def test_get_data_is_added_after_a_query_kept_as_written():
     prepared = _what_requests_sends(to_requests_code(parse_curl("curl -G 'https://h/a?q=a%20b' -d k=v")))
 
     assert prepared.url == "https://h/a?q=a%20b&k=v"
+
+
+def test_a_form_field_without_an_equals_sign_is_left_out():
+    from pybreeze.utils.curl_import.curl_parser import CurlRequest
+
+    request = CurlRequest(form_fields=["just-a-name", "kept=1"])
+
+    assert form_parts(request) == ({"kept": "1"}, {})
