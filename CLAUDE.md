@@ -30,6 +30,7 @@ pybreeze/
 │   ├── error_text.py            # error_text: a tool's English error (exception_tags) in the IDE language
 │   ├── code_result_logs.py      # Only warnings and errors from loggers reach the editor's Code Result panel
 │   ├── closing.py               # may_close / AskingDock: tabs and docks with unsaved work are asked first
+│   ├── busy_cursor.py           # busy_cursor: the wait cursor while something slow runs on the UI thread
 │   ├── dialog/                  # prthinker settings dialog
 │   └── syntax/                  # Automation keyword highlighting definitions
 ├── extend/

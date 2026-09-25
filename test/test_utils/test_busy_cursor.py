@@ -11,7 +11,7 @@ from PySide6.QtWidgets import QApplication, QMainWindow, QMenu, QTabWidget, QWid
 
 from pybreeze.extend_multi_language.update_language_dict import update_language_dict
 from pybreeze.pybreeze_ui.menu import menu_utils
-from pybreeze.pybreeze_ui.menu.menu_utils import busy_cursor
+from pybreeze.pybreeze_ui.busy_cursor import busy_cursor
 
 
 @pytest.fixture(scope="module")

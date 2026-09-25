@@ -8,6 +8,7 @@ from je_editor import language_wrapper
 
 from je_editor import jeditor_logger
 
+from pybreeze.pybreeze_ui.busy_cursor import busy_cursor
 from pybreeze.pybreeze_ui.closing import AskingDock
 from pybreeze.pybreeze_ui.connect_gui.url.ai_code_review_gui import AICodeReviewClient
 from pybreeze.pybreeze_ui.diagram_editor.diagram_editor_widget import DiagramEditorWidget
@@ -16,7 +17,6 @@ from pybreeze.pybreeze_ui.extend_ai_gui.prompt_edit_gui.cot_prompt_editor_widget
 from pybreeze.pybreeze_ui.extend_ai_gui.prompt_edit_gui.skills_prompt_editor_widget import \
     SkillPromptEditor
 from pybreeze.pybreeze_ui.extend_ai_gui.skills.skills_send_gui import SkillsSendGUI
-from pybreeze.pybreeze_ui.menu.menu_utils import busy_cursor
 from pybreeze.pybreeze_ui.tools_gui.curl_import_gui import CurlImportGUI
 from pybreeze.pybreeze_ui.tools_gui.diff_gui import DiffGUI
 from pybreeze.pybreeze_ui.tools_gui.json_format_gui import JsonFormatGUI

@@ -10,7 +10,8 @@ from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QMenu, QMessageBox, QWidget
 from je_editor import language_wrapper
 
-from pybreeze.pybreeze_ui.menu.menu_utils import busy_cursor, open_web_browser
+from pybreeze.pybreeze_ui.busy_cursor import busy_cursor
+from pybreeze.pybreeze_ui.menu.menu_utils import open_web_browser
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.pybreeze_ui.plain_text import as_text
 

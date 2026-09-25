@@ -169,7 +169,7 @@ call_X_multi_file_and_send()   → run_dir_files_with_package(..., True)
 
 ## 5. 選單層 `pybreeze_ui/menu/`
 
-`build_menubar.py:add_menu_to_menubar()` 是唯一入口，依序建構 15 個選單建構器。`menu_utils.py` 的 `open_web_browser()` 讓各選單的 Help 連結開成內嵌瀏覽器分頁；`busy_cursor()` 在選單項目於 UI 執行緒建 widget 時顯示等待游標（第一個瀏覽器分頁要啟動 Chromium，約 2.5 秒；SSH 第一次開要 import paramiko，約 0.7 秒），Tools 的分頁與 dock、自動化套件的 GUI、Help 頁與 JupyterLab 分頁都經過它；`extend_jeditor_tab_menu/jupyter_lab_tab.py` 的 `extend_tab_tools_menu()` 把 JupyterLab 分頁加進 JEditor 的分頁選單。
+`build_menubar.py:add_menu_to_menubar()` 是唯一入口，依序建構 15 個選單建構器。`menu_utils.py` 的 `open_web_browser()` 讓各選單的 Help 連結開成內嵌瀏覽器分頁；`pybreeze_ui/busy_cursor.busy_cursor()` 在選單項目於 UI 執行緒建 widget 時顯示等待游標（第一個瀏覽器分頁要啟動 Chromium，約 2.5 秒；SSH 第一次開要 import paramiko，約 0.7 秒），Tools 的分頁與 dock、自動化套件的 GUI、Help 頁與 JupyterLab 分頁都經過它；`extend_jeditor_tab_menu/jupyter_lab_tab.py` 的 `extend_tab_tools_menu()` 把 JupyterLab 分頁加進 JEditor 的分頁選單。
 
 ### 5.1 `automation_menu_factory.py` — 選單工廠
 

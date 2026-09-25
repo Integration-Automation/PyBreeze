@@ -6,8 +6,8 @@ from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QMenu
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.busy_cursor import busy_cursor
 from pybreeze.pybreeze_ui.jupyter_lab_gui.jupyter_lab_widget import JupyterLabWidget
-from pybreeze.pybreeze_ui.menu.menu_utils import busy_cursor
 from pybreeze.utils.logging.logger import pybreeze_logger
 
 if TYPE_CHECKING:
