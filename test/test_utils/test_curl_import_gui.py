@@ -266,6 +266,14 @@ class TestCurlImportOpenHeadersInAnalyzer:
         widget.convert()
         assert widget.open_headers_button.isEnabled()
 
+    def test_with_no_header_and_no_cookie_nothing_opens(self, widget_with_window):
+        gui, window = widget_with_window
+        gui.input_edit.setPlainText("curl https://x")
+        gui.convert()
+
+        assert gui.open_headers_in_analyzer() is None
+        assert window.tab_widget.added == []
+
     def test_open_headers_opens_prefilled_analyzer(self, widget_with_window):
         from pybreeze.pybreeze_ui.tools_gui.header_analyzer_gui import HeaderAnalyzerGUI
         gui, window = widget_with_window

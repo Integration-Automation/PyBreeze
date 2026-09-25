@@ -279,3 +279,15 @@ class TestWhatTheOutputBelongsTo:
 
         assert widget.output_edit.toPlainText() == requests_script
         assert widget.output_actions._has_output()
+
+
+def test_a_summary_names_three_hosts_and_says_there_are_more(widget):
+    entries = [{"request": {"method": "GET", "url": f"https://host{number}.example/api", "headers": []},
+                "response": {"status": 200, "content": {"mimeType": "application/json"}}}
+               for number in range(1, 5)]
+    widget.load_text(json.dumps({"log": {"version": "1.2", "entries": entries}}))
+
+    summary = widget.summary_label.text()
+    assert "host3.example" in summary
+    assert "host4.example" not in summary
+    assert "…" in summary
