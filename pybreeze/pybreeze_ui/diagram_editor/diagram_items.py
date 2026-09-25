@@ -221,6 +221,19 @@ def _coordinate(value: object) -> float:
     return min(max(-MAX_COORDINATE, number), MAX_COORDINATE)
 
 
+def _snaps_to_grid(kind: type[DiagramNode | DiagramImage], resizing: bool) -> bool:
+    """Whether a move of an item of *kind* goes to the grid: it is on and sized, and the item is not being resized.
+
+    A resize from the top or left edge moves the item with the handle, which must not jump to the grid.
+    """
+    return kind.grid_enabled and not resizing and kind.grid_size > 0
+
+
+def _on_grid(position: QPointF, grid_size: int) -> QPointF:
+    """*position* moved to the nearest point of a grid *grid_size* apart."""
+    return QPointF(round(position.x() / grid_size) * grid_size, round(position.y() / grid_size) * grid_size)
+
+
 def _clamped_line_width(width: float) -> float:
     """Return *width* within the pen widths a connection may be drawn with."""
     try:
@@ -557,13 +570,9 @@ class DiagramNode(QGraphicsRectItem):
     # --- overrides ---
 
     def itemChange(self, change, value):
-        if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
-            if DiagramNode.grid_enabled and not self._resizing:
-                gs = DiagramNode.grid_size
-                if gs > 0:
-                    x = round(value.x() / gs) * gs
-                    y = round(value.y() / gs) * gs
-                    return QPointF(x, y)
+        if (change == QGraphicsItem.GraphicsItemChange.ItemPositionChange
+                and _snaps_to_grid(DiagramNode, self._resizing)):
+            return _on_grid(value, DiagramNode.grid_size)
         if change == QGraphicsItem.GraphicsItemChange.ItemPositionHasChanged:
             for conn in self.connections:
                 conn.update_path()
@@ -918,11 +927,9 @@ class DiagramImage(QGraphicsRectItem):
     # --- overrides ---
 
     def itemChange(self, change, value):
-        if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
-            if DiagramImage.grid_enabled and not self._resizing:
-                gs = DiagramImage.grid_size
-                if gs > 0:
-                    return QPointF(round(value.x() / gs) * gs, round(value.y() / gs) * gs)
+        if (change == QGraphicsItem.GraphicsItemChange.ItemPositionChange
+                and _snaps_to_grid(DiagramImage, self._resizing)):
+            return _on_grid(value, DiagramImage.grid_size)
         if change == QGraphicsItem.GraphicsItemChange.ItemSelectedHasChanged:
             self.setPen(_IMG_SELECTED_PEN if self.isSelected() else _IMG_BORDER_PEN)
             self._show_handles(self.isSelected())

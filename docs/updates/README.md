@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-20 | 2026-09-26 | Refactor: one grid-snapping check for diagram nodes and images | #refactor #diagram | [2026-09-d](2026-09-d.md) |
 | U-20260926-19 | 2026-09-26 | Snapping a diagram node or image to the grid is tested | #test #diagram | [2026-09-d](2026-09-d.md) |
 | U-20260926-18 | 2026-09-26 | Refactor: the last typing.List, typing.Dict and quoted annotations give way to the built-in forms | #refactor | [2026-09-d](2026-09-d.md) |
 | U-20260926-17 | 2026-09-26 | A test keeps requirements.txt, pyproject.toml and dev.toml asking for the same packages | #test #packaging | [2026-09-d](2026-09-d.md) |
@@ -558,4 +559,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
-| [2026-09-d.md](2026-09-d.md) | 2026-09 | 39 |
+| [2026-09-d.md](2026-09-d.md) | 2026-09 | 40 |
