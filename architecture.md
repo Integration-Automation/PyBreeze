@@ -106,7 +106,9 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
 ## 5. Extension points
 
 - **Custom tabs**: add entries to `EDITOR_EXTEND_TAB` (`pybreeze_ui/editor_main/main_ui.py`) before
-  `start_editor()`.
+  `start_editor()`, or in a file plugin's `register()`, which runs before the tabs are added. A widget
+  with a `may_close()` is asked before its tab, its dock or the IDE closes (`pybreeze_ui/closing.py`);
+  one whose constructor raises costs only its own tab.
 - **File plugins**: `jeditor_plugins/` in the working directory, loaded by JEditor
   (`je_editor/plugins/plugin_loader.py`). `PLUGIN_RUN_CONFIG` entries appear in the Run with… and
   Plugins menus and execute via `FileRunnerProcess`. The plugin browser tab reuses JEditor's
