@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260925-130 | 2026-09-25 | The JupyterLab tab passes its empty token under jupyter_server 2's names too | #fix #jupyter | [2026-09-d](2026-09-d.md) |
 | U-20260925-129 | 2026-09-25 | CI caches pip's downloads for the unit-test legs | #ci | [2026-09-d](2026-09-d.md) |
 | U-20260925-128 | 2026-09-25 | The published 1.0.33 starts from its installed files, with its icon | #verify #packaging | [2026-09-d](2026-09-d.md) |
 | U-20260925-127 | 2026-09-25 | The wait cursor shows before the work starts; HAR Import's file read is under it too | #ux #tools | [2026-09-d](2026-09-d.md) |
@@ -533,4 +534,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
-| [2026-09-d.md](2026-09-d.md) | 2026-09 | 14 |
+| [2026-09-d.md](2026-09-d.md) | 2026-09 | 15 |

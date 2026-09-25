@@ -155,6 +155,11 @@ class JupyterLauncherThread(QThread):
             # A port taken since it was found fails at once: the server moved
             # to the next free one, and the tab waited on (or loaded) this one
             "--ServerApp.port_retries=0",
+            # No token and no password: jupyter_server 2's names, and 1.x's,
+            # which 2 still reads with a deprecation warning. Only the old ones
+            # left a server that drops them making a token of its own.
+            "--IdentityProvider.token=",
+            "--PasswordIdentityProvider.hashed_password=",
             "--ServerApp.token=",
             "--ServerApp.password=",
             "--ServerApp.disable_check_xsrf=True",

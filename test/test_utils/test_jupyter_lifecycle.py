@@ -75,6 +75,20 @@ class TestHowTheServerIsStarted:
         assert not [arg for arg in argv if arg.startswith("--ServerApp.allow_origin")]
         thread.stop()
 
+    def test_it_takes_no_token_or_password_under_both_generations_of_names(self, app, launched):
+        # jupyter_server 2 reads IdentityProvider's; ServerApp's are 1.x's, which 2
+        # still reads with a deprecation warning. With only the old ones, a server
+        # that drops them makes a token of its own, and the tab gets a login page.
+        thread = jupyter_lab_thread.JupyterLauncherThread()
+
+        thread.run()
+
+        argv = launched[0].argv
+        for flag in ("--IdentityProvider.token=", "--PasswordIdentityProvider.hashed_password=",
+                     "--ServerApp.token=", "--ServerApp.password="):
+            assert flag in argv
+        thread.stop()
+
     def test_it_runs_without_what_the_ide_set_for_itself(self, app, launched, monkeypatch):
         # The IDE keeps locust from patching it with gevent; a notebook's kernel
         # running a load test needs the patching
