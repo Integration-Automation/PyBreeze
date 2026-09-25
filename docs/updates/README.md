@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-12 | 2026-09-26 | The JupyterLab launcher's port check, output tail and stop without terminate are tested | #test #jupyter | [2026-09-d](2026-09-d.md) |
 | U-20260926-11 | 2026-09-26 | The POSIX side of stopping a run's process tree is tested on any platform | #test #run | [2026-09-d](2026-09-d.md) |
 | U-20260926-10 | 2026-09-26 | JSON Format's failures while writing the result are tested | #test #json | [2026-09-d](2026-09-d.md) |
 | U-20260926-09 | 2026-09-26 | The READMEs and the guide say where the log is and how to move or cap it | #docs #logging | [2026-09-d](2026-09-d.md) |
@@ -550,4 +551,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
-| [2026-09-d.md](2026-09-d.md) | 2026-09 | 31 |
+| [2026-09-d.md](2026-09-d.md) | 2026-09 | 32 |

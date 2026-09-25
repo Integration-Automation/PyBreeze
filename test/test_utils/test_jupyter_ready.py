@@ -73,6 +73,73 @@ class TestWaitUntilReady:
         # Should return without raising and without sleeping.
         assert thread._wait_until_ready(59999) is None
 
+    def test_with_no_server_started_it_says_so(self, qt_app):
+        thread = _thread(qt_app)
+
+        with pytest.raises(RuntimeError, match="not started"):
+            thread._wait_until_ready(59999)
+
+
+class TestIsThePortOpen:
+    def test_a_port_something_listens_on(self, qt_app):
+        import socket
+
+        thread = _thread(qt_app)
+        with socket.create_server(("127.0.0.1", 0)) as listener:
+            assert thread._port_open(listener.getsockname()[1])
+
+    def test_a_port_nothing_listens_on(self, qt_app):
+        import socket
+
+        thread = _thread(qt_app)
+        with socket.create_server(("127.0.0.1", 0)) as listener:
+            port = listener.getsockname()[1]
+        # Closed: a connect is refused
+
+        assert not thread._port_open(port)
+
+
+class TestWhatTheServerWrote:
+    def test_nothing_before_the_server_starts(self, qt_app):
+        assert _thread(qt_app)._output_tail() == ""
+
+    def test_nothing_from_output_that_cannot_be_read(self, qt_app):
+        import tempfile
+
+        thread = _thread(qt_app)
+        thread._output = tempfile.TemporaryFile(mode="w+", encoding="utf-8")
+        thread._output.close()  # read() on it raises ValueError
+
+        assert thread._output_tail() == ""
+
+    def test_only_the_end_of_a_long_output(self, qt_app):
+        import tempfile
+
+        thread = _thread(qt_app)
+        thread._output = tempfile.TemporaryFile(mode="w+", encoding="utf-8")
+        thread._output.write("x" * 1000 + "the last words")
+
+        assert thread._output_tail(20) == "xxxxxxthe last words"
+        thread.stop()
+
+
+def test_stopping_a_server_that_cannot_be_terminated_still_lets_go_of_its_output(qt_app):
+    import tempfile
+
+    class Unkillable:
+        def terminate(self):
+            raise PermissionError(5, "Access is denied")
+
+    thread = _thread(qt_app)
+    thread.process = Unkillable()
+    output = tempfile.TemporaryFile(mode="w+", encoding="utf-8")
+    thread._output = output
+
+    thread.stop()
+
+    assert thread.process is None
+    assert output.closed
+
 
 class TestTheReasonIsInTheIdeLanguage:
     """A start that timed out or a server that exited read in English whatever the IDE spoke."""
