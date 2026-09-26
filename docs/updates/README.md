@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-139 | 2026-09-26 | A later Mermaid declaration changes only what it names | #fix #diagram | [2026-09-e](2026-09-e.md) |
 | U-20260926-138 | 2026-09-26 | The Mermaid importer is tested on front matter, a directive and a description never closed, and on a data pair without a colon | #test #diagram | [2026-09-e](2026-09-e.md) |
 | U-20260926-137 | 2026-09-26 | Mermaid import shows a markdown string's text, over as many lines as it runs | #feature #diagram | [2026-09-e](2026-09-e.md) |
 | U-20260926-136 | 2026-09-26 | Mermaid import reads Mermaid 11's named shapes and their labels | #feature #diagram | [2026-09-e](2026-09-e.md) |
@@ -678,4 +679,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
 | [2026-09-d.md](2026-09-d.md) | 2026-09 | 91 |
-| [2026-09-e.md](2026-09-e.md) | 2026-09 | 67 |
+| [2026-09-e.md](2026-09-e.md) | 2026-09 | 68 |

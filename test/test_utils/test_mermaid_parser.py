@@ -660,3 +660,18 @@ class TestWhatIsLeftOpen:
 
     def test_a_pair_without_a_colon_is_passed_over(self):
         assert _nodes(parse_mermaid("flowchart TD\nA@{ junk, shape: circle }")) == [("A", "ELLIPSE")]
+
+
+class TestALaterDeclarationChangesOnlyWhatItNames:
+    """As mermaid does: shape data without a shape keeps the node's shape, and without a label its text."""
+
+    def test_a_label_alone_keeps_the_shape(self):
+        # The round node became a rectangle
+        assert _nodes(parse_mermaid('flowchart TD\nA(round)\nA@{ label: "x" }')) == [("x", "ROUNDED_RECT")]
+
+    def test_a_shape_alone_keeps_the_text(self):
+        # The text went back to the node's id
+        assert _nodes(parse_mermaid("flowchart TD\nA[text]\nA@{ shape: circle }")) == [("text", "ELLIPSE")]
+
+    def test_brackets_give_both(self):
+        assert _nodes(parse_mermaid("flowchart TD\nA@{ shape: circle }\nA[text]")) == [("text", "RECTANGLE")]

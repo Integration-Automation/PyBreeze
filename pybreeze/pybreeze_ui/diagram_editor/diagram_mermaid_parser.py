@@ -290,18 +290,17 @@ def _parse_node_ref(raw: str, nodes: dict[str, _NodeInfo]) -> str | None:
     node_id = m.group(1)
     rest = _CLASS_SUFFIX_RE.sub("", m.group(2).strip()).strip()
     brackets, data = _split_shape_data(rest)
-    text, shape = _extract_shape(brackets, default_text=node_id)
+    node = nodes.get(node_id)
+    if node is None:
+        node = nodes[node_id] = _NodeInfo(id=node_id, text=node_id, shape=NodeShape.RECTANGLE)
+    # A declaration updates a node seen before (mermaid commonly declares
+    # edges before labelling the nodes), changing only what it names: brackets
+    # the text and shape, shape data what it lists. A bare reference never
+    # clobbers a label.
+    if brackets:
+        node.text, node.shape = _extract_shape(brackets, default_text=node_id)
     if data:
-        text, shape = _with_shape_data(data, text, shape)
-    existing = nodes.get(node_id)
-    if existing is None:
-        nodes[node_id] = _NodeInfo(id=node_id, text=text, shape=shape)
-    elif rest:
-        # An explicit label/shape declaration updates a node that was first
-        # seen as a bare reference (mermaid commonly declares edges before
-        # labelling the nodes). A bare reference never clobbers a label.
-        existing.text = text
-        existing.shape = shape
+        node.text, node.shape = _with_shape_data(data, node.text, node.shape)
     return node_id
 
 
