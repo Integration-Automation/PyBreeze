@@ -90,6 +90,7 @@ python -m pybreeze                                # launch the IDE
 ruff check pybreeze/                              # before committing non-trivial changes
 ```
 
+- `ruff` is pinned to 0.15 in `dev_requirements.txt`, and Dependabot proposes no 0.16: 0.16 enables 413 rules by default instead of 59, and there is no `[tool.ruff]` table. Moving to it (sorting imports, the rules the `# noqa` comments name) is a change of its own
 - Unit tests: `test/test_utils/` — pure logic + headless Qt widgets (`QT_QPA_PLATFORM=offscreen`), Hypothesis property tests
 - Startup tests: `test/unit_test/start_automation/` — launches the IDE in `debug_mode`, verifies startup and extend tab
 

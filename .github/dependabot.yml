@@ -17,6 +17,12 @@ updates:
     # Dependabot's own default is 3 days. Security updates are not delayed.
     cooldown:
       default-days: 7
+    # ruff stays on 0.15 (dev_requirements.txt): 0.16 enables 413 rules by
+    # default, and no workflow runs ruff, so a bump would pass and change what
+    # `ruff check` reports. Moving to 0.16 is a decision, not an update.
+    ignore:
+      - dependency-name: "ruff"
+        versions: [">=0.16"]
   # Workflow actions are pinned to commit SHAs with the version as a comment
   # (test/test_utils/test_workflow_actions.py); Dependabot moves both together.
   - package-ecosystem: "github-actions"
