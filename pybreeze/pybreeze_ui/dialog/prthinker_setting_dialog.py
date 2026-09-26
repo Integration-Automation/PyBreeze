@@ -19,7 +19,8 @@ from PySide6.QtWidgets import (
 from je_editor import language_wrapper
 
 from pybreeze.extend.prthinker_extend.prthinker_setting import (
-    BACKENDS, PLATFORMS, RAG_MODES, load_setting, read_extra_arguments, save_setting, setting_path
+    BACKENDS, KEY_FROM_ENVIRONMENT, PLATFORMS, RAG_MODES, load_setting, read_extra_arguments, save_setting,
+    setting_path
 )
 from pybreeze.pybreeze_ui.plain_text import as_text
 
@@ -66,6 +67,16 @@ class PRThinkerSettingDialog(QDialog):
             form.addRow(self.word_dict.get(label_key), self._editor_for(key))
         layout.addLayout(form)
 
+        # 沒有金鑰欄位的後端，說出金鑰從哪個環境變數來；以前選了它只會因為沒有金鑰而失敗
+        # For a backend with no key field, the variable its key comes from: chosen
+        # here alone, it used to fail for want of a key with nothing said
+        self.key_note = QLabel()
+        self.key_note.setWordWrap(True)
+        layout.addWidget(self.key_note)
+        backend = self.editors["backend"]
+        backend.currentTextChanged.connect(self._show_key_note)
+        self._show_key_note(backend.currentText())
+
         # 設定寫在哪裡，使用者才知道要備份或刪掉哪個檔案
         # Where the settings live, so it is clear what to back up or remove
         where = QLabel(
@@ -90,6 +101,14 @@ class PRThinkerSettingDialog(QDialog):
                 editor.setEchoMode(QLineEdit.EchoMode.Password)
         self.editors[key] = editor
         return editor
+
+    def _show_key_note(self, backend: str) -> None:
+        """說出 *backend* 的金鑰從哪個環境變數來；有金鑰欄位的後端就不顯示 / Say where *backend*'s key comes from, if not from this form."""
+        variable = KEY_FROM_ENVIRONMENT.get(backend)
+        self.key_note.setText(
+            self.word_dict.get("prthinker_setting_key_from_environment").format(variable=variable)
+            if variable else "")
+        self.key_note.setHidden(variable is None)
 
     @staticmethod
     def _chooser(choices, chosen: str) -> QComboBox:

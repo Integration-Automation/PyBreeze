@@ -73,6 +73,15 @@ MODEL_ENVIRONMENT = {
     "codex-cli": "PRTHINKER_CODEX_CLI_MODEL",
 }
 
+# 設定表沒有金鑰欄位的後端：prthinker 從啟動 IDE 的環境裡的這個變數讀金鑰
+# The backends with no key field on the settings form: prthinker reads their key
+# from this variable, in the environment the IDE was started in
+KEY_FROM_ENVIRONMENT = {
+    "gemini": "PRTHINKER_GEMINI_API_KEY",
+    "cohere": "PRTHINKER_COHERE_API_KEY",
+    "mistral": "PRTHINKER_MISTRAL_API_KEY",
+}
+
 # 其餘每個設定項對應的環境變數；模型名稱依後端而定，見 MODEL_ENVIRONMENT
 # The variable every other setting is given through; the model name's depends on
 # the backend (MODEL_ENVIRONMENT)

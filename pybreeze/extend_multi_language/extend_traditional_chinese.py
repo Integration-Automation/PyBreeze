@@ -145,6 +145,7 @@ pybreeze_traditional_chinese_word_dict = {
     "prthinker_setting_extra_arguments_label": "額外的命令列參數",
     "prthinker_setting_source_path_label": "prthinker 原始碼資料夾",
     "prthinker_setting_stored_at_label": "設定檔位置：",
+    "prthinker_setting_key_from_environment": "這個後端從環境變數 {variable} 讀取金鑰，須在啟動 PyBreeze 之前設定；這裡沒有它的欄位。",
     "prthinker_setting_bad_extra_arguments": "額外參數無法解讀：有引號沒有關上。請補上或刪掉後再存檔。",
     "prthinker_setting_save_failed": "設定無法存到 {path}，原本的設定保持不變。",
     # Prompt 編輯器 —— 編輯過的 prompt 會覆寫內建版本
