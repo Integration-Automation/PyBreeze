@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-100 | 2026-09-26 | The HAR parser is tested on a form recorded as text, params beside JSON, the summary line, statuses that are no number and an empty query value | #test #tools | [2026-09-e](2026-09-e.md) |
 | U-20260926-99 | 2026-09-26 | The Response Inspector's parse is tested where the headers end, at a folded third value, and past a token that does not decode | #test #tools | [2026-09-e](2026-09-e.md) |
 | U-20260926-98 | 2026-09-26 | How an imported request's body and form are sent has tests of its own | #test #tools | [2026-09-e](2026-09-e.md) |
 | U-20260926-97 | 2026-09-26 | The HAR script's test names, block numbers and single-request output are compared, not just looked for | #test #tools | [2026-09-e](2026-09-e.md) |
@@ -639,4 +640,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
 | [2026-09-d.md](2026-09-d.md) | 2026-09 | 91 |
-| [2026-09-e.md](2026-09-e.md) | 2026-09 | 28 |
+| [2026-09-e.md](2026-09-e.md) | 2026-09 | 29 |

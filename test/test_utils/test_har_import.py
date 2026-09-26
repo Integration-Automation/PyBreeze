@@ -216,6 +216,19 @@ class TestRequestBody:
     def test_no_post_data_leaves_no_body(self):
         assert not parse_har(_har(_entry()))[0].request.has_body
 
+    def test_a_form_recorded_as_text_alone_keeps_its_text(self):
+        entry = parse_har(_har(_entry(method="POST", post_data={
+            "mimeType": "application/x-www-form-urlencoded", "text": "a=1&b=2"})))[0]
+
+        assert entry.request.body == "a=1&b=2"
+
+    def test_params_beside_a_json_body_do_not_replace_it(self):
+        entry = parse_har(_har(_entry(method="POST", post_data={
+            "mimeType": "application/json", "text": '{"a": 1}',
+            "params": [{"name": "a", "value": "1"}]})))[0]
+
+        assert entry.request.body == '{"a": 1}'
+
 
 class TestApiFiltering:
     def test_json_response_is_api_like(self):
@@ -257,6 +270,26 @@ class TestSummary:
         assert "GET" in line
         assert "/api/items?a=1" in line
         assert "200" in line
+
+    def test_the_line_names_the_media_type_only_when_there_is_one(self):
+        with_type = parse_har(_har(_entry(url="https://x/api")))[0].summary()
+        without = parse_har(_har(_entry(url="https://x/api", mime="")))[0].summary()
+
+        assert with_type == "GET  /api  200  application/json"
+        assert without == "GET  /api  200"
+
+    def test_an_empty_summary_counts_nothing(self):
+        from pybreeze.utils.har_import.har_parser import HarSummary
+
+        assert (HarSummary().total, HarSummary().api, HarSummary().hosts) == (0, 0, [])
+
+    # 0 is what browsers record for a request that got no response
+    @pytest.mark.parametrize("status", [0, -1, "200", None])
+    def test_a_status_that_is_no_positive_number_is_none(self, status):
+        assert parse_har(_har(_entry(status=status)))[0].status is None
+
+    def test_an_empty_query_value_is_kept(self):
+        assert parse_har(_har(_entry(url="https://x/p?a=&b=1")))[0].request.params == {"a": "", "b": "1"}
 
 
 class TestUniqueTestNames:
