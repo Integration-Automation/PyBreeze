@@ -141,6 +141,13 @@ class TestJwtDetection:
         text = "eyJxx.yyy.zzz appears here"
         assert analyze_response(text).jwt_findings == []
 
+    def test_a_token_after_an_undecodable_one_is_still_found(self):
+        token = _jwt({"alg": "HS256"}, {"sub": "2"})
+
+        analysis = analyze_response(f"eyJxx.yyy.zzz then {token}")
+
+        assert [finding.token for finding in analysis.jwt_findings] == [token]
+
 
 class TestEmptyInput:
     def test_empty(self):
@@ -176,6 +183,12 @@ class TestHeadersAsHttpDefinesThem:
 
         assert analysis.headers == {"Set-Cookie": ["a=1", "b=2 path=/"]}
 
+    def test_of_three_values_the_folded_line_joins_the_third(self):
+        # With two, the second value is also the last one
+        analysis = analyze_response("HTTP/1.1 200 OK\nSet-Cookie: a=1\nSet-Cookie: b=2\nSet-Cookie: c=3\n path=/\n\n")
+
+        assert analysis.headers == {"Set-Cookie": ["a=1", "b=2", "c=3 path=/"]}
+
     def test_names_differing_only_in_case_are_one_header(self):
         analysis = analyze_response("HTTP/1.1 200 OK\nSet-Cookie: a=1\nset-cookie: b=2\n\n")
 
@@ -197,6 +210,31 @@ class TestHeadersAsHttpDefinesThem:
 
         assert analysis.status is None
         assert analysis.headers == {"content-type": "text/plain"}
+
+    # Names before and after "status" in the alphabet
+    @pytest.mark.parametrize("name", ["path", "zone"])
+    def test_another_pseudo_header_with_digits_is_no_status(self, name):
+        analysis = analyze_response(f":{name}: 404\ncontent-type: text/plain\n\nbody")
+
+        assert analysis.status is None
+
+    def test_the_blank_line_ends_the_headers_whatever_follows(self):
+        analysis = analyze_response("HTTP/1.1 200 OK\nA: 1\n\nB: 2")
+
+        assert analysis.headers == {"A": "1"}
+        assert analysis.body == "B: 2"
+
+    def test_a_response_that_ends_on_a_header_has_an_empty_body(self):
+        analysis = analyze_response("HTTP/1.1 204 No Content\nDate: today")
+
+        assert analysis.status.code == 204
+        assert analysis.headers == {"Date": "today"}
+        assert analysis.body == ""
+
+    def test_an_empty_analysis_has_no_json_body(self):
+        from pybreeze.utils.response_inspector.response_analyzer import ResponseAnalysis
+
+        assert ResponseAnalysis().is_json_body is False
 
 
 class TestCurlShowsEveryResponse:
