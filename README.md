@@ -87,7 +87,7 @@ In a tool with one main button, Ctrl+Enter anywhere in it presses that button: i
 
 ### cURL Import — a copied request becomes a runnable script
 
-Paste a `curl` command from your browser's dev tools and pick a target. The parser handles method, URL, headers, bodies, basic auth, `-G` and `--url-query` query parameters, `-F` multipart fields (uploads become `files=open(...)`), the `--json` shortcut, `-d @file` bodies and multi-line continuations. Every other curl option that takes a value has it consumed, so it is never mistaken for the URL. Repeated `-H` values are combined the way HTTP combines them (`; ` for cookies, `, ` otherwise) instead of the last one silently winning. The method is the one curl sends: POST for a body and HEAD for `-I`, unless `-X` names one (`-X GET -d ...` stays a GET with a body). Nothing is ever executed — it is pure parsing.
+Paste a `curl` command from your browser's dev tools and pick a target. The parser handles method, URL, headers, bodies, basic auth, `-G` and `--url-query` query parameters, `-F` multipart fields (uploads become `files=open(...)`), the `--json` shortcut, `-d @file` bodies and multi-line continuations. Every other curl option that takes a value has it consumed, so it is never mistaken for the URL, and an `--expand-` option is read as the one it expands, its `{{variables}}` kept as written. Repeated `-H` values are combined the way HTTP combines them (`; ` for cookies, `, ` otherwise) instead of the last one silently winning. The method is the one curl sends: POST for a body and HEAD for `-I`, unless `-X` names one (`-X GET -d ...` stays a GET with a body). Nothing is ever executed — it is pure parsing.
 
 | Target: pytest | Target: APITestka JSON action |
 |---|---|

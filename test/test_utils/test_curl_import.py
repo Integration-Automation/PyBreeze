@@ -843,3 +843,23 @@ class TestUrlQueryFlag:
         request = parse_curl("curl -G -d c=d --url-query a=b https://x.test")
 
         assert request.params == {"c": "d"}
+
+
+class TestExpandOptions:
+    """``--expand-<option>`` (curl 8.3) is ``--<option>`` with ``{{variables}}`` in its value, kept as written."""
+
+    def test_an_expanded_header_is_a_header(self):
+        # The header was taken for the URL
+        request = parse_curl(
+            "curl --variable token=abc --expand-header 'Authorization: Bearer {{token}}' https://x.test")
+
+        assert request.url == "https://x.test"
+        assert request.headers == {"Authorization": "Bearer {{token}}"}
+
+    def test_expanded_data_is_the_body(self):
+        request = parse_curl("curl --expand-data 'a={{v}}' https://x.test")
+
+        assert (request.method, request.body, request.url) == ("POST", "a={{v}}", "https://x.test")
+
+    def test_an_expanded_url_is_the_url(self):
+        assert parse_curl("curl --variable host=x.test --expand-url 'https://{{host}}/p'").url == "https://{{host}}/p"

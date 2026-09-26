@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-143 | 2026-09-26 | cURL import reads an --expand- option as the option it expands | #fix #tools | [2026-09-e](2026-09-e.md) |
 | U-20260926-142 | 2026-09-26 | cURL import consumes the value of every curl option that takes one, and reads --url-query | #fix #tools | [2026-09-e](2026-09-e.md) |
 | U-20260926-141 | 2026-09-26 | The HTTP status reference reads the same on every Python, and finds a status by the name RFC 9110 replaced | #fix #tools | [2026-09-e](2026-09-e.md) |
 | U-20260926-140 | 2026-09-26 | The Mermaid importer drops four checks that cannot fail | #refactor #diagram | [2026-09-e](2026-09-e.md) |
@@ -682,4 +683,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
 | [2026-09-d.md](2026-09-d.md) | 2026-09 | 91 |
-| [2026-09-e.md](2026-09-e.md) | 2026-09 | 71 |
+| [2026-09-e.md](2026-09-e.md) | 2026-09 | 72 |

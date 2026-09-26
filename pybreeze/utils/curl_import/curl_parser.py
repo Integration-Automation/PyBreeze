@@ -170,6 +170,9 @@ _VALUE_FLAGS: dict[str, str] = {
     "--url-query": "url_query",
 }
 
+# "--expand-header" is "--header" with {{variables}} in its value
+_EXPAND_PREFIX = "--expand-"
+
 # Value-less flags that still change behaviour.
 _GET_FLAGS = frozenset({"-G", "--get"})
 # -I fetches the headers only: a HEAD request, unless -X names another method
@@ -506,6 +509,15 @@ def _apply_value_flag(request: CurlRequest, kind: str, value: str) -> None:
     _VALUE_FLAG_HANDLERS[kind](request, value)
 
 
+def _unexpanded(flag: str) -> str:
+    """The option an ``--expand-`` one expands: ``--expand-header`` is ``--header`` (curl 8.3).
+
+    Its value's ``{{variables}}`` are kept as written, and the value lands where
+    the option's own would; an unknown one was skipped, and its value taken for the URL.
+    """
+    return "--" + flag.removeprefix(_EXPAND_PREFIX) if flag.startswith(_EXPAND_PREFIX) else flag
+
+
 def _consume_tokens(tokens: list[str], request: CurlRequest) -> None:
     """Walk *tokens*, filling *request*; positional tokens become the URL.
 
@@ -514,7 +526,7 @@ def _consume_tokens(tokens: list[str], request: CurlRequest) -> None:
     """
     index = 0
     while index < len(tokens):
-        token = tokens[index]
+        token = _unexpanded(tokens[index])
         kind = _VALUE_FLAGS.get(token)
         if kind is not None:
             index += 1
