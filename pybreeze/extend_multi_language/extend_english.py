@@ -18,6 +18,10 @@ pybreeze_english_word_dict = {
     "application_name": "PyBreeze",
     # Run window
     "code_window_stop_button": "Stop",
+    "code_window_close_running_title": "The run is still going",
+    "code_window_close_running_message": (
+        "The program in this window is still running. Stop it?\n\n"
+        "No lets it run on without a window (a report it mails still goes); Cancel keeps the window open."),
     # Menubar
     "automation_menu_label": "Automation",
     "install_menu_label": "Install",

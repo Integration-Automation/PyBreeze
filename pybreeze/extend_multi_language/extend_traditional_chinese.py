@@ -13,6 +13,10 @@ pybreeze_traditional_chinese_word_dict = {
     "application_name": "PyBreeze",
     # Run window
     "code_window_stop_button": "停止",
+    "code_window_close_running_title": "程式還在執行",
+    "code_window_close_running_message": (
+        "這個視窗裡的程式還在執行。要停止它嗎？\n\n"
+        "選「否」會讓它在沒有視窗的情況下繼續執行（要寄的報告照樣會寄出）；選「取消」則保留這個視窗。"),
     # Menubar
     "automation_menu_label": "自動化",
     "install_menu_label": "安裝",

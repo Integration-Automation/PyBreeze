@@ -128,7 +128,8 @@ opens a window of its own for its output. This window:
 - Shows the output as it arrives, errors in the error colour, in a fixed-pitch font, and
   keeps the last 10,000 lines
 - Has a **Stop** button, enabled while the run goes on
-- Can be closed while the run goes on: the run continues, and closing the IDE stops it
+- Asks, when closed while the run goes on, whether to stop it: **Yes** stops it, **No** lets it
+  run on without a window (closing the IDE still stops it), **Cancel** keeps the window open
 - Sizes itself to a third of the screen
 
 Dock Widgets

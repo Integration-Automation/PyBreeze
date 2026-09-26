@@ -284,6 +284,90 @@ class TestClosedWhileRunning:
         assert forgotten == []
 
 
+class TestClosingARunningWindowAsks:
+    """Closed by the user mid-run, the window asks: stop the run, let it go on, or stay open."""
+
+    def _window(self, monkeypatch, answer: str):
+        from types import SimpleNamespace
+
+        from PySide6.QtWidgets import QMessageBox
+
+        from pybreeze.pybreeze_ui.show_code_window import code_window as window_mod
+
+        asked: list = []
+
+        def exec_(box):
+            no_is_the_default = box.defaultButton() is box.button(QMessageBox.StandardButton.No)
+            asked.append((box.windowTitle(), box.text(), box.standardButtons(), no_is_the_default))
+            return getattr(QMessageBox.StandardButton, answer)
+
+        monkeypatch.setattr(window_mod.QMessageBox, "exec", exec_)
+        monkeypatch.setattr(window_mod.CodeWindow, "_closed_by_the_user", staticmethod(lambda _event: True))
+        window = window_mod.CodeWindow()
+        stopped: list = []
+        window.runner = SimpleNamespace(process=TestClosedWhileRunning.Running(), stop=lambda: stopped.append(True))
+        window.show()
+        return window, asked, stopped
+
+    def test_yes_stops_the_run_and_closes(self, qt_app, monkeypatch):
+        from je_editor import language_wrapper
+        from PySide6.QtWidgets import QMessageBox
+
+        from pybreeze.extend_multi_language.update_language_dict import update_language_dict
+
+        update_language_dict()
+        window, asked, stopped = self._window(monkeypatch, "Yes")
+
+        window.close()
+
+        word = language_wrapper.language_word_dict
+        buttons = QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No | QMessageBox.StandardButton.Cancel
+        assert asked == [(word.get("code_window_close_running_title"),
+                          word.get("code_window_close_running_message"), buttons, True)]
+        assert stopped == [True]
+        assert not window.isVisible()
+
+    def test_no_lets_the_run_go_on_and_closes(self, qt_app, monkeypatch):
+        window, _asked, stopped = self._window(monkeypatch, "No")
+
+        window.close()
+
+        assert stopped == []
+        assert not window.isVisible()
+        assert window._closed_while_running
+
+    def test_cancel_keeps_the_window_open(self, qt_app, monkeypatch):
+        window, _asked, stopped = self._window(monkeypatch, "Cancel")
+
+        window.close()
+
+        assert stopped == []
+        assert window.isVisible()
+        window.runner.process.returncode = 0
+        window.close()
+
+    def test_a_close_from_code_asks_nothing(self, qt_app, monkeypatch):
+        # The IDE closing stops every run itself, then closes the windows
+        from pybreeze.pybreeze_ui.show_code_window import code_window as window_mod
+
+        window, asked, _stopped = self._window(monkeypatch, "Cancel")
+        monkeypatch.setattr(window_mod.CodeWindow, "_closed_by_the_user", staticmethod(lambda event: event.spontaneous()))
+
+        window.close()
+
+        assert asked == []
+        assert not window.isVisible()
+
+    def test_a_finished_run_asks_nothing(self, qt_app, monkeypatch):
+        window, asked, _stopped = self._window(monkeypatch, "Cancel")
+        window.runner.process.returncode = 0
+
+        window.close()
+
+        assert asked == []
+        assert not window.isVisible()
+
+
 def test_the_file_runner_says_when_the_run_ended(qt_app, tmp_path):
     import sys
     import time
