@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-116 | 2026-09-26 | The SFTP tree is tested on a delete answered No, a folder left unnamed, and sizes past the last unit | #test #ssh | [2026-09-e](2026-09-e.md) |
 | U-20260926-115 | 2026-09-26 | The SSH terminal's late connects, its reader's two ways of ending and a command typed without a session are tested | #test #ssh | [2026-09-e](2026-09-e.md) |
 | U-20260926-114 | 2026-09-26 | The Regex tab's nesting scan is tested after an escape, and a worker killed by a signal is reported | #test #tools | [2026-09-e](2026-09-e.md) |
 | U-20260926-113 | 2026-09-26 | The Regex tab's group-nesting cap is tested at 100 and against closed groups, and a worker's positive exit code is reported | #test #tools | [2026-09-e](2026-09-e.md) |
@@ -655,4 +656,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
 | [2026-09-d.md](2026-09-d.md) | 2026-09 | 91 |
-| [2026-09-e.md](2026-09-e.md) | 2026-09 | 44 |
+| [2026-09-e.md](2026-09-e.md) | 2026-09 | 45 |

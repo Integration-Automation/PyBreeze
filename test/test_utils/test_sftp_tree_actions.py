@@ -539,3 +539,25 @@ class TestConnecting:
         assert changes == [True]
         widget.close()
         widget.deleteLater()
+
+
+class TestWhatTheUserCalledOff:
+    def test_a_delete_answered_no_removes_nothing(self, tree, monkeypatch):
+        widget, client, root, _warnings = tree
+        monkeypatch.setattr(QMessageBox, "question", lambda *_args: QMessageBox.StandardButton.No)
+
+        widget.action_delete(_child(root, "notes.txt"))
+        _wait_for(lambda: _idle(widget))
+
+        assert client.removed == []
+        assert _child(root, "notes.txt") is not None
+
+    @pytest.mark.parametrize(("text", "ok"), [("new", False), ("   ", True), ("", True)])
+    def test_a_folder_not_named_is_not_made(self, tree, monkeypatch, text, ok):
+        widget, client, root, _warnings = tree
+        monkeypatch.setattr(widget, "get_text", lambda *_args: (text, ok))
+
+        widget.action_create_folder(root)
+        _wait_for(lambda: _idle(widget))
+
+        assert client.made == []
