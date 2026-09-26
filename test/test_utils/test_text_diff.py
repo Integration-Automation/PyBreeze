@@ -130,6 +130,29 @@ class TestTheDiffIsAPatch:
 
         alternate()
 
+    @pytest.mark.parametrize("lines", [[], ["a"], ["a", "b", "a"]])
+    def test_identical_texts_are_one_equal_block(self, lines):
+        from pybreeze.utils.diff_tools.text_diff import _TrimmedMatcher
+
+        assert _TrimmedMatcher(lines, list(lines)).get_opcodes() == [("equal", 0, len(lines), 0, len(lines))]
+
+    @pytest.mark.parametrize(("left", "right", "changed"), [
+        # _closest_match's own example: the first b taken as unchanged left a
+        # match of five changed lines, where difflib's changes three
+        ("bbaba", "bacb", 3),
+        # Two added and two removed against three and three: counted by their
+        # sum, not by anything else made of the two
+        ("aaaba", "abcac", 4),
+    ])
+    def test_the_match_that_changes_fewer_lines_is_kept(self, left, right, changed):
+        left_text = "".join(f"{line}\n" for line in left)
+        right_text = "".join(f"{line}\n" for line in right)
+
+        summary = diff_summary(left_text, right_text)
+
+        assert summary.added + summary.removed == changed
+        assert _patched(list(left), unified_diff(left_text, right_text)) == list(right)
+
     def test_three_lines_of_context_as_diff_u_keeps(self):
         left = "".join(f"line {number}\n" for number in range(1, 11))
         right = left.replace("line 5\n", "changed\n")
