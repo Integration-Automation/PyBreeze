@@ -112,10 +112,18 @@ class PRThinkerSettingDialog(QDialog):
 
     @staticmethod
     def _chooser(choices, chosen: str) -> QComboBox:
-        """做一個下拉選單，選到目前的值 / A combo box, on the value in use."""
+        """做一個下拉選單，選到目前的值 / A combo box, on the value in use.
+
+        清單上沒有的值（較新的 prthinker 的）列在最後並選著；以前顯示第一項，下次存檔就被換掉
+        A value not on offer (a newer prthinker's) is listed after the rest and
+        chosen: the first choice used to be shown, and the next Save replaced
+        the stored value unasked.
+        """
         box = QComboBox()
         box.addItems(list(choices))
-        if chosen in choices:
+        if chosen and chosen not in choices:
+            box.addItem(chosen)
+        if chosen:
             box.setCurrentText(chosen)
         return box
 

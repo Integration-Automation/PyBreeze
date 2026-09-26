@@ -77,11 +77,28 @@ class TestTheFormItBuilds:
         assert made.editors["platform"].currentText() == "gitea"
         made.deleteLater()
 
-    def test_a_stored_value_that_is_not_on_offer_leaves_the_first_choice(self, app, data_dir):
+    def test_a_stored_value_that_is_not_on_offer_is_listed_and_kept(self, app, data_dir):
+        # A newer prthinker's backend: the first choice was shown, and the next Save replaced it
         (data_dir / SETTING_FILE_NAME).write_text(
-            json.dumps({**DEFAULT_SETTING, "backend": "nonsense"}), encoding="utf-8")
+            json.dumps({**DEFAULT_SETTING, "backend": "newer-backend"}), encoding="utf-8")
         made = PRThinkerSettingDialog()
-        assert made.editors["backend"].currentText() == BACKENDS[0]
+        backend = made.editors["backend"]
+
+        assert backend.currentText() == "newer-backend"
+        assert [backend.itemText(index) for index in range(backend.count())] == [*BACKENDS, "newer-backend"]
+        made.editors["repository"].setText("owner/name")
+        made.save()
+        assert stored(data_dir)["backend"] == "newer-backend"
+        made.deleteLater()
+
+    def test_an_empty_stored_value_shows_the_first_choice(self, app, data_dir):
+        (data_dir / SETTING_FILE_NAME).write_text(
+            json.dumps({**DEFAULT_SETTING, "platform": ""}), encoding="utf-8")
+        made = PRThinkerSettingDialog()
+        platform = made.editors["platform"]
+
+        assert platform.currentText() == PLATFORMS[0]
+        assert platform.count() == len(PLATFORMS)
         made.deleteLater()
 
     def test_stored_text_is_filled_in(self, app, data_dir):
