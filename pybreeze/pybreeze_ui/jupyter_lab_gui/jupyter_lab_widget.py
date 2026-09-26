@@ -8,6 +8,7 @@ from PySide6.QtWidgets import QApplication, QVBoxLayout, QWidget, QLabel
 from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.jupyter_lab_gui.jupyter_lab_thread import JupyterLauncherThread
+from pybreeze.pybreeze_ui.jupyter_lab_gui.lab_page import LabPage
 from pybreeze.pybreeze_ui.thread_keeper import let_run_out
 
 
@@ -30,6 +31,9 @@ class JupyterLabWidget(QWidget):
         layout.addWidget(self.status_label)
 
         self.browser = QWebEngineView()
+        # Kept on the lab: a link elsewhere opens in the system's browser
+        self.lab_page = LabPage(self.browser)
+        self.browser.setPage(self.lab_page)
         self.browser.hide()
         layout.addWidget(self.browser)
 
@@ -51,6 +55,7 @@ class JupyterLabWidget(QWidget):
             self.status_label.deleteLater()
             self.status_label = None
 
+        self.lab_page.lab_url = QUrl(url)
         self.browser.setUrl(QUrl(url))
         self.browser.show()
 

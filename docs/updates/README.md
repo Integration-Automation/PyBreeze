@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-128 | 2026-09-26 | The JupyterLab tab stays on the lab, and a link to anywhere else opens in the system's browser | #fix #jupyter #security #docs | [2026-09-e](2026-09-e.md) |
 | U-20260926-127 | 2026-09-26 | The run window's pump is tested on a character cut off at the end, readers that are done, and the bounds the map gives | #test #process | [2026-09-e](2026-09-e.md) |
 | U-20260926-126 | 2026-09-26 | The prthinker settings file is tested past an unknown field, on its layout, under a home not made yet, and on each platform's backslashes | #test #prthinker | [2026-09-e](2026-09-e.md) |
 | U-20260926-125 | 2026-09-26 | The report mail is tested on its two seconds of slack, its thirty-second timeout and its daemon thread | #test #mail | [2026-09-e](2026-09-e.md) |
@@ -667,4 +668,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
 | [2026-09-d.md](2026-09-d.md) | 2026-09 | 91 |
-| [2026-09-e.md](2026-09-e.md) | 2026-09 | 56 |
+| [2026-09-e.md](2026-09-e.md) | 2026-09 | 57 |

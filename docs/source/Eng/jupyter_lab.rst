@@ -64,6 +64,8 @@ Usage Tips
 - JupyterLab listens on a free port on localhost only; network access is needed only to
   install JupyterLab when it is missing, or to upgrade a vulnerable release
 - You can open multiple notebooks in JupyterLab's own tab system
+- The tab stays on the lab: a link to anywhere else (a notebook's links, JupyterLab's help pages)
+  opens in your system's browser; only ``http`` and ``https`` links are opened
 - Use JupyterLab for data analysis, prototyping, and interactive testing
 - JupyterLab and its kernels run in the interpreter a script run uses: the one chosen under
   **Python Env > Choose python interpreter**; with none chosen, a ``venv`` or ``.venv`` in

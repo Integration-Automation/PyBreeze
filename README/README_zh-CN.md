@@ -76,7 +76,7 @@ PyBreeze 开箱即用，涵盖自动化测试的完整范围：
 - **代码编辑器** — 基于 [JEditor](https://github.com/Integration-Automation/JEDITOR) 构建：标签页、项目树、格式检查、调试器、终端以及 git 客户端面板
 - **脚本执行** — 单个或批量运行，每次运行都有自己的窗口和 Stop 按钮（Run ▸ Stop All Program 会全部停止），运行中关闭窗口时会先询问是否停止；动作文件以路径传入，而前台标签页中的脚本若超出 Windows 命令行的长度上限（约 32 KB），会改经临时文件传递
 - **报告生成** — 运行后生成 HTML / JSON / XML 报告，可选以邮件发送
-- **集成 JupyterLab** — 以标签页方式启动，使用与运行脚本相同的解释器；那里没有 JupyterLab 时会自动安装，JupyterLab 或它的服务器是存在已知漏洞的版本时（JupyterLab 4.5.10 之前或 4.6.0–4.6.1、jupyter_server 2.20.0 之前）会先升级
+- **集成 JupyterLab** — 以标签页方式启动，使用与运行脚本相同的解释器；那里没有 JupyterLab 时会自动安装，JupyterLab 或它的服务器是存在已知漏洞的版本时（JupyterLab 4.5.10 之前或 4.6.0–4.6.1、jupyter_server 2.20.0 之前）会先升级；标签页只停留在 lab 上，指向其他地方的链接会用你的浏览器打开
 - **虚拟环境感知** — 运行时使用在 **Python Env** 中选择的解释器；没有选择时，自动检测并使用工作文件夹中的 `venv/` 或 `.venv/`，都没有时则以 IDE 本身所用的解释器运行
 
 ---

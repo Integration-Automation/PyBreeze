@@ -58,6 +58,8 @@ JupyterLab 分頁包含：
 
 - JupyterLab 只在 localhost 的空閒連接埠上執行；只有需要安裝 JupyterLab 或升級有漏洞的版本時才需要網路
 - 您可以在 JupyterLab 自己的分頁系統中開啟多個筆記本
+- 分頁只停在 lab 上：連到其他地方的連結（筆記本裡的連結、JupyterLab 的說明頁）會用系統瀏覽器開啟；
+  只開 ``http`` 與 ``https`` 的連結
 - 使用 JupyterLab 進行資料分析、原型開發和互動式測試
 - JupyterLab 與其 kernel 在執行腳本所用的直譯器中執行：**Python Env > Choose python interpreter**
   選定的直譯器；沒有選的話，用工作資料夾中的 ``venv`` 或 ``.venv``，再沒有就用 PyBreeze 自己的直譯器

@@ -76,7 +76,7 @@ PyBreeze 開箱即用，涵蓋自動化測試的完整範疇：
 - **程式碼編輯器** — 以 [JEditor](https://github.com/Integration-Automation/JEDITOR) 為基礎：分頁、專案樹、格式檢查、除錯器、終端機與 git 用戶端面板
 - **腳本執行** — 單一或批次執行，每次執行都有自己的視窗與 Stop 按鈕（Run ▸ Stop All Program 會全部停止），執行中關閉視窗時會先問要不要停止；動作檔以路徑傳入，而目前分頁中的腳本若超過 Windows 命令列長度上限（約 32 KB），會改用暫存檔傳遞
 - **報告產生** — 執行後產生 HTML／JSON／XML 報告，並可選擇以電子郵件寄送
-- **整合 JupyterLab** — 以分頁方式啟動，使用與執行腳本相同的直譯器；那裡沒有 JupyterLab 時會自動安裝，JupyterLab 或它的伺服器是有已知漏洞的版本時（JupyterLab 4.5.10 之前或 4.6.0–4.6.1、jupyter_server 2.20.0 之前）會先升級
+- **整合 JupyterLab** — 以分頁方式啟動，使用與執行腳本相同的直譯器；那裡沒有 JupyterLab 時會自動安裝，JupyterLab 或它的伺服器是有已知漏洞的版本時（JupyterLab 4.5.10 之前或 4.6.0–4.6.1、jupyter_server 2.20.0 之前）會先升級；分頁只停在 lab 上，連到其他地方的連結會用你的瀏覽器開啟
 - **虛擬環境感知** — 執行時使用在 **Python Env** 選擇的直譯器；沒有選擇時，自動偵測並使用工作資料夾中的 `venv/` 或 `.venv/`，都沒有時則以 IDE 本身使用的直譯器執行
 
 ---
