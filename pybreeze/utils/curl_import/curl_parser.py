@@ -86,6 +86,8 @@ class CurlRequest:
     :param binary_data_files: those of them given with ``--data-binary``, sent
         byte for byte; curl drops carriage returns and newlines from the others
     :param cookie_files: files ``-b`` names, which curl reads cookies from
+    :param url_query_parts: the ``--url-query`` pieces, as query text, in order;
+        moved into :attr:`params` as the command is finished
     :param timeout: request timeout in seconds from ``--max-time`` / ``-m``, or
         ``None`` when the command sets none
     :param cookies: cookies parsed from ``-b`` / ``--cookie`` name=value pairs
@@ -108,6 +110,7 @@ class CurlRequest:
     data_file_positions: list[int] = field(default_factory=list)
     binary_data_files: set[str] = field(default_factory=set)
     cookie_files: list[str] = field(default_factory=list)
+    url_query_parts: list[str] = field(default_factory=list)
     timeout: str | None = None
     cookies: dict[str, str] = field(default_factory=dict)
 
@@ -164,6 +167,7 @@ _VALUE_FLAGS: dict[str, str] = {
     "--url": "url",
     "-m": "timeout", "--max-time": "timeout",
     "--oauth2-bearer": "oauth2_bearer",
+    "--url-query": "url_query",
 }
 
 # Value-less flags that still change behaviour.
@@ -198,6 +202,27 @@ _IGNORED_VALUE_FLAGS = frozenset({
     "-Y", "--speed-limit", "--keepalive-time", "--aws-sigv4",
     "-C", "--continue-at", "-z", "--time-cond", "-D", "--dump-header",
     "-K", "--config",
+    # Every other option curl's option table gives a value (``tool_getparam.c``,
+    # curl 8.x). Unknown here, each was skipped as valueless and its value read
+    # as the URL: "curl --max-redirs 5 https://x" requested "5".
+    "--abstract-unix-socket", "--alt-svc", "--connect-to", "--create-file-mode", "--crlfile", "--curves",
+    "--delegation", "--dns-interface", "--dns-ipv4-addr", "--dns-ipv6-addr", "--doh-url", "--ech", "--egd-file",
+    "--engine", "--etag-compare", "--etag-save", "--expect100-timeout", "--ftp-account",
+    "--ftp-alternative-to-user", "--ftp-method", "--ftp-port", "--ftp-ssl-ccc-mode",
+    "--happy-eyeballs-timeout-ms", "--haproxy-clientip", "--help", "--hostpubmd5", "--hostpubsha256", "--hsts",
+    "--httpsig-algo", "--httpsig-headers", "--httpsig-key", "--httpsig-keyid", "--ip-tos", "--ipfs-gateway",
+    "--keepalive-cnt", "--knownhosts", "--krb", "--krb4", "--libcurl", "--login-options", "--mail-auth",
+    "--mail-from", "--mail-rcpt", "--max-filesize", "--max-redirs", "--netrc-file", "--noproxy", "--output-dir",
+    "--parallel-max", "--parallel-max-host", "--pinnedpubkey", "--preproxy", "--proto", "--proto-default",
+    "--proto-redir", "--proxy-cacert", "--proxy-capath", "--proxy-cert", "--proxy-cert-type", "--proxy-ciphers",
+    "--proxy-crlfile", "--proxy-header", "--proxy-key", "--proxy-key-type", "--proxy-pass",
+    "--proxy-pinnedpubkey", "--proxy-service-name", "--proxy-tls13-ciphers", "--proxy-tlsauthtype",
+    "--proxy-tlspassword", "--proxy-tlsuser", "--proxy1.0", "--pubkey", "--quote", "--random-file", "--rate",
+    "--request-target", "--sasl-authzid", "--service-name", "--sigalgs", "--socks4", "--socks4a", "--socks5",
+    "--socks5-gssapi-service", "--socks5-hostname", "--ssl-sessions", "--stderr", "--telnet-option",
+    "--tftp-blksize", "--tls-max", "--tls13-ciphers", "--tlsauthtype", "--tlspassword", "--tlsuser", "--trace",
+    "--trace-ascii", "--trace-config", "--unix-socket", "--upload-flags", "--variable", "--vlan-priority", "-P",
+    "-Q", "-h", "-t",
 })
 
 
@@ -441,6 +466,11 @@ def _apply_oauth2_bearer(request: CurlRequest, value: str) -> None:
     request.bearer_token = value
 
 
+def _apply_url_query(request: CurlRequest, value: str) -> None:
+    """Keep a ``--url-query`` piece as query text: encoded as ``--data-urlencode`` does, or after a ``+`` as written."""
+    request.url_query_parts.append(value[1:] if value.startswith("+") else _urlencode_data_part(value))
+
+
 def _set_url(request: CurlRequest, value: str) -> None:
     request.url = value
 
@@ -463,6 +493,7 @@ _VALUE_FLAG_HANDLERS: dict[str, Callable[[CurlRequest, str], None]] = {
     "timeout": _apply_timeout,
     "user": _apply_user,
     "oauth2_bearer": _apply_oauth2_bearer,
+    "url_query": _apply_url_query,
 }
 
 
@@ -507,7 +538,8 @@ def _finalise_method(request: CurlRequest) -> None:
     """Settle what depends on the whole command.
 
     The method (``-I``, or POST for a body, unless ``-X`` named one), the ``--oauth2-bearer`` header
-    unless ``-H`` set one, and the body moved to the query when ``-G`` was given.
+    unless ``-H`` set one, and the query: the body moved there when ``-G`` was
+    given, else the ``--url-query`` pieces.
     """
     if request.head_only and not request.method_given:
         request.method = "HEAD"
@@ -521,13 +553,16 @@ def _finalise_method(request: CurlRequest) -> None:
     if request.send_data_as_params and request.data_file_refs:
         # The file's content is the query, and it is not known until the script runs
         raise CurlParseException(get_with_file_body_error)
-    if request.send_data_as_params:
-        # With -G, curl appends the data to the URL exactly as given, joined by
-        # '&': each fragment is query text already, so it is split on '&' and
-        # decoded here, or full_url would encode it a second time.
-        for part in request.data_parts:
-            for key, value in parse_qsl(part, keep_blank_values=True):
-                add_repeated_value(request.params, key, value)
+    # curl puts one or the other in the query (single_transfer, tool_operate.c):
+    # the -G data when there is any, else the --url-query pieces
+    moved_to_query = request.data_parts if request.send_data_as_params else []
+    # With -G, curl appends the data to the URL exactly as given, joined by '&':
+    # each fragment is query text already, so it is split on '&' and decoded
+    # here, or full_url would encode it a second time. So is each --url-query piece.
+    for part in moved_to_query or request.url_query_parts:
+        for key, value in parse_qsl(part, keep_blank_values=True):
+            add_repeated_value(request.params, key, value)
+    if moved_to_query:
         request.data_parts = []
 
 

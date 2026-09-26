@@ -777,3 +777,69 @@ class TestTheRestOfTheFlags:
 
     def test_a_query_parameter_given_three_times_keeps_all_three(self):
         assert parse_curl("curl 'https://x/?a=1&a=2&a=3'").params == {"a": ["1", "2", "3"]}
+
+
+class TestEveryFlagThatTakesAValue:
+    """Each curl option that takes a value consumes it: an unknown one left it to be read as the URL."""
+
+    @pytest.mark.parametrize("flag", [
+        "--max-redirs 5",
+        "--noproxy '*'",
+        "--proxy-header 'X-Proxy: y'",
+        "--connect-to example.test:443:127.0.0.1:8443",
+        "--doh-url https://dns.test/query",
+        "--rate 2/s",
+        "--request-target /other",
+        "--etag-save etag.txt",
+        "--variable name=value",
+        "--unix-socket /tmp/api.sock",
+        "-Q 'NOOP'",
+        "--max-filesize 10M",
+        "--expect100-timeout 2",
+    ])
+    def test_the_value_is_not_the_url(self, flag):
+        # "curl --max-redirs 5 https://x.test/p" had the URL "5"
+        request = parse_curl(f"curl {flag} https://x.test/p")
+
+        assert request.url == "https://x.test/p"
+
+
+class TestUrlQueryFlag:
+    """``--url-query`` (curl 7.87) adds to the URL's query what ``--data-urlencode`` would send."""
+
+    def test_it_is_added_to_the_query(self):
+        # Its value was taken for the URL, and the URL was dropped
+        request = parse_curl("curl --url-query 'q=1 2' 'https://x.test/p?z=1'")
+
+        assert request.url == "https://x.test/p"
+        assert request.params == {"z": "1", "q": "1 2"}
+        assert request.method == "GET"
+
+    def test_a_plus_sends_it_as_written(self):
+        encoded = parse_curl("curl --url-query 'a=%2F' https://x.test")
+        as_written = parse_curl("curl --url-query '+a=%2F' https://x.test")
+
+        assert encoded.params == {"a": "%2F"}
+        assert as_written.params == {"a": "/"}
+
+    def test_several_are_added_in_order(self):
+        request = parse_curl("curl --url-query a=1 --url-query b=2 --url-query a=3 https://x.test")
+
+        assert request.params == {"a": ["1", "3"], "b": "2"}
+
+    def test_a_body_stays_the_body(self):
+        request = parse_curl("curl --url-query a=b -d x=1 https://x.test")
+
+        assert request.method == "POST"
+        assert request.body == "x=1"
+        assert request.params == {"a": "b"}
+
+    def test_get_without_data_still_adds_it(self):
+        assert parse_curl("curl -G --url-query a=b https://x.test").params == {"a": "b"}
+
+    def test_get_with_data_sends_the_data_instead(self):
+        # As curl does (single_transfer, tool_operate.c): the -G data is the
+        # query, and the --url-query pieces are not sent
+        request = parse_curl("curl -G -d c=d --url-query a=b https://x.test")
+
+        assert request.params == {"c": "d"}
