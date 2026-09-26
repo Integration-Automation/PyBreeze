@@ -17,6 +17,7 @@ from dataclasses import dataclass
 
 from pybreeze.utils.exception.exception_tags import (
     empty_jwt_error,
+    encrypted_jwt_error,
     jwt_segment_decode_error,
     malformed_jwt_error,
 )
@@ -28,6 +29,10 @@ from pybreeze.utils.timestamp_tools.timestamp_converter import utc_from_epoch_se
 
 # A JWT is three base64url segments joined by dots
 _JWT_SEGMENT_COUNT = 3
+# An encrypted one (JWE, RFC 7516) is five: header, encrypted key, IV,
+# ciphertext and tag, and its header names the content encryption, "enc"
+_JWE_SEGMENT_COUNT = 5
+_JWE_ENCRYPTION_PARAMETER = "enc"
 # Standard claim names that hold Unix timestamps, shown as readable dates
 _TIMESTAMP_CLAIMS = ("exp", "iat", "nbf", "auth_time")
 # Matches a JWT-looking token anywhere in a larger text, such as the value of an
@@ -39,6 +44,11 @@ _TIMESTAMP_CLAIMS = ("exp", "iat", "nbf", "auth_time")
 # stop is fine).
 JWT_TOKEN_RE = re.compile(
     r"(?<![A-Za-z0-9_.-])e[wy][A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]*"
+    r"(?![A-Za-z0-9_-]|\.[A-Za-z0-9_-])")
+# The same for an encrypted token (JWE): a header and four more parts, any of
+# which but the header may be empty (a "dir" key has no encrypted key)
+_JWE_TOKEN_RE = re.compile(
+    r"(?<![A-Za-z0-9_.-])e[wy][A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]*){4}"
     r"(?![A-Za-z0-9_-]|\.[A-Za-z0-9_-])")
 
 
@@ -113,6 +123,10 @@ def decode_jwt(token: str) -> DecodedJwt:
         raise JwtDecodeException(empty_jwt_error)
 
     segments = _the_token(stripped).split(".")
+    if _is_encrypted(segments):
+        # "Must have three parts" said nothing of why it could not be read
+        pybreeze_logger.error(encrypted_jwt_error)
+        raise JwtDecodeException(encrypted_jwt_error)
     if len(segments) != _JWT_SEGMENT_COUNT:
         pybreeze_logger.error(malformed_jwt_error)
         raise JwtDecodeException(malformed_jwt_error)
@@ -121,6 +135,17 @@ def decode_jwt(token: str) -> DecodedJwt:
     payload, payload_json = _decode_segment(segments[1])
     return DecodedJwt(header=header, payload=payload, signature=segments[2],
                       header_json=header_json, payload_json=payload_json)
+
+
+def _is_encrypted(segments: list[str]) -> bool:
+    """Whether *segments* are a JWE's: five, the first a header that names an ``enc``."""
+    if len(segments) != _JWE_SEGMENT_COUNT:
+        return False
+    try:
+        header, _ = _decode_segment(segments[0])
+    except JwtDecodeException:
+        return False
+    return _JWE_ENCRYPTION_PARAMETER in header
 
 
 def _the_token(text: str) -> str:
@@ -133,7 +158,7 @@ def _the_token(text: str) -> str:
     unwrapped = _unwrapped(text)
     if JWT_TOKEN_RE.fullmatch(unwrapped):
         return unwrapped
-    found = find_tokens(unwrapped)
+    found = find_tokens(unwrapped) or _JWE_TOKEN_RE.findall(unwrapped)
     return found[0] if found else unwrapped
 
 

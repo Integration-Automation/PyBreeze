@@ -37,6 +37,7 @@ no_entries_in_har_error: str = "the HAR export contains no requests"
 # JWT decode
 empty_jwt_error: str = "no token provided"
 malformed_jwt_error: str = "a JWT must have three dot-separated parts"
+encrypted_jwt_error: str = "an encrypted JWT (JWE): its claims can be read only with the recipient's key"
 jwt_segment_decode_error: str = "can't decode a JWT segment: invalid base64url or JSON"
 
 # Timestamp conversion

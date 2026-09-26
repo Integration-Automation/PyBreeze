@@ -826,6 +826,7 @@ pybreeze_traditional_chinese_word_dict = {
     "error_text_no_entries_in_har_error": "這份 HAR 匯出檔沒有任何請求",
     "error_text_empty_jwt_error": "沒有提供權杖",
     "error_text_malformed_jwt_error": "JWT 必須是以點分隔的三段",
+    "error_text_encrypted_jwt_error": "這是加密的 JWT（JWE）：只有持有接收方的金鑰才能讀出其中的宣告",
     "error_text_jwt_segment_decode_error": "無法解碼 JWT 的某一段：base64url 或 JSON 無效",
     "error_text_empty_timestamp_error": "沒有提供數值",
     "error_text_unrecognized_timestamp_error": "無法辨識為 epoch 數值或 ISO-8601 日期時間",

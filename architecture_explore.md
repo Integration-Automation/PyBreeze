@@ -66,7 +66,7 @@ PyBreeze 是一個「自動化優先」的 Python IDE，建構在 **PySide6 + JE
 
 1. 取得（或建立）`QApplication`，裝上 `collect_garbage_on_gui_thread()`（`pybreeze_ui/gui_thread_gc.py`：關掉自動垃圾回收，改在 UI 執行緒上定時回收，見 §16）
 2. 建立 `PyBreezeMainWindow`，其 `__init__` 依序：
-   - `update_language_dict()` 併入 PyBreeze 的 767 條翻譯——**必須在 `super().__init__` 之前**：JEditor 在那裡依設定挑啟動語言，英文以外的語言讀的是當下合併出來的一份副本，之後才加進去的字串它看不到，選單拿到 `None` 標題就讓 Qt 當掉（access violation）
+   - `update_language_dict()` 併入 PyBreeze 的 768 條翻譯——**必須在 `super().__init__` 之前**：JEditor 在那裡依設定挑啟動語言，英文以外的語言讀的是當下合併出來的一份副本，之後才加進去的字串它看不到，選單拿到 `None` 標題就讓 Qt 當掉（access violation）
    - `super().__init__(..., extend=True)` — JEditor 在此已呼叫 `load_external_plugins()`，自動掃描 CWD 下的 `jeditor_plugins/`，也以 `startup_setting()` 套上存下的設定與 UI Style 主題
    - `show_only_warnings_in_code_result()`（`pybreeze_ui/code_result_logs.py`）— JEditor 剛把一個 `RedirectStdErr` 掛到當下每個 logger 上、收到的顯示在 Code Result；自動化套件 import 時把 root 設成 DEBUG，所以開檔就有 gitpython 的除錯訊息以紅字出現。把這個 handler 的門檻調到 WARNING，logger 本身的層級不動
    - 刪掉 JEditor 原本的 Help 選單
@@ -226,7 +226,7 @@ Template Method 定義的子行程生命週期：
 |---|---|---|
 | `CurlImportGUI` | `utils/curl_import/` | 貼上 curl 指令 → 產生 requests / pytest / APITestka(py & json) / LoadDensity 腳本 |
 | `HarImportGUI` | `utils/har_import/` | 開 `.har` → 列出錄到的請求（可只看 API-like）→ 批次產生腳本 |
-| `JwtDecoderGUI` | `utils/jwt_tools/` | 解 JWT header/payload（不驗簽），時間戳轉可讀 UTC；貼上的文字先去掉空白，不是單純的 token 就取出裡面第一個（`Bearer `、引號、換行都可以），base64url 嚴格解碼 |
+| `JwtDecoderGUI` | `utils/jwt_tools/` | 解 JWT header/payload（不驗簽），時間戳轉可讀 UTC；貼上的文字先去掉空白，不是單純的 token 就取出裡面第一個（`Bearer `、引號、換行都可以），base64url 嚴格解碼；五段、標頭有 `enc` 的是 JWE（RFC 7516），回報 `encrypted_jwt_error`，不說成段數不對 |
 | `TimestampGUI` | `utils/timestamp_tools/` | epoch（依大小自動判秒／毫秒／微秒／奈秒；整數用 `int()`、小數用 `Decimal` 精確換算，一律往過去截到微秒）↔ ISO-8601（`_ISO_RE` 自己解析，3.10 到 3.14 讀法一致：`Z`/`z`、`±HH`、`±HHMM`、任意位數小數、basic 格式；八位數而且是合法日期就當 `YYYYMMDD`）。epoch 換算用 `utc_from_epoch_seconds()`（epoch + `timedelta`；`datetime.fromtimestamp` 在 Windows 上拒絕 1970 年前幾小時以外的值），JWT 的時間戳 claim 也用它 |
 | `HashGUI` | `utils/hash_tools/` | 多演算法摘要 |
 | `QueryJsonGUI` | `utils/query_tools/` | query string ↔ JSON 雙向 |
@@ -374,7 +374,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 13. `pybreeze/extend_multi_language/`
 
-`extend_english.py` 與 `extend_traditional_chinese.py` 各 767 個鍵，`update_language_dict()` 把它們併進 `je_editor` 的字典，並把 `application_name`（「PyBreeze」）寫進 `language_wrapper.choose_language_dict` 裡每一個語言：這是 PyBreeze 唯一覆寫而非新增的 JEditor 鍵，日文、簡中等 PyBreeze 沒翻譯的語言自帶「JEditor」，不寫的話會蓋過英文退回值。`test_language_parity.py` 守住兩邊鍵值必須對齊，也檢查每個已註冊語言都解得出程式用到的每個鍵；`test_startup_language.py` 在子行程裡用存好的繁中／日文真的啟動主視窗。
+`extend_english.py` 與 `extend_traditional_chinese.py` 各 768 個鍵，`update_language_dict()` 把它們併進 `je_editor` 的字典，並把 `application_name`（「PyBreeze」）寫進 `language_wrapper.choose_language_dict` 裡每一個語言：這是 PyBreeze 唯一覆寫而非新增的 JEditor 鍵，日文、簡中等 PyBreeze 沒翻譯的語言自帶「JEditor」，不寫的話會蓋過英文退回值。`test_language_parity.py` 守住兩邊鍵值必須對齊，也檢查每個已註冊語言都解得出程式用到的每個鍵；`test_startup_language.py` 在子行程裡用存好的繁中／日文真的啟動主視窗。
 
 ---
 
@@ -467,7 +467,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 18. 測試與 CI
 
-- **單元測試** `test/test_utils/` — 167 個 `test_*.py`、3474 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、對本機回環 SSH 伺服器實際登入並列目錄（`test_ssh_loopback.py`：密碼與各種私鑰檔，只用 SHA-1 簽章的伺服器被拒，信任過的主機換了金鑰就拒絕、不再詢問，終端機分頁說出兩個指紋而不是「金鑰驗證失敗」；終端機分頁開 shell、送指令與 Ctrl+C、伺服器結束 shell 時一併斷線；`test_sftp_tree_loopback.py`：SFTP 檔案樹對真實資料夾的列目錄、建資料夾、改名、刪除、下載與上傳；伺服器在 `ssh_loopback_server.py`）、子行程 IDE 的測試（`started_window.py`：開著的對話框會被記下並關掉、測試失敗時點名，逾時會附上子行程的 stderr）、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
+- **單元測試** `test/test_utils/` — 167 個 `test_*.py`、3480 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、對本機回環 SSH 伺服器實際登入並列目錄（`test_ssh_loopback.py`：密碼與各種私鑰檔，只用 SHA-1 簽章的伺服器被拒，信任過的主機換了金鑰就拒絕、不再詢問，終端機分頁說出兩個指紋而不是「金鑰驗證失敗」；終端機分頁開 shell、送指令與 Ctrl+C、伺服器結束 shell 時一併斷線；`test_sftp_tree_loopback.py`：SFTP 檔案樹對真實資料夾的列目錄、建資料夾、改名、刪除、下載與上傳；伺服器在 `ssh_loopback_server.py`）、子行程 IDE 的測試（`started_window.py`：開著的對話框會被記下並關掉、測試失敗時點名，逾時會附上子行程的 stderr）、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
 - **整合測試** `test/unit_test/start_automation/` — 以 `debug_mode=True` 啟動 IDE，10 秒後自動關閉，驗證啟動流程與 extend tab
 - **CI** `.github/workflows/{dev,stable}.yml` — `unit-tests` job 跑 Windows runner、Python 3.10–3.14 矩陣，`setup-python` 快取 pip 的下載（依需求檔當鍵；版本每次仍向 PyPI 解析），3.12 那一腳額外上傳 `coverage-xml` artifact；`sonarcloud` job 跑 ubuntu、`needs: unit-tests`。每日 02:00 排程 + push/PR 觸發。`stable.yml` 另有 `publish` job 負責版號遞增與 PyPI 發布。每個 action 都鎖在 commit SHA、後面註明版本（Node 24 的版本：checkout v7、setup-python v7、upload-artifact v7、download-artifact v8），Dependabot 的 `github-actions` 每週在 `dev` 更新（新版本等 7 天才提，`cooldown`）；checkout 一律寫明 `persist-credentials`，只有要 push 版號的 `publish` 保留憑證（`test_workflow_actions.py` 守著）
 - **覆蓋率** `.coveragerc` — `relative_files = True` 是必要的：報告在 Windows 產生、由 Linux 上的 scanner 讀取，路徑不能帶機器資訊。`patch = subprocess` 也是必要的：pytest-cov 7 不再量測子行程，沒有它，測試在子直譯器裡建出的真主視窗（`started_window.py`）一行都不算。目前整體語句 98.9%、連分支 97.8%（`dialog`、`jupyter_lab_gui` 100%；`menu` 99.7%；`tools_gui`、`utils/`、`extend/`、`extend_ai_gui` 99.5%；`editor_main` 99.1%；最低的是 `connect_gui` 97.7% 與 `diagram_editor` 97.9%）。子行程的資料由 pytest-cov 併進它的報告，只看 `.coverage` 的 `coverage report` 會少算子行程裡跑的部分。coverage 只追蹤 Python 自己開的執行緒，`test/test_utils/conftest.py` 讓每個 `QThread` 子類別的 `run` 在 Qt 的執行緒上裝上 coverage 的 tracer，否則沒有一個 `QThread.run` 算得到

@@ -234,3 +234,28 @@ def test_a_header_whose_encoding_is_not_eyj_is_found_after_bearer():
     token = f"{header}.{_segment({'a': 1})}.s"
 
     assert decode_jwt(f"Bearer {token}").header == {"alg": "none"}
+
+
+# The four parts after a JWE's header: encrypted key, IV, ciphertext and tag (RFC 7516, 7.1)
+_JWE_BODY = "QR1Owv2ug2WyPBnbQrRARTeEk9kDO2w8.48V1_ALb6US04U3b.5eym8TW_c8SuK0ltJ3rpYIzOeDQz7TAL.XFBoMYUZodetZdvTiFvSkQ"
+
+
+class TestAnEncryptedToken:
+    """A JWE: five parts, and a header that names its content encryption (``enc``)."""
+
+    @pytest.mark.parametrize("wrap", ["{}", "Bearer {}", '"{}"'])
+    def test_it_is_named_for_what_it_is(self, wrap):
+        # It was "a JWT must have three dot-separated parts"
+        from pybreeze.utils.exception.exception_tags import encrypted_jwt_error
+
+        token = f"{_segment({'alg': 'RSA-OAEP-256', 'enc': 'A256GCM'})}.{_JWE_BODY}"
+
+        with pytest.raises(JwtDecodeException) as raised:
+            decode_jwt(wrap.format(token))
+        assert str(raised.value) == encrypted_jwt_error
+
+    @pytest.mark.parametrize("header", ["not-a-segment", _segment({"alg": "HS256"})])
+    def test_five_parts_without_a_jwe_header_are_just_malformed(self, header):
+        with pytest.raises(JwtDecodeException) as raised:
+            decode_jwt(f"{header}.{_JWE_BODY}")
+        assert str(raised.value) == malformed_jwt_error

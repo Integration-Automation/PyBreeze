@@ -127,7 +127,7 @@ Each is a tab or a dock, each has the same copy / open-in-editor / save-to-file 
 
 ![JWT decoder, regex tester, HTTP status reference, JSON format](images/tools_montage_a.png)
 
-- **JWT Decoder** — header and payload as pretty JSON, with `exp` / `iat` / `nbf` / `auth_time` as readable UTC. Inspection only: the signature is never verified and the token is never trusted.
+- **JWT Decoder** — header and payload as pretty JSON, with `exp` / `iat` / `nbf` / `auth_time` as readable UTC. Inspection only: the signature is never verified and the token is never trusted. An encrypted token (JWE, five parts) is named as one: its claims need the recipient's key.
 - **Regex Tester** — `IGNORECASE` / `MULTILINE` / `DOTALL` / `VERBOSE`, every match with offsets, numbered groups and named groups. Enter in the pattern runs it. An invalid pattern reports a friendly error instead of crashing.
 - **HTTP Status Reference** — search the full status table (from the standard library, in the words RFC 9110 and Python 3.14 give on every supported Python) by code prefix or keyword; a status is also found by the name RFC 9110 replaced (`Unprocessable Entity`).
 - **JSON Format** — pretty-print or minify, with a clear validation error when the input is not JSON.
@@ -215,7 +215,7 @@ Loaded plugins appear under their own **Plugins** menu with an About entry and o
 - **English** (default)
 - **Traditional Chinese** (繁體中文)
 
-Menus, dialogs, the reasons a tool refuses its input and the run window's own notices (`[Error] …`, `[Run] …`) all follow the chosen language. Both dictionaries carry the same 767 keys, and a test enforces that parity so a new string can never land in one language only. The Language menu also lists JEditor's Japanese and Simplified Chinese: picked, JEditor's own menus change and PyBreeze's strings stay in English. Further languages can be added via translation plugins.
+Menus, dialogs, the reasons a tool refuses its input and the run window's own notices (`[Error] …`, `[Run] …`) all follow the chosen language. Both dictionaries carry the same 768 keys, and a test enforces that parity so a new string can never land in one language only. The Language menu also lists JEditor's Japanese and Simplified Chinese: picked, JEditor's own menus change and PyBreeze's strings stay in English. Further languages can be added via translation plugins.
 
 ---
 
