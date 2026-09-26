@@ -1,6 +1,11 @@
 """Tests for the HTTP status code reference."""
 from __future__ import annotations
 
+import sys
+from http import HTTPStatus
+
+import pytest
+
 from pybreeze.utils.http_reference.status_codes import (
     all_statuses,
     lookup,
@@ -84,3 +89,37 @@ class TestSearch:
         # 'Unauthorized' (401) description mentions authentication.
         results = search("unauthorized")
         assert any(info.code == 401 for info in results)
+
+
+class TestTheSameWordsOnEveryPython:
+    """``http.HTTPStatus`` words statuses as the Python it runs on does; the reference does not vary."""
+
+    @pytest.mark.parametrize(("code", "phrase"), [
+        (413, "Content Too Large"),
+        (414, "URI Too Long"),
+        (416, "Range Not Satisfiable"),
+        (422, "Unprocessable Content"),
+    ])
+    def test_a_status_rfc_9110_renamed_has_its_new_name(self, code, phrase):
+        # Python before 3.13 gave the old names ("Unprocessable Entity")
+        assert lookup(code).phrase == phrase
+
+    def test_every_status_is_described(self):
+        # Before 3.14, fourteen had no description (102, 422, 425, 507, ...)
+        assert [info.code for info in all_statuses() if not info.description] == []
+
+    @pytest.mark.parametrize(("former", "code"), [
+        ("Unprocessable Entity", 422),
+        ("request entity too large", 413),
+        ("Request-URI Too Long", 414),
+        ("Requested Range Not Satisfiable", 416),
+    ])
+    def test_a_status_is_found_by_its_former_name(self, former, code):
+        assert code in {info.code for info in search(former)}
+
+    @pytest.mark.skipif(sys.version_info < (3, 14), reason="the table holds the words Python 3.14 gives")
+    def test_the_table_is_what_python_gives_from_3_14(self):
+        # A later Python rewording a status fails here, and the table follows it
+        from pybreeze.utils.http_reference.status_codes import _CURRENT_WORDS
+
+        assert {code: (HTTPStatus(code).phrase, HTTPStatus(code).description) for code in _CURRENT_WORDS} == _CURRENT_WORDS

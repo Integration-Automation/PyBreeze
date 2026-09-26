@@ -19,7 +19,7 @@ def category_key(info: StatusInfo) -> str:
 def status_heading(info: StatusInfo) -> str:
     """``404 Not Found  [Client Error]``, the class in the IDE's language.
 
-    The phrase and the description stay as the standard library words them.
+    The phrase and the description stay as Python 3.14's standard library words them.
     """
     category = language_wrapper.language_word_dict.get(category_key(info), info.category)
     return f"{info.code} {info.phrase}  [{category}]"

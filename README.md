@@ -129,7 +129,7 @@ Each is a tab or a dock, each has the same copy / open-in-editor / save-to-file 
 
 - **JWT Decoder** — header and payload as pretty JSON, with `exp` / `iat` / `nbf` / `auth_time` as readable UTC. Inspection only: the signature is never verified and the token is never trusted.
 - **Regex Tester** — `IGNORECASE` / `MULTILINE` / `DOTALL` / `VERBOSE`, every match with offsets, numbered groups and named groups. Enter in the pattern runs it. An invalid pattern reports a friendly error instead of crashing.
-- **HTTP Status Reference** — search the full status table (sourced from the standard library, so it stays current) by code prefix or keyword.
+- **HTTP Status Reference** — search the full status table (from the standard library, in the words RFC 9110 and Python 3.14 give on every supported Python) by code prefix or keyword; a status is also found by the name RFC 9110 replaced (`Unprocessable Entity`).
 - **JSON Format** — pretty-print or minify, with a clear validation error when the input is not JSON.
 
 ![Timestamp converter, hash generator, query/JSON, URL builder](images/tools_montage_b.png)

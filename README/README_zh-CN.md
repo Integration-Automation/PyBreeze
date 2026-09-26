@@ -129,7 +129,7 @@ PyBreeze 开箱即用，涵盖自动化测试的完整范围：
 
 - **JWT 解码器** — header 与 payload 以格式化的 JSON 显示，`exp` / `iat` / `nbf` / `auth_time` 以易读的 UTC 显示。只做查看：从不验证签名，也从不信任令牌。
 - **正则表达式测试器** — 支持 `IGNORECASE` / `MULTILINE` / `DOTALL` / `VERBOSE`，列出每个匹配及其偏移量、编号分组与命名分组。在模式框中按 Enter 即可运行。无效的模式会显示友好的错误信息，而不会崩溃。
-- **HTTP 状态码参考** — 按状态码前缀或关键字搜索完整的状态码表（来自标准库，因此始终保持最新）。
+- **HTTP 状态码参考** — 按状态码前缀或关键字搜索完整的状态码表（来自标准库，在每个支持的 Python 上都使用 RFC 9110 与 Python 3.14 的用词）；也能用 RFC 9110 取代前的旧名称（`Unprocessable Entity`）找到状态码。
 - **JSON 格式化** — 格式化或压缩，输入不是 JSON 时给出清楚的验证错误。
 
 ![时间戳转换器、哈希生成器、查询字符串／JSON、URL 构建器](../images/tools_montage_b.png)

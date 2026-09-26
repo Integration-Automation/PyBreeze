@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-141 | 2026-09-26 | The HTTP status reference reads the same on every Python, and finds a status by the name RFC 9110 replaced | #fix #tools | [2026-09-e](2026-09-e.md) |
 | U-20260926-140 | 2026-09-26 | The Mermaid importer drops four checks that cannot fail | #refactor #diagram | [2026-09-e](2026-09-e.md) |
 | U-20260926-139 | 2026-09-26 | A later Mermaid declaration changes only what it names | #fix #diagram | [2026-09-e](2026-09-e.md) |
 | U-20260926-138 | 2026-09-26 | The Mermaid importer is tested on front matter, a directive and a description never closed, and on a data pair without a colon | #test #diagram | [2026-09-e](2026-09-e.md) |
@@ -680,4 +681,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
 | [2026-09-d.md](2026-09-d.md) | 2026-09 | 91 |
-| [2026-09-e.md](2026-09-e.md) | 2026-09 | 69 |
+| [2026-09-e.md](2026-09-e.md) | 2026-09 | 70 |
