@@ -430,6 +430,38 @@ def test_a_whole_requests_script_as_written():
     )
 
 
+def test_a_whole_apitestka_call_as_written():
+    # The JSON body inline and as the value it is, and the password
+    from pybreeze.utils.curl_import.script_templates import apitestka_call_block
+
+    request = parse_curl(
+        "curl -u alice:s3cret -H 'Content-Type: application/json' -d '{\"a\": [1, {\"b\": null}]}' https://x/p")
+
+    assert apitestka_call_block(request) == (
+        "response = test_api_method_requests(\n"
+        '    "POST",\n'
+        '    test_url="https://x/p",\n'
+        '    headers={"Content-Type": "application/json"},\n'
+        '    json={"a": [1, {"b": None}]},\n'
+        '    auth=("alice", "s3cret"),\n'
+        ")"
+    )
+
+
+def test_an_apitestka_action_list_as_written():
+    assert generate_template("apitestka_action", parse_curl("curl https://x/p")) == (
+        "[\n"
+        "    [\n"
+        '        "AT_test_api_method",\n'
+        "        {\n"
+        '            "http_method": "GET",\n'
+        '            "test_url": "https://x/p"\n'
+        "        }\n"
+        "    ]\n"
+        "]\n"
+    )
+
+
 def test_a_data_file_with_no_recorded_place_goes_after_the_inline_parts():
     # A request built by hand has no positions for its files
     from pybreeze.utils.curl_import.curl_parser import CurlRequest
