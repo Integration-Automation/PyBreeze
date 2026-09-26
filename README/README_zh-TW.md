@@ -113,7 +113,7 @@ PyBreeze 開箱即用，涵蓋自動化測試的完整範疇：
 
 ![標頭分析器](../images/tool_header_analyzer.png)
 
-會回報：送出不只一次的名稱、缺少 `Secure`／`HttpOnly`／`SameSite` 的 `Set-Cookie` 項目、萬用字元 CORS（以及瀏覽器會直接拒絕的「萬用字元加憑證」組合）、短到撐不過重新啟動的 HSTS `max-age`、CSP 的 `unsafe-inline`／`unsafe-eval`、產品版本標語、已淘汰的標頭，以及——針對回應——缺少的安全標頭。攜帶憑證的標頭**只回報名稱**；它們的值絕不會進入報告。
+會回報：送出不只一次的名稱、缺少 `Secure`／`HttpOnly`／`SameSite` 的 `Set-Cookie` 項目、萬用字元 CORS（以及瀏覽器會直接拒絕的「萬用字元加憑證」組合）、短到撐不過重新啟動的 HSTS `max-age`、CSP 的 `unsafe-inline`／`unsafe-eval`、產品版本標語、現行瀏覽器已忽略的標頭（值不是 `0` 的 `X-XSS-Protection`、`Expect-CT`、`Public-Key-Pins`、`P3P`、舊的 CSP 前綴名稱），以及——針對回應——缺少的安全標頭；CSP 有 `frame-ancestors` 指令時視同有 `X-Frame-Options`，和 OWASP HTTP Headers Cheat Sheet 的建議一致。攜帶憑證的標頭**只回報名稱**；它們的值絕不會進入報告。
 
 ### 文字比對
 

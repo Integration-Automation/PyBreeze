@@ -113,7 +113,7 @@ PyBreeze 开箱即用，涵盖自动化测试的完整范围：
 
 ![请求头分析器](../images/tool_header_analyzer.png)
 
-会报告：重复发送的名称、缺少 `Secure` / `HttpOnly` / `SameSite` 的 `Set-Cookie`、通配符 CORS（以及浏览器会直接拒绝的"通配符加凭据"组合）、短到撑不过一次重启的 HSTS `max-age`、CSP 的 `unsafe-inline` / `unsafe-eval`、产品标识、已弃用的请求头，以及——针对响应——缺少的安全请求头。携带凭据的请求头**只报告名称**；它们的值绝不会进入报告。
+会报告：重复发送的名称、缺少 `Secure` / `HttpOnly` / `SameSite` 的 `Set-Cookie`、通配符 CORS（以及浏览器会直接拒绝的"通配符加凭据"组合）、短到撑不过一次重启的 HSTS `max-age`、CSP 的 `unsafe-inline` / `unsafe-eval`、产品标识、现行浏览器已忽略的请求头（值不是 `0` 的 `X-XSS-Protection`、`Expect-CT`、`Public-Key-Pins`、`P3P`、旧的 CSP 前缀名称），以及——针对响应——缺少的安全请求头；CSP 有 `frame-ancestors` 指令时视同有 `X-Frame-Options`，与 OWASP HTTP Headers Cheat Sheet 的建议一致。携带凭据的请求头**只报告名称**；它们的值绝不会进入报告。
 
 ### 文本比较
 

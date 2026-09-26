@@ -113,7 +113,7 @@ The status code is looked up in the HTTP reference, headers are parsed, a JSON b
 
 ![Header Analyzer](images/tool_header_analyzer.png)
 
-Reports names sent more than once, `Set-Cookie` entries missing `Secure` / `HttpOnly` / `SameSite`, wildcard CORS (and the wildcard-plus-credentials combination browsers reject outright), an HSTS `max-age` too short to survive a restart, CSP `unsafe-inline` / `unsafe-eval`, product banners, deprecated headers, and — for responses — the security headers that are absent. Headers carrying credentials are reported **by name only**; their values never enter the report.
+Reports names sent more than once, `Set-Cookie` entries missing `Secure` / `HttpOnly` / `SameSite`, wildcard CORS (and the wildcard-plus-credentials combination browsers reject outright), an HSTS `max-age` too short to survive a restart, CSP `unsafe-inline` / `unsafe-eval`, product banners, headers current browsers ignore (`X-XSS-Protection` other than `0`, `Expect-CT`, `Public-Key-Pins`, `P3P`, the old prefixed CSP names), and — for responses — the security headers that are absent, counting a CSP `frame-ancestors` directive as `X-Frame-Options`, as the OWASP HTTP Headers Cheat Sheet does. Headers carrying credentials are reported **by name only**; their values never enter the report.
 
 ### Text Diff
 

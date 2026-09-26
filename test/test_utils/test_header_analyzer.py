@@ -300,3 +300,40 @@ class TestTheEdgesOfEachCheck:
         codes = _codes("Set-Cookie: SameSite=Lax; Secure; HttpOnly")
 
         assert "cookie_no_samesite" in codes
+
+
+class TestWhatOwaspRecommends:
+    """The OWASP HTTP Headers Cheat Sheet's advice, as the findings follow it."""
+
+    @pytest.mark.parametrize("policy", [
+        "frame-ancestors 'none'",
+        "default-src 'self'; frame-ancestors 'self' https://partner.test",
+        "default-src 'self'; FRAME-ANCESTORS 'none'",
+    ])
+    def test_csp_frame_ancestors_stands_for_x_frame_options(self, policy):
+        # "CSP frame-ancestors directive obsoletes X-Frame-Options"; it was still reported missing
+        assert "missing_frame_options" not in _codes(f"HTTP/1.1 200 OK\nContent-Security-Policy: {policy}")
+
+    @pytest.mark.parametrize("csp", [
+        "Content-Security-Policy: default-src 'self'",
+        "Content-Security-Policy-Report-Only: frame-ancestors 'none'",
+        "Content-Security-Policy: default-src 'self' https://frame-ancestors.test",
+    ])
+    def test_without_an_enforced_frame_ancestors_it_is_still_missing(self, csp):
+        assert "missing_frame_options" in _codes(f"HTTP/1.1 200 OK\n{csp}")
+
+    @pytest.mark.parametrize("header", [
+        "Expect-CT: max-age=86400, enforce",
+        "Public-Key-Pins: pin-sha256=\"x\"; max-age=5184000",
+        "Public-Key-Pins-Report-Only: pin-sha256=\"x\"; max-age=5184000",
+        "P3P: CP=\"IDC DSP COR\"",
+        "X-Content-Security-Policy: default-src 'self'",
+        "X-WebKit-CSP: default-src 'self'",
+    ])
+    def test_a_header_browsers_dropped_is_deprecated(self, header):
+        # Only X-XSS-Protection was noted
+        assert "deprecated_header" in _codes(header)
+
+    @pytest.mark.parametrize("value", ["0", " 0 "])
+    def test_x_xss_protection_turned_off_is_what_owasp_recommends(self, value):
+        assert "deprecated_header" not in _codes(f"X-XSS-Protection:{value}")

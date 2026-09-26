@@ -38,6 +38,19 @@ _CONTENT_TYPE_OPTIONS_HEADER = "x-content-type-options"
 _CORS_ORIGIN_HEADER = "access-control-allow-origin"
 _CORS_CREDENTIALS_HEADER = "access-control-allow-credentials"
 _SET_COOKIE_HEADER = "set-cookie"
+_FRAME_OPTIONS_HEADER = "x-frame-options"
+_XSS_PROTECTION_HEADER = "x-xss-protection"
+# The CSP directive that obsoletes X-Frame-Options (OWASP HTTP Headers Cheat Sheet)
+_FRAME_ANCESTORS_DIRECTIVE = "frame-ancestors"
+# Headers current browsers ignore: X-XSS-Protection (the XSS auditors are gone),
+# Expect-CT and Public-Key-Pins (OWASP: do not use), P3P, and CSP's old
+# prefixed names. Feature-Policy is not here: Chrome still reads part of it.
+_DEPRECATED_HEADERS = frozenset({
+    _XSS_PROTECTION_HEADER, "expect-ct", "public-key-pins", "public-key-pins-report-only",
+    "p3p", "x-content-security-policy", "x-webkit-csp",
+})
+# X-XSS-Protection's value that turns the auditor off, which OWASP recommends
+_XSS_PROTECTION_OFF = "0"
 
 # An HSTS policy shorter than 180 days is too short to survive a browser restart
 # cycle and is below what the preload list accepts.
@@ -54,7 +67,7 @@ _REPEATABLE_HEADERS = frozenset({
 # is treated as a request, where the missing-response-header checks make no sense.
 _RESPONSE_ONLY_HEADERS = frozenset({
     _SET_COOKIE_HEADER, _CSP_HEADER, _HSTS_HEADER, _CONTENT_TYPE_OPTIONS_HEADER,
-    _CORS_ORIGIN_HEADER, "server", "x-powered-by", "x-frame-options", "referrer-policy",
+    _CORS_ORIGIN_HEADER, "server", "x-powered-by", _FRAME_OPTIONS_HEADER, "referrer-policy",
     "permissions-policy", "www-authenticate", "location", "etag", "last-modified",
     "age", "retry-after", "content-encoding",
 })
@@ -64,7 +77,7 @@ _RESPONSE_SECURITY_HEADERS: tuple[tuple[str, str, str], ...] = (
     (_HSTS_HEADER, "Strict-Transport-Security", "missing_hsts"),
     (_CSP_HEADER, "Content-Security-Policy", "missing_csp"),
     (_CONTENT_TYPE_OPTIONS_HEADER, "X-Content-Type-Options", "missing_content_type_options"),
-    ("x-frame-options", "X-Frame-Options", "missing_frame_options"),
+    (_FRAME_OPTIONS_HEADER, "X-Frame-Options", "missing_frame_options"),
     ("referrer-policy", "Referrer-Policy", "missing_referrer_policy"),
 )
 
@@ -248,7 +261,9 @@ def _check_banner(header: HeaderField) -> list[HeaderFinding]:
 
 
 def _check_deprecated(header: HeaderField) -> list[HeaderFinding]:
-    """Note a header browsers no longer honour."""
+    """Note a header browsers no longer honour, but not ``X-XSS-Protection: 0``, which OWASP recommends."""
+    if header.name.lower() == _XSS_PROTECTION_HEADER and header.value.strip() == _XSS_PROTECTION_OFF:
+        return []
     return [HeaderFinding("deprecated_header", LEVEL_INFO, header.name, header.value)]
 
 
@@ -263,7 +278,7 @@ _FIELD_CHECKS: dict[str, Callable[[HeaderField], list[HeaderFinding]]] = {
     "content-type": _check_content_type,
     "server": _check_banner,
     "x-powered-by": _check_banner,
-    "x-xss-protection": _check_deprecated,
+    **dict.fromkeys(_DEPRECATED_HEADERS, _check_deprecated),
 }
 
 
@@ -296,9 +311,28 @@ def _cors_credentials_findings(fields: list[HeaderField]) -> list[HeaderFinding]
     return [HeaderFinding("cors_wildcard_with_credentials", LEVEL_WARNING, _CORS_ORIGIN_HEADER)]
 
 
+def _has_enforced_csp_directive(fields: list[HeaderField], directive: str) -> bool:
+    """Whether a ``Content-Security-Policy`` (not its Report-Only twin) has *directive*.
+
+    A directive is the first word of a ``;``-separated part; policies joined
+    into one field are ``,``-separated.
+    """
+    return any(
+        part.split()[0].lower() == directive
+        for header in fields if header.name.lower() == _CSP_HEADER
+        for part in re.split(r"[;,]", header.value) if part.split()
+    )
+
+
 def _missing_security_findings(fields: list[HeaderField]) -> list[HeaderFinding]:
-    """Report the response security headers that are not present."""
+    """Report the response security headers that are not present.
+
+    A CSP ``frame-ancestors`` directive stands for X-Frame-Options: it obsoletes
+    it in the browsers that read it, and it was still reported missing.
+    """
     present = {header.name.lower() for header in fields}
+    if _has_enforced_csp_directive(fields, _FRAME_ANCESTORS_DIRECTIVE):
+        present.add(_FRAME_OPTIONS_HEADER)
     return [
         HeaderFinding(code, LEVEL_INFO, canonical)
         for name, canonical, code in _RESPONSE_SECURITY_HEADERS if name not in present

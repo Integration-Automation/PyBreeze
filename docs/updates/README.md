@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-146 | 2026-09-26 | The Header Analyzer follows the OWASP HTTP Headers Cheat Sheet on frame-ancestors, X-XSS-Protection and dropped headers | #fix #tools | [2026-09-e](2026-09-e.md) |
 | U-20260926-145 | 2026-09-26 | Mermaid import spaces layers and slots for the largest node, and centres each node on its place | #fix #diagram | [2026-09-e](2026-09-e.md) |
 | U-20260926-144 | 2026-09-26 | The Mermaid importer is tested where the mutation run found it untold: directives, front matter, backticks, brackets, long statements, sizes | #test #diagram | [2026-09-e](2026-09-e.md) |
 | U-20260926-143 | 2026-09-26 | cURL import reads an --expand- option as the option it expands | #fix #tools | [2026-09-e](2026-09-e.md) |
@@ -685,4 +686,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
 | [2026-09-d.md](2026-09-d.md) | 2026-09 | 91 |
-| [2026-09-e.md](2026-09-e.md) | 2026-09 | 74 |
+| [2026-09-e.md](2026-09-e.md) | 2026-09 | 75 |
