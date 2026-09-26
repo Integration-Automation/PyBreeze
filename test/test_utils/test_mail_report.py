@@ -103,6 +103,24 @@ class TestSendAfterTest:
         assert sending.wait(5)
         release.set()
 
+    def test_the_mail_thread_does_not_keep_the_ide_open(self, monkeypatch):
+        # A daemon: a mail server that never answers must not hold the IDE's exit
+        started: list = []
+
+        class Recorded:
+            def __init__(self, **options) -> None:
+                started.append(options)
+
+            def start(self) -> None:
+                """Not run: only how it was made is looked at."""
+
+        monkeypatch.setattr(mail.threading, "Thread", Recorded)
+
+        mail.send_after_test("report.html")
+
+        (options,) = started
+        assert (options["daemon"], options["name"]) == (True, "pybreeze-report-mail")
+
 
 class TestSendReport:
     def test_the_report_goes_to_the_user(self, mail_thunder, logger, report):
@@ -199,6 +217,17 @@ class TestAReportFromAnEarlierRun:
     def test_a_report_the_run_wrote_is_sent(self, mail_thunder, logger, report):
         assert mail.send_report(report, not_before=time.time() - 1) is None
         assert len(FakeSmtp.instances[0].sent) == 1
+
+    # Up to two seconds older than the run is still its own: file systems keep
+    # times to a second or two. Whole seconds, so the file keeps them exactly.
+    @pytest.mark.parametrize(("older_by", "sent"), [(1, True), (2, True), (3, False)])
+    def test_the_two_seconds_of_slack(self, mail_thunder, logger, report, older_by, sent):
+        run_started = 1_700_000_000
+        os.utime(report, (run_started - older_by, run_started - older_by))
+
+        reason = mail.send_report(report, not_before=run_started)
+
+        assert (reason is None) is sent
 
     def test_a_folder_in_its_place_is_not_sent(self, mail_thunder, logger, tmp_path):
         folder = tmp_path / "default_name.html"
@@ -332,6 +361,18 @@ class TestAServerThatStopsAnswering:
             listener.close()
             for connection in held:
                 connection.close()
+
+    def test_each_step_gets_thirty_seconds(self):
+        # Whatever the client asked for, its socket gets the module's timeout
+        seen: list = []
+
+        class Recording:
+            def _get_socket(self, host, port, timeout):
+                seen.append((host, port, timeout))
+
+        mail._with_timeout(Recording)()._get_socket("smtp.example", 465, None)
+
+        assert seen == [("smtp.example", 465, 30)]
 
     def test_the_timeout_reaches_mailthunders_own_client(self, monkeypatch):
         # What _with_timeout relies on: SMTPWrapper is an SMTP_SSL that connects
