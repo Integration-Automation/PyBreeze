@@ -674,6 +674,8 @@ class TestBashAnsiCQuoting:
     @pytest.mark.parametrize(("escape", "character"), [
         ("\\t", "\t"), ("\\\\", "\\"), ("\\x41", "A"), ("\\u00e9", "\u00e9"),
         ("\\U0001F600", "\U0001F600"), ("\\101", "A"), ("\\e", "\x1b"), ("\\q", "\\q"),
+        ("\\x9", "\t"),     # one hex digit is enough
+        ("\\377", "\xff"),  # the highest byte an octal escape gives
     ])
     def test_each_escape_stands_for_its_character(self, escape, character):
         assert parse_curl(f"curl https://x -d $'[{escape}]'").body == f"[{character}]"
@@ -695,6 +697,64 @@ class TestBashAnsiCQuoting:
 
         with pytest.raises(CurlParseException):
             parse_curl("curl https://x -d $'open")
+
+    def test_one_that_starts_with_an_escaped_quote(self):
+        assert parse_curl("curl https://x -d $'\\'q\\''").body == "'q'"
+
+    def test_the_command_goes_on_after_one(self):
+        request = parse_curl("curl -H $'X-A: 1' -d x https://x/p")
+
+        assert (request.headers, request.body, request.url) == ({"X-A": "1"}, "x", "https://x/p")
+
+    # Double-quoted text of odd and even length before a $'...': a double quote
+    # read two characters at a time could be passed over, the $'...' then read
+    # as inside it
+    @pytest.mark.parametrize("header", ["A: b", "A: bc"])
+    def test_double_quotes_before_one_end_where_they_end(self, header):
+        request = parse_curl(f"curl -H \"{header}\" -d $'x\\ny' https://x")
+
+        assert request.body == "x\ny"
+        assert request.headers == {header.split(": ")[0]: header.split(": ")[1]}
+
+
+def test_get_data_keeps_an_empty_value():
+    assert parse_curl("curl -G -d 'a=' -d 'b=1' https://x").params == {"a": "", "b": "1"}
+
+
+class TestTheEdgesOfTheCommand:
+    """Survivors of a mutation run: what bash and curl do at the edges of a command."""
+
+    def test_text_right_after_a_dollar_quote_joins_it(self):
+        # As in bash: $'a'b is the word ab
+        assert parse_curl("curl -d $'a'b https://x").body == "ab"
+
+    def test_a_backslash_ends_nothing_inside_single_quotes(self):
+        # In bash a backslash is plain inside '...': the quote after it closes them
+        request = parse_curl("curl -d 'a\\' -H $'X: 1' https://x")
+
+        assert (request.body, request.headers) == ("a\\", {"X": "1"})
+
+    def test_an_escaped_double_quote_outside_quotes_is_a_quote(self):
+        assert parse_curl('curl -d \\"a https://x').body == '"a'
+
+    def test_an_x_escape_with_no_digits_stays_as_written(self):
+        assert parse_curl("curl -d $'[\\x]' https://x").body == "[\\x]"
+
+    @pytest.mark.parametrize("command", ["curl --unknown-flag https://x", "curl https://x extra"])
+    def test_the_url_is_the_first_word_that_is_no_flag(self, command):
+        assert parse_curl(command).url == "https://x"
+
+    @pytest.mark.parametrize("command", [
+        "abc https://x",             # sorting before "curl" as well as after it
+        "wget https://x",
+        "curl -X 'GE T' https://x",  # no method
+        "curl 'https://x",           # a quote never closed
+    ])
+    def test_what_is_no_curl_command_is_refused(self, command):
+        from pybreeze.utils.exception.exceptions import CurlParseException
+
+        with pytest.raises(CurlParseException):
+            parse_curl(command)
 
 
 
