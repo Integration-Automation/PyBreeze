@@ -25,7 +25,7 @@ _JUPYTER_PACKAGES = ("jupyterlab", "jupyter_server")
 _JUPYTER_VERSIONS = (
     "import importlib.util as u, sys; sys.exit(1) if u.find_spec('jupyterlab') is None else None; "
     "import importlib.metadata as m; "
-    "[print(next((d.version for d in m.distributions(name=n)), '')) for n in ('jupyterlab', 'jupyter_server')]"
+    "print('\\n'.join(next((d.version for d in m.distributions(name=n)), '') for n in ('jupyterlab', 'jupyter_server')))"
 )
 # The releases, as [lowest, first fixed), with a flaw a page could use to drive
 # the tab's server, which has no token: jupyterlab before 4.5.10, and 4.6.0 and
