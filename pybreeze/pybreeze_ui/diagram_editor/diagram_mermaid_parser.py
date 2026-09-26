@@ -98,6 +98,19 @@ _PLAIN_ARROW_LABEL_RE = re.compile(r"\|([^|]*)\|")
 _ENTITY_RE = re.compile(r"#(\w+);", re.ASCII)
 # A line break in a label, as mermaid writes it
 _LINE_BREAK_RE = re.compile(r"<br\s*/?>", re.IGNORECASE)
+# A markdown string, "`...`", opens and closes with these; it may run over lines
+_MARKDOWN_OPEN = '"`'
+_MARKDOWN_CLOSE = '`"'
+_MARKDOWN_FENCE = "`"
+# Bold, then italic, in a markdown string: a marker pair around text that
+# starts and ends with a non-space ("a * b * c" is text); an underscore pair
+# only between non-word characters (snake_case_name is text)
+_EMPHASIS_RES = (
+    re.compile(r"\*\*(\S(?:[^*\n]*\S)?)\*\*"),
+    re.compile(r"(?<!\w)__(\S(?:[^_\n]*\S)?)__(?!\w)"),
+    re.compile(r"\*(\S(?:[^*\n]*\S)?)\*"),
+    re.compile(r"(?<!\w)_(\S(?:[^_\n]*\S)?)_(?!\w)"),
+)
 
 
 def _normalize_inline_labels(line: str) -> str:
@@ -237,12 +250,23 @@ def _entity_character(match: re.Match[str]) -> str:
     return html5.get(f"{name};", match.group(0))
 
 
+def _markdown_text(markdown: str) -> str:
+    """A markdown string's text as the editor shows it: plain, its lines trimmed, blank ones dropped."""
+    text = "\n".join(line.strip() for line in markdown.split("\n") if line.strip())
+    for emphasis in _EMPHASIS_RES:
+        text = emphasis.sub(r"\1", text)
+    return text
+
+
 def _label_text(written: str) -> str:
-    """A label as mermaid shows it: ``<br>`` starts a line, an entity code is its character.
+    """A label as mermaid shows it: markdown plain, ``<br>`` a new line, an entity code its character.
 
     Line breaks first, so an encoded ``#60;br#62;`` is shown as text.
     """
-    return _ENTITY_RE.sub(_entity_character, _LINE_BREAK_RE.sub("\n", _unquote(written)))
+    text = _unquote(written)
+    if len(text) >= 2 and text[0] == text[-1] == _MARKDOWN_FENCE:
+        text = _markdown_text(text[1:-1])
+    return _ENTITY_RE.sub(_entity_character, _LINE_BREAK_RE.sub("\n", text))
 
 
 def _extract_shape(rest: str, default_text: str) -> tuple[str, NodeShape]:
@@ -711,6 +735,28 @@ def _without_directives(text: str) -> str:
     return "".join(pieces)
 
 
+def _markdown_still_open(line: str, was_open: bool) -> bool:
+    """Whether a markdown string is open after *line*, given whether one was before it."""
+    last_open, last_close = line.rfind(_MARKDOWN_OPEN), line.rfind(_MARKDOWN_CLOSE)
+    if last_open < 0 and last_close < 0:
+        return was_open
+    return last_open > last_close
+
+
+def _logical_lines(text: str) -> Iterator[str]:
+    """*text*'s lines, a markdown string that runs over lines kept whole in one.
+
+    One never closed joins nothing: the lines after it are read on their own.
+    """
+    pending: list[str] = []
+    for line in text.splitlines():
+        pending.append(line)
+        if not _markdown_still_open(line, len(pending) > 1):
+            yield "\n".join(pending)
+            pending = []
+    yield from pending
+
+
 def _skip_description(first_line: str, lines: Iterator[str]) -> None:
     """Consume an ``accDescr {`` block from *lines*, up to the line holding its ``}``."""
     if "}" in first_line:
@@ -723,7 +769,7 @@ def _skip_description(first_line: str, lines: Iterator[str]) -> None:
 def _parse_lines(text: str, nodes: dict[str, _NodeInfo], edges: list[_EdgeInfo]) -> str:
     """Parse every line of *text* into *nodes* and *edges*; return the flow direction."""
     direction = "TD"
-    lines = iter(_without_directives(_without_front_matter(text)).splitlines())
+    lines = _logical_lines(_without_directives(_without_front_matter(text)))
     for raw_line in lines:
         masked, stash = _protect(raw_line)
         line = _restore(_COMMENT_RE.sub("", masked), stash).strip()

@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-137 | 2026-09-26 | Mermaid import shows a markdown string's text, over as many lines as it runs | #feature #diagram | [2026-09-e](2026-09-e.md) |
 | U-20260926-136 | 2026-09-26 | Mermaid import reads Mermaid 11's named shapes and their labels | #feature #diagram | [2026-09-e](2026-09-e.md) |
 | U-20260926-135 | 2026-09-26 | Mermaid import leaves out front matter, directives over several lines and accessibility text | #fix #diagram | [2026-09-e](2026-09-e.md) |
 | U-20260926-134 | 2026-09-26 | Mermaid import skips a keyword statement after a semicolon, and keeps a one-line subgraph's links | #fix #diagram | [2026-09-e](2026-09-e.md) |
@@ -676,4 +677,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
 | [2026-09-d.md](2026-09-d.md) | 2026-09 | 91 |
-| [2026-09-e.md](2026-09-e.md) | 2026-09 | 65 |
+| [2026-09-e.md](2026-09-e.md) | 2026-09 | 66 |

@@ -607,3 +607,33 @@ class TestShapeData:
         result = parse_mermaid('flowchart TD\nA --> B\nB@{ shape: diam, label: "Q?" }')
 
         assert _nodes(result) == [("A", "RECTANGLE"), ("Q?", "DIAMOND")]
+
+
+class TestMarkdownStrings:
+    """A label written ``"`...`"`` is markdown: its text shown plain, a new line where it breaks."""
+
+    @pytest.mark.parametrize(("written", "shown"), [
+        ("`The **cat** in the hat`", "The cat in the hat"),
+        ("`an *italic* and _this_ and __that__`", "an italic and this and that"),
+        ("`a * b * c`", "a * b * c"),  # not emphasis: spaces inside the stars
+        ("`snake_case_name`", "snake_case_name"),
+        ("a `code` b", "a `code` b"),  # backticks inside a plain string are text
+    ])
+    def test_the_text_is_shown_plain(self, written, shown):
+        # The backticks and the stars were shown
+        assert _node_texts(parse_mermaid(f'flowchart TD\nA["{written}"]')) == [shown]
+
+    def test_one_over_several_lines_keeps_its_line_breaks(self):
+        # The example on mermaid's flowchart syntax page: each line was parsed on its own
+        result = parse_mermaid('flowchart LR\na("`The **cat**\n  in the hat`") -- "`**edge label**`" --> b{{"`The **dog** in the hog`"}}')
+
+        assert _nodes(result) == [("The cat\nin the hat", "ROUNDED_RECT"), ("The dog in the hog", "DIAMOND")]
+        assert _edges(result) == [("The cat\nin the hat", "The dog in the hog", "edge label")]
+
+    def test_a_link_label_may_be_markdown(self):
+        assert _edges(parse_mermaid('flowchart TD\nA -->|"`**yes**`"| B')) == [("A", "B", "yes")]
+
+    def test_an_unclosed_one_leaves_the_lines_after_it_alone(self):
+        result = parse_mermaid('flowchart TD\nA["`open\nB-->C')
+
+        assert ("B", "C", "") in _edges(result)

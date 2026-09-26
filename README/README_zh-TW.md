@@ -145,7 +145,7 @@ PyBreeze 開箱即用，涵蓋自動化測試的完整範疇：
 
 *把 Mermaid `flowchart` 貼進匯入器後自動排版的結果。*
 
-以 `QGraphicsScene` 打造的所見即所得編輯器：矩形、圓角矩形、橢圓與菱形節點，可加上連線標籤的貝茲曲線連線，還有自由文字與圖片。Mermaid `flowchart`／`graph` 匯入會照 Mermaid 的顯示方式讀標籤（`<br>` 換行、`#quot;`／`#9829;` 實體碼），把 Mermaid 11 的具名形狀（`A@{ shape: circle }`）換成四種節點中最接近的一種，並執行 Sugiyama 式排版（分層、減少交叉、跨軸對齊）。可儲存與開啟 `.diagram.json`，匯出為 PNG 或 SVG，並支援復原／重做、對齊、均分、格線、貼齊與縮放。從 URL 下載的圖片會經過 SSRF 驗證並有大小上限。
+以 `QGraphicsScene` 打造的所見即所得編輯器：矩形、圓角矩形、橢圓與菱形節點，可加上連線標籤的貝茲曲線連線，還有自由文字與圖片。Mermaid `flowchart`／`graph` 匯入會照 Mermaid 的顯示方式讀標籤（`<br>` 換行、`#quot;`／`#9829;` 實體碼、markdown 字串以純文字呈現），把 Mermaid 11 的具名形狀（`A@{ shape: circle }`）換成四種節點中最接近的一種，並執行 Sugiyama 式排版（分層、減少交叉、跨軸對齊）。可儲存與開啟 `.diagram.json`，匯出為 PNG 或 SVG，並支援復原／重做、對齊、均分、格線、貼齊與縮放。從 URL 下載的圖片會經過 SSRF 驗證並有大小上限。
 
 ### SSH 用戶端 — 終端機與遠端檔案樹並排
 
