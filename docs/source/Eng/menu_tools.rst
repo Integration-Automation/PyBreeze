@@ -158,8 +158,9 @@ The second row starts with the file buttons:
      - Saves the diagram as a new ``.diagram.json`` file.
    * - **Import**
      - Pastes Mermaid ``flowchart`` / ``graph`` source and converts it to editable,
-       automatically laid out nodes and connections. It replaces the canvas as one undo
-       step.
+       automatically laid out nodes and connections. Labels read as Mermaid shows them:
+       ``<br>`` starts a new line, and an entity code (``#quot;``, ``#9829;``) is its
+       character. It replaces the canvas as one undo step.
    * - **PNG** / **SVG**
      - Exports the canvas to a raster (PNG) or vector (SVG) image.
 

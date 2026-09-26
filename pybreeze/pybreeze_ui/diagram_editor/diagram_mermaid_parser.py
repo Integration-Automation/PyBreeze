@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import html
 import re
 from collections import defaultdict, deque
 from collections.abc import Callable
 from dataclasses import dataclass
+from html.entities import html5
 
 from pybreeze.pybreeze_ui.diagram_editor.diagram_items import (
     ConnectionStyle,
@@ -81,6 +83,12 @@ _LABEL_MAX = 200  # bound non-greedy match to prevent polynomial backtracking on
 # An arrow's |label|: quoted (which may hold a "|"), or anything up to the next "|"
 _QUOTED_ARROW_LABEL_RE = re.compile(r'\|\s*("[^"]*")\s*\|')
 _PLAIN_ARROW_LABEL_RE = re.compile(r"\|([^|]*)\|")
+# An entity code, mermaid's way to write a character its syntax would take:
+# "#quot;" (an HTML character name) or "#9829;" (decimal). Its ";" never ends
+# a statement.
+_ENTITY_RE = re.compile(r"#(\w+);", re.ASCII)
+# A line break in a label, as mermaid writes it
+_LINE_BREAK_RE = re.compile(r"<br\s*/?>", re.IGNORECASE)
 
 
 def _normalize_inline_labels(line: str) -> str:
@@ -149,26 +157,37 @@ def _segment_end(text: str, start: int) -> int:
     return len(text)
 
 
+def _protected_end(text: str, start: int) -> int | None:
+    """Index just past the segment at *start* that splitting must not look into, if one starts there.
+
+    That is a quoted or bracketed segment, or an entity code (``#35;``).
+    """
+    if text[start] == '"' or text[start] in _OPENERS:
+        return _segment_end(text, start)
+    entity = _ENTITY_RE.match(text, start)
+    return entity.end() if entity else None
+
+
 def _protect(text: str) -> tuple[str, list[str]]:
-    """Replace every quoted or bracketed segment of *text* with a placeholder.
+    """Replace every quoted or bracketed segment and entity code of *text* with a placeholder.
 
     Arrows and ``;`` are found by pattern in what is left: a label such as
     ``A["a --> b"]`` or ``A["a;b"]`` used to be split at its own arrow or
-    semicolon. :func:`_restore` puts the segments back.
+    semicolon, and ``-->|#35;1|`` at its entity code's. :func:`_restore`
+    puts the segments back.
     """
     stash: list[str] = []
     pieces: list[str] = []
     index = 0
     while index < len(text):
-        char = text[index]
-        if char == '"' or char in _OPENERS:
-            end = _segment_end(text, index)
-            pieces.append(f"{_STASH_MARK}{len(stash)}{_STASH_MARK}")
-            stash.append(text[index:end])
-            index = end
+        end = _protected_end(text, index)
+        if end is None:
+            pieces.append(text[index])
+            index += 1
             continue
-        pieces.append(char)
-        index += 1
+        pieces.append(f"{_STASH_MARK}{len(stash)}{_STASH_MARK}")
+        stash.append(text[index:end])
+        index = end
     return "".join(pieces), stash
 
 
@@ -184,12 +203,28 @@ def _unquote(text: str) -> str:
     return text
 
 
+def _entity_character(match: re.Match[str]) -> str:
+    """The character an entity code names; an unknown name stays as written."""
+    name = match.group(1)
+    if name.isdigit():
+        return html.unescape(f"&#{name};")
+    return html5.get(f"{name};", match.group(0))
+
+
+def _label_text(written: str) -> str:
+    """A label as mermaid shows it: ``<br>`` starts a line, an entity code is its character.
+
+    Line breaks first, so an encoded ``#60;br#62;`` is shown as text.
+    """
+    return _ENTITY_RE.sub(_entity_character, _LINE_BREAK_RE.sub("\n", _unquote(written)))
+
+
 def _extract_shape(rest: str, default_text: str) -> tuple[str, NodeShape]:
     """Strip matching delimiters from ``rest`` and return ``(text, shape)``."""
     for open_tok, close_tok, shape in _SHAPE_DELIMS:
         if rest.startswith(open_tok) and rest.endswith(close_tok):
             inner = rest[len(open_tok):-len(close_tok)].strip()
-            return _unquote(inner), shape
+            return _label_text(inner), shape
     return default_text, NodeShape.RECTANGLE
 
 
@@ -270,13 +305,18 @@ def _arrow_label(token: str) -> str:
     return plain.group(1).strip() if plain else ""
 
 
+def _link_body(token: str) -> str:
+    """An arrow token without its ``|label|``, which may hold ``==`` or ``~~~`` as text."""
+    return token.split("|", 1)[0]
+
+
 def _parse_arrow(token: str) -> tuple[str, ConnectionStyle, float]:
     """Return ``(label, style, line_width)`` from an arrow token."""
-    label = _unquote(_arrow_label(token))
-
-    if "==" in token:
+    label = _label_text(_arrow_label(token))
+    body = _link_body(token)
+    if "==" in body:
         return label, ConnectionStyle.SOLID, 3.5  # thick link
-    if "-." in token:
+    if "-." in body:
         return label, ConnectionStyle.DOTTED, 2.0  # dotted link
     return label, ConnectionStyle.SOLID, 2.0
 
@@ -440,11 +480,14 @@ def _assign_cross_offsets(
 _NODE_H = 60.0
 _GAP_MAIN = 120.0
 _GAP_CROSS = 80.0
-# Node width grows with its text: characters times _CHAR_W plus padding, clamped
+# Node width grows with its longest line: characters times _CHAR_W plus padding, clamped
 _NODE_MIN_W = 100.0
 _NODE_MAX_W = 300.0
 _CHAR_W = 11
 _TEXT_PADDING = 40
+# Lines of label _NODE_H holds; each line past them adds _LINE_H
+_LINES_IN_NODE_H = 2
+_LINE_H = 18.0
 
 
 def _position_node(node: _NodeInfo, layer_idx: int, cross_offset: float,
@@ -520,7 +563,7 @@ def _parse_statement(
         src_ids = _parse_node_group(parts[idx], nodes)
         label, style, width = _parse_arrow(parts[idx + 1])
         tgt_ids = _parse_node_group(parts[idx + 2], nodes)
-        if "~~~" in parts[idx + 1]:
+        if "~~~" in _link_body(parts[idx + 1]):
             # An invisible link only places its nodes; there is no line to draw.
             idx += 2
             continue
@@ -595,8 +638,15 @@ def _parse_lines(text: str, nodes: dict[str, _NodeInfo], edges: list[_EdgeInfo])
 
 
 def _node_width(node: _NodeInfo) -> float:
-    """Width that fits the node's text, within the minimum and maximum."""
-    return max(_NODE_MIN_W, min(len(node.text) * _CHAR_W + _TEXT_PADDING, _NODE_MAX_W))
+    """Width that fits the node's longest line, within the minimum and maximum."""
+    longest = max(len(line) for line in node.text.split("\n"))
+    return max(_NODE_MIN_W, min(longest * _CHAR_W + _TEXT_PADDING, _NODE_MAX_W))
+
+
+def _node_height(node: _NodeInfo) -> float:
+    """Height that fits the node's lines."""
+    lines = node.text.count("\n") + 1
+    return _NODE_H + max(0, lines - _LINES_IN_NODE_H) * _LINE_H
 
 
 def _to_diagram_dict(node_list: list[_NodeInfo], edges: list[_EdgeInfo]) -> dict:
@@ -609,7 +659,7 @@ def _to_diagram_dict(node_list: list[_NodeInfo], edges: list[_EdgeInfo]) -> dict
                 "x": n.x,
                 "y": n.y,
                 "w": _node_width(n),
-                "h": _NODE_H,
+                "h": _node_height(n),
                 "text": n.text,
                 "shape": n.shape.name,
             }

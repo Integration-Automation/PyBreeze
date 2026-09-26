@@ -438,3 +438,71 @@ class TestArrowLabels:
         _parse_arrow('-->| "' + " " * 3000 + "x")
 
         assert time.perf_counter() - started < 1
+
+
+def _connections(result):
+    return [(c["label"], c["style"], c["line_width"]) for c in result["connections"]]
+
+
+class TestTheLabelIsNotTheLink:
+    """A link's style is its body's: text in its label that looks like a link is text."""
+
+    @pytest.mark.parametrize("source", [
+        "A -->|a==b| B",
+        "A -->|x -. y| B",
+        "A -- a==b --> B",
+        'A -->|"c -.- d"| B',
+    ])
+    def test_a_label_does_not_make_a_normal_link_thick_or_dotted(self, source):
+        # "==" anywhere in the token drew a thick line, "-." a dotted one
+        result = parse_mermaid(f"graph TD\n{source}")
+
+        assert [style for _, style, _ in _connections(result)] == ["SOLID"]
+        assert [width for _, _, width in _connections(result)] == [2.0]
+
+    def test_a_link_labelled_with_tildes_is_drawn(self):
+        # "~~~" in the label took the link for an invisible one
+        assert _edges(parse_mermaid("graph TD\nA -->|~~~| B")) == [("A", "B", "~~~")]
+
+    @pytest.mark.parametrize(("source", "style", "width"), [
+        ("A ==>|a| B", "SOLID", 3.5),
+        ("A -.->|a| B", "DOTTED", 2.0),
+    ])
+    def test_the_body_still_decides(self, source, style, width):
+        assert _connections(parse_mermaid(f"graph TD\n{source}")) == [("a", style, width)]
+
+
+class TestLineBreaksAndEntityCodes:
+    """Text as mermaid shows it: ``<br>`` starts a line, ``#quot;`` and ``#9829;`` are characters."""
+
+    @pytest.mark.parametrize("br", ["<br>", "<br/>", "<br />", "<BR>", "<br  />"])
+    def test_a_br_tag_in_a_node_starts_a_new_line(self, br):
+        result = parse_mermaid(f"graph TD\nA[one{br}two] --> B")
+
+        assert _node_texts(result) == ["one\ntwo", "B"]
+
+    def test_a_br_tag_in_a_link_label_starts_a_new_line(self):
+        assert _edges(parse_mermaid("graph TD\nA -->|one<br>two| B")) == [("A", "B", "one\ntwo")]
+
+    @pytest.mark.parametrize(("written", "shown"), [
+        ('"say #quot;hi#quot;"', 'say "hi"'),
+        ("love #9829;", "love ♥"),
+        ("#35;1", "#1"),
+        ("a #amp; b", "a & b"),
+        ("#nosuch; stays", "#nosuch; stays"),
+        ("#60;br#62;", "<br>"),  # an encoded tag is text, not a line break
+    ])
+    def test_an_entity_code_is_its_character(self, written, shown):
+        result = parse_mermaid(f"graph TD\nA[{written}] -->|{written}| B")
+
+        assert _node_texts(result) == [shown, "B"]
+        assert _edges(result) == [(shown, "B", shown)]
+
+    def test_a_node_is_as_wide_as_its_longest_line_and_taller_past_two_lines(self):
+        result = parse_mermaid("graph TD\nA[short<br>a much longer line<br>x<br>y] --> B[one<br>two]")
+        tall, two_lines = result["nodes"]
+        one_line = parse_mermaid("graph TD\nC[a much longer line]")["nodes"][0]
+
+        assert tall["w"] == one_line["w"]
+        assert two_lines["h"] == one_line["h"]
+        assert tall["h"] > one_line["h"]
