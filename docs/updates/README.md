@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-126 | 2026-09-26 | The prthinker settings file is tested past an unknown field, on its layout, under a home not made yet, and on each platform's backslashes | #test #prthinker | [2026-09-e](2026-09-e.md) |
 | U-20260926-125 | 2026-09-26 | The report mail is tested on its two seconds of slack, its thirty-second timeout and its daemon thread | #test #mail | [2026-09-e](2026-09-e.md) |
 | U-20260926-124 | 2026-09-26 | The trimmed line match loses a merge that could never run, with the reason it cannot pinned by a test | #refactor #tools | [2026-09-e](2026-09-e.md) |
 | U-20260926-123 | 2026-09-26 | The Diff tab's output is tested as a patch: applied to the left text it gives the right one, each hunk header true to its lines | #test #tools | [2026-09-e](2026-09-e.md) |
@@ -665,4 +666,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
 | [2026-09-d.md](2026-09-d.md) | 2026-09 | 91 |
-| [2026-09-e.md](2026-09-e.md) | 2026-09 | 54 |
+| [2026-09-e.md](2026-09-e.md) | 2026-09 | 55 |
