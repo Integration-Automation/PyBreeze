@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-153 | 2026-09-26 | Generated requests code leaves out an Accept-Encoding that asks for codings requests may not decode | #fix #tools | [2026-09-e](2026-09-e.md) |
 | U-20260926-152 | 2026-09-26 | The Mermaid layout is tested on small diagrams it draws without crossings | #test #diagram | [2026-09-e](2026-09-e.md) |
 | U-20260926-151 | 2026-09-26 | The Mermaid importer is tested on layering, nested brackets, quotes, what comes between statements and a layer's centre | #test #diagram | [2026-09-e](2026-09-e.md) |
 | U-20260926-150 | 2026-09-26 | The file tree's rename tests no longer fail on JEditor's external-change question | #test #ci | [2026-09-e](2026-09-e.md) |
@@ -692,4 +693,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
 | [2026-09-d.md](2026-09-d.md) | 2026-09 | 91 |
-| [2026-09-e.md](2026-09-e.md) | 2026-09 | 81 |
+| [2026-09-e.md](2026-09-e.md) | 2026-09 | 82 |

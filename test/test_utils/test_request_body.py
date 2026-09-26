@@ -92,3 +92,39 @@ class TestSentHeaders:
         headers = {"Content-Type": "multipart/form-data"}
 
         assert sent_headers(CurlRequest(headers=dict(headers))) == headers
+
+
+class TestAcceptEncoding:
+    """The script decodes what it asks for: requests decodes br and zstd only with optional packages."""
+
+    @pytest.mark.parametrize("value", [
+        "gzip, deflate, br, zstd",
+        "gzip, deflate, br",
+        "br;q=1.0, gzip;q=0.8",
+        "*",
+        "zstd",
+    ])
+    def test_a_browsers_list_is_left_to_requests(self, value):
+        # Sent as copied, a server answered in zstd, and a script run where
+        # only requests is installed printed the compressed bytes
+        for name in ("Accept-Encoding", "accept-encoding"):
+            request = CurlRequest(headers={name: value, "Accept": "*/*"})
+
+            assert sent_headers(request) == {"Accept": "*/*"}
+
+    @pytest.mark.parametrize("value", ["gzip", "gzip, deflate", "identity", "x-gzip", "gzip, br;q=0", "deflate; q=0.5"])
+    def test_one_asking_only_for_what_requests_decodes_is_kept(self, value):
+        request = CurlRequest(headers={"Accept-Encoding": value})
+
+        assert sent_headers(request) == {"Accept-Encoding": value}
+
+    def test_the_generated_script_leaves_it_out(self):
+        from pybreeze.utils.curl_import.curl_parser import parse_curl
+        from pybreeze.utils.curl_import.request_codegen import to_requests_code
+
+        code = to_requests_code(parse_curl(
+            "curl https://api.example.test/items -H 'accept: application/json' "
+            "-H 'accept-encoding: gzip, deflate, br, zstd'"))
+
+        assert "accept-encoding" not in code.lower()
+        assert '"accept": "application/json"' in code

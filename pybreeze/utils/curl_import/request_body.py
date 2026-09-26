@@ -127,6 +127,11 @@ FormEntry = tuple[str, bool, str]
 
 # The media type every -F form is sent as
 _MULTIPART_MEDIA_TYPE = "multipart/"
+# Header that names the content codings the client can decode
+_ACCEPT_ENCODING_HEADER = "accept-encoding"
+# Codings every requests install decodes; br and zstd need optional packages
+# (brotli, zstandard) the script's environment may not have
+_ALWAYS_DECODED_CODINGS = frozenset({"gzip", "x-gzip", "deflate", "identity"})
 
 
 def form_entries(request: CurlRequest) -> list[FormEntry]:
@@ -145,6 +150,36 @@ def form_entries(request: CurlRequest) -> list[FormEntry]:
     return entries
 
 
+def _refused(parameters: list[str]) -> bool:
+    """Whether a coding's parameters give it ``q=0``, which refuses it."""
+    for parameter in parameters:
+        name, _, value = parameter.partition("=")
+        if name.strip() == "q":
+            try:
+                return float(value) == 0
+            except ValueError:
+                return False
+    return False
+
+
+def _accepts_undecoded_coding(value: str) -> bool:
+    """Whether an ``Accept-Encoding`` *value* accepts a coding ``requests`` may not decode (``br``, ``zstd``, ``*``)."""
+    for item in value.split(","):
+        coding, *parameters = (part.strip().lower() for part in item.split(";"))
+        if coding and coding not in _ALWAYS_DECODED_CODINGS and not _refused(parameters):
+            return True
+    return False
+
+
+def _left_to_requests(request: CurlRequest, name: str, value: str) -> bool:
+    """Whether the header *name* is one ``requests`` should write itself for *request*."""
+    lowered = name.lower()
+    if lowered == _ACCEPT_ENCODING_HEADER:
+        return _accepts_undecoded_coding(value)
+    return (request.has_form and lowered == _CONTENT_TYPE_HEADER
+            and value.lower().lstrip().startswith(_MULTIPART_MEDIA_TYPE))
+
+
 def sent_headers(request: CurlRequest) -> dict[str, str]:
     """The headers to generate for *request*.
 
@@ -152,10 +187,11 @@ def sent_headers(request: CurlRequest) -> dict[str, str]:
     its own with the boundary it chose, and does not replace one given
     explicitly, so the copied header (without a boundary, or with the browser's)
     left the server unable to read the body.
+
+    So is an ``Accept-Encoding`` that accepts a coding ``requests`` may not
+    decode, as a browser's ``gzip, deflate, br, zstd`` does: a server answered
+    in zstd, and where only ``requests`` was installed the script printed the
+    compressed bytes. ``requests`` then names the codings it can decode.
     """
-    if not request.has_form:
-        return dict(request.headers)
-    return {
-        name: value for name, value in request.headers.items()
-        if not (name.lower() == _CONTENT_TYPE_HEADER and value.lower().lstrip().startswith(_MULTIPART_MEDIA_TYPE))
-    }
+    return {name: value for name, value in request.headers.items()
+            if not _left_to_requests(request, name, value)}
