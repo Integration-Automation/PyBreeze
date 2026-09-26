@@ -134,19 +134,20 @@ class TestABoundedRun:
         with pytest.raises(RegexTesterException):
             regex_tester.find_matches_bounded(r"\d+", "a1")
 
-    def test_a_worker_that_exits_with_an_error_is_reported(self, monkeypatch):
-        # Whatever it wrote: an exit code other than 0 is a failure, positive ones included
+    # Whatever it wrote: an exit code other than 0 is a failure, a signal's (negative) included
+    @pytest.mark.parametrize("code", [1, -9])
+    def test_a_worker_that_exits_with_an_error_is_reported(self, monkeypatch, code):
         from pybreeze.utils.regex_tools import regex_tester
 
         class Exited:
-            returncode = 1
+            returncode = code
 
             def communicate(self, _job, timeout=None):
                 return b"[]", None
 
         monkeypatch.setattr(regex_tester.subprocess, "Popen", lambda *_args, **_options: Exited())
 
-        with pytest.raises(RegexTesterException, match="exit code 1"):
+        with pytest.raises(RegexTesterException, match=f"exit code {code}"):
             regex_tester.find_matches_bounded("a", "a")
 
     def test_catastrophic_backtracking_is_stopped(self):
@@ -191,6 +192,11 @@ class TestPatternsTheCompilerCannotTake:
         from pybreeze.utils.regex_tools.regex_tester import MAX_GROUP_NESTING, _group_nesting_too_deep
 
         assert _group_nesting_too_deep("[(]" + "(" * (MAX_GROUP_NESTING + 1))
+
+    def test_only_the_character_after_a_backslash_is_escaped(self):
+        from pybreeze.utils.regex_tools.regex_tester import _group_nesting_too_deep
+
+        assert _group_nesting_too_deep(r"\." + "(" * 101)
 
     def test_the_cap_is_100_groups_deep(self):
         # On CPython 3.10 re's parser overflows the C stack not far past it

@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-114 | 2026-09-26 | The Regex tab's nesting scan is tested after an escape, and a worker killed by a signal is reported | #test #tools | [2026-09-e](2026-09-e.md) |
 | U-20260926-113 | 2026-09-26 | The Regex tab's group-nesting cap is tested at 100 and against closed groups, and a worker's positive exit code is reported | #test #tools | [2026-09-e](2026-09-e.md) |
 | U-20260926-112 | 2026-09-26 | How a run's children are started and stopped is tested: the IDE-only marker by value, the session option by platform, taskkill's own options | #test #process #security | [2026-09-e](2026-09-e.md) |
 | U-20260926-111 | 2026-09-26 | ruff is pinned to 0.15.22, and Dependabot proposes no 0.16 | #build #done | [2026-09-e](2026-09-e.md) |
@@ -653,4 +654,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
 | [2026-09-d.md](2026-09-d.md) | 2026-09 | 91 |
-| [2026-09-e.md](2026-09-e.md) | 2026-09 | 42 |
+| [2026-09-e.md](2026-09-e.md) | 2026-09 | 43 |
