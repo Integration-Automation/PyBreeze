@@ -394,6 +394,7 @@ pybreeze_english_word_dict = {
     # JupyterLab GUI
     "jupyterlab_init": "Initializing...",
     "jupyterlab_downloading": "Downloading...",
+    "jupyterlab_upgrading": "Known vulnerabilities in {found}: upgrading...",
     "jupyterlab_loading": "Loading...",
     "jupyterlab_timeout": "JupyterLab did not start in time",
     "jupyterlab_exited_early": "JupyterLab exited early (code {code}): {output}",

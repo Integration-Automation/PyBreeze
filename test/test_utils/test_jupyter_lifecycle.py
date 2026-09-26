@@ -19,6 +19,8 @@ from test_utils.started_window import run_started_window
 
 # The readiness wait as the launcher has it, before a test replaces it
 _REAL_WAIT_UNTIL_READY = jupyter_lab_thread.JupyterLauncherThread._wait_until_ready
+# Releases with none of the flaws the tab upgrades for
+_CURRENT = {"jupyterlab": "4.6.4", "jupyter_server": "2.21.1"}
 
 
 @pytest.fixture(scope="module")
@@ -55,7 +57,7 @@ def launched(monkeypatch) -> list:
         return server
 
     monkeypatch.setattr(jupyter_lab_thread, "default_interpreter", lambda: "python")
-    monkeypatch.setattr(jupyter_lab_thread, "is_jupyter_installed", lambda _python: True)
+    monkeypatch.setattr(jupyter_lab_thread, "installed_jupyter", lambda _python: _CURRENT)
     monkeypatch.setattr(jupyter_lab_thread.subprocess, "Popen", popen)
     monkeypatch.setattr(
         jupyter_lab_thread.JupyterLauncherThread, "_wait_until_ready", lambda self, port: None)
@@ -210,11 +212,11 @@ class TestStoppingBeforeTheServerStarts:
     def test_a_stopped_launcher_starts_nothing(self, app, launched, monkeypatch):
         thread = jupyter_lab_thread.JupyterLauncherThread()
 
-        def installed_while_the_tab_closes(_python: str) -> bool:
+        def installed_while_the_tab_closes(_python: str) -> dict:
             thread.stop()  # the tab closes during the check (or the install)
-            return True
+            return _CURRENT
 
-        monkeypatch.setattr(jupyter_lab_thread, "is_jupyter_installed", installed_while_the_tab_closes)
+        monkeypatch.setattr(jupyter_lab_thread, "installed_jupyter", installed_while_the_tab_closes)
 
         thread.run()
 

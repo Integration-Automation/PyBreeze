@@ -384,6 +384,7 @@ pybreeze_traditional_chinese_word_dict = {
     # JupyterLab GUI
     "jupyterlab_init": "初始化中...",
     "jupyterlab_downloading": "下載中...",
+    "jupyterlab_upgrading": "這個直譯器的 {found} 有已知的安全漏洞，正在升級...",
     "jupyterlab_loading": "載入中...",
     "jupyterlab_timeout": "JupyterLab 啟動超時",
     "jupyterlab_exited_early": "JupyterLab 提早結束（結束代碼 {code}）：{output}",

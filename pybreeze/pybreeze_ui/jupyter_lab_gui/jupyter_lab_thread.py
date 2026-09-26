@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import socket
 import subprocess
 import tempfile
@@ -17,8 +18,25 @@ from pybreeze.utils.subprocess_util import child_environment, no_window_creation
 JUPYTER_STARTUP_TIMEOUT = 60
 # How much of a failure's reason the tab shows: pip's stderr can run long
 _SHOWN_REASON_CHARACTERS = 2000
-# Run by the chosen interpreter: exits 0 when it can import jupyterlab
-_HAS_JUPYTERLAB = "import importlib.util, sys; sys.exit(0 if importlib.util.find_spec('jupyterlab') else 1)"
+# What the tab's server runs on, in the order _JUPYTER_VERSIONS prints them
+_JUPYTER_PACKAGES = ("jupyterlab", "jupyter_server")
+# Run by the chosen interpreter: exits 1 when it cannot import jupyterlab, else
+# prints each package's version on a line (empty when it carries no metadata)
+_JUPYTER_VERSIONS = (
+    "import importlib.util as u, sys; sys.exit(1) if u.find_spec('jupyterlab') is None else None; "
+    "import importlib.metadata as m; "
+    "[print(next((d.version for d in m.distributions(name=n)), '')) for n in ('jupyterlab', 'jupyter_server')]"
+)
+# The releases, as [lowest, first fixed), with a flaw a page could use to drive
+# the tab's server, which has no token: jupyterlab before 4.5.10, and 4.6.0 and
+# 4.6.1 (CVE-2026-42557, CVE-2026-73415, CVE-2026-73417); jupyter_server before
+# 2.20.0 (CVE-2026-5422, CVE-2026-44727)
+_VULNERABLE_RELEASES = {
+    "jupyterlab": (((), (4, 5, 10)), ((4, 6), (4, 6, 2))),
+    "jupyter_server": (((), (2, 20)),),
+}
+# How long pip gets to install or upgrade them
+_PIP_TIMEOUT_SECONDS = 300
 # The server listens on localhost; the port is checked, and polled, on IPv4 loopback
 _LOOPBACK = "127.0.0.1"
 
@@ -47,22 +65,68 @@ def choose_python(chosen: str | None) -> str:
     return chosen or default_interpreter()
 
 
-def is_jupyter_installed(python_exe: str) -> bool:
-    """Whether *python_exe* can import jupyterlab.
+def installed_jupyter(python_exe: str) -> dict[str, str] | None:
+    """The versions of jupyterlab and jupyter_server *python_exe* has; ``None`` when it cannot import jupyterlab.
+
+    A version is ``""`` when it cannot be told.
 
     Asked of the interpreter, not of pip: a venv made without pip (``uv venv``)
     failed ``pip show`` with jupyterlab installed, and the install that
     followed failed with "No module named pip". shell=False. nosec B603.
     """
     result = subprocess.run(  # nosec B603  # nosemgrep  # noqa: S603
-        [python_exe, "-c", _HAS_JUPYTERLAB],
+        [python_exe, "-c", _JUPYTER_VERSIONS],
         capture_output=True,
         timeout=30,
         check=False,
-        env=child_environment(),
+        env=utf8_subprocess_env(),
+        encoding="utf-8",
+        errors="replace",
         creationflags=no_window_creationflags(),
     )
-    return result.returncode == 0
+    if result.returncode != 0:
+        return None
+    lines = [*result.stdout.splitlines(), *[""] * len(_JUPYTER_PACKAGES)]
+    return {package: lines[index].strip() for index, package in enumerate(_JUPYTER_PACKAGES)}
+
+
+def is_vulnerable_release(package: str, version: str) -> bool:
+    """Whether *version* of *package* is one of ``_VULNERABLE_RELEASES``.
+
+    Read by its leading numbers (``4.6.2rc1`` as 4.6.2); a version with none is not judged.
+    """
+    match = re.match(r"\d+(?:\.\d+)*", version.strip())
+    if match is None:
+        return False
+    release = tuple(int(part) for part in match.group().split("."))
+    return any(lowest <= release < fixed for lowest, fixed in _VULNERABLE_RELEASES.get(package, ()))
+
+
+def vulnerable_parts(versions: dict[str, str]) -> list[str]:
+    """``"<package> <version>"`` for each of *versions* that is a vulnerable release, in package order."""
+    return [f"{package} {version}" for package, version in versions.items()
+            if is_vulnerable_release(package, version)]
+
+
+def _pip_install_jupyterlab(python_exe: str) -> None:
+    """Install or upgrade jupyterlab and jupyter_server in the interpreter the lab runs in (``choose_python``).
+
+    Both are named: upgraded alone, jupyterlab left an older jupyter_server as it was.
+
+    shell=False. nosec B603.
+
+    :raises RuntimeError: with pip's own reason, when it fails
+    """
+    result = subprocess.run([  # nosec B603  # nosemgrep  # noqa: S603
+        python_exe, "-m", "pip", "install", "-U", *_JUPYTER_PACKAGES,
+    ], capture_output=True, timeout=_PIP_TIMEOUT_SECONDS, check=False,
+        # pip told to write UTF-8 and read as such: an interpreter in UTF-8
+        # mode (the default from Python 3.15) writes it whatever the code
+        # page, and read in the code page its reason was lost
+        env=utf8_subprocess_env(), encoding="utf-8", errors="replace",
+        creationflags=no_window_creationflags())
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr)
 
 
 class JupyterLauncherThread(QThread):
@@ -89,27 +153,12 @@ class JupyterLauncherThread(QThread):
         try:
             python_exe = choose_python(self._chosen_python)
 
-            if not is_jupyter_installed(python_exe):
+            versions = installed_jupyter(python_exe)
+            if versions is None:
                 self.status_update.emit(language_wrapper.language_word_dict.get("jupyterlab_downloading"))
-
-                # Install jupyterlab into the interpreter the lab runs in
-                # (choose_python); shell=False. nosec B603.
-                result = subprocess.run([  # nosec B603  # nosemgrep  # noqa: S603
-                    python_exe,
-                    "-m",
-                    "pip",
-                    "install",
-                    "jupyterlab",
-                    "-U"
-                ], capture_output=True, timeout=300, check=False,
-                    # pip told to write UTF-8 and read as such: an interpreter in UTF-8
-                    # mode (the default from Python 3.15) writes it whatever the code
-                    # page, and read in the code page its reason was lost
-                    env=utf8_subprocess_env(), encoding="utf-8", errors="replace",
-                    creationflags=no_window_creationflags())
-
-                if result.returncode != 0:
-                    raise RuntimeError(result.stderr)
+                _pip_install_jupyterlab(python_exe)
+            elif vulnerable := vulnerable_parts(versions):
+                self._upgrade(python_exe, ", ".join(vulnerable))
 
             self.status_update.emit(language_wrapper.language_word_dict.get("jupyterlab_loading"))
 
@@ -138,6 +187,22 @@ class JupyterLauncherThread(QThread):
             pybreeze_logger.error("JupyterLab launch failed: %s", traceback.format_exc())
             # The reason, not the traceback: the tab shows it.
             self.error_occurred.emit(str(error)[-_SHOWN_REASON_CHARACTERS:])
+
+    def _upgrade(self, python_exe: str, found: str) -> None:
+        """Upgrade the vulnerable releases *found* before the server starts, and say why.
+
+        It ran whatever releases the interpreter had, and the tab's server has
+        no token. Ones that cannot be upgraded (offline, say) still start, with
+        a warning, rather than leaving the tab unusable.
+        """
+        pybreeze_logger.warning("JupyterLab: %s have known vulnerabilities; upgrading them", found)
+        self.status_update.emit(
+            language_wrapper.language_word_dict.get("jupyterlab_upgrading").format(found=found))
+        try:
+            _pip_install_jupyterlab(python_exe)
+        except (RuntimeError, OSError, subprocess.SubprocessError) as error:
+            pybreeze_logger.warning("JupyterLab could not be upgraded; starting %s: %s",
+                                    found, str(error)[-_SHOWN_REASON_CHARACTERS:])
 
     def _start_server(self, python_exe: str, port: int) -> subprocess.Popen:
         """Start the server on *port*, its output going to ``self._output``.

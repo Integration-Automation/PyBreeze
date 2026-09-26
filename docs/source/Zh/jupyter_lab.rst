@@ -12,16 +12,21 @@ PyBreeze 包含嵌入式 JupyterLab 環境，讓您可以直接在 IDE 中使用
 首次設定
 ^^^^^^^^
 
-若 lab 所用的直譯器無法匯入 ``jupyterlab``，PyBreeze 會先以 ``pip install -U jupyterlab``
+若 lab 所用的直譯器無法匯入 ``jupyterlab``，PyBreeze 會先以 ``pip install -U jupyterlab jupyter_server``
 安裝到該直譯器。狀態標籤會顯示進度。
+
+lab 的伺服器沒有 token，只有在頁面裡沒有東西能操控它時才安全。直譯器裡的 JupyterLab 是 4.5.10 之前
+或 4.6.0、4.6.1，或 jupyter_server 是 2.20.0 之前（有頁面可以利用的已知漏洞的版本）時，會先用同一個
+指令升級，狀態標籤會說出升級的是哪一個。升級失敗時（例如離線），lab 仍以現有的版本啟動，並把警告寫進
+日誌與 Code Result 面板。
 
 介面
 ----
 
 JupyterLab 分頁包含：
 
-- **狀態標籤** -- 顯示啟動狀態（「Initializing...」、安裝時的「Downloading...」、伺服器啟動時的
-  「Loading... (Ns / 60s)」），lab 載入後即移除；無法啟動時顯示「JupyterLab init failed: <原因>」
+- **狀態標籤** -- 顯示啟動狀態（「Initializing...」、安裝時的「Downloading...」、升級有漏洞的版本時的
+  「Known vulnerabilities in <版本>: upgrading...」、伺服器啟動時的「Loading... (Ns / 60s)」），lab 載入後即移除；無法啟動時顯示「JupyterLab init failed: <原因>」
 - **Web 引擎檢視** -- 在 ``QWebEngineView`` 中呈現的完整 JupyterLab 介面
 
 嵌入式 JupyterLab 提供所有標準 Jupyter 功能：
@@ -51,7 +56,7 @@ JupyterLab 分頁包含：
 使用提示
 --------
 
-- JupyterLab 只在 localhost 的空閒連接埠上執行；只有需要安裝 JupyterLab 時才需要網路
+- JupyterLab 只在 localhost 的空閒連接埠上執行；只有需要安裝 JupyterLab 或升級有漏洞的版本時才需要網路
 - 您可以在 JupyterLab 自己的分頁系統中開啟多個筆記本
 - 使用 JupyterLab 進行資料分析、原型開發和互動式測試
 - JupyterLab 與其 kernel 在執行腳本所用的直譯器中執行：**Python Env > Choose python interpreter**

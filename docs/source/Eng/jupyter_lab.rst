@@ -14,7 +14,14 @@ First-Time Setup
 ^^^^^^^^^^^^^^^^
 
 If the interpreter the lab runs in cannot import ``jupyterlab``, PyBreeze first
-installs it there with ``pip install -U jupyterlab``. A status label shows the progress.
+installs it there with ``pip install -U jupyterlab jupyter_server``. A status label shows the progress.
+
+The lab's server runs without a token, so it is safe only while nothing in the page can
+drive it. When the interpreter has a JupyterLab release before 4.5.10, or 4.6.0 or 4.6.1,
+or a jupyter_server before 2.20.0 (releases with a known vulnerability a page could use),
+the same command upgrades them first, and the status label names what is upgraded. If
+the upgrade fails (offline, say), the lab still starts with what is there, and a warning
+goes to the log and the Code Result panel.
 
 Interface
 ---------
@@ -22,7 +29,8 @@ Interface
 The JupyterLab tab contains:
 
 - **Status Label** -- Shows the startup status ("Initializing...", "Downloading..." while
-  JupyterLab is installed, "Loading... (Ns / 60s)" while the server starts) and is removed
+  JupyterLab is installed, "Known vulnerabilities in <release>: upgrading..." while one is
+  upgraded, "Loading... (Ns / 60s)" while the server starts) and is removed
   once the lab loads; if the lab cannot start it reads "JupyterLab init failed: <reason>"
 - **Web Engine View** -- A full JupyterLab interface rendered in a ``QWebEngineView``
 
@@ -54,7 +62,7 @@ Usage Tips
 ----------
 
 - JupyterLab listens on a free port on localhost only; network access is needed only to
-  install JupyterLab when it is missing
+  install JupyterLab when it is missing, or to upgrade a vulnerable release
 - You can open multiple notebooks in JupyterLab's own tab system
 - Use JupyterLab for data analysis, prototyping, and interactive testing
 - JupyterLab and its kernels run in the interpreter a script run uses: the one chosen under
