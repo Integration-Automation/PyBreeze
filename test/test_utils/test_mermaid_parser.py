@@ -675,3 +675,54 @@ class TestALaterDeclarationChangesOnlyWhatItNames:
 
     def test_brackets_give_both(self):
         assert _nodes(parse_mermaid("flowchart TD\nA@{ shape: circle }\nA[text]")) == [("text", "RECTANGLE")]
+
+
+class TestWhatTheMutationRunFound:
+    """Cases the tests did not tell apart from a changed importer."""
+
+    def test_a_directive_after_the_header_is_left_out(self):
+        result = parse_mermaid("flowchart TD\nA-->B\n%%{\ninit: {}\n}%%\nC-->D")
+
+        assert _node_texts(result) == ["A", "B", "C", "D"]
+
+    def test_front_matter_over_several_lines_is_left_out(self):
+        result = parse_mermaid("---\na: 1\nb: 2\n---\nflowchart TD\nA-->B")
+
+        assert _node_texts(result) == ["A", "B"]
+
+    def test_a_label_ending_in_a_backtick_is_not_markdown(self):
+        assert _node_texts(parse_mermaid('flowchart TD\nA["Run `ls`"]')) == ["Run `ls`"]
+
+    def test_an_ampersand_inside_brackets_is_text(self):
+        result = parse_mermaid("flowchart TD\nA[Tom & Jerry] & B --> C")
+
+        assert _node_texts(result) == ["Tom & Jerry", "B", "C"]
+        assert _edges(result) == [("Tom & Jerry", "C", ""), ("B", "C", "")]
+
+    def test_a_long_statement_is_read_whole(self):
+        label = "x" * 300
+        result = parse_mermaid(f'flowchart TD\nA["{label}"] --> B')
+
+        assert _edges(result) == [(label, "B", "")]
+
+    def test_brackets_that_do_not_pair_are_not_a_shape(self):
+        assert _nodes(parse_mermaid("flowchart TD\nA(text]")) == [("A", "RECTANGLE")]
+
+    def test_the_links_after_an_invisible_one_are_drawn(self):
+        assert _edges(parse_mermaid("flowchart TD\nA ~~~ B --> C")) == [("B", "C", "")]
+
+    def test_a_node_is_as_wide_as_its_characters_and_its_padding(self):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_mermaid_parser import _CHAR_W, _TEXT_PADDING
+
+        label = "a middling label"
+        node = parse_mermaid(f"flowchart TD\nA[{label}]")["nodes"][0]
+
+        assert node["w"] == len(label) * _CHAR_W + _TEXT_PADDING
+
+    def test_each_line_past_two_adds_a_line_height(self):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_mermaid_parser import _LINE_H, _NODE_H
+
+        three = parse_mermaid("flowchart TD\nA[a<br>b<br>c]")["nodes"][0]
+        five = parse_mermaid("flowchart TD\nA[a<br>b<br>c<br>d<br>e]")["nodes"][0]
+
+        assert (three["h"], five["h"]) == (_NODE_H + _LINE_H, _NODE_H + 3 * _LINE_H)
