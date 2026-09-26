@@ -93,6 +93,15 @@ def test_the_default_limit_is_100_megabytes():
     assert raised.value.strerror == "the file is 100 MB; files over 100 MB are not opened"
 
 
+def test_the_size_refused_is_rounded_to_the_nearest_megabyte():
+    megabyte = 1024 * 1024
+
+    with pytest.raises(FileTooLargeError) as raised:
+        read_text_capped(_SizedPath(int(2.6 * megabyte)), max_bytes=2 * megabyte)
+
+    assert raised.value.strerror == "the file is 3 MB; files over 2 MB are not opened"
+
+
 def test_it_is_read_as_utf8_unless_told_otherwise(tmp_path):
     path = tmp_path / "text.txt"
     path.write_bytes("中文".encode())
