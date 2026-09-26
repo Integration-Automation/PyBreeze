@@ -629,11 +629,13 @@ def _parse_lines(text: str, nodes: dict[str, _NodeInfo], edges: list[_EdgeInfo])
             direction, line = parsed_dir
             if not line:
                 continue
-        if _SKIP_RE.match(line):
-            continue
         masked, stash = _protect(line)
         for stmt in masked.split(";"):
-            _parse_statement(_restore(stmt, stash), nodes, edges)
+            statement = _restore(stmt, stash)
+            # A keyword starts a statement, not only a line: "A-->B; style A
+            # fill:#f9f" made a node "style", and "subgraph one; A-->B; end" lost A-->B
+            if not _SKIP_RE.match(statement):
+                _parse_statement(statement, nodes, edges)
     return direction
 
 

@@ -506,3 +506,29 @@ class TestLineBreaksAndEntityCodes:
         assert tall["w"] == one_line["w"]
         assert two_lines["h"] == one_line["h"]
         assert tall["h"] > one_line["h"]
+
+
+class TestKeywordsAfterASemicolon:
+    """``;`` separates statements as a new line does: a keyword is one wherever its statement starts."""
+
+    @pytest.mark.parametrize("statement", [
+        "style A fill:#f9f",
+        "classDef hot fill:#f00",
+        "class A hot",
+        "click A callback",
+        "linkStyle 0 stroke:#f00",
+        "direction LR",
+    ])
+    def test_a_styling_statement_after_a_semicolon_is_not_a_node(self, statement):
+        # Each made a node named after its keyword
+        result = parse_mermaid(f"graph TD\nA-->B; {statement}")
+
+        assert _node_texts(result) == ["A", "B"]
+        assert _edges(result) == [("A", "B", "")]
+
+    def test_a_subgraph_on_one_line_keeps_its_links(self):
+        # The line began with "subgraph" and was skipped whole
+        result = parse_mermaid("graph TD\nsubgraph one; A-->B; end\nB-->C")
+
+        assert _node_texts(result) == ["A", "B", "C"]
+        assert _edges(result) == [("A", "B", ""), ("B", "C", "")]
