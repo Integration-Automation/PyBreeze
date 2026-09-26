@@ -858,3 +858,36 @@ class TestResolveOffsets:
 
         assert all(later - earlier >= 1.0 - 1e-9 for earlier, later in zip(placed, placed[1:]))
         assert sum(placed) / len(placed) == pytest.approx(sum(desired) / len(desired))
+
+
+def _segment_crossings(result) -> int:
+    """How many pairs of edges cross, each drawn straight between its nodes' centres."""
+    centre = [(n["x"] + n["w"] / 2, n["y"] + n["h"] / 2) for n in result["nodes"]]
+    edges = [(centre[c["source"]], centre[c["target"]]) for c in result["connections"]]
+
+    def side(p, q, r) -> int:
+        turn = (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0])
+        return (turn > 1e-9) - (turn < -1e-9)
+
+    return sum(
+        1 for index, (a1, a2) in enumerate(edges) for b1, b2 in edges[index + 1:]
+        if len({a1, a2, b1, b2}) == 4
+        and side(a1, a2, b1) * side(a1, a2, b2) < 0 and side(b1, b2, a1) * side(b1, b2, a2) < 0
+    )
+
+
+class TestSmallDiagramsDrawnWithoutCrossings:
+    """Each was found to gain a crossing when one step of the ordering or alignment sweeps changed."""
+
+    @pytest.mark.parametrize("edges", [
+        "D-->E; A-->B; D-->G; B-->D; F-->G",         # the fixed layer is the one above
+        "F-->G; A-->E; A-->D; B-->F; A-->C; A-->G",  # the sweeps alternate down and up
+        "A-->D; A-->E; C-->D",                        # a barycentre is a mean, not a floor
+        "B-->E; B-->D; E-->F; C-->E; A-->B; A-->E",  # ordering looks at the fixed layer only
+        "D-->E; B-->D; B-->C; A-->E; C-->E",          # so does alignment
+        "C-->G; F-->G; B-->D; E-->F",
+    ])
+    def test_no_two_edges_cross(self, edges):
+        result = parse_mermaid("flowchart TD\n" + edges.replace("; ", "\n"))
+
+        assert _segment_crossings(result) == 0
