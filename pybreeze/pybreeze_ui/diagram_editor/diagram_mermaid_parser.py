@@ -425,10 +425,10 @@ def _build_adjacency(
 ) -> tuple[dict[str, list[str]], dict[str, int]]:
     adj: dict[str, list[str]] = defaultdict(list)
     in_deg: dict[str, int] = dict.fromkeys(nodes, 0)
+    # Every edge joins two registered nodes: _parse_node_ref registers each id it returns
     for e in edges:
-        if e.source in nodes and e.target in nodes:
-            adj[e.source].append(e.target)
-            in_deg[e.target] = in_deg.get(e.target, 0) + 1
+        adj[e.source].append(e.target)
+        in_deg[e.target] += 1
     return adj, in_deg
 
 
@@ -523,6 +523,7 @@ def _resolve_offsets(group: list[str], desired: list[float], offset: dict[str, f
 
     Nodes keep their within-layer order (so no new crossings) and stay at least
     one slot apart (so no overlaps); the layer is then re-centred on zero.
+    *group* is a layer, which is never empty.
     """
     placed: list[float] = []
     prev: float | None = None
@@ -530,8 +531,6 @@ def _resolve_offsets(group: list[str], desired: list[float], offset: dict[str, f
         value = want if prev is None else max(want, prev + 1.0)
         placed.append(value)
         prev = value
-    if not placed:
-        return
     # Shift the whole run so its centre matches the centre of the desired
     # positions: this preserves alignment (a lone child stays under its parent)
     # while cancelling the left-to-right spacing push.
@@ -648,8 +647,7 @@ def _parse_statement(
         return
     parts = [_restore(p, stash) for p in _ARROW_SPLIT_RE.split(masked) if p.strip()]
     if len(parts) < 3:
-        if parts:
-            _parse_node_group(parts[0], nodes)
+        _parse_node_group(parts[0], nodes)
         return
     idx = 0
     while idx + 2 < len(parts):
@@ -805,7 +803,7 @@ def _node_height(node: _NodeInfo) -> float:
 
 
 def _to_diagram_dict(node_list: list[_NodeInfo], edges: list[_EdgeInfo]) -> dict:
-    """The diagram dict for laid-out nodes; an edge to an unknown node is dropped."""
+    """The diagram dict for laid-out nodes and the edges between them."""
     id_to_idx: dict[str, int] = {n.id: i for i, n in enumerate(node_list)}
     return {
         "nodes": [
@@ -829,6 +827,5 @@ def _to_diagram_dict(node_list: list[_NodeInfo], edges: list[_EdgeInfo]) -> dict
                 "line_width": e.line_width,
             }
             for e in edges
-            if e.source in id_to_idx and e.target in id_to_idx
         ],
     }
