@@ -39,11 +39,11 @@ def format_size(num_bytes: int) -> str:
     if num_bytes < 0:
         return ""
     size = float(num_bytes)
-    for unit in _SIZE_UNITS:
-        if size < 1024 or unit == _SIZE_UNITS[-1]:
+    for unit in _SIZE_UNITS[:-1]:
+        if size < 1024:
             return f"{int(size)} {unit}" if unit == "B" else f"{size:.1f} {unit}"
         size /= 1024
-    return ""
+    return f"{size:.1f} {_SIZE_UNITS[-1]}"  # past the last unit the size stays in it
 
 
 # How long a replace waits for the upload that asked about it to return
