@@ -787,3 +787,74 @@ class TestLayoutMakesRoomForEveryNode:
 
         assert _centre(c)[0] - _centre(b)[0] == 280
         assert _centre(b)[1] - _centre(a)[1] == 180
+
+
+def _layer_of(result):
+    """Each node's text -> the y of its centre, which names its layer in a top-down layout."""
+    return {node["text"]: node["y"] + node["h"] / 2 for node in result["nodes"]}
+
+
+class TestWhatTheMutationRunFoundNext:
+    """The second part of the run: layering, nesting, quotes and lines between statements."""
+
+    def test_siblings_share_a_layer(self):
+        layer = _layer_of(parse_mermaid("flowchart TD\nA-->B\nA-->C\nB-->D"))
+
+        assert layer["B"] == layer["C"] < layer["D"]
+
+    def test_every_source_is_in_the_top_layer(self):
+        layer = _layer_of(parse_mermaid("flowchart TD\nB-->C\nA-->C"))
+
+        assert layer["A"] == layer["B"] < layer["C"]
+
+    def test_a_node_is_below_every_parent(self):
+        # Layered by the longest path: C comes after A, and B after both
+        layer = _layer_of(parse_mermaid("flowchart TD\nA-->B\nA-->C\nC-->B"))
+
+        assert layer["A"] < layer["C"] < layer["B"]
+
+    def test_an_ampersand_inside_nested_brackets_is_text(self):
+        result = parse_mermaid("flowchart TD\nA[f((x)) & g] & B --> C")
+
+        assert _node_texts(result) == ["f((x)) & g", "B", "C"]
+
+    def test_a_label_ending_in_an_apostrophe_keeps_it(self):
+        assert _node_texts(parse_mermaid("flowchart TD\nA@{ label: the users' }")) == ["the users'"]
+
+    def test_text_ending_in_a_quote_keeps_its_quotes(self):
+        assert _node_texts(parse_mermaid('flowchart TD\nA[say "hi"]')) == ['say "hi"']
+
+    def test_a_line_of_dashes_after_a_comment_is_not_front_matter(self):
+        result = parse_mermaid("%% a note\nflowchart TD\nA-->B\n---\nC-->D")
+
+        assert _node_texts(result) == ["A", "B", "C", "D"]
+
+    def test_four_lines_are_two_line_heights_taller(self):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_mermaid_parser import _LINE_H, _NODE_H
+
+        node = parse_mermaid("flowchart TD\nA[a<br>b<br>c<br>d]")["nodes"][0]
+
+        assert node["h"] == _NODE_H + 2 * _LINE_H
+
+    @pytest.mark.parametrize("between", ["", "accTitle: steps", "accDescr { what }"])
+    def test_what_comes_between_statements_does_not_end_the_diagram(self, between):
+        result = parse_mermaid(f"flowchart TD\nA-->B\n{between}\nC-->D")
+
+        assert _node_texts(result) == ["A", "B", "C", "D"]
+
+
+class TestResolveOffsets:
+    """A layer's nodes near where they want to be: in order, a slot apart, centred where they wanted."""
+
+    @pytest.mark.parametrize("desired", [[0.0, 0.0], [0.0, 0.0, 5.0], [2.0, 1.0], [-3.0, 4.0, 4.0, 4.5]])
+    def test_order_room_and_centre(self, desired):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_mermaid_parser import _resolve_offsets
+
+        group = [f"n{index}" for index in range(len(desired))]
+        offset: dict[str, float] = {}
+
+        _resolve_offsets(group, desired, offset)
+        placed = [offset[name] for name in group]
+
+        assert all(later - earlier >= 1.0 - 1e-9 for earlier, later in zip(placed, placed[1:]))
+        assert sum(placed) / len(placed) == pytest.approx(sum(desired) / len(desired))
