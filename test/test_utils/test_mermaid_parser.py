@@ -637,3 +637,26 @@ class TestMarkdownStrings:
         result = parse_mermaid('flowchart TD\nA["`open\nB-->C')
 
         assert ("B", "C", "") in _edges(result)
+
+
+class TestWhatIsLeftOpen:
+    """Front matter, a directive or a description never closed, and shape data only half there."""
+
+    def test_front_matter_never_closed_is_read_as_the_diagram(self):
+        # mermaid's own front matter pattern needs the closing line too
+        result = parse_mermaid("---\nflowchart TD\nA-->B")
+
+        assert _edges(result) == [("A", "B", "")]
+
+    def test_a_directive_never_closed_is_a_comment_to_the_end_of_its_line(self):
+        result = parse_mermaid('%%{init: {"theme": "dark"}\nflowchart TD\nA-->B')
+
+        assert _node_texts(result) == ["A", "B"]
+
+    def test_a_description_never_closed_takes_the_rest(self):
+        result = parse_mermaid("flowchart TD\nA-->B\naccDescr {\n  never closed\nC-->D")
+
+        assert _node_texts(result) == ["A", "B"]
+
+    def test_a_pair_without_a_colon_is_passed_over(self):
+        assert _nodes(parse_mermaid("flowchart TD\nA@{ junk, shape: circle }")) == [("A", "ELLIPSE")]
