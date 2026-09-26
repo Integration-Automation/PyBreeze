@@ -726,3 +726,64 @@ class TestWhatTheMutationRunFound:
         five = parse_mermaid("flowchart TD\nA[a<br>b<br>c<br>d<br>e]")["nodes"][0]
 
         assert (three["h"], five["h"]) == (_NODE_H + _LINE_H, _NODE_H + 3 * _LINE_H)
+
+
+# Two wide siblings, two tall ones, and a child under the tallest: in every
+# direction, some pair overlapped
+_WIDE_AND_TALL = (
+    "A-->B[a label long enough to make a wide node]\n"
+    "A-->C[another label that makes a wide node too]\n"
+    "B-->D[1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10]\n"
+    "C-->E[1<br>2<br>3<br>4<br>5<br>6<br>7<br>8]\n"
+    "D-->F"
+)
+
+
+def _overlapping(result):
+    """The pairs of nodes whose rectangles overlap."""
+    nodes = result["nodes"]
+    return [
+        (first["text"], second["text"])
+        for index, first in enumerate(nodes) for second in nodes[index + 1:]
+        if first["x"] < second["x"] + second["w"] and second["x"] < first["x"] + first["w"]
+        and first["y"] < second["y"] + second["h"] and second["y"] < first["y"] + first["h"]
+    ]
+
+
+def _centre(node):
+    return node["x"] + node["w"] / 2, node["y"] + node["h"] / 2
+
+
+class TestLayoutMakesRoomForEveryNode:
+    """Layers and slots are spaced for the largest node, and each node sits centred on its place."""
+
+    @pytest.mark.parametrize("direction", ["TD", "LR", "RL", "BT"])
+    def test_no_two_nodes_overlap(self, direction):
+        # Slots were 280 apart across a TD layer, while a node may be 300 wide;
+        # a tall node ran into the next layer
+        assert _overlapping(parse_mermaid(f"flowchart {direction}\n{_WIDE_AND_TALL}")) == []
+
+    @pytest.mark.parametrize(("direction", "axis", "sign"), [
+        ("TD", 1, 1), ("BT", 1, -1), ("LR", 0, 1), ("RL", 0, -1),
+    ])
+    def test_the_layers_run_the_way_the_header_says(self, direction, axis, sign):
+        first, second = parse_mermaid(f"flowchart {direction}\nA-->B")["nodes"]
+
+        assert sign * (_centre(second)[axis] - _centre(first)[axis]) > 0
+
+    @pytest.mark.parametrize("direction", ["TD", "LR"])
+    def test_a_parent_is_centred_on_its_children_whatever_their_size(self, direction):
+        # Placed by its corner, a narrow parent sat off the middle of two wide children
+        parent, left, right = parse_mermaid(
+            f"flowchart {direction}\nA-->B[a label long enough to make a wide node]\nA-->C[wide<br>and<br>tall<br>too]"
+        )["nodes"]
+        axis = 0 if direction == "TD" else 1
+
+        assert _centre(parent)[axis] == pytest.approx((_centre(left)[axis] + _centre(right)[axis]) / 2)
+
+    def test_a_layout_of_ordinary_nodes_keeps_its_spacing(self):
+        # Nodes no larger than the layout allows for keep the distances they had
+        a, b, c = parse_mermaid("flowchart TD\nA-->B\nA-->C")["nodes"]
+
+        assert _centre(c)[0] - _centre(b)[0] == 280
+        assert _centre(b)[1] - _centre(a)[1] == 180

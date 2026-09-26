@@ -3,7 +3,7 @@ from __future__ import annotations
 import html
 import re
 from collections import defaultdict, deque
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass
 from html.entities import html5
 
@@ -582,22 +582,40 @@ _LINES_IN_NODE_H = 2
 _LINE_H = 18.0
 
 
-def _position_node(node: _NodeInfo, layer_idx: int, cross_offset: float,
-                   horizontal: bool, flip: bool) -> None:
+# The width the layout makes room for before it spaces nodes out for a wider one
+_NOMINAL_W = 200.0
+
+
+def _layout_steps(nodes: Iterable[_NodeInfo], horizontal: bool) -> tuple[float, float]:
+    """The distance between neighbouring layers, and between neighbouring slots in a layer.
+
+    Each makes room for the largest node along it, and a gap: slots were 280
+    apart across a top-down layer where a node may be 300 wide, and a tall
+    node ran into the next layer. *nodes* is never empty: an empty diagram is
+    not laid out.
+    """
+    sized = list(nodes)
+    width = max(_NOMINAL_W, *(_node_width(node) for node in sized))
+    height = max(_NODE_H, *(_node_height(node) for node in sized))
     if horizontal:
-        main_pos = layer_idx * (200 + _GAP_MAIN)
-        cross_pos = cross_offset * (_NODE_H + _GAP_CROSS)
-        if flip:
-            main_pos = -main_pos
-        node.x = main_pos
-        node.y = cross_pos
+        return width + _GAP_MAIN, height + _GAP_CROSS
+    return height + _GAP_MAIN, width + _GAP_CROSS
+
+
+def _position_node(node: _NodeInfo, layer_idx: int, cross_offset: float,
+                   steps: tuple[float, float], horizontal: bool, flip: bool) -> None:
+    """Centre *node* on its place: its layer along the flow, its slot across it.
+
+    Placed by its corner, a node narrower than its neighbours sat off their middle.
+    """
+    main_step, cross_step = steps
+    main_pos = layer_idx * main_step * (-1 if flip else 1)
+    cross_pos = cross_offset * cross_step
+    width, height = _node_width(node), _node_height(node)
+    if horizontal:
+        node.x, node.y = main_pos - width / 2, cross_pos - height / 2
     else:
-        main_pos = layer_idx * (_NODE_H + _GAP_MAIN)
-        cross_pos = cross_offset * (200 + _GAP_CROSS)
-        if flip:
-            main_pos = -main_pos
-        node.x = cross_pos
-        node.y = main_pos
+        node.x, node.y = cross_pos - width / 2, main_pos - height / 2
 
 
 def _auto_layout(
@@ -624,10 +642,11 @@ def _auto_layout(
 
     horizontal = direction in ("LR", "RL")
     flip = direction in ("RL", "BT")
+    steps = _layout_steps(nodes.values(), horizontal)
 
     for layer_idx in sorted(layer_groups.keys()):
         for nid in layer_groups[layer_idx]:
-            _position_node(nodes[nid], layer_idx, offsets[nid], horizontal, flip)
+            _position_node(nodes[nid], layer_idx, offsets[nid], steps, horizontal, flip)
 
 
 # ---------------------------------------------------------------------------
