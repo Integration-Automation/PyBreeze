@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-112 | 2026-09-26 | How a run's children are started and stopped is tested: the IDE-only marker by value, the session option by platform, taskkill's own options | #test #process #security | [2026-09-e](2026-09-e.md) |
 | U-20260926-111 | 2026-09-26 | ruff is pinned to 0.15.22, and Dependabot proposes no 0.16 | #build #done | [2026-09-e](2026-09-e.md) |
 | U-20260926-110 | 2026-09-26 | The cURL parser is tested at the edges of bash quoting, of the command and of -G data | #test #tools | [2026-09-e](2026-09-e.md) |
 | U-20260926-109 | 2026-09-26 | The APITestka call and action list the cURL importer writes are compared whole | #test #tools | [2026-09-e](2026-09-e.md) |
@@ -651,4 +652,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
 | [2026-09-d.md](2026-09-d.md) | 2026-09 | 91 |
-| [2026-09-e.md](2026-09-e.md) | 2026-09 | 40 |
+| [2026-09-e.md](2026-09-e.md) | 2026-09 | 41 |
