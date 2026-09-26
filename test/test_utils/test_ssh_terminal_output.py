@@ -185,6 +185,33 @@ class TestTheReader:
 
         assert b"".join(received) == b"last words"
 
+    def test_a_read_that_fails_is_said_once_as_the_close(self, app):
+        from je_editor import language_wrapper
+
+        class Broken(FakeChannel):
+            def recv_ready(self) -> bool:
+                raise OSError("socket is closed")
+
+        reader = SSHReaderThread(Broken([]))
+        closes: list[str] = []
+        reader.closed.connect(closes.append)
+
+        reader.run()
+
+        failed = language_wrapper.language_word_dict.get("ssh_command_widget_error_message_reader_failed")
+        assert closes == [f"{failed} socket is closed"]
+
+    def test_a_shell_that_ends_is_said_once_as_the_close(self, app):
+        from je_editor import language_wrapper
+
+        reader = SSHReaderThread(FakeChannel([]))
+        closes: list[str] = []
+        reader.closed.connect(closes.append)
+
+        reader.run()
+
+        assert closes == [language_wrapper.language_word_dict.get("ssh_command_widget_log_message_reader_closed")]
+
 
 class PartialSendChannel:
     """Takes at most one packet per send, as paramiko's Channel.send does."""
@@ -235,6 +262,23 @@ class TestSendingACommand:
 
         assert channel.sent == [b"\n"]
         widget.shell_channel = None
+        widget.close()
+
+    def test_without_a_session_a_typed_command_asks_to_connect(self, app, monkeypatch):
+        from je_editor import language_wrapper
+
+        shown: list = []
+        monkeypatch.setattr(ssh_command_widget.QMessageBox, "information", lambda *args: shown.append(args[1:]))
+        widget = SSHCommandWidget()
+
+        widget.send_command()  # nothing typed: nothing said
+        widget.command_input_edit.setText("ls")
+        widget.send_command()
+
+        word = language_wrapper.language_word_dict
+        assert shown == [(word.get("ssh_command_widget_dialog_title_not_connected"),
+                          word.get("ssh_command_widget_dialog_message_not_connected_shell"))]
+        assert widget.command_input_edit.text() == "ls"  # kept for when it is connected
         widget.close()
 
     def test_interrupt_sends_ctrl_c_and_keeps_the_line(self, app):
