@@ -532,3 +532,35 @@ class TestKeywordsAfterASemicolon:
 
         assert _node_texts(result) == ["A", "B", "C"]
         assert _edges(result) == [("A", "B", ""), ("B", "C", "")]
+
+
+class TestWhatIsNotTheDiagram:
+    """Front matter, directives and accessibility text describe a diagram; none of them is a node."""
+
+    def test_front_matter_is_not_nodes(self):
+        # "title", "config" and "theme" were nodes
+        result = parse_mermaid("---\ntitle: Hello\nconfig:\n  theme: dark\n---\nflowchart LR\nA-->B")
+
+        assert _node_texts(result) == ["A", "B"]
+        assert result["nodes"][0]["y"] == result["nodes"][1]["y"]  # the header after it still counts
+
+    def test_a_directive_over_several_lines_is_not_a_node(self):
+        result = parse_mermaid('%%{\n  init: { "theme": "dark" }\n}%%\nflowchart TD\nA-->B')
+
+        assert _node_texts(result) == ["A", "B"]
+
+    @pytest.mark.parametrize("line", ["accTitle: My title", "accDescr: A description; with a semicolon"])
+    def test_an_accessibility_line_is_not_a_node(self, line):
+        assert _node_texts(parse_mermaid(f"flowchart TD\n{line}\nA-->B")) == ["A", "B"]
+
+    @pytest.mark.parametrize("block", [
+        "accDescr {\n  a description\n  over lines\n}",
+        "accDescr { on one line }",
+    ])
+    def test_a_description_block_is_not_nodes(self, block):
+        assert _node_texts(parse_mermaid(f"flowchart TD\n{block}\nA-->B")) == ["A", "B"]
+
+    def test_a_line_of_dashes_later_in_the_text_is_not_front_matter(self):
+        result = parse_mermaid("flowchart TD\nA-->B\n---\nC-->D\n---")
+
+        assert _node_texts(result) == ["A", "B", "C", "D"]

@@ -3,7 +3,7 @@ from __future__ import annotations
 import html
 import re
 from collections import defaultdict, deque
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from html.entities import html5
 
@@ -55,6 +55,15 @@ _SKIP_RE = re.compile(
 )
 # A node's ":::className" suffix: styling, not a label or a shape
 _CLASS_SUFFIX_RE = re.compile(r":::[\w-]+$")
+# Text for screen readers: a title or description taking the rest of the line
+_ACCESSIBILITY_RE = re.compile(r"^\s*acc(?:Title|Descr)\s*:")
+# A description that runs to its "}", over lines or not
+_DESCRIPTION_BLOCK_RE = re.compile(r"^\s*accDescr\s*\{")
+# The line that opens and closes YAML front matter (a title, a config)
+_FRONT_MATTER_FENCE = "---"
+# A directive, "%%{init: ...}%%", which may run over lines
+_DIRECTIVE_OPEN = "%%{"
+_DIRECTIVE_CLOSE = "}%%"
 
 # Arrow / link operator with optional pipe-label. Handles every common mermaid
 # link: normal/thick/dotted bodies, optional right head (arrow ``>``, circle
@@ -616,13 +625,51 @@ def parse_mermaid(text: str) -> dict:
     return _to_diagram_dict(list(nodes.values()), edges)
 
 
+def _without_front_matter(text: str) -> str:
+    """*text* after the YAML front matter mermaid reads first: a ``---`` line opening *text*, to the next."""
+    lines = text.splitlines(keepends=True)
+    if not lines or lines[0].strip() != _FRONT_MATTER_FENCE:
+        return text
+    for index in range(1, len(lines)):
+        if lines[index].strip() == _FRONT_MATTER_FENCE:
+            return "".join(lines[index + 1:])
+    return text
+
+
+def _without_directives(text: str) -> str:
+    """*text* without its ``%%{...}%%`` directives; an unclosed one is left to the comment rule."""
+    pieces: list[str] = []
+    index = 0
+    while (start := text.find(_DIRECTIVE_OPEN, index)) >= 0:
+        end = text.find(_DIRECTIVE_CLOSE, start + len(_DIRECTIVE_OPEN))
+        if end < 0:
+            break
+        pieces.append(text[index:start])
+        index = end + len(_DIRECTIVE_CLOSE)
+    pieces.append(text[index:])
+    return "".join(pieces)
+
+
+def _skip_description(first_line: str, lines: Iterator[str]) -> None:
+    """Consume an ``accDescr {`` block from *lines*, up to the line holding its ``}``."""
+    if "}" in first_line:
+        return
+    for line in lines:
+        if "}" in line:
+            return
+
+
 def _parse_lines(text: str, nodes: dict[str, _NodeInfo], edges: list[_EdgeInfo]) -> str:
     """Parse every line of *text* into *nodes* and *edges*; return the flow direction."""
     direction = "TD"
-    for raw_line in text.splitlines():
+    lines = iter(_without_directives(_without_front_matter(text)).splitlines())
+    for raw_line in lines:
         masked, stash = _protect(raw_line)
         line = _restore(_COMMENT_RE.sub("", masked), stash).strip()
-        if not line:
+        if not line or _ACCESSIBILITY_RE.match(line):
+            continue
+        if _DESCRIPTION_BLOCK_RE.match(line):
+            _skip_description(line, lines)
             continue
         parsed_dir = _parse_direction(line)
         if parsed_dir is not None:
