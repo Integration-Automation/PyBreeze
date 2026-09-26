@@ -115,7 +115,13 @@ class _TrimmedMatcher(difflib.SequenceMatcher):
         return bool(self._head or self._tail)
 
     def get_opcodes(self) -> list[tuple[str, int, int, int, int]]:
-        """The opcodes over the whole two texts, the head and tail as equal blocks."""
+        """The opcodes over the whole two texts, the head and tail as equal blocks.
+
+        The middle's opcodes never begin or end with an equal block -- the head
+        ends at the first line that differs, the tail at the last -- so the
+        head's and the tail's blocks stand next to a change, never next to
+        another equal block, and nothing needs merging.
+        """
         head, tail = self._head, self._tail
         left_size, right_size = self._sizes
         codes = [("equal", 0, head, 0, head)] if head else []
@@ -124,13 +130,7 @@ class _TrimmedMatcher(difflib.SequenceMatcher):
                   if (tag, i1, i2, j1, j2) != ("equal", 0, 0, 0, 0)]
         if tail:
             codes.append(("equal", left_size - tail, left_size, right_size - tail, right_size))
-        merged: list[tuple[str, int, int, int, int]] = []
-        for code in codes:
-            if merged and code[0] == merged[-1][0] == "equal":
-                code = ("equal", merged[-1][1], code[2], merged[-1][3], code[4])
-                merged.pop()
-            merged.append(code)
-        return merged or [("equal", 0, 0, 0, 0)]
+        return codes or [("equal", 0, 0, 0, 0)]
 
 
 def _unified_range(start: int, stop: int) -> str:
