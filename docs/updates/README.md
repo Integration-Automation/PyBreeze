@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-123 | 2026-09-26 | The Diff tab's output is tested as a patch: applied to the left text it gives the right one, each hunk header true to its lines | #test #tools | [2026-09-e](2026-09-e.md) |
 | U-20260926-122 | 2026-09-26 | Where a diagram connection meets a node is tested for every shape, and a connection follows a resized node | #test #diagram | [2026-09-e](2026-09-e.md) |
 | U-20260926-121 | 2026-09-26 | The diagram scene's press handling loses a branch no tool mode reached | #refactor #diagram | [2026-09-e](2026-09-e.md) |
 | U-20260926-120 | 2026-09-26 | The diagram scene is tested on a key typed into a label and a tool picked while one is edited | #test #diagram | [2026-09-e](2026-09-e.md) |
@@ -662,4 +663,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
 | [2026-09-d.md](2026-09-d.md) | 2026-09 | 91 |
-| [2026-09-e.md](2026-09-e.md) | 2026-09 | 51 |
+| [2026-09-e.md](2026-09-e.md) | 2026-09 | 52 |
