@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-104 | 2026-09-26 | The cap on a file opened in the HAR tab or the diagram editor is tested at its size, its default and its message | #test #tools | [2026-09-e](2026-09-e.md) |
 | U-20260926-103 | 2026-09-26 | The prthinker settings name the variable a Gemini, Cohere or Mistral key is read from | #fix #prthinker #i18n #docs | [2026-09-e](2026-09-e.md) |
 | U-20260926-102 | 2026-09-26 | status_of is tested on a code nobody registered, and the 1xx class on its label | #test #tools | [2026-09-e](2026-09-e.md) |
 | U-20260926-101 | 2026-09-26 | The generated requests script is compared whole, and python_literal's layout is tested | #test #tools | [2026-09-e](2026-09-e.md) |
@@ -643,4 +644,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
 | [2026-09-d.md](2026-09-d.md) | 2026-09 | 91 |
-| [2026-09-e.md](2026-09-e.md) | 2026-09 | 32 |
+| [2026-09-e.md](2026-09-e.md) | 2026-09 | 33 |
