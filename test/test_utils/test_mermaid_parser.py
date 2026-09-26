@@ -564,3 +564,46 @@ class TestWhatIsNotTheDiagram:
         result = parse_mermaid("flowchart TD\nA-->B\n---\nC-->D\n---")
 
         assert _node_texts(result) == ["A", "B", "C", "D"]
+
+
+def _nodes(result):
+    return [(node["text"], node["shape"]) for node in result["nodes"]]
+
+
+class TestShapeData:
+    """Mermaid 11's ``A@{ shape: ..., label: ... }``: the shape by name, the text from its label."""
+
+    def test_the_shape_and_label_are_read(self):
+        # Both nodes came in as rectangles named after their ids
+        result = parse_mermaid('flowchart TD\nA@{ shape: circle, label: "Hi" } --> B@{ shape: diam }')
+
+        assert _nodes(result) == [("Hi", "ELLIPSE"), ("B", "DIAMOND")]
+        assert _edges(result) == [("Hi", "B", "")]
+
+    @pytest.mark.parametrize(("name", "shape"), [
+        ("rect", "RECTANGLE"), ("process", "RECTANGLE"),
+        ("rounded", "ROUNDED_RECT"), ("event", "ROUNDED_RECT"), ("stadium", "ROUNDED_RECT"), ("terminal", "ROUNDED_RECT"),
+        ("circle", "ELLIPSE"), ("sm-circ", "ELLIPSE"), ("dbl-circ", "ELLIPSE"), ("stop", "ELLIPSE"),
+        ("f-circ", "ELLIPSE"), ("cross-circ", "ELLIPSE"),
+        ("diam", "DIAMOND"), ("decision", "DIAMOND"), ("hex", "DIAMOND"), ("prepare", "DIAMOND"),
+        ("cyl", "RECTANGLE"), ("doc", "RECTANGLE"), ("no-such-shape", "RECTANGLE"),
+    ])
+    def test_a_named_shape_maps_to_the_nearest_one_here(self, name, shape):
+        assert _nodes(parse_mermaid(f"flowchart TD\nA@{{ shape: {name} }}")) == [("A", shape)]
+
+    @pytest.mark.parametrize(("label", "text"), [
+        ('"a, b"', "a, b"),
+        ("'single'", "single"),
+        ("Hello there", "Hello there"),
+        ('"a<br>b #quot;c#quot;"', 'a\nb "c"'),
+    ])
+    def test_the_label_as_written(self, label, text):
+        assert _nodes(parse_mermaid(f"flowchart TD\nA@{{ shape: rect, label: {label} }}")) == [(text, "RECTANGLE")]
+
+    def test_brackets_give_the_text_and_the_data_the_shape(self):
+        assert _nodes(parse_mermaid('flowchart TD\nA["text"]@{ shape: circle }:::hot')) == [("text", "ELLIPSE")]
+
+    def test_data_declared_after_the_link_updates_the_node(self):
+        result = parse_mermaid('flowchart TD\nA --> B\nB@{ shape: diam, label: "Q?" }')
+
+        assert _nodes(result) == [("A", "RECTANGLE"), ("Q?", "DIAMOND")]

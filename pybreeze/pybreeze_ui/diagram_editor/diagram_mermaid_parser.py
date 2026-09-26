@@ -134,6 +134,23 @@ _SHAPE_DELIMS: tuple[tuple[str, str, NodeShape], ...] = (
     ("[",  "]",  NodeShape.RECTANGLE),      # rectangle
 )
 
+# Mermaid 11's named shapes (``A@{ shape: stadium }``) with a counterpart here,
+# by name and alias, mapped as the delimited ones are; every other name (cyl,
+# doc, hourglass, ...) is drawn as a rectangle
+_NAMED_SHAPES: dict[str, NodeShape] = {
+    **dict.fromkeys(
+        ("rounded", "event", "stadium", "pill", "terminal", "delay", "half-rounded-rectangle"),
+        NodeShape.ROUNDED_RECT),
+    **dict.fromkeys(
+        ("circle", "circ", "sm-circ", "small-circle", "start", "dbl-circ", "double-circle",
+         "fr-circ", "framed-circle", "stop", "f-circ", "filled-circle", "junction",
+         "cross-circ", "crossed-circle", "summary"),
+        NodeShape.ELLIPSE),
+    **dict.fromkeys(
+        ("diam", "decision", "diamond", "question", "hex", "hexagon", "prepare"),
+        NodeShape.DIAMOND),
+}
+
 
 # Marks a protected label in text being split: NUL cannot occur in mermaid text
 _STASH_MARK = "\x00"
@@ -248,7 +265,10 @@ def _parse_node_ref(raw: str, nodes: dict[str, _NodeInfo]) -> str | None:
         return None
     node_id = m.group(1)
     rest = _CLASS_SUFFIX_RE.sub("", m.group(2).strip()).strip()
-    text, shape = _extract_shape(rest, default_text=node_id)
+    brackets, data = _split_shape_data(rest)
+    text, shape = _extract_shape(brackets, default_text=node_id)
+    if data:
+        text, shape = _with_shape_data(data, text, shape)
     existing = nodes.get(node_id)
     if existing is None:
         nodes[node_id] = _NodeInfo(id=node_id, text=text, shape=shape)
@@ -261,11 +281,11 @@ def _parse_node_ref(raw: str, nodes: dict[str, _NodeInfo]) -> str | None:
     return node_id
 
 
-def _split_node_group(raw: str) -> list[str]:
-    """Split a node group on top-level ``&`` (mermaid fan-in/out).
+def _split_outside(raw: str, separator: str) -> list[str]:
+    """Split *raw* on each *separator* outside brackets and double quotes.
 
-    ``&`` inside brackets or quotes is part of a label, not a separator, so the
-    split tracks bracket depth and quote state (e.g. ``A["Tom & Jerry"] & B``
+    A separator inside them is part of a label, so the split tracks bracket
+    depth and quote state (e.g. ``A["Tom & Jerry"] & B`` split on ``&``
     yields two members, not three).
     """
     parts: list[str] = []
@@ -279,13 +299,54 @@ def _split_node_group(raw: str) -> list[str]:
             depth += 1
         elif not in_quote and char in ")]}":
             depth = max(0, depth - 1)
-        if char == "&" and depth == 0 and not in_quote:
+        if char == separator and depth == 0 and not in_quote:
             parts.append("".join(current))
             current = []
         else:
             current.append(char)
     parts.append("".join(current))
     return parts
+
+
+def _split_node_group(raw: str) -> list[str]:
+    """Split a node group on top-level ``&`` (mermaid fan-in/out)."""
+    return _split_outside(raw, "&")
+
+
+def _split_shape_data(rest: str) -> tuple[str, str]:
+    """A node's *rest* as its bracketed text and the body of its ``@{...}`` shape data (``""`` when none).
+
+    The data follows the id (``A@{ shape: circle }``) or its brackets
+    (``A["text"]@{ shape: rect }``).
+    """
+    split = _segment_end(rest, 0) if rest[:1] in _OPENERS else 0
+    data = rest[split:].strip()
+    if data.startswith("@{") and data.endswith("}"):
+        return rest[:split].strip(), data[2:-1]
+    return rest, ""
+
+
+def _shape_data(body: str) -> dict[str, str]:
+    """The ``key: value`` pairs of a ``@{...}`` body, single quotes taken off a value."""
+    data: dict[str, str] = {}
+    for pair in _split_outside(body, ","):
+        key, colon, value = pair.partition(":")
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] == "'":
+            value = value[1:-1]
+        if colon:
+            data[key.strip()] = value
+    return data
+
+
+def _with_shape_data(body: str, text: str, shape: NodeShape) -> tuple[str, NodeShape]:
+    """*text* and *shape* as a ``@{...}`` body names them: its ``shape`` by name, its ``label`` as text."""
+    data = _shape_data(body)
+    if "shape" in data:
+        shape = _NAMED_SHAPES.get(data["shape"].lower(), NodeShape.RECTANGLE)
+    if "label" in data:
+        text = _label_text(data["label"])
+    return text, shape
 
 
 def _parse_node_group(raw: str, nodes: dict[str, _NodeInfo]) -> list[str]:

@@ -160,7 +160,8 @@ The second row starts with the file buttons:
      - Pastes Mermaid ``flowchart`` / ``graph`` source and converts it to editable,
        automatically laid out nodes and connections. Labels read as Mermaid shows them:
        ``<br>`` starts a new line, and an entity code (``#quot;``, ``#9829;``) is its
-       character. It replaces the canvas as one undo step.
+       character. Mermaid 11's named shapes (``A@{ shape: circle }``) become the nearest
+       of the four node shapes. It replaces the canvas as one undo step.
    * - **PNG** / **SVG**
      - Exports the canvas to a raster (PNG) or vector (SVG) image.
 

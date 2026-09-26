@@ -145,7 +145,7 @@ PyBreeze 开箱即用，涵盖自动化测试的完整范围：
 
 *把一段 Mermaid `flowchart` 粘贴到导入器中，自动完成布局。*
 
-一个基于 `QGraphicsScene` 的所见即所得编辑器：矩形、圆角矩形、椭圆与菱形节点，带边标签的贝塞尔连线，自由文本与图片。Mermaid `flowchart` / `graph` 导入会按 Mermaid 的显示方式读取标签（`<br>` 换行、`#quot;` / `#9829;` 实体码），并采用 Sugiyama 式布局（分层、减少交叉、跨轴对齐）。可保存和打开 `.diagram.json`，导出为 PNG 或 SVG，支持撤销／重做、对齐、分布、网格、吸附与缩放。从 URL 获取的图片会经过 SSRF 验证并有大小上限。
+一个基于 `QGraphicsScene` 的所见即所得编辑器：矩形、圆角矩形、椭圆与菱形节点，带边标签的贝塞尔连线，自由文本与图片。Mermaid `flowchart` / `graph` 导入会按 Mermaid 的显示方式读取标签（`<br>` 换行、`#quot;` / `#9829;` 实体码），把 Mermaid 11 的具名形状（`A@{ shape: circle }`）换成四种节点中最接近的一种，并采用 Sugiyama 式布局（分层、减少交叉、跨轴对齐）。可保存和打开 `.diagram.json`，导出为 PNG 或 SVG，支持撤销／重做、对齐、分布、网格、吸附与缩放。从 URL 获取的图片会经过 SSRF 验证并有大小上限。
 
 ### SSH 客户端——终端与远程文件树并排
 

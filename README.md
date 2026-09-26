@@ -145,7 +145,7 @@ Each is a tab or a dock, each has the same copy / open-in-editor / save-to-file 
 
 *A Mermaid `flowchart` pasted into the importer and laid out automatically.*
 
-A WYSIWYG `QGraphicsScene` editor: rectangle, rounded, ellipse and diamond nodes, bezier connections with edge labels, free text and images. Mermaid `flowchart` / `graph` import reads labels as Mermaid shows them (`<br>` line breaks, `#quot;` / `#9829;` entity codes) and runs a Sugiyama-style layout (layering, crossing reduction, cross-axis alignment). Save and open as `.diagram.json`, export to PNG or SVG, with undo/redo, align, distribute, grid, snap and zoom. Images fetched from a URL are SSRF-validated and size-capped.
+A WYSIWYG `QGraphicsScene` editor: rectangle, rounded, ellipse and diamond nodes, bezier connections with edge labels, free text and images. Mermaid `flowchart` / `graph` import reads labels as Mermaid shows them (`<br>` line breaks, `#quot;` / `#9829;` entity codes), takes Mermaid 11's named shapes (`A@{ shape: circle }`) as the nearest of the four, and runs a Sugiyama-style layout (layering, crossing reduction, cross-axis alignment). Save and open as `.diagram.json`, export to PNG or SVG, with undo/redo, align, distribute, grid, snap and zoom. Images fetched from a URL are SSRF-validated and size-capped.
 
 ### SSH Client — terminal and remote file tree side by side
 
