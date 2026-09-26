@@ -211,6 +211,43 @@ class TestDelete:
         view.close()
         view.deleteLater()
 
+    def test_another_key_reaches_the_text_being_edited(self, app):
+        from PySide6.QtWidgets import QGraphicsView
+
+        scene = DiagramScene()
+        view = QGraphicsView(scene)
+        view.show()
+        node, _second = _two_nodes(scene)
+        node.label.setTextInteractionFlags(Qt.TextInteractionFlag.TextEditorInteraction)
+        node.label.setFocus()
+        app.processEvents()
+
+        scene.keyPressEvent(QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_X, Qt.KeyboardModifier.NoModifier, "x"))
+
+        assert "x" in node.label.toPlainText()
+        view.close()
+        view.deleteLater()
+
+    def test_picking_another_tool_ends_the_edit(self, app):
+        from PySide6.QtWidgets import QGraphicsView
+
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import ToolMode
+
+        scene = DiagramScene()
+        view = QGraphicsView(scene)
+        view.show()
+        node, _second = _two_nodes(scene)
+        node.label.setTextInteractionFlags(Qt.TextInteractionFlag.TextEditorInteraction)
+        node.label.setFocus()
+        app.processEvents()
+        assert scene.focusItem() is node.label
+
+        scene.mode = ToolMode.ADD_RECT
+
+        assert scene.focusItem() is None
+        view.close()
+        view.deleteLater()
+
 
 class TestSelectAll:
     def test_every_node_connection_and_image_but_not_the_dashed_line(self, scene):
