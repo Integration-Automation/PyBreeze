@@ -2,6 +2,8 @@ import logging
 import os
 import tempfile
 
+import pytest
+
 from pybreeze.utils.logging.logger import PyBreezeLogger, pybreeze_logger
 
 
@@ -113,6 +115,18 @@ class TestWhereTheLogGoes:
         assert modes[data] == 0o700
         assert (data / "logs").is_dir()
 
+    def test_the_folders_a_log_needs_are_made_and_found_again(self, monkeypatch, tmp_path):
+        # A home not made yet, a log file set deep down, and a second start
+        from pybreeze.utils.logging import logger as logger_module
+
+        data = tmp_path / "home" / ".pybreeze"
+        monkeypatch.setattr(logger_module, "pybreeze_data_path", lambda: data)
+        for log_file in (data / "logs" / "PyBreeze.log", tmp_path / "a" / "b" / "PyBreeze.log"):
+            for _start in range(2):
+                _log_once(log_file, "a run")
+
+            assert log_file.read_text(encoding="utf-8").count("a run") == 2
+
     def test_the_package_handler_opens_nothing_at_import(self):
         from pybreeze.utils.logging.logger import file_handler
 
@@ -208,6 +222,29 @@ class TestRotatingOnOpen:
         _log_once(log_file, "this run")
 
         assert not (tmp_path / "PyBreeze.log.1").exists()
+
+    @pytest.mark.parametrize(("limit", "moved"), [
+        ("11", False),   # exactly the size: kept ("an old run\n" is 11 bytes)
+        ("10", True),
+        ("1", True),     # the smallest size there is still rotates
+        ("-5", False),   # below zero is off, as zero is
+    ])
+    def test_the_size_is_a_bound_the_file_may_reach(self, tmp_path, monkeypatch, limit, moved):
+        monkeypatch.setenv("PYBREEZE_LOG_MAX_BYTES", limit)
+        log_file = tmp_path / "PyBreeze.log"
+        log_file.write_bytes(b"an old run\n")  # bytes: write_text makes the line ending \r\n on Windows
+
+        _log_once(log_file, "this run")
+
+        assert (tmp_path / "PyBreeze.log.1").exists() is moved
+
+    def test_the_default_is_the_100_mb_the_guide_gives(self, monkeypatch):
+        # docs/source/Eng/getting_started.rst: "The default is 104857600 (100 MB)"
+        from pybreeze.utils.logging import logger
+
+        monkeypatch.delenv("PYBREEZE_LOG_MAX_BYTES", raising=False)
+
+        assert logger._rotate_at_bytes() == logger.DEFAULT_MAX_LOG_BYTES == 104857600
 
     def test_a_size_that_is_not_a_number_is_the_default(self, monkeypatch):
         from pybreeze.utils.logging import logger
