@@ -25,6 +25,16 @@ class TestDetectEpochUnit:
     def test_zero_is_seconds(self):
         assert detect_epoch_unit(0) == "s"
 
+    @pytest.mark.parametrize(("threshold", "below", "unit"), [
+        (10 ** 11, "s", "ms"),
+        (10 ** 14, "ms", "us"),
+        (10 ** 17, "us", "ns"),
+    ])
+    def test_each_unit_starts_at_its_threshold(self, threshold, below, unit):
+        assert detect_epoch_unit(threshold - 1) == below
+        assert detect_epoch_unit(threshold) == unit
+        assert detect_epoch_unit(-threshold) == unit  # before 1970, by its size
+
 
 class TestConvertFromEpoch:
     def test_seconds_input(self):
@@ -118,6 +128,24 @@ class TestSubSecondPrecision:
     def test_an_iso_time_with_milliseconds_keeps_them(self):
         assert convert_timestamp("2021-01-01T00:00:00.250Z").epoch_millis == 1609459200250
 
+    def test_an_iso_time_keeps_all_six_microsecond_digits(self):
+        assert convert_timestamp("2024-01-01T00:00:00.123456Z").iso_utc == "2024-01-01T00:00:00.123456+00:00"
+
+    def test_a_nanosecond_epoch_is_cut_not_rounded_to_the_microsecond(self):
+        # As a float, 1700000000123456.789 microseconds rounds up to ...457
+        assert convert_timestamp("1700000000123456789").iso_utc == "2023-11-14T22:13:20.123456+00:00"
+
+
+class TestUtcFromEpochSeconds:
+    @pytest.mark.parametrize(("seconds", "iso"), [
+        (_EPOCH_2021, "2021-01-01T00:00:00+00:00"),
+        (-1.5, "1969-12-31T23:59:58.500000+00:00"),
+    ])
+    def test_the_instant_that_many_seconds_from_1970(self, seconds, iso):
+        from pybreeze.utils.timestamp_tools.timestamp_converter import utc_from_epoch_seconds
+
+        assert utc_from_epoch_seconds(seconds).isoformat() == iso
+
 
 class TestFormsToolsWrite:
     """Read the same on Python 3.10 as on 3.14: fromisoformat took less before 3.11."""
@@ -173,7 +201,19 @@ class TestFormsToolsWrite:
 
         with pytest.raises(TimestampParseException):
             convert_timestamp("2024-01-01T00:00+05:99")
+        with pytest.raises(TimestampParseException):
+            convert_timestamp("2024-01-01T00:00+05:60")
         assert convert_timestamp("2024-01-01T00:00+05:59").iso_utc == "2023-12-31T18:01:00+00:00"
+
+    @pytest.mark.parametrize(("text", "iso"), [
+        ("2024-01-01T00:00-05:30", "2024-01-01T05:30:00+00:00"),
+        ("2024-01-01T00:00+0530", "2023-12-31T18:30:00+00:00"),
+        ("2024-01-01T00:00-0530", "2024-01-01T05:30:00+00:00"),
+    ])
+    def test_an_offset_moves_the_time_by_its_hours_and_minutes(self, text, iso):
+        from pybreeze.utils.timestamp_tools.timestamp_converter import convert_timestamp
+
+        assert convert_timestamp(text).iso_utc == iso
 
 
 class TestADecimalEpochRoundsTowardThePast:
