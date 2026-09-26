@@ -134,6 +134,21 @@ class TestABoundedRun:
         with pytest.raises(RegexTesterException):
             regex_tester.find_matches_bounded(r"\d+", "a1")
 
+    def test_a_worker_that_exits_with_an_error_is_reported(self, monkeypatch):
+        # Whatever it wrote: an exit code other than 0 is a failure, positive ones included
+        from pybreeze.utils.regex_tools import regex_tester
+
+        class Exited:
+            returncode = 1
+
+            def communicate(self, _job, timeout=None):
+                return b"[]", None
+
+        monkeypatch.setattr(regex_tester.subprocess, "Popen", lambda *_args, **_options: Exited())
+
+        with pytest.raises(RegexTesterException, match="exit code 1"):
+            regex_tester.find_matches_bounded("a", "a")
+
     def test_catastrophic_backtracking_is_stopped(self):
         import time
 
@@ -167,7 +182,7 @@ class TestPatternsTheCompilerCannotTake:
     def test_a_parenthesis_in_a_character_class_or_escaped_opens_no_group(self):
         from pybreeze.utils.regex_tools.regex_tester import MAX_GROUP_NESTING, _group_nesting_too_deep
 
-        many = MAX_GROUP_NESTING + 1
+        many = MAX_GROUP_NESTING + 5  # more than one past the cap: the class holds them all
         assert not _group_nesting_too_deep("[" + "(" * many + "]")
         assert not _group_nesting_too_deep("\\(" * many)
         assert compile_pattern("[" + "(" * many + "]").match("(")
@@ -176,6 +191,26 @@ class TestPatternsTheCompilerCannotTake:
         from pybreeze.utils.regex_tools.regex_tester import MAX_GROUP_NESTING, _group_nesting_too_deep
 
         assert _group_nesting_too_deep("[(]" + "(" * (MAX_GROUP_NESTING + 1))
+
+    def test_the_cap_is_100_groups_deep(self):
+        # On CPython 3.10 re's parser overflows the C stack not far past it
+        from pybreeze.utils.regex_tools.regex_tester import _group_nesting_too_deep
+
+        assert not _group_nesting_too_deep("(" * 100 + ")" * 100)
+        assert _group_nesting_too_deep("(" * 101 + ")" * 101)
+
+    def test_a_closed_group_is_no_longer_counted(self):
+        from pybreeze.utils.regex_tools.regex_tester import _group_nesting_too_deep
+
+        assert not _group_nesting_too_deep("()" * 500)
+        assert not _group_nesting_too_deep("(a)" * 500)
+
+    # Characters before and after ")" in the code table close no group
+    @pytest.mark.parametrize("between", ["a", "!", "*"])
+    def test_other_characters_close_no_group(self, between):
+        from pybreeze.utils.regex_tools.regex_tester import _group_nesting_too_deep
+
+        assert _group_nesting_too_deep(f"({between}" * 101)
 
 
 class TestTheWorkerProcess:
