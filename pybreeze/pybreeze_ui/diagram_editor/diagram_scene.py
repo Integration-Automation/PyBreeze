@@ -271,13 +271,10 @@ class DiagramScene(QGraphicsScene):
             self._handle_connection_click(pos)
             return
 
-        if self._mode == ToolMode.SELECT:
-            super().mousePressEvent(event)
-            if any(isinstance(i, (DiagramNode, DiagramImage)) for i in self.selectedItems()):
-                self.begin_undo("Move")
-            return
-
+        # SELECT, the one mode left
         super().mousePressEvent(event)
+        if any(isinstance(i, (DiagramNode, DiagramImage)) for i in self.selectedItems()):
+            self.begin_undo("Move")
 
     def _add_shape_node(self, pos: QPointF, shape: NodeShape) -> None:
         with self.undo_scope("Add Node"):

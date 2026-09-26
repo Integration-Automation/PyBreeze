@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-121 | 2026-09-26 | The diagram scene's press handling loses a branch no tool mode reached | #refactor #diagram | [2026-09-e](2026-09-e.md) |
 | U-20260926-120 | 2026-09-26 | The diagram scene is tested on a key typed into a label and a tool picked while one is edited | #test #diagram | [2026-09-e](2026-09-e.md) |
 | U-20260926-119 | 2026-09-26 | The log's rotation size is tested as a bound, its 100 MB default as the guide gives it, and the folders it needs as made | #test #logging | [2026-09-e](2026-09-e.md) |
 | U-20260926-118 | 2026-09-26 | The Header Analyzer's report of text without headers, and its tokens before an analysis, are tested | #test #tools | [2026-09-e](2026-09-e.md) |
@@ -660,4 +661,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
 | [2026-09-d.md](2026-09-d.md) | 2026-09 | 91 |
-| [2026-09-e.md](2026-09-e.md) | 2026-09 | 49 |
+| [2026-09-e.md](2026-09-e.md) | 2026-09 | 50 |
