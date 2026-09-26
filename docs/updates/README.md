@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-94 | 2026-09-26 | A palette index is read once, as the colour: the last of the terminal colour run's survivors | #test #ssh | [2026-09-e](2026-09-e.md) |
 | U-20260926-93 | 2026-09-26 | The URL Builder's port bounds, a host with a path that starts with two slashes, and URL to JSON's layout are tested | #test #tools | [2026-09-e](2026-09-e.md) |
 | U-20260926-92 | 2026-09-26 | An RGB colour from the fifth SGR parameter, a cut-off RGB colour and Reformat's indent are tested | #test #ssh #tools | [2026-09-e](2026-09-e.md) |
 | U-20260926-91 | 2026-09-26 | pretty_json_or_none has tests of its own: its layout, characters and numbers as written, and what it turns away | #test #tools | [2026-09-e](2026-09-e.md) |
@@ -633,4 +634,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
 | [2026-09-d.md](2026-09-d.md) | 2026-09 | 91 |
-| [2026-09-e.md](2026-09-e.md) | 2026-09 | 22 |
+| [2026-09-e.md](2026-09-e.md) | 2026-09 | 23 |

@@ -59,6 +59,9 @@ class TestApplySgr:
     @pytest.mark.parametrize(("parameters", "expected"), [
         ("1;38;5;196", TextStyle(bold=True, foreground=196)),
         ("1;4;48;2;10;20;30", TextStyle(bold=True, underline=True, background=(10, 20, 30))),
+        # A palette index that is also a parameter is read once, as the colour
+        ("38;5;1", TextStyle(foreground=1)),
+        ("1;4;38;5;196;3", TextStyle(bold=True, underline=True, italic=True, foreground=196)),
         # From the fifth parameter on, where start | 4 is not start + 4
         ("1;3;4;38;2;10;20;30", TextStyle(bold=True, italic=True, underline=True, foreground=(10, 20, 30))),
     ])
