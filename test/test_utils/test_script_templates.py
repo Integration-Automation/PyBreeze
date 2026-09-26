@@ -411,6 +411,69 @@ def test_a_float_json_allows_but_python_cannot_write_is_spelled_out():
     assert python_literal(float("nan")) == 'float("nan")'
 
 
+def test_a_whole_requests_script_as_written():
+    # Each part compared: the password, the body and a repeated parameter's list
+    code = to_requests_code(parse_curl("curl -u alice:s3cret -d 'hello' 'https://x/p?a=1&a=2'"))
+
+    assert code == (
+        "import requests\n"
+        "\n"
+        'url = "https://x/p"\n'
+        "params = {\n"
+        '    "a": ["1", "2"],\n'
+        "}\n"
+        'data = "hello"\n'
+        'auth = ("alice", "s3cret")\n'
+        'response = requests.request("POST", url, params=params, data=data, auth=auth)\n'
+        "print(response.status_code)\n"
+        "print(response.text)\n"
+    )
+
+
+def test_a_data_file_with_no_recorded_place_goes_after_the_inline_parts():
+    # A request built by hand has no positions for its files
+    from pybreeze.utils.curl_import.curl_parser import CurlRequest
+    from pybreeze.utils.curl_import.request_codegen import data_from_file_expr
+
+    request = CurlRequest(data_file_refs=["a.bin"], data_parts=["x=1"])
+
+    assert data_from_file_expr(request) == (
+        '"x=1".encode() + b"&" + open("a.bin", "rb").read().replace(b"\\r", b"").replace(b"\\n", b"")')
+
+
+class TestPythonLiteralLayout:
+    """Laid out as json.dumps(indent=4) would: a round trip alone passed any layout."""
+
+    VALUE = {"a": [1, {"b": True}], "c": None, "e": [], "f": {}}
+
+    def test_a_block_indents_each_level_by_four(self):
+        from pybreeze.utils.curl_import.request_codegen import python_literal
+
+        assert python_literal(self.VALUE) == (
+            '{\n'
+            '    "a": [\n'
+            '        1,\n'
+            '        {\n'
+            '            "b": True\n'
+            '        }\n'
+            '    ],\n'
+            '    "c": None,\n'
+            '    "e": [],\n'
+            '    "f": {}\n'
+            '}'
+        )
+
+    def test_inline_is_one_line(self):
+        from pybreeze.utils.curl_import.request_codegen import python_literal
+
+        assert python_literal(self.VALUE, inline=True) == '{"a": [1, {"b": True}], "c": None, "e": [], "f": {}}'
+
+    def test_a_nested_block_starts_at_its_level(self):
+        from pybreeze.utils.curl_import.request_codegen import python_literal
+
+        assert python_literal([1], level=2) == "[\n            1\n        ]"
+
+
 def test_a_character_outside_the_bmp_stays_one_character():
     import ast
 
