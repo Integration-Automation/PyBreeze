@@ -21,6 +21,10 @@ original = folder / "a.py"
 original.write_text("x = 1\\n", encoding="utf-8")
 window.go_to_new_tab(original)
 editor = window.tab_widget.currentWidget()
+# About the rename, not about changes made outside the editor: one auto-save
+# can raise JEditor's question about such a change by itself (progress.md #124),
+# and did in CI, failing these tests on a question they do not ask
+editor._file_watcher.blockSignals(True)
 
 RENAME_WHAT, NEW_NAME = {what!r}, {new_name!r}
 renamed = original if RENAME_WHAT == "file" else folder
