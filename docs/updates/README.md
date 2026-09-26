@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-97 | 2026-09-26 | The HAR script's test names, block numbers and single-request output are compared, not just looked for | #test #tools | [2026-09-e](2026-09-e.md) |
 | U-20260926-96 | 2026-09-26 | The Header Analyzer's checks are tested at their edges: lookups, comparisons, boundaries and the cookie's own name | #test #tools #security | [2026-09-e](2026-09-e.md) |
 | U-20260926-95 | 2026-09-26 | The JupyterLab tab upgrades a vulnerable jupyterlab or jupyter_server before its tokenless server starts | #fix #security #jupyter #done #docs | [2026-09-e](2026-09-e.md) |
 | U-20260926-94 | 2026-09-26 | A palette index is read once, as the colour: the last of the terminal colour run's survivors | #test #ssh | [2026-09-e](2026-09-e.md) |
@@ -636,4 +637,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
 | [2026-09-d.md](2026-09-d.md) | 2026-09 | 91 |
-| [2026-09-e.md](2026-09-e.md) | 2026-09 | 25 |
+| [2026-09-e.md](2026-09-e.md) | 2026-09 | 26 |

@@ -279,6 +279,15 @@ class TestUniqueTestNames:
         assert len(set(names)) == len(names)
         assert "test_get_a_2" in names
 
+    @pytest.mark.parametrize(("paths", "expected"), [
+        (("a", "a", "a/2"), ["test_get_a", "test_get_a_3", "test_get_a_2"]),
+        (("a", "a", "a", "a"), ["test_get_a", "test_get_a_2", "test_get_a_3", "test_get_a_4"]),
+    ])
+    def test_the_numbers_given(self, paths, expected):
+        requests = [e.request for e in parse_har(_har(*[_entry(url=f"https://x/{p}") for p in paths]))]
+
+        assert unique_test_names(requests) == expected
+
 
 class TestGenerateHarScript:
     def _requests(self, *urls: str):
@@ -287,10 +296,18 @@ class TestGenerateHarScript:
     def test_no_requests_yields_empty_text(self):
         assert generate_har_script("requests", []) == ""
 
-    def test_single_request_matches_the_curl_importer(self):
+    @pytest.mark.parametrize("target", ["pytest", "requests", "apitestka_python", "loaddensity_python"])
+    def test_single_request_matches_the_curl_importer(self, target):
         from pybreeze.utils.curl_import.script_templates import generate_template
         requests = self._requests("https://x/api/items")
-        assert generate_har_script("pytest", requests) == generate_template("pytest", requests[0])
+        assert generate_har_script(target, requests) == generate_template(target, requests[0])
+
+    @pytest.mark.parametrize("target", ["requests", "apitestka_python", "loaddensity_python"])
+    def test_the_blocks_are_numbered_from_one(self, target):
+        code = generate_har_script(target, self._requests("https://x/one", "https://x/two"))
+
+        assert "# 1. GET https://x/one" in code
+        assert "# 2. GET https://x/two" in code
 
     def test_requests_script_covers_every_request(self):
         code = generate_har_script("requests", self._requests("https://x/one", "https://x/two"))
