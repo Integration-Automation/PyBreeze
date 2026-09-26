@@ -125,9 +125,9 @@ class _TrimmedMatcher(difflib.SequenceMatcher):
         head, tail = self._head, self._tail
         left_size, right_size = self._sizes
         codes = [("equal", 0, head, 0, head)] if head else []
+        # difflib gives no block for an empty middle, never an empty equal one
         codes += [(tag, i1 + head, i2 + head, j1 + head, j2 + head)
-                  for tag, i1, i2, j1, j2 in super().get_opcodes()
-                  if (tag, i1, i2, j1, j2) != ("equal", 0, 0, 0, 0)]
+                  for tag, i1, i2, j1, j2 in super().get_opcodes()]
         if tail:
             codes.append(("equal", left_size - tail, left_size, right_size - tail, right_size))
         return codes or [("equal", 0, 0, 0, 0)]
