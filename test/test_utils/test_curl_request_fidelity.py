@@ -21,6 +21,38 @@ class TestHead:
     def test_an_explicit_method_wins(self):
         assert parse_curl("curl -I -X OPTIONS https://x").method == "OPTIONS"
 
+    def test_an_explicit_get_wins_too(self):
+        # It could not be told from curl's default GET, and became HEAD
+        assert parse_curl("curl -I -X GET https://x").method == "GET"
+
+
+class TestAnExplicitGetWithABody:
+    """curl sends -X GET -d ... as a GET with a body; an Elasticsearch search is often written so."""
+
+    @pytest.mark.parametrize("command", [
+        "curl -X GET -d 'q=1' https://x",
+        "curl --request GET --data-raw 'q=1' https://x",
+        "curl -XGET -d 'q=1' https://x",
+        "curl -X get -d 'q=1' https://x",
+    ])
+    def test_it_stays_a_get(self, command):
+        request = parse_curl(command)
+
+        assert (request.method, request.body) == ("GET", "q=1")
+
+    def test_the_script_sends_a_get_with_the_body(self):
+        code = to_requests_code(parse_curl("curl -X GET -d 'q=1' https://x"))
+
+        assert 'requests.request("GET", url, data=data)' in code
+
+    @pytest.mark.parametrize(("command", "method"), [
+        ("curl -d 'q=1' https://x", "POST"),     # a body alone is still a POST
+        ("curl -I -d 'q=1' https://x", "HEAD"),  # and -I still a HEAD
+        ("curl -X PUT -d 'q=1' https://x", "PUT"),
+    ])
+    def test_without_an_explicit_get_nothing_changes(self, command, method):
+        assert parse_curl(command).method == method
+
 
 class TestOauth2Bearer:
     def test_it_becomes_the_authorization_header(self):

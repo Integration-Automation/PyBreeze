@@ -72,6 +72,8 @@ class CurlRequest:
     :param password: basic-auth password, or ``None``
     :param send_data_as_params: ``True`` when ``-G`` moves the body to the query
     :param head_only: ``True`` when ``-I`` / ``--head`` asks for the headers only
+    :param method_given: ``True`` when ``-X`` / ``--request`` named the method, which
+        neither ``-I`` nor a body then changes (curl sends ``-X GET -d ...`` as a GET)
     :param bearer_token: the ``--oauth2-bearer`` token, or ``None``; sent as
         the ``Authorization`` header unless ``-H`` gives one
     :param form_fields: multipart form fragments from ``-F`` / ``--form``, in
@@ -98,6 +100,7 @@ class CurlRequest:
     password: str | None = None
     send_data_as_params: bool = False
     head_only: bool = False
+    method_given: bool = False
     bearer_token: str | None = None
     form_fields: list[str] = field(default_factory=list)
     form_strings: list[str] = field(default_factory=list)
@@ -417,6 +420,7 @@ def _apply_cookie(request: CurlRequest, value: str) -> None:
 def _apply_method(request: CurlRequest, value: str) -> None:
     try:
         request.method = http_method(value)
+        request.method_given = True
     except ValueError as error:
         raise CurlParseException(str(error)) from None
 
@@ -502,14 +506,17 @@ def _consume_tokens(tokens: list[str], request: CurlRequest) -> None:
 def _finalise_method(request: CurlRequest) -> None:
     """Settle what depends on the whole command.
 
-    The method (``-I``, or POST for a body), the ``--oauth2-bearer`` header
+    The method (``-I``, or POST for a body, unless ``-X`` named one), the ``--oauth2-bearer`` header
     unless ``-H`` set one, and the body moved to the query when ``-G`` was given.
     """
-    if request.head_only and request.method == _DEFAULT_METHOD:
+    if request.head_only and not request.method_given:
         request.method = "HEAD"
     if request.bearer_token is not None:
         set_default_header(request.headers, "Authorization", f"Bearer {request.bearer_token}")
-    if request.method == _DEFAULT_METHOD and request.has_body and not request.send_data_as_params:
+    # Only curl's default: a body sent with -X GET stays a GET (an Elasticsearch
+    # search is often written so), and -I with a body stays HEAD
+    if (not request.method_given and request.method == _DEFAULT_METHOD
+            and request.has_body and not request.send_data_as_params):
         request.method = _METHOD_WITH_BODY
     if request.send_data_as_params and request.data_file_refs:
         # The file's content is the query, and it is not known until the script runs

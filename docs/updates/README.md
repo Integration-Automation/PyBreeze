@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-108 | 2026-09-26 | An imported curl -X GET with a body stays a GET, and -I -X GET a GET, as curl sends them | #fix #tools | [2026-09-e](2026-09-e.md) |
 | U-20260926-107 | 2026-09-26 | The size in the open-file cap's refusal is tested as rounded | #test #tools | [2026-09-e](2026-09-e.md) |
 | U-20260926-106 | 2026-09-26 | Closing a run window while its run goes on asks whether to stop it | #fix #run #i18n #done #docs | [2026-09-e](2026-09-e.md) |
 | U-20260926-105 | 2026-09-26 | A stored prthinker choice the settings form does not list is kept, not replaced by the first one | #fix #prthinker | [2026-09-e](2026-09-e.md) |
@@ -647,4 +648,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
 | [2026-09-d.md](2026-09-d.md) | 2026-09 | 91 |
-| [2026-09-e.md](2026-09-e.md) | 2026-09 | 36 |
+| [2026-09-e.md](2026-09-e.md) | 2026-09 | 37 |
