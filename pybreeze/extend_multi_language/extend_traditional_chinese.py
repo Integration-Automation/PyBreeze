@@ -896,6 +896,7 @@ pybreeze_traditional_chinese_word_dict = {
     "run_window_no_interpreter": "[錯誤] 找不到 Python 直譯器：{error}",
     "run_window_package_could_not_start": "[錯誤] 無法啟動 {package}：{reason}",
     "run_window_exit_code": "執行結束，結束代碼 {code}",
+    "run_window_process_exited": "[行程已結束，結束代碼 {code}]",
     "run_window_output_still_held": "[這次執行啟動的某個行程仍握著輸出；它之後寫出的內容不會顯示]",
 }
 

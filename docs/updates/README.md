@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20260926-149 | 2026-09-26 | A plugin run's notices each start a line of their own, and its exit line follows the IDE language | #fix #executor #i18n | [2026-09-e](2026-09-e.md) |
 | U-20260926-148 | 2026-09-26 | The Python run's task manager is tested on its colours, notices, timer, progress, command line and venv lookup | #test #executor | [2026-09-e](2026-09-e.md) |
 | U-20260926-147 | 2026-09-26 | The Header Analyzer reports a cookie a browser drops outright | #feature #tools | [2026-09-e](2026-09-e.md) |
 | U-20260926-146 | 2026-09-26 | The Header Analyzer follows the OWASP HTTP Headers Cheat Sheet on frame-ancestors, X-XSS-Protection and dropped headers | #fix #tools | [2026-09-e](2026-09-e.md) |
@@ -688,4 +689,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
 | [2026-09-d.md](2026-09-d.md) | 2026-09 | 91 |
-| [2026-09-e.md](2026-09-e.md) | 2026-09 | 77 |
+| [2026-09-e.md](2026-09-e.md) | 2026-09 | 78 |

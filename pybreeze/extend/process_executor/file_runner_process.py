@@ -101,7 +101,7 @@ class FileRunnerProcess:
         compiler = run_config.get("compiler")
         if not isinstance(compiler, str) or not compiler:
             # A plugin's config is not checked by JEditor when it registers.
-            self.main_window.append_output(run_notice("no_compiler"), is_error=True)
+            self.main_window.append_output(run_notice("no_compiler"), is_error=True, own_line=True)
             return
         args = run_arguments(run_config)
 
@@ -128,7 +128,8 @@ class FileRunnerProcess:
             output_name += ".exe"
 
         compile_cmd = [compiler] + args + [file_path, output_flag, output_name]
-        self.main_window.append_output(run_notice("compile", command=' '.join(compile_cmd)), is_error=False)
+        self.main_window.append_output(
+            run_notice("compile", command=' '.join(compile_cmd)), is_error=False, own_line=True)
 
         def run_if_compiled(exit_code: int) -> None:
             if self._cancelled:
@@ -138,10 +139,11 @@ class FileRunnerProcess:
                 self._remove_build_dir(build_dir)
                 return
             if exit_code != 0:
-                self.main_window.append_output(run_notice("compile_failed", code=exit_code), is_error=True)
+                self.main_window.append_output(
+                    run_notice("compile_failed", code=exit_code), is_error=True, own_line=True)
                 self._remove_build_dir(build_dir)
                 return
-            self.main_window.append_output(run_notice("run", name=output_name), is_error=False)
+            self.main_window.append_output(run_notice("run", name=output_name), is_error=False, own_line=True)
             self._start_process([output_name], cleanup_dir=build_dir)
 
         self._start_process(
@@ -161,7 +163,7 @@ class FileRunnerProcess:
         :param time_limit: seconds after which the child is stopped
         """
         cmd_display = " ".join(command)
-        self.main_window.append_output(f"> {cmd_display}\n", is_error=False)
+        self.main_window.append_output(f"> {cmd_display}\n", is_error=False, own_line=True)
 
         try:
             # Run the user's plugin-configured command. shell=False is explicit;
@@ -179,7 +181,8 @@ class FileRunnerProcess:
                 **own_session_options(),
             )
         except FileNotFoundError:
-            self.main_window.append_output(run_notice("command_not_found", command=command[0]), is_error=True)
+            self.main_window.append_output(
+                run_notice("command_not_found", command=command[0]), is_error=True, own_line=True)
             self._remove_build_dir(cleanup_dir)
             return
         except OSError as error:
@@ -187,7 +190,8 @@ class FileRunnerProcess:
             # by antivirus: this raised out of the menu, or out of the timer
             # slot after a compile, and the window said nothing.
             self.main_window.append_output(
-                run_notice("could_not_start", command=command[0], reason=error.strerror or error), is_error=True)
+                run_notice("could_not_start", command=command[0], reason=error.strerror or error),
+                is_error=True, own_line=True)
             self._remove_build_dir(cleanup_dir)
             return
 
@@ -242,7 +246,7 @@ class FileRunnerProcess:
             elif self._deadline is not None and time.monotonic() > self._deadline:
                 self._deadline = None
                 self.main_window.append_output(
-                    run_notice("timed_out", seconds=COMPILE_TIME_LIMIT_SECONDS), is_error=True)
+                    run_notice("timed_out", seconds=COMPILE_TIME_LIMIT_SECONDS), is_error=True, own_line=True)
                 stop_tree(self.process)
 
     def _finish(self) -> None:
@@ -275,7 +279,7 @@ class FileRunnerProcess:
                     self.main_window.run_ended()
                 return
             self.main_window.append_output(
-                f"\n[Process exited with code {exit_code}]\n",
+                "\n" + run_notice("process_exited", code=exit_code),
                 is_error=exit_code != 0,
             )
 
