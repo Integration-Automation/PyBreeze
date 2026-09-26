@@ -51,6 +51,10 @@ _DEPRECATED_HEADERS = frozenset({
 })
 # X-XSS-Protection's value that turns the auditor off, which OWASP recommends
 _XSS_PROTECTION_OFF = "0"
+# Cookie name prefixes a browser holds to rules, lower-case (matched in any case)
+_SECURE_PREFIX = "__secure-"
+_HOST_PREFIX = "__host-"
+_SECURE_ATTRIBUTE = "secure"
 
 # An HSTS policy shorter than 180 days is too short to survive a browser restart
 # cycle and is below what the preload list accepts.
@@ -229,18 +233,55 @@ def _check_cors_origin(header: HeaderField) -> list[HeaderFinding]:
     return [HeaderFinding("cors_wildcard_origin", LEVEL_INFO, header.name)]
 
 
-def _check_set_cookie(header: HeaderField) -> list[HeaderFinding]:
-    """Check one ``Set-Cookie`` for the attributes that keep it from leaking."""
-    segments = header.value.split(";")
-    attributes = [segment.strip().lower() for segment in segments[1:]]
-    cookie_name = segments[0].split("=", 1)[0].strip() or header.name
+def _cookie_attributes(segments: list[str]) -> dict[str, str]:
+    """A ``Set-Cookie``'s attributes as lower-case name -> value (``""`` for a flag such as Secure)."""
+    attributes: dict[str, str] = {}
+    for segment in segments:
+        name, _, value = segment.partition("=")
+        attributes[name.strip().lower()] = value.strip()
+    return attributes
+
+
+def _prefix_rules_broken(cookie_name: str, attributes: dict[str, str]) -> bool:
+    """Whether *cookie_name*'s prefix asks for what *attributes* do not give.
+
+    RFC 6265bis (draft 22, 5.7), matching a prefix in any case: ``__Secure-``
+    needs Secure; ``__Host-`` needs Secure, ``Path=/`` and no Domain. A browser
+    ignores a cookie that breaks them.
+    """
+    lowered = cookie_name.lower()
+    secure = _SECURE_ATTRIBUTE in attributes
+    if lowered.startswith(_SECURE_PREFIX):
+        return not secure
+    if lowered.startswith(_HOST_PREFIX):
+        return not secure or attributes.get("path") != "/" or bool(attributes.get("domain"))
+    return False
+
+
+def _dropped_cookie_findings(header: HeaderField, cookie_name: str,
+                             attributes: dict[str, str]) -> list[HeaderFinding]:
+    """The reasons a browser ignores this cookie entirely: its prefix's rules, or SameSite=None without Secure."""
     findings: list[HeaderFinding] = []
-    if "secure" not in attributes:
+    if _prefix_rules_broken(cookie_name, attributes):
+        findings.append(HeaderFinding("cookie_prefix_rejected", LEVEL_WARNING, header.name, cookie_name))
+    if attributes.get("samesite", "").lower() == "none" and _SECURE_ATTRIBUTE not in attributes:
+        findings.append(
+            HeaderFinding("cookie_samesite_none_not_secure", LEVEL_WARNING, header.name, cookie_name))
+    return findings
+
+
+def _check_set_cookie(header: HeaderField) -> list[HeaderFinding]:
+    """Check one ``Set-Cookie`` for what makes a browser drop it, and for the attributes that keep it from leaking."""
+    segments = header.value.split(";")
+    attributes = _cookie_attributes(segments[1:])
+    cookie_name = segments[0].split("=", 1)[0].strip() or header.name
+    findings = _dropped_cookie_findings(header, cookie_name, attributes)
+    if _SECURE_ATTRIBUTE not in attributes:
         findings.append(HeaderFinding("cookie_not_secure", LEVEL_WARNING, header.name, cookie_name))
     if "httponly" not in attributes:
         findings.append(
             HeaderFinding("cookie_not_httponly", LEVEL_WARNING, header.name, cookie_name))
-    if not any(attribute.startswith("samesite") for attribute in attributes):
+    if "samesite" not in attributes:
         findings.append(HeaderFinding("cookie_no_samesite", LEVEL_INFO, header.name, cookie_name))
     return findings
 

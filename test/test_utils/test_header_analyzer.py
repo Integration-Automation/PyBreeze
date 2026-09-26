@@ -337,3 +337,38 @@ class TestWhatOwaspRecommends:
     @pytest.mark.parametrize("value", ["0", " 0 "])
     def test_x_xss_protection_turned_off_is_what_owasp_recommends(self, value):
         assert "deprecated_header" not in _codes(f"X-XSS-Protection:{value}")
+
+
+class TestCookiesBrowsersDrop:
+    """What RFC 6265bis (draft 22, section 5.7) makes a browser ignore entirely."""
+
+    @pytest.mark.parametrize("cookie", [
+        "__Secure-id=1; Path=/; HttpOnly; SameSite=Lax",
+        "__Host-id=1; Path=/; HttpOnly; SameSite=Lax",
+        "__Host-id=1; Secure; HttpOnly; SameSite=Lax",
+        "__Host-id=1; Secure; Path=/app; HttpOnly; SameSite=Lax",
+        "__Host-id=1; Secure; Path=/; Domain=example.test; HttpOnly; SameSite=Lax",
+        "__host-id=1; Path=/; HttpOnly; SameSite=Lax",
+    ])
+    def test_a_cookie_that_breaks_its_prefix_is_dropped(self, cookie):
+        finding = _finding(f"Set-Cookie: {cookie}", "cookie_prefix_rejected")
+
+        assert (finding.level, finding.detail) == (LEVEL_WARNING, cookie.split("=", 1)[0])
+
+    @pytest.mark.parametrize("cookie", [
+        "__Secure-id=1; Secure; HttpOnly; SameSite=Lax",
+        "__Host-id=1; Secure; Path=/; HttpOnly; SameSite=Lax",
+        "__Host-id=1; secure; path = /; HttpOnly; SameSite=Lax",
+        "id=1; Domain=example.test; Path=/app; HttpOnly; SameSite=Lax",
+    ])
+    def test_a_cookie_that_keeps_its_prefix_rules_is_not(self, cookie):
+        assert "cookie_prefix_rejected" not in _codes(f"Set-Cookie: {cookie}")
+
+    @pytest.mark.parametrize("attributes", ["SameSite=None", "SameSite = none", "samesite=None"])
+    def test_same_site_none_without_secure_is_dropped(self, attributes):
+        finding = _finding(f"Set-Cookie: id=1; HttpOnly; {attributes}", "cookie_samesite_none_not_secure")
+
+        assert (finding.level, finding.detail) == (LEVEL_WARNING, "id")
+
+    def test_same_site_none_with_secure_is_kept(self):
+        assert "cookie_samesite_none_not_secure" not in _codes("Set-Cookie: id=1; Secure; HttpOnly; SameSite=None")

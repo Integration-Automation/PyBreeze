@@ -677,6 +677,11 @@ pybreeze_english_word_dict = {
         "{header}: cookie '{detail}' has no HttpOnly attribute, so scripts can read it.",
     "header_finding_cookie_no_samesite":
         "{header}: cookie '{detail}' has no SameSite attribute; browsers default it to Lax.",
+    "header_finding_cookie_prefix_rejected":
+        "{header}: cookie '{detail}' breaks its prefix's rules (__Secure- needs Secure; __Host- needs "
+        "Secure, Path=/ and no Domain), so browsers drop it.",
+    "header_finding_cookie_samesite_none_not_secure":
+        "{header}: cookie '{detail}' is SameSite=None without Secure, so browsers drop it.",
     "header_finding_content_type_no_charset":
         "{header}: '{detail}' names no charset, so the client has to guess the encoding.",
     "header_finding_server_banner": "{header}: '{detail}' reveals the software in use.",

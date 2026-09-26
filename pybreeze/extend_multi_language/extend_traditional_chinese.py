@@ -637,6 +637,11 @@ pybreeze_traditional_chinese_word_dict = {
         "{header}：cookie '{detail}' 沒有 HttpOnly 屬性，指令碼可以讀取。",
     "header_finding_cookie_no_samesite":
         "{header}：cookie '{detail}' 沒有 SameSite 屬性，瀏覽器會預設為 Lax。",
+    "header_finding_cookie_prefix_rejected":
+        "{header}：cookie '{detail}' 不符合名稱前綴的規則（__Secure- 需要 Secure；__Host- 需要 "
+        "Secure、Path=/ 而且不能有 Domain），瀏覽器會直接丟棄。",
+    "header_finding_cookie_samesite_none_not_secure":
+        "{header}：cookie '{detail}' 設了 SameSite=None 卻沒有 Secure，瀏覽器會直接丟棄。",
     "header_finding_content_type_no_charset":
         "{header}：'{detail}' 沒有指定 charset，用戶端只能自行猜測編碼。",
     "header_finding_server_banner": "{header}：'{detail}' 洩漏了所使用的軟體。",

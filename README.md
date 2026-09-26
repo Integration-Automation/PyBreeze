@@ -113,7 +113,7 @@ The status code is looked up in the HTTP reference, headers are parsed, a JSON b
 
 ![Header Analyzer](images/tool_header_analyzer.png)
 
-Reports names sent more than once, `Set-Cookie` entries missing `Secure` / `HttpOnly` / `SameSite`, wildcard CORS (and the wildcard-plus-credentials combination browsers reject outright), an HSTS `max-age` too short to survive a restart, CSP `unsafe-inline` / `unsafe-eval`, product banners, headers current browsers ignore (`X-XSS-Protection` other than `0`, `Expect-CT`, `Public-Key-Pins`, `P3P`, the old prefixed CSP names), and — for responses — the security headers that are absent, counting a CSP `frame-ancestors` directive as `X-Frame-Options`, as the OWASP HTTP Headers Cheat Sheet does. Headers carrying credentials are reported **by name only**; their values never enter the report.
+Reports names sent more than once, `Set-Cookie` entries missing `Secure` / `HttpOnly` / `SameSite` and those a browser drops outright (a `__Secure-` / `__Host-` name whose rules are broken, `SameSite=None` without `Secure`), wildcard CORS (and the wildcard-plus-credentials combination browsers reject outright), an HSTS `max-age` too short to survive a restart, CSP `unsafe-inline` / `unsafe-eval`, product banners, headers current browsers ignore (`X-XSS-Protection` other than `0`, `Expect-CT`, `Public-Key-Pins`, `P3P`, the old prefixed CSP names), and — for responses — the security headers that are absent, counting a CSP `frame-ancestors` directive as `X-Frame-Options`, as the OWASP HTTP Headers Cheat Sheet does. Headers carrying credentials are reported **by name only**; their values never enter the report.
 
 ### Text Diff
 
@@ -215,7 +215,7 @@ Loaded plugins appear under their own **Plugins** menu with an About entry and o
 - **English** (default)
 - **Traditional Chinese** (繁體中文)
 
-Menus, dialogs, the reasons a tool refuses its input and the run window's own notices (`[Error] …`, `[Run] …`) all follow the chosen language. Both dictionaries carry the same 764 keys, and a test enforces that parity so a new string can never land in one language only. The Language menu also lists JEditor's Japanese and Simplified Chinese: picked, JEditor's own menus change and PyBreeze's strings stay in English. Further languages can be added via translation plugins.
+Menus, dialogs, the reasons a tool refuses its input and the run window's own notices (`[Error] …`, `[Run] …`) all follow the chosen language. Both dictionaries carry the same 766 keys, and a test enforces that parity so a new string can never land in one language only. The Language menu also lists JEditor's Japanese and Simplified Chinese: picked, JEditor's own menus change and PyBreeze's strings stay in English. Further languages can be added via translation plugins.
 
 ---
 

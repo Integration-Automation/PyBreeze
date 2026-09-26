@@ -113,7 +113,7 @@ PyBreeze 開箱即用，涵蓋自動化測試的完整範疇：
 
 ![標頭分析器](../images/tool_header_analyzer.png)
 
-會回報：送出不只一次的名稱、缺少 `Secure`／`HttpOnly`／`SameSite` 的 `Set-Cookie` 項目、萬用字元 CORS（以及瀏覽器會直接拒絕的「萬用字元加憑證」組合）、短到撐不過重新啟動的 HSTS `max-age`、CSP 的 `unsafe-inline`／`unsafe-eval`、產品版本標語、現行瀏覽器已忽略的標頭（值不是 `0` 的 `X-XSS-Protection`、`Expect-CT`、`Public-Key-Pins`、`P3P`、舊的 CSP 前綴名稱），以及——針對回應——缺少的安全標頭；CSP 有 `frame-ancestors` 指令時視同有 `X-Frame-Options`，和 OWASP HTTP Headers Cheat Sheet 的建議一致。攜帶憑證的標頭**只回報名稱**；它們的值絕不會進入報告。
+會回報：送出不只一次的名稱、缺少 `Secure`／`HttpOnly`／`SameSite` 的 `Set-Cookie` 項目，以及瀏覽器會直接丟棄的 cookie（不符合 `__Secure-`／`__Host-` 名稱規則的、`SameSite=None` 卻沒有 `Secure` 的）、萬用字元 CORS（以及瀏覽器會直接拒絕的「萬用字元加憑證」組合）、短到撐不過重新啟動的 HSTS `max-age`、CSP 的 `unsafe-inline`／`unsafe-eval`、產品版本標語、現行瀏覽器已忽略的標頭（值不是 `0` 的 `X-XSS-Protection`、`Expect-CT`、`Public-Key-Pins`、`P3P`、舊的 CSP 前綴名稱），以及——針對回應——缺少的安全標頭；CSP 有 `frame-ancestors` 指令時視同有 `X-Frame-Options`，和 OWASP HTTP Headers Cheat Sheet 的建議一致。攜帶憑證的標頭**只回報名稱**；它們的值絕不會進入報告。
 
 ### 文字比對
 
@@ -215,7 +215,7 @@ PyBreeze 沿用 JEditor 的外掛架構，會自動從工作目錄中的 `jedito
 - **English**（英文，預設）
 - **繁體中文**（Traditional Chinese）
 
-選單、對話框、工具拒絕輸入時說明的原因，以及執行視窗自己的訊息（`[錯誤] …`、`[執行] …`）都會跟著所選的語言顯示。兩份字典都有相同的 764 個鍵，並有測試強制兩者一致，因此新字串不可能只出現在其中一種語言。語言選單另外列出 JEditor 的日文與簡體中文：選了之後 JEditor 自己的選單會改變，PyBreeze 的字串則維持英文。其他語言可透過翻譯外掛加入。
+選單、對話框、工具拒絕輸入時說明的原因，以及執行視窗自己的訊息（`[錯誤] …`、`[執行] …`）都會跟著所選的語言顯示。兩份字典都有相同的 766 個鍵，並有測試強制兩者一致，因此新字串不可能只出現在其中一種語言。語言選單另外列出 JEditor 的日文與簡體中文：選了之後 JEditor 自己的選單會改變，PyBreeze 的字串則維持英文。其他語言可透過翻譯外掛加入。
 
 ---
 
