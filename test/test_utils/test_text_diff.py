@@ -112,6 +112,24 @@ class TestTheDiffIsAPatch:
 
         applies()
 
+    def test_no_two_blocks_next_to_each_other_are_of_one_kind(self):
+        # As difflib's own: the head and tail set aside stand next to a change,
+        # never next to another equal block
+        from pybreeze.utils.diff_tools.text_diff import _TrimmedMatcher
+
+        lines = st.lists(st.sampled_from(["a", "b", "}"]), max_size=15)
+
+        @settings(max_examples=400, deadline=None)
+        @given(lines, lines)
+        def alternate(left, right):
+            codes = _TrimmedMatcher(left, right).get_opcodes()
+
+            assert all(first[0] != second[0] for first, second in zip(codes, codes[1:]))
+            assert codes[0][1:4:2] == (0, 0)
+            assert (codes[-1][2], codes[-1][4]) == (len(left), len(right))
+
+        alternate()
+
     def test_three_lines_of_context_as_diff_u_keeps(self):
         left = "".join(f"line {number}\n" for number in range(1, 11))
         right = left.replace("line 5\n", "changed\n")
