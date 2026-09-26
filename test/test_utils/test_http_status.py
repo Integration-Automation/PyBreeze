@@ -23,6 +23,23 @@ class TestAllStatuses:
         assert by_code[404].category == "Client Error"
         assert by_code[500].category == "Server Error"
         assert by_code[301].category == "Redirection"
+        assert by_code[100].category == "Informational"
+
+
+class TestStatusOf:
+    def test_a_registered_code_is_the_registered_status(self):
+        from pybreeze.utils.http_reference.status_codes import status_of
+
+        assert status_of(404, "Gone Missing") == lookup(404)
+
+    def test_a_code_nobody_registered_is_built_from_its_class_and_phrase(self):
+        # A server may send one (599): its class still says what it means
+        from pybreeze.utils.http_reference.status_codes import StatusInfo, status_of
+
+        assert status_of(599, "Network Timeout") == StatusInfo(
+            code=599, phrase="Network Timeout", description="", category="Server Error")
+        assert status_of(199).category == "Informational"
+        assert status_of(699).category == "Unknown"
 
 
 class TestLookup:
