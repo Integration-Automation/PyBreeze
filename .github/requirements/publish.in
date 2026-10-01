@@ -1,0 +1,8 @@
+# The tools the publish jobs run next to the PyPI token: publish-dev in dev.yml
+# and publish in stable.yml, both on Python 3.12 (their version scripts need the
+# standard library only). publish.txt is generated from this file:
+#   uv pip compile .github/requirements/publish.in --generate-hashes --python-version 3.12 --python-platform x86_64-manylinux_2_28 --only-binary :all: -o .github/requirements/publish.txt
+# Run it with UV_EXCLUDE_NEWER set to a date a week back, so that no release
+# younger than Dependabot's cooldown (.github/dependabot.yml) is locked.
+build
+twine

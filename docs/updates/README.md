@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20261001-03 | 2026-10-01 | Publish jobs install hash-locked build tools | #done #ci #X-13 | [2026-10](2026-10.md) |
 | U-20261001-02 | 2026-10-01 | READMEs and architecture_explore.md describe the CI-published dev package | #docs #X-13 | [2026-10](2026-10.md) |
 | U-20261001-01 | 2026-10-01 | CI publishes pybreeze_dev from the dev branch | #release #ci #X-13 | [2026-10](2026-10.md) |
 | U-20260926-154 | 2026-09-26 | The JWT Decoder names an encrypted token (JWE) as one | #fix #tools #i18n | [2026-09-e](2026-09-e.md) |
@@ -697,4 +698,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
 | [2026-09-d.md](2026-09-d.md) | 2026-09 | 91 |
 | [2026-09-e.md](2026-09-e.md) | 2026-09 | 83 |
-| [2026-10.md](2026-10.md) | 2026-10 | 2 |
+| [2026-10.md](2026-10.md) | 2026-10 | 3 |

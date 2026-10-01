@@ -41,6 +41,7 @@ their output reaches the UI through Queue + QTimer.
 | `test/test_utils/` | Unit tests (pure logic and headless widgets). `test/unit_test/start_automation/` holds the launch tests |
 | `pyproject.toml`, `dev.toml` | Stable packaging (CI bumps and publishes it) and the dev-channel packaging: the same package under the name `pybreeze_dev` (`test_requirement_pins.py` and `test_dev_toml_parity.py` keep the two in step) |
 | `.github/workflows/`, `scripts/` | `dev.yml`, `stable.yml` (unit tests on a Windows matrix, then SonarCloud and the upload to PyPI); `scripts/dev_release.py` numbers and gates the dev-channel release |
+| `.github/requirements/` | `publish.in` and the lock made from it, `publish.txt`: `build`, `twine` and what they need, each a version and a hash. The only thing the two publish jobs install (`test_workflow_actions.py`) |
 | `docs/`, `linux_package_source/`, `architecture_diagram/` | Sphinx docs, Debian package source, architecture image |
 
 The layers are presentation (`pybreeze_ui/`), then execution (`extend/`), then foundation (`utils/`,
@@ -74,6 +75,7 @@ The layers are presentation (`pybreeze_ui/`), then execution (`extend/`), then f
   still the tip of `dev` and the wheel differs from the newest published one;
   `scripts/dev_release.py` takes the version from PyPI (the newest release plus one patch), so
   nothing is committed back and the version in `dev.toml` is only a floor.
+  Both jobs build and upload with the tools locked in `.github/requirements/publish.txt`.
 
 ## 4. Main flows
 

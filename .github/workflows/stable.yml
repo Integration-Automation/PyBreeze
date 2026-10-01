@@ -141,8 +141,8 @@ jobs:
         with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
             fh.write(f"new_version={new_version}\n")
         PY
-    - name: Install build tools
-      run: python -m pip install --upgrade pip build twine
+    - name: Install build tools  # hash-locked, see .github/requirements/publish.in
+      run: "python -m pip install --require-hashes --only-binary :all: -r .github/requirements/publish.txt"
     - name: Build package
       run: python -m build
     - name: Publish to PyPI

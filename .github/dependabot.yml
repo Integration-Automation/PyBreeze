@@ -6,7 +6,12 @@
 version: 2
 updates:
   - package-ecosystem: "pip" # See documentation for possible values
-    directory: "/" # Location of package manifests
+    # "/" reaches the manifests in the root and one folder down. The lock the
+    # publish jobs install from (publish.in, publish.txt) is two folders down,
+    # so it is named.
+    directories:
+      - "/"
+      - "/.github/requirements"
     schedule:
       interval: "daily"
     # Development work, dependency bumps included, goes to dev; main takes
