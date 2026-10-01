@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20261001-06 | 2026-10-01 | architecture_explore.md §18 describes the locked build backend | #docs #X-13 | [2026-10](2026-10.md) |
 | U-20261001-05 | 2026-10-01 | Publish jobs build with the locked setuptools, not a downloaded one | #done #ci #X-13 | [2026-10](2026-10.md) |
 | U-20261001-04 | 2026-10-01 | architecture_explore.md §18 describes the hash-locked publish tooling | #docs #X-13 | [2026-10](2026-10.md) |
 | U-20261001-03 | 2026-10-01 | Publish jobs install hash-locked build tools | #done #ci #X-13 | [2026-10](2026-10.md) |
@@ -700,4 +701,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
 | [2026-09-d.md](2026-09-d.md) | 2026-09 | 91 |
 | [2026-09-e.md](2026-09-e.md) | 2026-09 | 83 |
-| [2026-10.md](2026-10.md) | 2026-10 | 5 |
+| [2026-10.md](2026-10.md) | 2026-10 | 6 |
