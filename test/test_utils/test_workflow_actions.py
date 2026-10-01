@@ -11,6 +11,11 @@ PyPI token: an unpinned ``pip install build twine`` runs whatever PyPI serves
 that minute next to the token, so those jobs install from
 ``.github/requirements/publish.txt``, where every package is a version and a
 hash.
+
+The build backend is one of those packages. ``python -m build`` alone builds
+in an isolated environment and downloads the newest ``setuptools`` into it as
+the job runs, so the jobs pass ``--no-isolation`` and the build imports the
+``setuptools`` the lock installed.
 """
 from __future__ import annotations
 
@@ -18,6 +23,8 @@ import re
 from pathlib import Path
 
 import pytest
+from packaging.requirements import Requirement  # pytest needs packaging, so it is there
+from packaging.utils import canonicalize_name
 
 _ROOT = Path(__file__).resolve().parents[2]
 _WORKFLOWS = sorted((_ROOT / ".github" / "workflows").glob("*.yml"))
@@ -29,7 +36,9 @@ _PUBLISH_JOBS = ("dev.yml:publish-dev", "stable.yml:publish")
 _LOCKED_INSTALL = "python -m pip install --require-hashes --only-binary :all: -r .github/requirements/publish.txt"
 _JOB = re.compile(r"^  ([\w-]+):[ \t]*$", re.MULTILINE)
 _INSTALL = re.compile(r"\bpip[x3]?\b.*\binstall\b")
-_LOCKED_PACKAGE = re.compile(r"^([a-z0-9][a-z0-9._-]*)==\S+ \\$")
+_LOCKED_PACKAGE = re.compile(r"^([a-z0-9][a-z0-9._-]*)==(\S+) \\$")
+_METADATA = ("pyproject.toml", "dev.toml")  # what a publish job can build from
+_BUILD_REQUIRES = re.compile(r"^\[build-system\]\n(?:[^\[\n].*\n|\n)*?requires\s*=\s*\[([^\]]*)\]", re.MULTILINE)
 
 
 def _uses(path: Path) -> list[tuple[int, str, str]]:
@@ -75,6 +84,23 @@ def _requirement_lines(name: str) -> list[str]:
     """The lines of a file in ``.github/requirements`` that are neither blank nor a comment."""
     return [line for line in (_REQUIREMENTS / name).read_text(encoding="utf-8").splitlines()
             if line.strip() and not line.lstrip().startswith("#")]
+
+
+def _locked_versions() -> dict[str, str]:
+    """Each package of the lock and the version it is pinned to."""
+    return {match.group(1): match.group(2)
+            for match in map(_LOCKED_PACKAGE.match, _requirement_lines("publish.txt")) if match}
+
+
+def _build_requires(metadata: str) -> list[Requirement]:
+    """What ``[build-system]`` requires in a metadata file. Read as text: Python 3.10 has no ``tomllib``."""
+    text = (_ROOT / metadata).read_text(encoding="utf-8")
+    return [Requirement(item) for item in re.findall(r'"([^"]+)"', _BUILD_REQUIRES.search(text).group(1))]
+
+
+def _backend() -> set[str]:
+    """The packages a build needs, by the name the lock gives them."""
+    return {canonicalize_name(requirement.name) for metadata in _METADATA for requirement in _build_requires(metadata)}
 
 
 def test_there_are_workflows():
@@ -166,12 +192,37 @@ def test_the_lock_names_every_package_by_version_and_hash():
 
 def test_the_lock_is_made_from_the_tools_the_publish_jobs_run():
     # A tool a job starts running has to be added to publish.in, and a tool no
-    # job runs any more has to leave it.
+    # job runs any more has to leave it. The build backend is no module a job
+    # names: `python -m build --no-isolation` imports it from the job's
+    # environment, so it is listed beside the tools.
     run = {module for job in _jobs_given_the_pypi_token().values()
            for module in re.findall(r"python -m ([\w.]+)", job)} - {"pip"}
-    locked = {match.group(1) for match in map(_LOCKED_PACKAGE.match, _requirement_lines("publish.txt")) if match}
-    assert set(_requirement_lines("publish.in")) == run
-    assert run <= locked
+    assert _backend()
+    assert set(_requirement_lines("publish.in")) == run | _backend()
+    assert run | _backend() <= set(_locked_versions())
+
+
+@pytest.mark.parametrize("job", _PUBLISH_JOBS)
+def test_a_publish_job_builds_with_the_locked_backend(job):
+    # `python -m build` alone makes an isolated environment and downloads the
+    # newest setuptools into it: outside the lock, next to the PyPI token.
+    builds = [line.split(" #")[0].split() for line in _jobs_given_the_pypi_token()[job].splitlines()
+              if "python -m build" in line and not line.lstrip().startswith("#")]
+    assert builds
+    assert [command for command in builds if "--no-isolation" not in command] == []
+
+
+@pytest.mark.parametrize("metadata", _METADATA)
+def test_the_locked_backend_is_one_the_metadata_accepts(metadata):
+    # --no-isolation checks [build-system] requires against what is installed
+    # and installs nothing. Dependabot raises the floor in pyproject.toml; with
+    # the lock left as it was the build would fail in the publish job, the
+    # stable one after the merge into main. This says so on dev.
+    locked = _locked_versions()
+    required = {canonicalize_name(requirement.name): requirement for requirement in _build_requires(metadata)}
+    assert required
+    assert [str(requirement) for name, requirement in required.items()
+            if name not in locked or not requirement.specifier.contains(locked[name])] == []
 
 
 def test_dependabot_reads_the_lock_of_the_publish_jobs():

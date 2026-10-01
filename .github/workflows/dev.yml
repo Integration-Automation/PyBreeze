@@ -130,8 +130,10 @@ jobs:
       run: "python -m pip install --require-hashes --only-binary :all: -r .github/requirements/publish.txt"
     - name: Write pyproject.toml from dev.toml with the next version
       run: python scripts/dev_release.py prepare
+    # --no-isolation: the backend is the setuptools locked in publish.txt. An
+    # isolated build would download the newest one from PyPI as the job runs.
     - name: Build package
-      run: python -m build
+      run: python -m build --no-isolation
     - name: Verify distribution metadata
       run: python -m twine check dist/*
     - name: Compare with the newest published wheel

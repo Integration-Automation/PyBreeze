@@ -6,3 +6,9 @@
 # younger than Dependabot's cooldown (.github/dependabot.yml) is locked.
 build
 twine
+# The build backend: what [build-system] requires in pyproject.toml and dev.toml.
+# The jobs run `python -m build --no-isolation`, so the build imports this locked
+# setuptools from the job's environment and downloads none. --no-isolation checks
+# the requirement and installs nothing: the locked version has to satisfy the
+# floor written in those two files, so raise the floor and the lock together.
+setuptools
