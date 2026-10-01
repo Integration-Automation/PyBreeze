@@ -99,3 +99,51 @@ jobs:
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         SONAR_HOST_URL: https://sonarcloud.io
+
+  publish-dev:
+    # The dev channel. A push to dev that passes the tests is built from dev.toml
+    # and uploaded when it is still the tip of dev and ships something the newest
+    # pybreeze_dev does not. scripts/dev_release.py picks the version from PyPI,
+    # so nothing is committed back. The job waits for the tests alone: sonarcloud
+    # is skipped on a push, and a skipped dependency would skip this job too.
+    name: Publish pybreeze_dev to PyPI
+    needs: unit-tests
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: publish-dev
+      cancel-in-progress: false
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      with:
+        persist-credentials: false
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+      with:
+        python-version: "3.12"
+    - name: Install build tools
+      run: python -m pip install --upgrade pip build twine
+    - name: Write pyproject.toml from dev.toml with the next version
+      run: python scripts/dev_release.py prepare
+    - name: Build package
+      run: python -m build
+    - name: Verify distribution metadata
+      run: python -m twine check dist/*
+    - name: Compare with the newest published wheel
+      id: compare
+      run: python scripts/dev_release.py changed dist
+    # A run that finishes after a newer push would otherwise publish older code
+    # as the newest release.
+    - name: Check that this commit is still the tip of dev
+      id: tip
+      run: |
+        tip="$(git ls-remote origin refs/heads/dev | cut -f1)"
+        if [ "$tip" = "$GITHUB_SHA" ]; then current=true; else current=false; fi
+        echo "current=$current" >> "$GITHUB_OUTPUT"
+    - name: Publish to PyPI
+      if: steps.compare.outputs.changed == 'true' && steps.tip.outputs.current == 'true'
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+      run: python -m twine upload --non-interactive dist/*

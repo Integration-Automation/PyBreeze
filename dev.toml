@@ -1,5 +1,6 @@
-# Rename to dev version
-# This is dev version
+# The dev channel, pybreeze_dev. The publish-dev job of .github/workflows/dev.yml builds it by writing
+# this file to pyproject.toml (scripts/dev_release.py). The version below is a floor: CI publishes one
+# patch above the newest release on PyPI and commits nothing back.
 [build-system]
 requires = ["setuptools>=82.0.1"]
 build-backend = "setuptools.build_meta"

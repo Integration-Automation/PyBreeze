@@ -6,8 +6,8 @@
 ## 1. Purpose
 
 PyBreeze is an automation-first Python IDE built on JEditor. CI publishes it as `pybreeze`
-(`pyproject.toml`) from `main`; `dev.toml` describes a `pybreeze_dev` package that nothing
-publishes any more (workspace X-13). It does not have its own editor.
+(`pyproject.toml`) from `main` and as `pybreeze_dev` (`dev.toml`) from `dev`. It does not have its
+own editor.
 Instead it subclasses JEditor's main window and adds menus, tool tabs and docks around it:
 
 - menus that drive the automation packages (AutoControl, WebRunner, APITestka, LoadDensity,
@@ -39,8 +39,8 @@ their output reaches the UI through Queue + QTimer.
 | `pybreeze/extend_multi_language/` | PyBreeze's English and Traditional Chinese strings, merged into JEditor's dictionaries |
 | `pybreeze/utils/` | Pure logic, no Qt or JEditor (`test_utils_has_no_qt.py` guards it): request parsing and codegen, HTTP tools, `network/` SSRF validation, pinned connections and capped reads, exceptions, logging, `app_dirs.py`, `subprocess_util.py`, `terminal_text.py` (terminal escapes stripped for the SSH terminal and the run window), `terminal_style.py` (SGR colours read for the SSH terminal) |
 | `test/test_utils/` | Unit tests (pure logic and headless widgets). `test/unit_test/start_automation/` holds the launch tests |
-| `pyproject.toml`, `dev.toml` | Stable packaging (CI bumps and publishes it) and the unpublished dev packaging (keep its dependencies identical) |
-| `.github/workflows/` | `dev.yml`, `stable.yml` (unit tests on a Windows matrix, then SonarCloud) |
+| `pyproject.toml`, `dev.toml` | Stable packaging (CI bumps and publishes it) and the dev-channel packaging: the same package under the name `pybreeze_dev` (`test_requirement_pins.py` and `test_dev_toml_parity.py` keep the two in step) |
+| `.github/workflows/`, `scripts/` | `dev.yml`, `stable.yml` (unit tests on a Windows matrix, then SonarCloud and the upload to PyPI); `scripts/dev_release.py` numbers and gates the dev-channel release |
 | `docs/`, `linux_package_source/`, `architecture_diagram/` | Sphinx docs, Debian package source, architecture image |
 
 The layers are presentation (`pybreeze_ui/`), then execution (`extend/`), then foundation (`utils/`,
@@ -67,6 +67,13 @@ The layers are presentation (`pybreeze_ui/`), then execution (`extend/`), then f
   prthinker settings, edited prompts, review history, and `logs/PyBreeze.log`, which
   `$PYBREEZE_LOG_FILE` can move). The editor settings inherited from JEditor
   stay in `.jeditor/` under the working directory.
+- **PyPI packages**: `pybreeze` (stable) and `pybreeze_dev` (dev channel), the same import package
+  `pybreeze`. Stable: a push to `main` runs the `publish` job of `stable.yml`, which bumps
+  `pyproject.toml`, uploads, commits the bump and tags it. Dev: the `publish-dev` job of `dev.yml`
+  runs after `unit-tests` on a push to `dev`, builds from `dev.toml` and uploads when the commit is
+  still the tip of `dev` and the wheel differs from the newest published one;
+  `scripts/dev_release.py` takes the version from PyPI (the newest release plus one patch), so
+  nothing is committed back and the version in `dev.toml` is only a floor.
 
 ## 4. Main flows
 
