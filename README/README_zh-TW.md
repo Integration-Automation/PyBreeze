@@ -299,6 +299,12 @@ flowchart TB
 pip install pybreeze
 ```
 
+開發通道跟著 `dev` 分支走。每次推送到 `dev` 通過測試、而且套件內容有變動時，CI 就會發佈新的 `pybreeze_dev`：
+
+```bash
+pip install pybreeze_dev
+```
+
 ### 從原始碼安裝
 
 ```bash
@@ -396,6 +402,7 @@ PyBreeze/
 ├── exe/                               # 獨立啟動器與建置設定
 ├── docs/                              # Sphinx 文件原始碼；updates/ 是更新紀錄
 ├── test/                              # 單元測試（test_utils）+ 啟動測試
+├── scripts/                           # 開發通道的發佈輔助腳本（dev_release.py）
 ├── images/                            # 截圖
 ├── architecture.md                    # 架構總覽：分層、主要流程、跨專案約定
 ├── architecture_explore.md            # 逐模組的架構筆記
@@ -441,7 +448,7 @@ python -m pytest test/test_utils/ -v --tb=short
 
 - **單元測試** — `test/test_utils/`，涵蓋純邏輯層（curl 與 HAR 解析、標頭分析、SSRF 驗證、JWT、雜湊、時間戳記、比對），加上透過 `QT_QPA_PLATFORM=offscreen` 的無視窗 Qt 元件測試，以及針對各解析器的 Hypothesis 性質測試。SSH 終端機與 SFTP 檔案樹另外會實際登入測試在本機回環位址啟動的 SSH 伺服器，它以 SFTP 提供一個暫存資料夾
 - **啟動測試** — `test/unit_test/start_automation/` 以 debug 模式啟動 IDE，確認它能正常開啟並乾淨地結束
-- **CI** — 在 Windows 上以 GitHub Actions 跑 Python 3.10 – 3.14，每次 push 與 PR 都會執行，另外每晚執行一次
+- **CI** — 在 Windows 上以 GitHub Actions 跑 Python 3.10 – 3.14，每次 push 與 PR 都會執行，另外每晚執行一次；推送到 `dev` 通過測試、而且套件內容有變動時，還會發佈 `pybreeze_dev`
 - **靜態分析** — SonarCloud、Codacy 與 Bandit
 
 ---

@@ -299,6 +299,13 @@ For a module-by-module walkthrough of the codebase, see [architecture_explore.md
 pip install pybreeze
 ```
 
+The development channel follows the `dev` branch. CI publishes a new `pybreeze_dev` each time a push to
+`dev` passes the tests and changes what the package ships:
+
+```bash
+pip install pybreeze_dev
+```
+
 ### From source
 
 ```bash
@@ -396,6 +403,7 @@ PyBreeze/
 ├── exe/                               # Standalone launcher & build configs
 ├── docs/                              # Sphinx documentation source; updates/ is the change log
 ├── test/                              # Unit tests (test_utils) + startup tests
+├── scripts/                           # Release helper for the dev channel (dev_release.py)
 ├── images/                            # Screenshots
 ├── architecture.md                    # Architecture overview: layers, flows, cross-project contracts
 ├── architecture_explore.md            # Module-by-module architecture notes
@@ -441,7 +449,7 @@ python -m pytest test/test_utils/ -v --tb=short
 
 - **Unit tests** — `test/test_utils/`, covering the pure-logic layer (curl and HAR parsing, header analysis, SSRF validation, JWT, hashing, timestamps, diffing) plus headless Qt widget tests via `QT_QPA_PLATFORM=offscreen`, with Hypothesis property tests over the parsers. The SSH terminal and the SFTP file tree also log in to an SSH server the tests start on the loopback address, which serves a temporary folder over SFTP
 - **Startup tests** — `test/unit_test/start_automation/` launches the IDE in debug mode and verifies it comes up and exits cleanly
-- **CI** — GitHub Actions on Windows across Python 3.10 – 3.14, on every push and PR plus a nightly run
+- **CI** — GitHub Actions on Windows across Python 3.10 – 3.14, on every push and PR plus a nightly run; a push to `dev` that passes also publishes `pybreeze_dev` when the package changed
 - **Static analysis** — SonarCloud, Codacy and Bandit
 
 ---
