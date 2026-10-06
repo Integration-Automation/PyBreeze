@@ -14,6 +14,7 @@ import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from decimal import MAX_EMAX, MIN_EMIN, ROUND_FLOOR, Decimal, InvalidOperation, localcontext
+from email.utils import parsedate_to_datetime
 
 from pybreeze.utils.exception.exception_tags import (
     empty_timestamp_error,
@@ -129,6 +130,9 @@ def _from_epoch(value: int | Decimal) -> datetime:
 # refused "Z", "+0000", "+08", fractions of other than 3 or 6 digits (Go and
 # Kubernetes write 9) and the basic format 20240101T000000Z. A lower-case "z"
 # was refused on every version.
+# The RFC 3339 offset a date-time with suffixes must end in, after its time
+# (a date's last "-01" is not one)
+_OFFSET_END_RE = re.compile(r"[Tt ][^Tt ]*(?:[Zz]|[+-]\d{2}(?::?\d{2})?)$")
 _ISO_RE = re.compile(
     r"(?P<year>\d{4})-?(?P<month>\d{2})-?(?P<day>\d{2})"
     r"(?:[Tt ](?P<hour>\d{2})(?::?(?P<minute>\d{2})(?::?(?P<second>\d{2})(?:[.,](?P<fraction>\d+))?)?)?"
@@ -167,19 +171,77 @@ def _iso_match(text: str) -> datetime | None:
     return moment.astimezone(timezone.utc)
 
 
-def _from_iso(text: str) -> datetime:
-    """Parse an ISO-8601 string into a UTC datetime; no offset means UTC."""
+def _without_suffixes(text: str) -> str:
+    """*text* without its RFC 9557 suffixes (``[Europe/Paris]``, ``[u-ca=gregory]``).
+
+    RFC 9557 puts them after an RFC 3339 date-time: a time zone, and tags such
+    as a calendar, each in brackets (``[!...]`` when critical). Java's
+    ``ZonedDateTime`` writes one.
+
+    The offset before them gives the instant, and one is required: taken as
+    UTC, a time in Paris with no offset would be an hour off.
+
+    :raises ValueError: suffixes after a date-time with no offset
+    """
+    end = len(text)
+    # Each "[...]" at the end, taken off from the last: a pattern searched from
+    # every "[" took quadratic time on a long run of brackets
+    while text.endswith("]", 0, end):
+        start = text.rfind("[", 0, end)
+        if start < 0 or "]" in text[start + 1:end - 1]:
+            break
+        end = start
+    if end == len(text):
+        return text
+    date_time = text[:end]
+    if not _OFFSET_END_RE.search(date_time):
+        raise ValueError(f"an RFC 9557 suffix after a date-time with no offset: {text}")
+    return date_time
+
+
+def _from_http_date(text: str) -> datetime:
+    """*text* as an HTTP date: IMF-fixdate, RFC 850 or asctime (RFC 9110, 5.6.7), or an e-mail date.
+
+    One with no zone (asctime) is in GMT, as HTTP has it.
+
+    :raises ValueError: when *text* is none of them
+    """
     try:
-        parsed = _iso_match(text)
-        if parsed is not None:
-            return parsed
+        parsed = parsedate_to_datetime(text)
+    except (TypeError, IndexError) as error:
+        # Python 3.10's early releases raised TypeError for text that is no date
+        raise ValueError(f"not an HTTP date: {text}") from error
+    return parsed if parsed.tzinfo is not None else parsed.replace(tzinfo=timezone.utc)
+
+
+def _date_time(text: str) -> datetime:
+    """*text* as an instant: ISO 8601 (with any RFC 9557 suffix), or else an HTTP date.
+
+    :raises ValueError: a field out of range, or *text* in none of the forms
+    :raises OverflowError: moving it to UTC leaves the years datetime can hold
+    """
+    date_time = _without_suffixes(text)
+    parsed = _iso_match(date_time)
+    if parsed is not None:
+        return parsed
+    try:
         # Anything else fromisoformat takes on this Python (3.11+ reads more)
-        parsed = datetime.fromisoformat(text)
-        if parsed.tzinfo is None:
-            parsed = parsed.replace(tzinfo=timezone.utc)
-        # Moving 0001-01-01 +01:00 (or 9999-12-31 -01:00) to UTC leaves the
-        # range datetime can hold: OverflowError, not ValueError.
-        return parsed.astimezone(timezone.utc)
+        parsed = datetime.fromisoformat(date_time)
+    except ValueError:
+        if date_time != text:
+            raise
+        parsed = _from_http_date(text)
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    # Moving 0001-01-01 +01:00 (or 9999-12-31 -01:00) to UTC leaves the
+    # range datetime can hold: OverflowError, not ValueError.
+    return parsed.astimezone(timezone.utc)
+
+
+def _from_iso(text: str) -> datetime:
+    """Parse an ISO-8601 string (or an HTTP date) into a UTC datetime; no offset means UTC."""
+    try:
+        return _date_time(text)
     except (ValueError, OverflowError) as error:
         pybreeze_logger.error(unrecognized_timestamp_error)
         raise TimestampParseException(unrecognized_timestamp_error) from error

@@ -227,7 +227,7 @@ Template Method 定義的子行程生命週期：
 | `CurlImportGUI` | `utils/curl_import/` | 貼上 curl 指令 → 產生 requests / pytest / APITestka(py & json) / LoadDensity 腳本 |
 | `HarImportGUI` | `utils/har_import/` | 開 `.har` → 列出錄到的請求（可只看 API-like）→ 批次產生腳本 |
 | `JwtDecoderGUI` | `utils/jwt_tools/` | 解 JWT header/payload（不驗簽），時間戳轉可讀 UTC；貼上的文字先去掉空白，不是單純的 token 就取出裡面第一個（`Bearer `、引號、換行都可以），base64url 嚴格解碼；五段、標頭有 `enc` 的是 JWE（RFC 7516），回報 `encrypted_jwt_error`，不說成段數不對 |
-| `TimestampGUI` | `utils/timestamp_tools/` | epoch（依大小自動判秒／毫秒／微秒／奈秒；整數用 `int()`、小數用 `Decimal` 精確換算，一律往過去截到微秒）↔ ISO-8601（`_ISO_RE` 自己解析，3.10 到 3.14 讀法一致：`Z`/`z`、`±HH`、`±HHMM`、任意位數小數、basic 格式；八位數而且是合法日期就當 `YYYYMMDD`）。epoch 換算用 `utc_from_epoch_seconds()`（epoch + `timedelta`；`datetime.fromtimestamp` 在 Windows 上拒絕 1970 年前幾小時以外的值），JWT 的時間戳 claim 也用它 |
+| `TimestampGUI` | `utils/timestamp_tools/` | epoch（依大小自動判秒／毫秒／微秒／奈秒；整數用 `int()`、小數用 `Decimal` 精確換算，一律往過去截到微秒）↔ ISO-8601（`_ISO_RE` 自己解析，3.10 到 3.14 讀法一致：`Z`/`z`、`±HH`、`±HHMM`、任意位數小數、basic 格式；八位數而且是合法日期就當 `YYYYMMDD`；RFC 9557 後綴 `[...]` 由 `_without_suffixes()` 從尾端線性剝掉，前面必須有偏移量；都不是就試 HTTP 日期 `_from_http_date()`（`email.utils.parsedate_to_datetime`，IMF-fixdate、RFC 850、asctime，沒有時區當 GMT））。epoch 換算用 `utc_from_epoch_seconds()`（epoch + `timedelta`；`datetime.fromtimestamp` 在 Windows 上拒絕 1970 年前幾小時以外的值），JWT 的時間戳 claim 也用它 |
 | `HashGUI` | `utils/hash_tools/` | 多演算法摘要 |
 | `QueryJsonGUI` | `utils/query_tools/` | query string ↔ JSON 雙向 |
 | `UrlBuilderGUI` | `utils/url_tools/` | URL 拆成 JSON 元件 / 由元件組回 URL |

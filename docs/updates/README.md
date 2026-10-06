@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20261007-01 | 2026-10-07 | Read HTTP dates and bracketed time-zone suffixes in timestamps | #done #timestamp | [2026-10](2026-10.md) |
 | U-20261001-06 | 2026-10-01 | architecture_explore.md §18 describes the locked build backend | #docs #X-13 | [2026-10](2026-10.md) |
 | U-20261001-05 | 2026-10-01 | Publish jobs build with the locked setuptools, not a downloaded one | #done #ci #X-13 | [2026-10](2026-10.md) |
 | U-20261001-04 | 2026-10-01 | architecture_explore.md §18 describes the hash-locked publish tooling | #docs #X-13 | [2026-10](2026-10.md) |

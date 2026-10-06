@@ -134,7 +134,7 @@ PyBreeze 開箱即用，涵蓋自動化測試的完整範疇：
 
 ![時間戳記轉換器、雜湊產生器、Query/JSON、URL 建構器](../images/tools_montage_b.png)
 
-- **時間戳記轉換器** — 輸入 Unix epoch（秒、毫秒、微秒或奈秒，自動判斷）或 ISO-8601 日期時間（可帶 `Z`、`+08`、`+0800` 或 `+08:00`，小數位數不限，基本或延伸格式皆可），輸出所有 UTC 表示法。結果固定，不受本機時區影響。
+- **時間戳記轉換器** — 輸入 Unix epoch（秒、毫秒、微秒或奈秒，自動判斷）或 ISO-8601 日期時間（可帶 `Z`、`+08`、`+0800` 或 `+08:00`，小數位數不限，基本或延伸格式皆可，偏移量後面也可以像 Java `ZonedDateTime` 那樣帶 RFC 9557 時區：`+01:00[Europe/Paris]`）或 HTTP 日期（`Sun, 06 Nov 1994 08:49:37 GMT`，也就是 `Date`、`Last-Modified` 的值，以及 RFC 9110 仍接受的兩種舊格式），輸出所有 UTC 表示法。結果固定，不受本機時區影響。
 - **雜湊產生器** — 同時計算 SHA-256、SHA-512、SHA-1 與 MD5（MD5／SHA-1 以 `usedforsecurity=False` 提供互通用途，絕不用於安全判斷）。
 - **Query ⇄ JSON** — `application/x-www-form-urlencoded` 轉成格式化的 JSON，也能轉回來；重複的鍵會變成陣列，反之亦然。
 - **URL 解析器／建構器** — 把 scheme、主機、連接埠、路徑、查詢、片段與憑證拆成可編輯的 JSON 物件，也能組回 URL。會自動為 IPv6 位址加上方括號，並重新編碼查詢參數。

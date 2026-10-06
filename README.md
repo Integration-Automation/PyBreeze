@@ -134,7 +134,7 @@ Each is a tab or a dock, each has the same copy / open-in-editor / save-to-file 
 
 ![Timestamp converter, hash generator, query/JSON, URL builder](images/tools_montage_b.png)
 
-- **Timestamp Converter** — a Unix epoch (seconds, milliseconds, microseconds or nanoseconds, auto-detected) or an ISO-8601 date-time (with `Z`, `+08`, `+0800` or `+08:00`, any number of fraction digits, basic or extended) in, every representation out in UTC. Deterministic and independent of the local time zone.
+- **Timestamp Converter** — a Unix epoch (seconds, milliseconds, microseconds or nanoseconds, auto-detected) or an ISO-8601 date-time (with `Z`, `+08`, `+0800` or `+08:00`, any number of fraction digits, basic or extended, and an RFC 9557 zone after the offset as Java's `ZonedDateTime` writes it: `+01:00[Europe/Paris]`) or an HTTP date (`Sun, 06 Nov 1994 08:49:37 GMT`, as in `Date` or `Last-Modified`, and the two older forms RFC 9110 accepts) in, every representation out in UTC. Deterministic and independent of the local time zone.
 - **Hash Generator** — SHA-256, SHA-512, SHA-1 and MD5 at once (MD5/SHA-1 for interoperability with `usedforsecurity=False`, never for security decisions).
 - **Query ⇄ JSON** — `application/x-www-form-urlencoded` to pretty JSON and back; repeated keys become arrays and vice versa.
 - **URL Parser / Builder** — scheme, host, port, path, query, fragment and credentials as an editable JSON object, and back again. Brackets IPv6 literals and re-encodes query parameters for you.

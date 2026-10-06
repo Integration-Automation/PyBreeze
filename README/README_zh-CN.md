@@ -134,7 +134,7 @@ PyBreeze 开箱即用，涵盖自动化测试的完整范围：
 
 ![时间戳转换器、哈希生成器、查询字符串／JSON、URL 构建器](../images/tools_montage_b.png)
 
-- **时间戳转换器** — 输入 Unix 时间戳（秒、毫秒、微秒或纳秒，自动识别）或 ISO-8601 日期时间（支持 `Z`、`+08`、`+0800` 或 `+08:00`，任意位数的小数，基本或扩展格式），输出所有 UTC 表示形式。结果确定，与本地时区无关。
+- **时间戳转换器** — 输入 Unix 时间戳（秒、毫秒、微秒或纳秒，自动识别）或 ISO-8601 日期时间（支持 `Z`、`+08`、`+0800` 或 `+08:00`，任意位数的小数，基本或扩展格式，偏移量后面也可以像 Java `ZonedDateTime` 那样带 RFC 9557 时区：`+01:00[Europe/Paris]`）或 HTTP 日期（`Sun, 06 Nov 1994 08:49:37 GMT`，即 `Date`、`Last-Modified` 的值，以及 RFC 9110 仍接受的两种旧格式），输出所有 UTC 表示形式。结果确定，与本地时区无关。
 - **哈希生成器** — 一次算出 SHA-256、SHA-512、SHA-1 与 MD5（MD5/SHA-1 以 `usedforsecurity=False` 提供，只为了互操作，绝不用于安全判断）。
 - **Query ⇄ JSON** — `application/x-www-form-urlencoded` 转为格式化的 JSON，也能转回去；重复的键会变成数组，反之亦然。
 - **URL 解析器／构建器** — 把 scheme、host、port、path、query、fragment 与凭据拆成可编辑的 JSON 对象，也能再组回 URL。会自动为 IPv6 字面量加上方括号，并重新编码查询参数。
