@@ -20,6 +20,7 @@ from pybreeze.pybreeze_ui.tools_gui.har_import_gui import HarImportGUI
 from pybreeze.pybreeze_ui.tools_gui.hash_gui import HashGUI
 from pybreeze.pybreeze_ui.tools_gui.header_analyzer_gui import HeaderAnalyzerGUI
 from pybreeze.pybreeze_ui.tools_gui.http_status_gui import HttpStatusGUI
+from pybreeze.pybreeze_ui.tools_gui.json_editor_gui import JsonEditorGUI
 from pybreeze.pybreeze_ui.tools_gui.json_format_gui import JsonFormatGUI
 from pybreeze.pybreeze_ui.tools_gui.jwt_decoder_gui import JwtDecoderGUI
 from pybreeze.pybreeze_ui.tools_gui.query_json_gui import QueryJsonGUI
@@ -51,6 +52,7 @@ def app():
         ("HttpStatus", HttpStatusGUI),
         ("Diff", DiffGUI),
         ("JsonFormat", JsonFormatGUI),
+        ("JsonEditor", JsonEditorGUI),
         ("HeaderAnalyzer", HeaderAnalyzerGUI),
         ("ResponseInspector", ResponseInspectorGUI),
     ],

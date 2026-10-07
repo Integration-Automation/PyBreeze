@@ -131,6 +131,17 @@ python -m pybreeze.utils.header_tools.header_sarif response-headers.txt -o heade
 
 Compare two payloads — an expected vs. actual API response, say — and get a unified diff, its added and removed lines in the theme's colours, plus a one-line added/removed summary.
 
+### JSON Editor
+
+Edit a JSON file as a **Tree** or as **Text** (**Tools → JSON Editor Tab**). Both are views of one document, so they cannot disagree.
+
+- **Tree** — add, delete, move up or down, and rename in place; type over a value, or give it another type (object, array, string, number, boolean, null). A number is kept as it is written: `1.0` stays `1.0`.
+- **Text** — the JSON itself, always there. It is checked as you type and a line under the views says where it stops being JSON; the tree waits until it is JSON again, and nothing typed is thrown away.
+- **Undo / Redo** step through the document whichever view changed it, and a tab with unsaved changes asks before it closes or opens another file.
+- A file is written back the way it was found: its indent (spaces or tabs), on one line if it was, with its final line break. Alignment by hand and blank lines are not kept by an edit in the tree.
+
+It is a JSON editor, not a second code editor: a file is opened into it from its **Open...** button.
+
 ### The everyday utilities
 
 Each is a tab or a dock, each has the same copy / open-in-editor / save-to-file row along the bottom.
@@ -225,7 +236,7 @@ Loaded plugins appear under their own **Plugins** menu with an About entry and o
 - **English** (default)
 - **Traditional Chinese** (繁體中文)
 
-Menus, dialogs, the reasons a tool refuses its input and the run window's own notices (`[Error] …`, `[Run] …`) all follow the chosen language. Both dictionaries carry the same 795 keys, and a test enforces that parity so a new string can never land in one language only. English and Traditional Chinese are the languages PyBreeze maintains. The Language menu also lists JEditor's Japanese (日本語) and Simplified Chinese (简体中文), which PyBreeze passes on without translating: picked, JEditor's own menus change and PyBreeze's strings stay in English. Further languages can be added via translation plugins.
+Menus, dialogs, the reasons a tool refuses its input and the run window's own notices (`[Error] …`, `[Run] …`) all follow the chosen language. Both dictionaries carry the same 836 keys, and a test enforces that parity so a new string can never land in one language only. English and Traditional Chinese are the languages PyBreeze maintains. The Language menu also lists JEditor's Japanese (日本語) and Simplified Chinese (简体中文), which PyBreeze passes on without translating: picked, JEditor's own menus change and PyBreeze's strings stay in English. Further languages can be added via translation plugins.
 
 ---
 

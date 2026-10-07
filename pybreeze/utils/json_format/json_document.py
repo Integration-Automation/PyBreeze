@@ -89,14 +89,39 @@ class StaleRevisionError(ITEJsonException):
 class SerializationOptions:
     """How a tree is written as text.
 
-    :param indent: spaces per level; ``None`` writes it on one line
+    :param indent: spaces per level, or the text one level is indented by (a tab);
+        ``None`` writes it on one line
     :param ensure_ascii: write every non-ASCII character as a ``\\uXXXX`` escape
     :param trailing_newline: end the text with a line break
     """
 
-    indent: int | None = 4
+    indent: int | str | None = 4
     ensure_ascii: bool = False
     trailing_newline: bool = False
+
+
+def detect_options(text: str) -> SerializationOptions:
+    """The layout *text* is written in, as far as the options can say it.
+
+    A file opened in an editor is written back the way it was found: by the
+    indent of its first indented line (spaces, or a tab), on one line when it
+    has no line break inside it, ending in a line break when it did, and with
+    every non-ASCII character escaped when the file escapes them. Alignment
+    by hand and blank lines are not layout the options hold, and are not kept.
+
+    :param text: the file's text; it need not be JSON
+    """
+    lines = text.strip("\r\n").splitlines()
+    indent: int | str | None = None if len(lines) <= 1 else 0
+    for line in lines[1:]:
+        leading = line[:len(line) - len(line.lstrip(" \t"))]
+        if leading and line.strip():
+            indent = len(leading) if set(leading) == {" "} else leading
+            break
+    return SerializationOptions(
+        indent=indent,
+        ensure_ascii=text.isascii() and "\\u" in text,
+        trailing_newline=text.endswith("\n"))
 
 
 def parse_json(text: str) -> JsonValue:
@@ -182,8 +207,16 @@ class JsonDocument:
 
     @property
     def options(self) -> SerializationOptions:
-        """How a tree is written back as text."""
+        """How a tree is written back as text.
+
+        Set, it is how the next tree is written. The text is left as it is,
+        and the revision with it: nothing of the document has changed.
+        """
         return self._options
+
+    @options.setter
+    def options(self, options: SerializationOptions) -> None:
+        self._options = options
 
     def set_text(self, text: str, base_revision: int) -> int:
         """Replace the text, as the text editor does when it is edited.

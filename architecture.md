@@ -27,7 +27,7 @@ their output reaches the UI through Queue + QTimer.
 | `pybreeze/__main__.py`, `exe/start_pybreeze.py` | Launch scripts (module run, executable build) |
 | `pybreeze/pybreeze_ui/editor_main/` | `PyBreezeMainWindow(EditorMain)`, `start_editor()`, file-tree context menu |
 | `pybreeze/pybreeze_ui/menu/` | Menu builders; `build_menubar.py` is the single entry. Holds `automation_menu/` (factory, per-package menus, TestPioneer, prthinker), `install_menu/`, `tools/tools_menu.py`, `plugin_menu/`, `extend_jeditor_tab_menu/` |
-| `pybreeze/pybreeze_ui/tools_gui/` | Thin tool tabs (cURL/HAR import, JWT, regex, diff, headers, …) backed by `pybreeze/utils/` |
+| `pybreeze/pybreeze_ui/tools_gui/` | Thin tool tabs (cURL/HAR import, JWT, regex, diff, headers, …) backed by `pybreeze/utils/`; the JSON editor (`json_editor_gui.py`: a tree view, `json_tree_panel.py`, and a text view over one `JsonDocument`, with one undo history) |
 | `pybreeze/pybreeze_ui/diagram_editor/` | Diagram editor (QGraphicsScene, Mermaid import, PNG/SVG export) |
 | `pybreeze/pybreeze_ui/extend_ai_gui/`, `dialog/` | LLM code-review chain and prompt editors; prthinker settings dialog |
 | `pybreeze/pybreeze_ui/connect_gui/` | `ssh/` terminal + SFTP tree; `url/` HTTP code-review client |
@@ -39,7 +39,7 @@ their output reaches the UI through Queue + QTimer.
 | `pybreeze/extend/process_executor/` | Subprocess isolation layer: `TaskProcessManager`, `process_executor_utils.py`, `FileRunnerProcess`, `queue_pump.py`, `run_notice.py`, and `test_pioneer/` and `prthinker/` (the other automation packages run through `build_process()` from their menus) |
 | `pybreeze/extend/mail_thunder_extend/`, `prthinker_extend/` | Post-test email hook; prthinker settings and argument assembly (pure logic) |
 | `pybreeze/extend_multi_language/` | PyBreeze's English and Traditional Chinese strings, merged into JEditor's dictionaries; `supported_languages.py` lists the languages PyBreeze maintains, the ones it only passes on from JEditor, and the few JEditor keys it words its own way |
-| `pybreeze/utils/` | Pure logic, no Qt or JEditor (`test_utils_has_no_qt.py` guards it): request parsing and codegen, the registry of what a captured request can be generated as (`import_targets/`, with the request as it is sent, `NormalizedRequest`), the schema a run of any framework is reported in (`execution_report/`), the JSON document a text editor and a visual editor both edit (`json_format/json_document.py`), the one way an editor asks a framework for completion and diagnostics (`language_service/`), HTTP tools, `network/` SSRF validation, pinned connections and capped reads, exceptions, logging, `app_dirs.py`, `subprocess_util.py`, `terminal_text.py` (terminal escapes stripped for the SSH terminal and the run window), `terminal_style.py` (SGR colours read for the SSH terminal) |
+| `pybreeze/utils/` | Pure logic, no Qt or JEditor (`test_utils_has_no_qt.py` guards it): request parsing and codegen, the registry of what a captured request can be generated as (`import_targets/`, with the request as it is sent, `NormalizedRequest`), the schema a run of any framework is reported in (`execution_report/`), the JSON document a text editor and a visual editor both edit (`json_format/json_document.py`) and the edits of its tree by path (`json_format/json_tree_edit.py`), the one way an editor asks a framework for completion and diagnostics (`language_service/`), HTTP tools, `network/` SSRF validation, pinned connections and capped reads, exceptions, logging, `app_dirs.py`, `subprocess_util.py`, `terminal_text.py` (terminal escapes stripped for the SSH terminal and the run window), `terminal_style.py` (SGR colours read for the SSH terminal) |
 | `test/test_utils/` | Unit tests (pure logic and headless widgets). `test/unit_test/start_automation/` holds the launch tests |
 | `pyproject.toml`, `dev.toml` | Stable packaging (CI bumps and publishes it) and the dev-channel packaging: the same package under the name `pybreeze_dev` (`test_requirement_pins.py` and `test_dev_toml_parity.py` keep the two in step) |
 | `.github/workflows/`, `scripts/` | `dev.yml`, `stable.yml` (unit tests on a Windows matrix, the platform smoke tests on Linux and macOS, then SonarCloud and the upload to PyPI); `scripts/dev_release.py` numbers and gates the dev-channel release |
@@ -160,6 +160,9 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
   `normalized_request.normalize()`. `test_import_targets.py` checks `carries` against what the
   generators write, for every target and every part, and `test_import_round_trip.py` reads each
   target's output back against the fixtures in `test/test_utils/fixtures/import/`.
+- **A further edit in the JSON editor**: a pure function in `utils/json_format/json_tree_edit.py` (a new tree
+  from the old one and a path) and a control in `tools_gui/json_tree_panel.py` that emits `edit_asked`.
+  The tab makes the edit, records it for Undo and shows both views again (`docs/adr/0009`).
 - **A further interface language**: its dictionary with every key, one `MaintainedLanguage` line in
   `extend_multi_language/supported_languages.py`, and its name in the three READMEs
   (`test_supported_languages.py`, `docs/adr/0008`). A language JEditor adds is placed in that file

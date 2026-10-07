@@ -14,7 +14,8 @@ pybreeze/
 │   ├── editor_main/             # Main window (extends JEditor) + file tree context menu
 │   ├── menu/                    # Menu builders: automation / install / tools (tabs and docks) / plugin,
 │   │                            #   menu_utils, extend_jeditor_tab_menu (the JupyterLab tab entry)
-│   ├── tools_gui/               # Tool tabs: cURL, HAR, JWT, diff, regex, headers, …
+│   ├── tools_gui/               # Tool tabs: cURL, HAR, JWT, diff, regex, headers, …; the JSON editor
+│   │                            #   (json_editor_gui.py: one JsonDocument as a tree, json_tree_panel.py, and as text)
 │   ├── diagram_editor/          # WYSIWYG diagram editor (QGraphicsScene, Mermaid import)
 │   ├── extend_ai_gui/           # CoT code review, prompt editors, skill send
 │   ├── connect_gui/             # ssh/ (terminal + SFTP tree), url/ (AI review client)
@@ -58,7 +59,8 @@ pybreeze/
     │                                                           #   (header_rules.py), SARIF export and its CLI
     ├── regex_tools/ query_tools/ url_tools/ diff_tools/
     ├── http_reference/ json_format/ response_inspector/   # json_format/json_document.py: JsonDocument, the one copy
-    │                                                      #   a text editor and a visual editor both edit
+    │                                                      #   a text editor and a visual editor both edit;
+    │                                                      #   json_tree_edit.py: an edit of its tree by path
     ├── network/                 # url_validation (SSRF), public_http (pinned connections), http_client (capped reads)
     ├── exception/               # ITEException hierarchy
     ├── logging/ file_process/ app_dirs.py / subprocess_util.py
@@ -124,6 +126,7 @@ ruff check pybreeze/                              # before committing non-trivia
 - An instance attribute of a Qt class never takes the name of a member of its Qt base (`self.actions`, `self.thread`, `self.layout`, …): it hides the method from everything that calls it on the widget. `test_no_qt_member_shadowing.py` fails on one
 - A tool is one `_tool(...)` line in `TOOLS` (`menu/tools/tools_menu.py`): the Tools menu, the Dock menu and the navigation panel are all built from it, and nothing else lists a tool. A panel takes its gaps, text sizes and state colours from `pybreeze_ui/design/tokens.py`, counted in ems, never a number of pixels of its own, and a row of controls that may be long is a `wrapping_row()`. `test_tools_fit_small_screens.py` fails on a tool that asks for more than 60 ems of width or 30 of height
 - A menu's submenus are found with `navigation_model.submenus_under()` (`findChildren(QMenu)` and `menuAction()`), never `QAction.menu()`: under PySide6 6.11.0 the object it returns takes the menu with it when it is dropped
+- A view of a `JsonDocument` never changes its tree in place and keeps no copy of it to edit. An edit is a function of `utils/json_format/json_tree_edit.py` (a new tree from the old one and a path), handed to `set_tree()` with the revision it was made against. In the JSON editor the tree panel only asks (`JsonTreePanel.edit_asked`); the tab that holds the document makes the edit, records the text before and after as one Undo step, and fills both views from the document
 - A tool tab asks `IMPORT_TARGETS` (`utils/import_targets/builtin_targets.py`) what a captured request can be generated as and how, and never names a target itself. A new target is one `TargetDescriptor` registered there, with the request parts its output sends in `carries`. `test_import_targets.py` fails on a target's key written in `tools_gui/`, and on a `carries` that is not what the generator writes. A generator written from now on reads the request through `normalized_request.normalize()`, not the parse record
 - Delete unused code immediately — no dead imports, unreachable branches, commented-out blocks, or `_old_` prefixes
 - Follow PEP 8 and standard Pythonic practice; `ruff` is the arbiter
