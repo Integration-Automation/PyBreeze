@@ -1,0 +1,10 @@
+[
+  ["LD_start_test", {
+    "user_detail_dict": {"user": "fast_http_user"},
+    "user_count": 5,
+    "spawn_rate": 5,
+    "test_time": 5,
+    "tasks": {"get": {"request_url": "http://127.0.0.1:8765/"}}
+  }],
+  ["LD_generate_json_report", {"json_file_name": "load_report"}]
+]

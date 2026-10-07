@@ -5,6 +5,7 @@ PyBreeze UI 使用指南
    :maxdepth: 4
 
    getting_started.rst
+   tutorials/index.rst
    ui_overview.rst
    menu_file_run_text.rst
    menu_automation.rst

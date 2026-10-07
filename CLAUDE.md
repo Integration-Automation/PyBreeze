@@ -156,6 +156,13 @@ features, commands, CLI flags, install/setup, configuration or requirements — 
 language and leave the others stale. No README-parity test guards this, so it is a manual check
 across the three files above.
 
+**Tutorials** (`docs/source/Eng/tutorials/`, `docs/source/Zh/tutorials/`) come in both languages, page
+for page. A tutorial's example is a file under `docs/source/examples/` that the page includes with
+`literalinclude`, never text pasted into the page, and what a page quotes as output is output that was
+produced: run the example again when the tool it shows changes, and say so on the page when it could
+not be run. `test_tutorial_examples.py` fails when the two languages include different examples, when an
+example is used by no page, or when an example stops doing what its page says.
+
 **Supported languages.** PyBreeze supports the languages it maintains: every key translated, listed in
 `extend_multi_language/supported_languages.py` (`MAINTAINED`: English, Traditional Chinese). JEditor's other
 languages are passed on untranslated (`EDITOR_ONLY`) and are not PyBreeze's to fix. A language joins `MAINTAINED`

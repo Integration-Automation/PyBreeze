@@ -28,8 +28,16 @@ PyBreeze 提供基於分頁和停靠面板的介面，使用 PySide6（Qt for Py
 - **Language** -- 介面語言
 - **Automation** -- 自動化模組（見 :doc:`menu_automation`）
 - **Install** -- 安裝自動化套件與建置工具（見 :doc:`menu_install`）
-- **Tools** -- SSH 用戶端、AI 工具、架構圖編輯器與 HTTP / API 小工具（見 :doc:`menu_tools`）
+- **Tools** -- SSH 用戶端、AI 工具、架構圖編輯器、HTTP / API 小工具、JSON 編輯器、自動化關鍵字、
+  MCP 用戶端與報告檢視器（見 :doc:`menu_tools`）
 - **Plugins** -- 外掛瀏覽器與已載入的外掛（見 :doc:`menu_plugins`）
+
+導覽面板
+^^^^^^^^
+
+視窗左側的停靠面板，把各選單的內容分成五類列出： **Automation**、 **Tools**、 **MCP**、
+**Reports** 與 **Settings**。在它的輸入框打字會留下含有那段文字的項目；在某一行按 Enter
+或按兩下，效果和選單項目相同。 **Dock > Navigation** 可以顯示或隱藏它，是否顯示會被記住。
 
 檔案樹
 ^^^^^^

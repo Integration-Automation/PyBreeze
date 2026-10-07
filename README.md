@@ -407,6 +407,8 @@ Once launched:
 4. **Generate** an HTML / JSON / XML report
 5. **Send** it by email through the MailThunder integration
 
+New here? The [tutorials](https://pybreeze.readthedocs.io/en/latest/Eng/tutorials/index.html) are thirteen short pages, each with an example that runs and what to expect from it: the first launch, a first API, browser, desktop and load run, tests from cURL and HAR, header findings as SARIF in CI, the JSON editor, keywords for action scripts, the MCP client, reports in CI, plugins, and troubleshooting. They test a small site on your own machine, so none of them needs an account.
+
 ### Log file
 
 PyBreeze writes its log to `~/.pybreeze/logs/PyBreeze.log`: UTF-8, appended to by every run, each line carrying the process ID. Only warnings and errors also appear in the editor's Code Result panel. Two environment variables change this:

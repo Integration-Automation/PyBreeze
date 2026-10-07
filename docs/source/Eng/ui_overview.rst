@@ -31,9 +31,17 @@ The menu bar holds these top-level menus, from left to right:
 - **Language** -- the interface language
 - **Automation** -- the automation modules (see :doc:`menu_automation`)
 - **Install** -- install automation packages and build tools (see :doc:`menu_install`)
-- **Tools** -- the SSH client, AI tools, diagram editor and HTTP / API utilities (see
-  :doc:`menu_tools`)
+- **Tools** -- the SSH client, AI tools, diagram editor, HTTP / API utilities, JSON
+  editor, automation keywords, MCP client and report viewer (see :doc:`menu_tools`)
 - **Plugins** -- the Plugin Browser and the loaded plugins (see :doc:`menu_plugins`)
+
+Navigation Panel
+^^^^^^^^^^^^^^^^
+
+A dock at the left lists what the menus hold, in five categories: **Automation**,
+**Tools**, **MCP**, **Reports** and **Settings**. Typing in its box keeps the lines that
+hold the text; Enter or a double click on a line does what the menu entry does.
+**Dock > Navigation** shows and hides it, and whether it is shown is remembered.
 
 File Tree
 ^^^^^^^^^

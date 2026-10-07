@@ -1,0 +1,6 @@
+[
+  ["AC_set_record_enable", {"set_enable": true}],
+  ["AC_screen_size"],
+  ["AC_get_mouse_position"],
+  ["AC_generate_json_report", {"json_file_name": "desktop_report"}]
+]

@@ -406,6 +406,8 @@ start_editor(theme="dark_teal.xml")         # 任何 qt_material 主題；它會
 4. **產生** — HTML／JSON／XML 報告
 5. **寄送** — 透過 MailThunder 整合以電子郵件寄出
 
+第一次使用？[教學](https://pybreeze.readthedocs.io/en/latest/Zh/tutorials/index.html)共十三篇，每一篇都很短，各有一個可以直接執行的範例與預期結果：第一次啟動，第一個 API、瀏覽器、桌面與壓力測試，從 cURL 與 HAR 產生測試，把 header 的發現變成 CI 裡的 SARIF，JSON 編輯器，動作腳本的關鍵字，MCP 用戶端，CI 裡的報告，外掛，以及疑難排解。它們測試的是你自己電腦上的一個小網站，所以都不需要任何帳號。
+
 ### 日誌檔
 
 PyBreeze 的日誌寫在 `~/.pybreeze/logs/PyBreeze.log`：UTF-8，每次執行都接在後面，每行帶著行程編號。只有警告與錯誤也會出現在編輯器的 Code Result 面板。兩個環境變數可以改變這些：

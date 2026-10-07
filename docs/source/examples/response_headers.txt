@@ -1,0 +1,5 @@
+HTTP/1.1 200 OK
+Content-Type: text/html; charset=utf-8
+Server: nginx/1.25.3
+Set-Cookie: session=abc123; Path=/
+Access-Control-Allow-Origin: *
