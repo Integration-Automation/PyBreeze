@@ -131,6 +131,18 @@ python -m pybreeze.utils.header_tools.header_sarif response-headers.txt -o heade
 
 Compare two payloads — an expected vs. actual API response, say — and get a unified diff, its added and removed lines in the theme's colours, plus a one-line added/removed summary.
 
+### Report Viewer
+
+**Tools → Report Viewer Tab** opens what a run produced, whatever ran it, into one view.
+
+- **Reads** the automation packages' own reports (APITestka, AutoControl, WebRunner, LoadDensity: the `<name>_success.json` / `<name>_failure.json` pair or the `.xml` pair; open either and the other is read with it), **JUnit XML** (pytest's `--junitxml`, and most other runners), and reports exported from PyBreeze. What a file is, is told from what it holds.
+- **Shows** each run as a tree with how every result ended and how long it took; the selected result's details and error, its output, what it left behind, and the package's own record of it, untouched.
+- **Filters** all open runs together: by ending (passed, failed, error, skipped), by time taken, by package, and by text in a name or an error. A line under the tree counts what is shown.
+- **Exports** a run as an execution report (JSON), as **JUnit XML** for a CI service's test summary, or as one self-contained **HTML page** for people, which can be opened here again.
+- The **MCP Client**'s Calls page opens its session here with **Open in Report Viewer**.
+
+A report is a file from somewhere: it is read as data (XML that declares a document type is refused), everything in it is shown as text, and the paths it names are listed, not opened.
+
 ### MCP Client
 
 **Tools → MCP Client Tab** connects to [Model Context Protocol](https://modelcontextprotocol.io) servers and shows what each offers: **tools** to call, **resources** to read, **prompts** to fill in.
@@ -266,7 +278,7 @@ Loaded plugins appear under their own **Plugins** menu with an About entry and o
 - **English** (default)
 - **Traditional Chinese** (繁體中文)
 
-Menus, dialogs, the reasons a tool refuses its input and the run window's own notices (`[Error] …`, `[Run] …`) all follow the chosen language. Both dictionaries carry the same 957 keys, and a test enforces that parity so a new string can never land in one language only. English and Traditional Chinese are the languages PyBreeze maintains. The Language menu also lists JEditor's Japanese (日本語) and Simplified Chinese (简体中文), which PyBreeze passes on without translating: picked, JEditor's own menus change and PyBreeze's strings stay in English. Further languages can be added via translation plugins.
+Menus, dialogs, the reasons a tool refuses its input and the run window's own notices (`[Error] …`, `[Run] …`) all follow the chosen language. Both dictionaries carry the same 995 keys, and a test enforces that parity so a new string can never land in one language only. English and Traditional Chinese are the languages PyBreeze maintains. The Language menu also lists JEditor's Japanese (日本語) and Simplified Chinese (简体中文), which PyBreeze passes on without translating: picked, JEditor's own menus change and PyBreeze's strings stay in English. Further languages can be added via translation plugins.
 
 ---
 

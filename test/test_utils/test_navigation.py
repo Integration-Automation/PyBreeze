@@ -160,8 +160,11 @@ class TestBuildNavigation:
         assert _word("extend_tools_menu_mcp_client_tab_label") not in [
             name for name, _children in _outline(navigation["tools"])]
 
-    def test_what_has_no_tool_yet_is_empty(self, window):
-        assert build_navigation(window)["reports"] == []
+    def test_every_category_has_something_in_it(self, window):
+        navigation = build_navigation(window)
+
+        assert _outline(navigation["reports"]) == [[_word("extend_tools_menu_report_viewer_tab_label"), []]]
+        assert all(navigation[category] for category in navigation)
 
     def test_a_window_without_those_menus_has_nothing_to_list(self, app):
         bare = SimpleNamespace(menuBar=QMenuBar)
@@ -360,7 +363,8 @@ class TestTheMainWindow:
     def test_the_shell_has_the_navigation_at_its_left(self, shell):
         seen = shell
 
-        assert list(seen["categories"]) == ["Automation", "Tools", "MCP", "Settings"]
+        assert list(seen["categories"]) == ["Automation", "Tools", "MCP", "Reports", "Settings"]
+        assert seen["categories"]["Reports"] == ["Report Viewer"]
         assert seen["categories"]["MCP"] == ["MCP Client"]
         assert "APITestka" in seen["categories"]["Automation"]
         assert {"SSH", "AI", "cURL Import", "HTTP Status"} <= set(seen["categories"]["Tools"])

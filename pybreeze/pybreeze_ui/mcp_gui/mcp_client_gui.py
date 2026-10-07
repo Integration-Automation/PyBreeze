@@ -34,6 +34,8 @@ from pybreeze.pybreeze_ui.mcp_gui.mcp_panels import McpCallsPanel, McpItemsPanel
 from pybreeze.pybreeze_ui.mcp_gui.mcp_server_panel import McpServerPanel
 from pybreeze.pybreeze_ui.mcp_gui.mcp_worker import McpWorker
 from pybreeze.pybreeze_ui.plain_text import as_text
+from pybreeze.pybreeze_ui.report_gui.report_viewer_gui import ReportViewerGUI
+from pybreeze.pybreeze_ui.tools_gui.tool_tabs import open_tool_tab
 from pybreeze.utils.exception.exceptions import McpException
 from pybreeze.utils.file_process.replace_file import replace_text
 from pybreeze.utils.json_format.view_safe import dumps_for_view
@@ -99,8 +101,12 @@ class _Call:
 class McpClientGUI(QWidget):
     """Connect to an MCP server, see its tools, resources and prompts, and call them."""
 
-    def __init__(self) -> None:
+    def __init__(self, main_window=None) -> None:
+        """
+        :param main_window: the window whose ``tab_widget`` a session is opened in, for the report viewer
+        """
         super().__init__()
+        self._main_window = main_window
         self._session: _Session | None = None
         self._log: McpCallLog | None = None
         # Set while a worker is on its way: its slots clear it. Not the thread's own
@@ -121,6 +127,7 @@ class McpClientGUI(QWidget):
         self.prompts_panel.action_button.clicked.connect(self.get_prompt)
         self.calls_panel = McpCallsPanel()
         self.calls_panel.export_button.clicked.connect(self.export_session)
+        self.calls_panel.view_button.clicked.connect(self.open_in_report_viewer)
 
         self.pages = QTabWidget()
         for panel, key in ((self.tools_panel, "mcp_page_tools"), (self.resources_panel, "mcp_page_resources"),
@@ -372,6 +379,17 @@ class McpClientGUI(QWidget):
     # ------------------------------------------------------------------
     # The session
     # ------------------------------------------------------------------
+
+    def open_in_report_viewer(self) -> QWidget | None:
+        """Open the session's calls in the report viewer, in a tab of its own; the tab, or ``None``."""
+        if self._log is None:
+            return None
+        viewer = ReportViewerGUI()
+        viewer.show_report(self._log.report())
+        opened = open_tool_tab(self._main_window, viewer, "extend_tools_menu_report_viewer_tab_label")
+        if opened is None:
+            viewer.deleteLater()
+        return opened
 
     def export_session(self) -> str | None:
         """Save the session's calls as an execution report (JSON); return the path, or ``None``."""

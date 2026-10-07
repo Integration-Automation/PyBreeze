@@ -147,6 +147,12 @@ mcp_remote_error: str = "the MCP server refused {method} (error {code}): {messag
 mcp_reply_error: str = "the MCP server answered {method} with something that is not a reply to it"
 mcp_version_error: str = "the MCP server speaks protocol version {version!r}, which PyBreeze does not"
 
+# A file that cannot be read as a report (execution_report.report_files and the adapters)
+report_format_error: str = (
+    "this file is not a report PyBreeze reads: an execution report, a package's record file, or JUnit XML")
+report_xml_error: str = "the XML is not well formed, declares a document type, or is larger than a report is"
+report_html_error: str = "this page holds no execution report: only a page exported from PyBreeze does"
+
 # Data that is not an execution report (execution_report.report_schema)
 execution_report_field_error: str = "not an execution report: {field} is missing or of the wrong type"
 execution_report_version_error: str = (

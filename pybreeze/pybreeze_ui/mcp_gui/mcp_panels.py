@@ -269,10 +269,12 @@ class McpCallsPanel(QWidget):
         self.calls_table.horizontalHeader().setStretchLastSection(True)
         self.export_button = QPushButton(_word("mcp_calls_export_button"))
         self.export_button.setEnabled(False)
+        self.view_button = QPushButton(_word("mcp_calls_view_button"))
+        self.view_button.setEnabled(False)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.calls_table)
-        layout.addLayout(wrapping_row(self.export_button))
+        layout.addLayout(wrapping_row(self.view_button, self.export_button))
 
     def show_results(self, results: tuple[ExecutionResult, ...]) -> None:
         """Show *results*, one call a row."""
@@ -283,5 +285,6 @@ class McpCallsPanel(QWidget):
             for column, text in enumerate((when, result.name, _word(_STATUS_WORDS[result.status]), took)):
                 self.calls_table.setItem(row, column, QTableWidgetItem(text))
         self.export_button.setEnabled(bool(results))
+        self.view_button.setEnabled(bool(results))
         if results:
             self.calls_table.scrollToBottom()

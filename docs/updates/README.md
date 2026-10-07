@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20261008-14 | 2026-10-08 | A report viewer for every run: the packages' own reports, JUnit XML and MCP sessions in one view | #feature #reports #roadmap | [2026-10](2026-10.md) |
 | U-20261008-13 | 2026-10-08 | An MCP client tab: servers kept per user, every call asked about, sessions kept as reports | #feature #mcp #security #roadmap | [2026-10](2026-10.md) |
 | U-20261008-12 | 2026-10-08 | Action scripts are completed and checked from the installed frameworks' keywords | #feature #lsp #editor #roadmap | [2026-10](2026-10.md) |
 | U-20261008-11 | 2026-10-08 | A JSON editor: one document as a tree and as text, with one history | #feature #tools #json #roadmap | [2026-10](2026-10.md) |
@@ -715,4 +716,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
 | [2026-09-d.md](2026-09-d.md) | 2026-09 | 91 |
 | [2026-09-e.md](2026-09-e.md) | 2026-09 | 83 |
-| [2026-10.md](2026-10.md) | 2026-10 | 20 |
+| [2026-10.md](2026-10.md) | 2026-10 | 21 |

@@ -104,6 +104,9 @@ TRADITIONAL_CHINESE_ERROR_TEXT: dict[str, str] = {
     "error_text_mcp_remote_error": "MCP 伺服器拒絕了 {method}（錯誤 {code}）：{message}",
     "error_text_mcp_reply_error": "MCP 伺服器對 {method} 的回應不是它的回覆",
     "error_text_mcp_version_error": "MCP 伺服器使用的協定版本是 {version}，PyBreeze 不支援",
+    "error_text_report_format_error": "這個檔案不是 PyBreeze 讀得懂的報告：執行報告、套件的紀錄檔，或 JUnit XML",
+    "error_text_report_xml_error": "這份 XML 格式不正確、宣告了文件類型，或比一份報告該有的還大",
+    "error_text_report_html_error": "這個頁面裡沒有執行報告：只有從 PyBreeze 匯出的頁面才有",
     "error_text_execution_report_field_error": "這不是執行報告：{field} 不存在或型別不對",
     "error_text_execution_report_version_error":
         "這份執行報告的格式是第 {version} 版，比這個 PyBreeze 讀得懂的還新（最多第 {supported} 版）",

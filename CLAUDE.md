@@ -21,6 +21,7 @@ pybreeze/
 │   ├── connect_gui/             # ssh/ (terminal + SFTP tree), url/ (AI review client)
 │   ├── jupyter_lab_gui/         # JupyterLab tab (QWebEngineView)
 │   ├── mcp_gui/                 # MCP client tab: servers, tools/resources/prompts, asking before a call, the calls
+│   ├── report_gui/              # Report viewer tab: runs of any package as one tree, filtered and exported
 │   ├── show_code_window/        # CodeWindow — subprocess output display
 │   ├── design/                  # tokens (sizes in ems, theme colours), FlowLayout, Panel / StatusLine / wrapping_row
 │   ├── navigation/              # The navigation panel: the menus and the tool table as a searchable tree (left dock)
@@ -58,7 +59,9 @@ pybreeze/
     ├── curl_import/ har_import/ # Request parsing + script generation
     ├── import_targets/          # TargetDescriptor + IMPORT_TARGETS: what a captured request can be generated as;
     │                            #   NormalizedRequest (the request as sent); the WebRunner target
-    ├── execution_report/        # ExecutionReport / ExecutionResult: what a run produced, whatever framework ran it
+    ├── execution_report/        # ExecutionReport / ExecutionResult: what a run produced, whatever framework ran it;
+    │                            #   record_reports.py (the packages' own files), junit_xml.py, html_report.py,
+    │                            #   report_files.py (which adapter a file needs), report_filter.py, safe_xml.py
     ├── language_service/        # service_adapter.py (the contract: completion and diagnostics asked one way),
     │                            #   framework_profiles.py, metadata_probe.py (keywords read from the installed
     │                            #   package in a child process), json_scan.py, action_adapter.py (the three
@@ -184,6 +187,8 @@ Reference implementations: `utils/network/url_validation.py` (`validate_url`), `
 **Subprocess** — always argument lists, explicit `shell=False`, `timeout` on every `subprocess.run()`. Never interpolate user input into a command string. Secrets travel as `env`, never argv (see `prthinker_setting.environment_for`). The IDE intentionally runs user-authored scripts — this hardening guards against accidental shell injection, not against malicious local files.
 
 **JupyterLab** — the embedded server is localhost-only; the empty token and password (`--IdentityProvider.token`/`--PasswordIdentityProvider.hashed_password`, and jupyter_server 1.x's `--ServerApp.token`/`password`, which 2.x still reads) and `--ServerApp.disable_check_xsrf=True` are safe *only* because of that. Never change `--ServerApp.ip` to an externally reachable address, and never set `--ServerApp.allow_origin`: a loopback bind does not stop a browser, and with the origin open any page the user visits can drive a tokenless server. The view loads from the same origin and needs nothing relaxed, and its page (`jupyter_lab_gui/lab_page.LabPage`) keeps it there: a page elsewhere, or a link for a new tab, goes to the system's browser, `http`/`https` only. The server outlives its launcher thread, so its tab stops it on close whatever the thread's state.
+
+**Reports** — a report is a file from somewhere. XML is read only through `utils/execution_report/safe_xml.parse_xml()`, which refuses a document that declares a document type or an entity and caps depth and size; never `xml.etree` or `minidom` on a file. A report file is read with a size limit and as data throughout. Everything in a report is shown as text, and an exported HTML page escapes every word and runs no script (its only `<script>` is a JSON data block with `<` escaped). The paths a report names (attachments) are listed, never opened.
 
 **MCP** — an MCP server is a program that acts with the user's rights, and it describes its own tools. A tool call is asked about first (tool, server, arguments as sent; default No) unless the user trusted that tool of that server; `readOnlyHint` / `destructiveHint` are shown and decide nothing. A server named by a project's `.mcp.json` is listed and never started without a yes that shows its command, and none of its tools is trusted whatever the file says. A server is started from an argument list (`shell=False`) with `utf8_subprocess_env()` plus the profile's variables; keys and tokens are environment variables, kept in `~/.pybreeze/mcp_servers.json` with `replace_text(..., private=True)`, shown as dots, and taken out of every log line, error message and exported session by `utils/mcp/mcp_redaction.py` (by name, and by value wherever it turns up). Everything a server sends is data: read field by field, shown as text. Only the standard-input-and-output transport is offered; an HTTP one needs a decision about loopback addresses first.
 

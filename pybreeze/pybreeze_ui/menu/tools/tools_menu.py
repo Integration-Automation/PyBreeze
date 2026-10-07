@@ -20,6 +20,7 @@ from pybreeze.pybreeze_ui.extend_ai_gui.prompt_edit_gui.skills_prompt_editor_wid
     SkillPromptEditor
 from pybreeze.pybreeze_ui.extend_ai_gui.skills.skills_send_gui import SkillsSendGUI
 from pybreeze.pybreeze_ui.mcp_gui.mcp_client_gui import McpClientGUI
+from pybreeze.pybreeze_ui.report_gui.report_viewer_gui import ReportViewerGUI
 from pybreeze.pybreeze_ui.tools_gui.curl_import_gui import CurlImportGUI
 from pybreeze.pybreeze_ui.tools_gui.diff_gui import DiffGUI
 from pybreeze.pybreeze_ui.tools_gui.json_editor_gui import JsonEditorGUI
@@ -147,7 +148,8 @@ TOOLS: dict[str, ToolDescriptor] = {tool.key: tool for tool in (
     _tool("JsonFormat", "json_format", lambda win: JsonFormatGUI(win)),
     _tool("JsonEditor", "json_editor", lambda _win: JsonEditorGUI()),
     _tool("KeywordReference", "keyword_reference", lambda win: KeywordReferenceGUI(win)),
-    _tool("McpClient", "mcp_client", lambda _win: McpClientGUI(), category="mcp"),
+    _tool("McpClient", "mcp_client", lambda win: McpClientGUI(win), category="mcp"),
+    _tool("ReportViewer", "report_viewer", lambda _win: ReportViewerGUI(), category="reports"),
     _tool("HeaderAnalyzer", "header_analyzer", lambda win: HeaderAnalyzerGUI(win)),
     _tool("ResponseInspector", "response", lambda win: ResponseInspectorGUI(win)),
 )}

@@ -1,6 +1,6 @@
 # PyBreeze 架構探勘 / Architecture Exploration
 
-> 掃描範圍：`pybreeze/`（250 個 `.py`、約 32,900 行，不含空行與註解約 25,700 行）＋ `test/`、`exe/`、`docs/`、CI 設定
+> 掃描範圍：`pybreeze/`（258 個 `.py`、約 34,300 行，不含空行與註解約 26,900 行）＋ `test/`、`exe/`、`docs/`、CI 設定
 > 對應版本：`pyproject.toml` 1.0.21（stable）／`dev.toml` 1.0.14（dev；只是下限，發佈的版號由 CI 取 PyPI 最新版加一），分支 `dev`
 
 ---
@@ -52,7 +52,7 @@ PyBreeze 是一個「自動化優先」的 Python IDE，建構在 **PySide6 + JE
    ┌─────────────────────────────────────────────────────────────────────────┐
    │ 基礎層 Foundation                                                        │
    │  pybreeze/utils/              21 個工具子套件（純邏輯，可單測）           │
-   │  pybreeze/extend_multi_language/  內建 i18n（英 / 繁中，各 957 鍵）      │
+   │  pybreeze/extend_multi_language/  內建 i18n（英 / 繁中，各 995 鍵）      │
    └─────────────────────────────────────────────────────────────────────────┘
                                     ▼
    外部子行程：python -m je_api_testka / je_auto_control / je_web_runner /
@@ -68,7 +68,7 @@ PyBreeze 是一個「自動化優先」的 Python IDE，建構在 **PySide6 + JE
 
 1. 取得（或建立）`QApplication`，裝上 `collect_garbage_on_gui_thread()`（`pybreeze_ui/gui_thread_gc.py`：關掉自動垃圾回收，改在 UI 執行緒上定時回收，見 §16）
 2. 建立 `PyBreezeMainWindow`，其 `__init__` 依序：
-   - `update_language_dict()` 併入 PyBreeze 的 957 條翻譯——**必須在 `super().__init__` 之前**：JEditor 在那裡依設定挑啟動語言，英文以外的語言讀的是當下合併出來的一份副本，之後才加進去的字串它看不到，選單拿到 `None` 標題就讓 Qt 當掉（access violation）
+   - `update_language_dict()` 併入 PyBreeze 的 995 條翻譯——**必須在 `super().__init__` 之前**：JEditor 在那裡依設定挑啟動語言，英文以外的語言讀的是當下合併出來的一份副本，之後才加進去的字串它看不到，選單拿到 `None` 標題就讓 Qt 當掉（access violation）
    - `super().__init__(..., extend=True)` — JEditor 在此已呼叫 `load_external_plugins()`，自動掃描 CWD 下的 `jeditor_plugins/`，也以 `startup_setting()` 套上存下的設定與 UI Style 主題
    - `show_only_warnings_in_code_result()`（`pybreeze_ui/code_result_logs.py`）— JEditor 剛把一個 `RedirectStdErr` 掛到當下每個 logger 上、收到的顯示在 Code Result；自動化套件 import 時把 root 設成 DEBUG，所以開檔就有 gitpython 的除錯訊息以紅字出現。把這個 handler 的門檻調到 WARNING，logger 本身的層級不動
    - 刪掉 JEditor 原本的 Help 選單
@@ -249,7 +249,7 @@ Template Method 定義的子行程生命週期：
 
 ---
 
-## 6. 工具分頁 `pybreeze_ui/tools_gui/`（15 個工具 widget + 2 個共用機制；MCP 用戶端在 `pybreeze_ui/mcp_gui/`）
+## 6. 工具分頁 `pybreeze_ui/tools_gui/`（15 個工具 widget + 2 個共用機制；MCP 用戶端在 `pybreeze_ui/mcp_gui/`，報告檢視器在 `pybreeze_ui/report_gui/`）
 
 每個工具都是 `QWidget`，UI 極薄，真正邏輯全在 `pybreeze/utils/` 對應的純函式套件裡（所以測得動、也測了）。
 
@@ -270,7 +270,8 @@ Template Method 定義的子行程生命週期：
 | `HeaderAnalyzerGUI` | `utils/header_tools/` | HTTP header 安全稽核（HSTS、CSP、CORS、Set-Cookie、banner…）；「將發現匯出為 SARIF」把目前這次分析存成 `.sarif`（`header_sarif.write_sarif()`，和命令列同一條路；還沒分析時按鈕停用，寫不進去跳警告） |
 | `ResponseInspectorGUI` | `utils/response_inspector/` | 貼整包 response → 拆狀態列/headers/body，順便挖出 JWT；`curl -i` 印出的多段回應（`100 Continue`、proxy 的 `Connection established`、`-L` 的轉址）取最後一段；只有一行又沒有狀態列就當 body |
 | `KeywordReferenceGUI`(272) + `KeywordReadThread` | `utils/language_service/`（`metadata_probe.py`、`action_adapter.py`） | 自動化關鍵字：三個框架各自安裝的版本實際提供的關鍵字（和編輯器補全、檢查用的是同一份中繼資料、同一個直譯器：`main_window.python_compiler`，沒選就是 `default_interpreter()`）。框架下拉、篩選（名稱或說明）、關鍵字清單、右側顯示簽名＋說明＋定義位置、「複製成動作」（`["WR_to_url", {"url": null}]`，必填參數先列出來）、狀態列說版本、關鍵字數與編輯器能提供的能力，讀不到時說原因（`error_text()` 翻譯 `exception_tags` 的理由）。第一次顯示（`showEvent`）才讀，讀過的框架留著，「重新讀取」丟掉重讀。讀取在 `KeywordReadThread` 上（`read_metadata()` 會在子行程匯入框架，要幾秒）；一次只讀一個，讀取中選了別的框架，等這一個回答後接著讀（用分頁自己記的 `_reading` 判斷而不是執行緒的 `isRunning()`：執行緒回答之後還會「執行中」一小段時間，那時要求的讀取曾經永遠沒被啟動）。`KeywordReadThread` 是 `KeptThread`（`thread_keeper.py`）：從啟動就留到結束，分頁沒經過 `closeEvent` 就被刪掉也不會毀掉執行中的 QThread |
-| `McpClientGUI`(393，`pybreeze_ui/mcp_gui/mcp_client_gui.py`) + `McpServerPanel`(175) + `McpProfileDialog`(176) + `McpToolsPanel`／`McpItemsPanel`／`McpCallsPanel`（`mcp_panels.py`，287）+ `McpWorker`(41) | `utils/mcp/` | MCP 用戶端（`docs/adr/0011`；工具表裡 `category="mcp"`，所以導覽面板把它列在 MCP 類別）。左邊是伺服器清單：使用者自己的（`~/.pybreeze/mcp_servers.json`）在前，專案 `.mcp.json` 帶來、名稱沒重複的在後並標示出來；新增／編輯（`McpProfileDialog`：名稱、指令每行一個引數、環境變數表的值以圓點顯示、啟動位置、逾時秒數）／移除／連線／中斷連線。右邊四頁：**工具**（篩選、伺服器對工具的描述與 schema、引數是 JSON 物件並先填好必填的名稱、呼叫／取消、結果）、**資源**（讀取）、**提示**（填引數後取得）、**呼叫紀錄**（時間、工具、結果、秒數；匯出這次工作階段）。每次對伺服器的呼叫都在 `McpWorker`（`KeptThread`）上做，分頁用自己的 `_busy` 記是否有一個在進行；「取消」設定一個 `threading.Event`，用戶端放棄等待並通知伺服器。**呼叫前先問**（`_confirmed()`）：顯示工具、伺服器、實際要送的引數與伺服器對這個工具的說法（唯讀／可能破壞／沒說；只顯示、不採信），預設「否」；勾「不再詢問」就把這個工具記進該伺服器的 `trusted_tools` 並存檔。專案帶來的伺服器連線前另外問一次並顯示它的指令（`_may_start_found()`），它檔案裡寫的 `trustedTools` 不算數。伺服器中途結束時，狀態列說原因並附上它 stderr 的最後一行（機密已去除），頁面清空。關閉分頁時在 daemon thread 上結束伺服器（關 stdin，2 秒後 `stop_tree`） |
+| `McpClientGUI`(411，`pybreeze_ui/mcp_gui/mcp_client_gui.py`) + `McpServerPanel`(175) + `McpProfileDialog`(176) + `McpToolsPanel`／`McpItemsPanel`／`McpCallsPanel`（`mcp_panels.py`，290）+ `McpWorker`(41) | `utils/mcp/` | MCP 用戶端（`docs/adr/0011`；工具表裡 `category="mcp"`，所以導覽面板把它列在 MCP 類別）。左邊是伺服器清單：使用者自己的（`~/.pybreeze/mcp_servers.json`）在前，專案 `.mcp.json` 帶來、名稱沒重複的在後並標示出來；新增／編輯（`McpProfileDialog`：名稱、指令每行一個引數、環境變數表的值以圓點顯示、啟動位置、逾時秒數）／移除／連線／中斷連線。右邊四頁：**工具**（篩選、伺服器對工具的描述與 schema、引數是 JSON 物件並先填好必填的名稱、呼叫／取消、結果）、**資源**（讀取）、**提示**（填引數後取得）、**呼叫紀錄**（時間、工具、結果、秒數；匯出這次工作階段，或「在報告檢視器開啟」：`open_in_report_viewer()` 把 `McpCallLog.report()` 交給新分頁裡的 `ReportViewerGUI.show_report()`）。每次對伺服器的呼叫都在 `McpWorker`（`KeptThread`）上做，分頁用自己的 `_busy` 記是否有一個在進行；「取消」設定一個 `threading.Event`，用戶端放棄等待並通知伺服器。**呼叫前先問**（`_confirmed()`）：顯示工具、伺服器、實際要送的引數與伺服器對這個工具的說法（唯讀／可能破壞／沒說；只顯示、不採信），預設「否」；勾「不再詢問」就把這個工具記進該伺服器的 `trusted_tools` 並存檔。專案帶來的伺服器連線前另外問一次並顯示它的指令（`_may_start_found()`），它檔案裡寫的 `trustedTools` 不算數。伺服器中途結束時，狀態列說原因並附上它 stderr 的最後一行（機密已去除），頁面清空。關閉分頁時在 daemon thread 上結束伺服器（關 stdin，2 秒後 `stop_tree`） |
+| `ReportViewerGUI`(394，`pybreeze_ui/report_gui/report_viewer_gui.py`) + `ReportFilterBar` + `ReportDetails` | `utils/execution_report/` | 報告檢視器（`docs/adr/0012`；`category="reports"`，導覽面板的 Reports 類別）。「開啟」可一次選多個檔案（`read_report()` 依內容判斷是哪一種），每份報告是樹的一個頂層項目，底下是它的結果（名稱、結果、秒數）；項目在被展開時才建立（`_fill()`），壓力測試的幾千筆結果不會一次全建。篩選列（`ReportFilterBar`）：四種結果的勾選框、「至少幾秒」、套件下拉（只列目前開著的報告的套件）、文字；任何一項改變就用 `ReportFilter.of()` 重新算出要顯示的樹，沒有東西可顯示的報告不列出。右邊 `ReportDetails` 四頁：詳細資料（名稱、層級與結果、時間、錯誤的類型／訊息／追蹤、ID）、輸出（stdout＋stderr）、附件（名稱 · 路徑 · 類型，只列出、不開啟）、原始紀錄（套件自己的 `raw`，原樣以 JSON 顯示）。下方一行統計目前顯示的結果數、總數、報告數、秒數與各種結果的數量，有失敗或錯誤時用錯誤色。「匯出」把選取項目所屬的報告存成 JSON／JUnit XML／HTML（對話框的篩選器決定格式，沒寫副檔名就補上）；「關閉報告」把它從檢視移除。其他工具用 `show_report(report)` 把一次執行交進來 |
 
 ### 兩個橫向共用機制
 
@@ -409,7 +410,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 **分層原則**：`utils/` 不 import Qt 或 JEditor，由 `test_utils_has_no_qt.py` 守著，所以全部是不需要視窗的純邏輯測試。
 
-**共用契約**：`import_targets/`、`execution_report/`、`json_format/json_document.py`、`language_service/` 是自動化平台路線圖（PR #141）Phase 0 的四份契約，之後的 WebRunner 匯入目標、統一的報告檢視器、視覺化 JSON 編輯器與三個框架的語言服務都建在它們上面。各自為什麼這樣設計（背景、決定、沒選的做法、後果）記在 `docs/adr/` 的 0001 到 0004；由決定衍生的規則寫在 `CLAUDE.md`，不寫在那裡。目前匯入目標（cURL 與 HAR 兩個分頁）、JSON 文件（JSON 編輯器分頁）與語言服務（動作語言伺服器、自動化關鍵字分頁）有使用者，執行報告還沒有任何程式呼叫，只有測試。
+**共用契約**：`import_targets/`、`execution_report/`、`json_format/json_document.py`、`language_service/` 是自動化平台路線圖（PR #141）Phase 0 的四份契約，之後的 WebRunner 匯入目標、統一的報告檢視器、視覺化 JSON 編輯器與三個框架的語言服務都建在它們上面。各自為什麼這樣設計（背景、決定、沒選的做法、後果）記在 `docs/adr/` 的 0001 到 0004；由決定衍生的規則寫在 `CLAUDE.md`，不寫在那裡。四份契約現在都有使用者：匯入目標（cURL 與 HAR 兩個分頁）、JSON 文件（JSON 編輯器分頁）、語言服務（動作語言伺服器、自動化關鍵字分頁）、執行報告（MCP 用戶端的呼叫紀錄、報告檢視器）。
 
 **JSON 樹的編輯** `json_format/json_tree_edit.py`(300)：視覺化編輯器不是在打 JSON，是在改一棵樹。每一種編輯都是「樹 + 路徑 → 新的樹」的純函式：`set_value`、`insert`（物件的新成員排最後、陣列照索引插入）、`delete`、`rename`（成員留在原位）、`move`（回傳新的樹與值的新路徑；超出範圍的位置取最近的一端）、`position_of`。路徑 `JsonPath` 是從根走到值的鍵與索引（`()` 是文件本身）。交進來的樹不會被改動：路徑上的容器各複製一份（`_rebuilt()`，不用遞迴），其餘和原樹共用，所以文件的樹在新樹交給 `set_tree()` 之前都是完整的。做不到的編輯丟 `JsonEditError`（`ITEJsonException` 的子類別，六個理由都在 `exception_tags.py`：位置不存在、鍵已存在、不是容器、文件本身不能刪／改名／移動、不是數字、不是布林），樹不變。`kind_of()`／`empty_value()`（`JsonKind`：物件、陣列、字串、數字、布林、null）、`scalar_text()`／`value_from_text()`（格子顯示與收回的文字；數字照打的樣子留成 `JsonNumber`）、`converted()`（換類型時能說成同一件事就保留，例如數字 ↔ 寫著它的字串，否則是空值）也在這裡，面板對 JSON 不做任何判斷。`json_document.py` 另有 `detect_options(text)`（從文字讀出縮排是幾個空白或 tab、是否一行、結尾有沒有換行、是否跳脫非 ASCII），`JsonDocument.options` 可以設定（不是編輯，文字與 revision 不變）。
 
@@ -435,17 +436,29 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 | `mcp_redaction.py`(76) | `redact(value, secrets)`：名稱像機密的鍵（token、password、api_key、Authorization、cookie…）其值整個換成 `***`；已知的機密值（profile 的環境變數值，6 個字元以上才算）不論出現在哪個字串裡都換掉。`redact_text()` 只做後者 |
 | `mcp_call_log.py`(113) | `McpCallLog`：一次工作階段的每個工具呼叫記成 `ExecutionReport(framework="mcp")` 的一個 STEP：passed（有回應）、failed（工具自己說失敗，`isError`）、error（逾時、被拒、伺服器不在）、skipped（使用者說不，或取消）；`raw` 留著呼叫本身，引數、結果、錯誤訊息與指令都先經過遮蔽。ID 用 `stable_id`，同一個工具的第幾次呼叫每次工作階段都一樣 |
 
+**執行報告的讀寫** `execution_report/`（`docs/adr/0002`、`0012`）：`report_schema.py`(373) 是 Phase 0 的結構，其餘是把各種檔案讀成它、再寫出去。
+
+| 模組 | 內容 |
+|---|---|
+| `record_reports.py`(208) | 四個自動化套件自己的報告。它們寫法相同：`<name>_success.json` 與 `<name>_failure.json`（或 `.xml`，根節點 `<xml_data>`），裡面是 `Success_Test1`…／`Failure_Test1`…，各放一筆紀錄，值全部是 `str(...)`（沒有的值是 `"None"`）。`framework_of_records()` 從紀錄的欄位判斷套件：`request_url`／`http_method` 是 APITestka，`Method` 是 LoadDensity，`function_name` 是 AutoControl 或 WebRunner（WebRunner 的函式名稱以 `webdriver wrapper`、`web element` 等開頭）。`report_from_records()` 一筆紀錄變一個 `ExecutionResult`（API 與壓測是 TEST，動作是 STEP），紀錄本身放在 `raw`；失敗檔裡的紀錄，錯誤是 assertion 就是 failed，否則是 error，壓測的失敗請求是 failed；每筆都有時間時先照時間排回執行順序再編號，所以同一個函式的第三次呼叫不論哪一次失敗 ID 都一樣 |
+| `junit_xml.py`(176) | `report_from_junit()`：`testsuites`／`testsuite`／`testcase`，含 `failure`、`error`、`skipped`、`system-out`、`system-err`，巢狀 suite 最多 32 層；`junit_from_report()`：每個有子結果的頂層結果是一個 suite，底下沒有子結果的都是 case，中間的名稱變成 `classname`；頂層的單獨結果收進以這次執行命名的 suite；並寫出 CI 服務會讀的 `tests`／`failures`／`errors`／`skipped`／`time` |
+| `html_report.py`(125) | `html_from_report(report, words)`：一個檔案的 HTML 頁面（樣式內嵌、不執行任何 script、每個字都經 `html.escape`），摘要加一張表，每列可以用 `<details>` 展開輸出與錯誤；報告本身以 JSON 放在 `<script type="application/json" id="pybreeze-execution-report">` 資料區塊裡（`<` 寫成 `\u003c`，不會提早結束區塊）。`report_from_html()` 把這個區塊讀回成原本的報告；套件自己的 HTML 報告沒有這個區塊，不讀 |
+| `report_files.py`(165) | `read_report(path)`：檔案是什麼由內容決定（第一個字元是 `<` 就是 XML，看根節點；是 `{` 就是 JSON，看是不是紀錄檔），`.html` 讀資料區塊；紀錄檔會連同這次執行的另一個檔案一起讀（`_success` ↔ `_failure`），不論開的是哪一個，讀出來的報告都一樣。上限 64 MB；不是 UTF-8 的檔案用本機編碼讀（套件在 Windows 上寫的 XML）。`EXPORT_FORMATS`：JSON、JUnit XML、HTML 三種 `ExportFormat`；`write_report()` 經 `replace_text()` |
+| `report_filter.py`(106) | `ReportFilter(statuses, at_least_seconds, text, frameworks)`：條件套在沒有子結果的結果上，有子結果的結果只要底下有東西留下就保留（只帶留下的子結果）；文字比對結果自己的名稱與錯誤訊息，也比對上層的名稱（打 suite 的名字就顯示整個 suite）。`leaf_counts()`、`total_seconds()` 給摘要用。都不用遞迴 |
+| `safe_xml.py`(132) | `parse_xml(text)`：用 `xml.parsers.expat` 把 XML 讀成 `XmlElement`（tag、屬性、文字、子元素），宣告了 DOCTYPE 或 entity 的文件直接拒絕（billion laughs、外部實體都過不了這一關），深度上限 64、元素上限 50 萬。`write_xml()`：屬性與文字全部跳脫，XML 1.0 裝不下的字元（控制字元、孤立的 surrogate）拿掉 |
+
+
 
 
 ---
 
 ## 13. `pybreeze/extend_multi_language/`
 
-`extend_english.py` 與 `extend_traditional_chinese.py` 各 957 個鍵，`update_language_dict()` 把它們併進 `je_editor` 的字典，並把 `application_name`（「PyBreeze」）寫進 `language_wrapper.choose_language_dict` 裡每一個語言：這是 PyBreeze 唯一覆寫而非新增的 JEditor 鍵，日文、簡中等 PyBreeze 沒翻譯的語言自帶「JEditor」，不寫的話會蓋過英文退回值。`test_language_parity.py` 守住兩邊鍵值必須對齊，也檢查每個已註冊語言都解得出程式用到的每個鍵；`test_startup_language.py` 在子行程裡用存好的繁中／日文真的啟動主視窗。
+`extend_english.py` 與 `extend_traditional_chinese.py` 各 995 個鍵，`update_language_dict()` 把它們併進 `je_editor` 的字典，並把 `application_name`（「PyBreeze」）寫進 `language_wrapper.choose_language_dict` 裡每一個語言：這是 PyBreeze 唯一覆寫而非新增的 JEditor 鍵，日文、簡中等 PyBreeze 沒翻譯的語言自帶「JEditor」，不寫的話會蓋過英文退回值。`test_language_parity.py` 守住兩邊鍵值必須對齊，也檢查每個已註冊語言都解得出程式用到的每個鍵；`test_startup_language.py` 在子行程裡用存好的繁中／日文真的啟動主視窗。
 
 `supported_languages.py`(88) 把「支援哪些語言」寫明白：`MAINTAINED`（`MaintainedLanguage`：JEditor 語言包裝器裡的 key、語言選單顯示的名稱、字典）是 PyBreeze 自己維護、每個鍵都有翻譯的語言，目前是 English 與繁體中文；`EDITOR_ONLY` 是 JEditor 自帶、PyBreeze 沒有加任何字串的日本語與简体中文（選了之後編輯器自己的選單會變，PyBreeze 的仍是英文，那不是 PyBreeze 的缺陷）；兩邊都不在的是翻譯外掛註冊的（`who_translates()` 回 `Owner.PLUGIN`）。字串屬於定義那個鍵的一方，兩邊只在 `REWORDED_JEDITOR_KEYS` 重疊（`application_name`、`plugin_browser_*`、`plugin_menu_*`：JEditor 的鍵，PyBreeze 在自己維護的語言裡用自己的說法）。`update_language_dict()` 照 `MAINTAINED` 逐一把字典併進 `choose_language_dict[key]`（JEditor 沒有那個語言時記 log、其餘照併）；`extend_english.py` 與 `extend_traditional_chinese.py` 因此只剩資料，不再 import JEditor。`test_supported_languages.py` 讀 JEditor 自己的語言清單：有一個語言兩邊都沒列、維護中的字典和第一份鍵不一樣、多出一個和 JEditor 重疊的鍵、三份 README 少寫任何一個語言在選單上的名稱，都會失敗。
 
-兩份字典各自拆成幾個檔案，讓每個檔案都在 1000 行的門檻內：`english_integrations.py` 與 `traditional_chinese_integrations.py`（往 IDE 外面伸出去的功能的字串：自動化關鍵字、語言服務、MCP 用戶端）、`traditional_chinese_error_text.py`（`error_text_*`，每個 `exception_tags` 常數一筆；英文那邊是從常數本身推出來的，不需要這個檔案）。它們在 `extend_english.py`／`extend_traditional_chinese.py` 的結尾用 `update()` 併回去，所以 `pybreeze_english_word_dict` 與 `pybreeze_traditional_chinese_word_dict` 仍是所有程式讀的那兩個物件，內容和拆之前逐鍵相同。
+兩份字典各自拆成幾個檔案，讓每個檔案都在 1000 行的門檻內：`english_integrations.py` 與 `traditional_chinese_integrations.py`（往 IDE 外面伸出去的功能的字串：自動化關鍵字、語言服務、MCP 用戶端、報告檢視器）、`traditional_chinese_error_text.py`（`error_text_*`，每個 `exception_tags` 常數一筆；英文那邊是從常數本身推出來的，不需要這個檔案）。它們在 `extend_english.py`／`extend_traditional_chinese.py` 的結尾用 `update()` 併回去，所以 `pybreeze_english_word_dict` 與 `pybreeze_traditional_chinese_word_dict` 仍是所有程式讀的那兩個物件，內容和拆之前逐鍵相同。
 
 ---
 
@@ -542,7 +555,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 18. 測試與 CI
 
-- **單元測試** `test/test_utils/` — 195 個 `test_*.py`、4829 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、對本機回環 SSH 伺服器實際登入並列目錄（`test_ssh_loopback.py`：密碼與各種私鑰檔，只用 SHA-1 簽章的伺服器被拒，信任過的主機換了金鑰就拒絕、不再詢問，終端機分頁說出兩個指紋而不是「金鑰驗證失敗」；終端機分頁開 shell、送指令與 Ctrl+C、伺服器結束 shell 時一併斷線；`test_sftp_tree_loopback.py`：SFTP 檔案樹對真實資料夾的列目錄、建資料夾、改名、刪除、下載與上傳；伺服器在 `ssh_loopback_server.py`）、子行程 IDE 的測試（`started_window.py`：開著的對話框會被記下並關掉、測試失敗時點名，逾時會附上子行程的 stderr）、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
+- **單元測試** `test/test_utils/` — 199 個 `test_*.py`、4963 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、對本機回環 SSH 伺服器實際登入並列目錄（`test_ssh_loopback.py`：密碼與各種私鑰檔，只用 SHA-1 簽章的伺服器被拒，信任過的主機換了金鑰就拒絕、不再詢問，終端機分頁說出兩個指紋而不是「金鑰驗證失敗」；終端機分頁開 shell、送指令與 Ctrl+C、伺服器結束 shell 時一併斷線；`test_sftp_tree_loopback.py`：SFTP 檔案樹對真實資料夾的列目錄、建資料夾、改名、刪除、下載與上傳；伺服器在 `ssh_loopback_server.py`）、子行程 IDE 的測試（`started_window.py`：開著的對話框會被記下並關掉、測試失敗時點名，逾時會附上子行程的 stderr）、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
 - **整合測試** `test/unit_test/start_automation/` — 以 `debug_mode=True` 啟動 IDE，10 秒後自動關閉，驗證啟動流程與 extend tab
 - **CI** `.github/workflows/{dev,stable}.yml` — `unit-tests` job 跑 Windows runner、Python 3.10–3.14 矩陣，`setup-python` 快取 pip 的下載（依需求檔當鍵；版本每次仍向 PyPI 解析），3.12 那一腳額外上傳 `coverage-xml` artifact；`platform-smoke` job 在 `ubuntu-latest` 與 `macos-latest`（Python 3.12）只跑 `test_platform_smoke.py`（12 個測試：套件不靠 Qt 就能 import、真的主視窗在子行程裡建起來再關掉、子行程的輸出原樣回來、只給 IDE 自己的環境變數不進子行程、放在有空白與多種文字的資料夾裡的腳本跑得起來、一次執行的輸出一路進到執行視窗、資料夾建在家目錄而且只有擁有者能讀、檔案整檔替換、offscreen 平台上 widget 畫得出來、計時器在 GUI 執行緒觸發、QtWebEngine import 得進來；每一項都不依賴是哪個系統，檔名用的字都沒有分解形式，macOS 的檔案系統不會還回別的寫法），Linux 先用 apt 裝 PySide6 wheel 沒帶的系統函式庫（`libegl1` 等）；整個 job 30 分鐘逾時，沒有任何 job `needs` 它，所以不擋 SonarCloud 與發佈（`test_workflow_actions.py` 守著這兩個 workflow 都有這個 job、沒有人等它）。完整的測試只在 Windows 跑：某個系統上整套都過了，才把它加進 `unit-tests` 的矩陣（`progress.md` #125，這個 job 還沒有實際跑過）；`sonarcloud` job 跑 ubuntu、`needs: unit-tests`。每日 02:00 排程 + push/PR 觸發。`stable.yml` 另有 `publish` job 負責版號遞增與 PyPI 發布。`dev.yml` 另有 `publish-dev` job（`needs: unit-tests`，只在 push 到 `dev` 時跑）：`scripts/dev_release.py` 把 `dev.toml` 寫成 `pyproject.toml`、版號取 PyPI 上最新的 `pybreeze_dev` 加一，建好的 wheel 和 PyPI 上最新的不同、而且這個 commit 仍是 `dev` 最新一筆時才上傳；不寫回 repo，checkout 不留憑證。兩個拿得到 PyPI token 的 job（`publish-dev`、`publish`）只安裝 `.github/requirements/publish.txt` 鎖住的工具（`build`、`twine`、建置後端 `setuptools` 與其相依共 30 個套件，每個都有版本與雜湊；`pip install --require-hashes --only-binary :all:`，不再升級 pip），再以 `python -m build --no-isolation` 建置：建置後端就是鎖檔裡的 `setuptools`，不會在 job 執行時另外向 PyPI 下載最新版；`pyproject.toml`、`dev.toml` 的 `[build-system]` `requires` 調高下限時要一併重產鎖檔。清單與重新產生鎖檔的 `uv pip compile` 指令在 `publish.in`。每個 action 都鎖在 commit SHA、後面註明版本（Node 24 的版本：checkout v7、setup-python v7、upload-artifact v7、download-artifact v8），Dependabot 的 `github-actions` 每週、`pip` 每天在 `dev` 更新（`pip` 除了 `/` 也讀 `/.github/requirements`；新版本等 7 天才提，`cooldown`）；checkout 一律寫明 `persist-credentials`，只有要 push 版號的 `publish` 保留憑證（`test_workflow_actions.py` 守著）
 - **覆蓋率** `.coveragerc` — `relative_files = True` 是必要的：報告在 Windows 產生、由 Linux 上的 scanner 讀取，路徑不能帶機器資訊。`patch = subprocess` 也是必要的：pytest-cov 7 不再量測子行程，沒有它，測試在子直譯器裡建出的真主視窗（`started_window.py`）一行都不算。目前整體語句 98.9%、連分支 97.8%（`dialog`、`jupyter_lab_gui` 100%；`menu` 99.7%；`tools_gui`、`utils/`、`extend/`、`extend_ai_gui` 99.5%；`editor_main` 99.1%；最低的是 `connect_gui` 97.7% 與 `diagram_editor` 97.9%）。子行程的資料由 pytest-cov 併進它的報告，只看 `.coverage` 的 `coverage report` 會少算子行程裡跑的部分。coverage 只追蹤 Python 自己開的執行緒，`test/test_utils/conftest.py` 讓每個 `QThread` 子類別的 `run` 在 Qt 的執行緒上裝上 coverage 的 tracer，否則沒有一個 `QThread.run` 算得到

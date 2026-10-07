@@ -14,6 +14,7 @@ from pybreeze.extend_multi_language.update_language_dict import update_language_
 from pybreeze.pybreeze_ui.extend_ai_gui.code_review.cot_code_review_gui import CoTCodeReviewGUI
 from pybreeze.pybreeze_ui.menu.tools import tools_menu
 from pybreeze.pybreeze_ui.mcp_gui.mcp_client_gui import McpClientGUI
+from pybreeze.pybreeze_ui.report_gui.report_viewer_gui import ReportViewerGUI
 from pybreeze.pybreeze_ui.menu.tools.tools_menu import add_dock
 from pybreeze.pybreeze_ui.tools_gui.curl_import_gui import CurlImportGUI
 from pybreeze.pybreeze_ui.tools_gui.diff_gui import DiffGUI
@@ -57,6 +58,7 @@ def app():
         ("JsonEditor", JsonEditorGUI),
         ("KeywordReference", KeywordReferenceGUI),
         ("McpClient", McpClientGUI),
+        ("ReportViewer", ReportViewerGUI),
         ("HeaderAnalyzer", HeaderAnalyzerGUI),
         ("ResponseInspector", ResponseInspectorGUI),
     ],

@@ -35,13 +35,14 @@ their output reaches the UI through Queue + QTimer.
 | `pybreeze/pybreeze_ui/design/` | The design system PyBreeze's own panels are built from: `tokens.py` (gaps, text and icon sizes in ems, a state's theme colour), `flow_layout.py` (a row that wraps), `panels.py` (`Panel`, `StatusLine`, `wrapping_row`) |
 | `pybreeze/pybreeze_ui/navigation/` | The navigation panel: `navigation_model.py` reads the menus and the tool table into five categories, `navigation_dock.py` shows them as a searchable tree in a dock at the left |
 | `pybreeze/pybreeze_ui/mcp_gui/` | The MCP client tab: `mcp_client_gui.py` (connecting, asking before a call, cancelling, the session's log), `mcp_server_panel.py` (the user's servers and the project's), `mcp_profile_dialog.py`, `mcp_panels.py` (tools, resources, prompts, calls), `mcp_worker.py` (one blocking call on a `KeptThread`) |
+| `pybreeze/pybreeze_ui/report_gui/` | The report viewer tab (`report_viewer_gui.py`): several runs as one tree, a filter bar, the selected result's details, output, attachments and own record, and export |
 | `pybreeze/pybreeze_ui/thread_keeper.py` | `let_run_out()`: a worker `QThread` whose widget closed is kept until it ends instead of being waited for |
 | `pybreeze/pybreeze_ui/gui_thread_gc.py` | `GuiThreadGarbageCollector`: automatic garbage collection off, collected on a GUI-thread timer instead (installed by `start_editor()`) |
 | `pybreeze/extend/process_executor/` | Subprocess isolation layer: `TaskProcessManager`, `process_executor_utils.py`, `FileRunnerProcess`, `queue_pump.py`, `run_notice.py`, and `test_pioneer/` and `prthinker/` (the other automation packages run through `build_process()` from their menus) |
 | `pybreeze/extend/mail_thunder_extend/`, `prthinker_extend/` | Post-test email hook; prthinker settings and argument assembly (pure logic) |
 | `pybreeze/extend/language_server/` | The action language server as a process: its entry (`python -m pybreeze.extend.language_server`), the frameworks it asks for their keywords, and the command JEditor's editors start it with (`launch.py`). No Qt |
 | `pybreeze/extend_multi_language/` | PyBreeze's English and Traditional Chinese strings, merged into JEditor's dictionaries; `supported_languages.py` lists the languages PyBreeze maintains, the ones it only passes on from JEditor, and the few JEditor keys it words its own way |
-| `pybreeze/utils/` | Pure logic, no Qt or JEditor (`test_utils_has_no_qt.py` guards it): request parsing and codegen, the registry of what a captured request can be generated as (`import_targets/`, with the request as it is sent, `NormalizedRequest`), the schema a run of any framework is reported in (`execution_report/`), the JSON document a text editor and a visual editor both edit (`json_format/json_document.py`) and the edits of its tree by path (`json_format/json_tree_edit.py`), the one way an editor asks a framework for completion and diagnostics and what answers it for the three frameworks' action scripts (`language_service/`: profiles, the keywords read from the installed package in a child process, the adapter, and a Language Server Protocol server), an MCP client over the standard transport with its server profiles, redaction and call log (`mcp/`), HTTP tools, `network/` SSRF validation, pinned connections and capped reads, exceptions, logging, `app_dirs.py`, `subprocess_util.py`, `terminal_text.py` (terminal escapes stripped for the SSH terminal and the run window), `terminal_style.py` (SGR colours read for the SSH terminal) |
+| `pybreeze/utils/` | Pure logic, no Qt or JEditor (`test_utils_has_no_qt.py` guards it): request parsing and codegen, the registry of what a captured request can be generated as (`import_targets/`, with the request as it is sent, `NormalizedRequest`), the schema a run of any framework is reported in and what reads and writes it (`execution_report/`: the packages' record files, JUnit XML, an HTML page, a filter, an XML reader that refuses document types), the JSON document a text editor and a visual editor both edit (`json_format/json_document.py`) and the edits of its tree by path (`json_format/json_tree_edit.py`), the one way an editor asks a framework for completion and diagnostics and what answers it for the three frameworks' action scripts (`language_service/`: profiles, the keywords read from the installed package in a child process, the adapter, and a Language Server Protocol server), an MCP client over the standard transport with its server profiles, redaction and call log (`mcp/`), HTTP tools, `network/` SSRF validation, pinned connections and capped reads, exceptions, logging, `app_dirs.py`, `subprocess_util.py`, `terminal_text.py` (terminal escapes stripped for the SSH terminal and the run window), `terminal_style.py` (SGR colours read for the SSH terminal) |
 | `test/test_utils/` | Unit tests (pure logic and headless widgets). `test/unit_test/start_automation/` holds the launch tests |
 | `pyproject.toml`, `dev.toml` | Stable packaging (CI bumps and publishes it) and the dev-channel packaging: the same package under the name `pybreeze_dev` (`test_requirement_pins.py` and `test_dev_toml_parity.py` keep the two in step) |
 | `.github/workflows/`, `scripts/` | `dev.yml`, `stable.yml` (unit tests on a Windows matrix, the platform smoke tests on Linux and macOS, then SonarCloud and the upload to PyPI); `scripts/dev_release.py` numbers and gates the dev-channel release |
@@ -164,6 +165,18 @@ Call → arguments typed as a JSON object → asked about (unless that tool is t
 A project's `.mcp.json` is read by `discovered_profiles()` and listed; nothing in it is started until the
 user connects to it and says yes to its command.
 
+**Open a run in the report viewer**
+
+```
+Report Viewer tab → Open… → report_files.read_report(path)
+  → "<…" → safe_xml.parse_xml → JUnit (junit_xml) | <xml_data> records (record_reports)
+  → "{…" → records (with the run's other file, _success ↔ _failure) | ExecutionReport.from_dict
+  → .html → the report carried in the page's data block (html_report)
+  → ExecutionReport → ReportFilter.of(results) → the tree (items made as they are opened) → details
+Export… → EXPORT_FORMATS: JSON | JUnit XML | HTML → replace_text
+MCP Client → Calls → Open in Report Viewer → ReportViewerGUI.show_report(McpCallLog.report())
+```
+
 ## 5. Extension points
 
 - **Custom tabs**: add entries to `EDITOR_EXTEND_TAB` (`pybreeze_ui/editor_main/main_ui.py`) before
@@ -198,6 +211,9 @@ user connects to it and says yes to its command.
   `normalized_request.normalize()`. `test_import_targets.py` checks `carries` against what the
   generators write, for every target and every part, and `test_import_round_trip.py` reads each
   target's output back against the fixtures in `test/test_utils/fixtures/import/`.
+- **A further report format**: a function from a file's text to an `ExecutionReport`, a branch in
+  `execution_report/report_files.read_report()`, and, to write it, one `ExportFormat` line in `EXPORT_FORMATS`.
+  A tool that has a run of its own hands it over with `ReportViewerGUI.show_report(report)` (`docs/adr/0012`).
 - **A further MCP transport**: a class with `start()`, `send(message)`, `close()` and `log_tail()` that calls
   back with each message and once when the server is gone, given to `McpClient(profile, version, transport)`
   (`utils/mcp/mcp_transport.py`, `docs/adr/0011`).
@@ -276,6 +292,16 @@ user connects to it and says yes to its command.
   actions from the key `webdriver_wrapper`, `auto_control` or `load_density`, and on their own keywords
   starting `WR_`, `AC_` or `LD_` (`framework_profiles.py`). `test_metadata_probe.py` asks the installed
   packages and reads their executors' source for the key.
+- **The automation packages' reports**: the report viewer reads what `je_api_testka`, `je_auto_control`,
+  `je_web_runner` and `je_load_density` write (`execution_report/record_reports.py`) and relies on the pair of
+  files `<name>_success.json` / `<name>_failure.json` (or `.xml`, under an `<xml_data>` root), on their
+  `Success_Test…` / `Failure_Test…` keys, and on the fields of a record: `request_method`, `request_url`,
+  `request_time_sec`, `start_time`, `text`, `http_method`, `test_url`, `error` (APITestka); `function_name`,
+  `param`, `time`, `exception` (AutoControl and WebRunner, the latter told by its function names starting
+  `webdriver wrapper`, `web element`, `web runner manager` or `webdriver with options`); `Method`,
+  `test_url`, `name`, `text`, `error` (LoadDensity). Exported, a run is an `ExecutionReport` as JSON, JUnit
+  XML (`testsuites` / `testsuite` / `testcase`), or an HTML page whose data block
+  `<script type="application/json" id="pybreeze-execution-report">` carries the report.
 - **MCP servers**: the client (`utils/mcp/mcp_client.py`) speaks protocol revisions `2025-06-18`, `2025-03-26`
   and `2024-11-05` over the standard-input-and-output transport, and uses `initialize`,
   `notifications/initialized`, `tools/list`, `tools/call`, `resources/list`, `resources/read`, `prompts/list`,
