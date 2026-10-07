@@ -92,3 +92,9 @@ class RegexTesterException(ITEException):
 
 class UrlConvertException(ITEException):
     pass
+
+
+# Execution report
+
+class ExecutionReportException(ITEException):
+    pass

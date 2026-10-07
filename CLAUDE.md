@@ -48,6 +48,7 @@ pybreeze/
 └── utils/                       # Pure logic, no Qt — unit-testable
     ├── curl_import/ har_import/ # Request parsing + script generation
     ├── import_targets/          # TargetDescriptor + IMPORT_TARGETS: what a captured request can be generated as
+    ├── execution_report/        # ExecutionReport / ExecutionResult: what a run produced, whatever framework ran it
     ├── header_tools/ jwt_tools/ hash_tools/ timestamp_tools/
     ├── regex_tools/ query_tools/ url_tools/ diff_tools/
     ├── http_reference/ json_format/ response_inspector/

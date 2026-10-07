@@ -120,3 +120,10 @@ mail_send_failed_error: str = "sending failed ({kind})"
 report_missing_error: str = "the run wrote no {name}"
 report_not_a_file_error: str = "{name} is not a file"
 report_stale_error: str = "the run wrote no new {name}; the one there is from an earlier run"
+
+# Data that is not an execution report (execution_report.report_schema)
+execution_report_field_error: str = "not an execution report: {field} is missing or of the wrong type"
+execution_report_version_error: str = (
+    "the execution report is of schema version {version}, newer than this PyBreeze reads (up to {supported})")
+execution_report_depth_error: str = "the execution report nests results more than {limit} levels deep"
+execution_report_duplicate_id_error: str = "the execution report gives the ID {id!r} to more than one result"

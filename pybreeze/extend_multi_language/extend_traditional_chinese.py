@@ -882,6 +882,11 @@ pybreeze_traditional_chinese_word_dict = {
     "error_text_report_missing_error": "這次執行沒有寫出 {name}",
     "error_text_report_not_a_file_error": "{name} 不是檔案",
     "error_text_report_stale_error": "這次執行沒有寫出新的 {name}；現有的是之前執行留下的",
+    "error_text_execution_report_field_error": "這不是執行報告：{field} 不存在或型別不對",
+    "error_text_execution_report_version_error":
+        "這份執行報告的格式是第 {version} 版，比這個 PyBreeze 讀得懂的還新（最多第 {supported} 版）",
+    "error_text_execution_report_depth_error": "這份執行報告的結果巢狀超過 {limit} 層",
+    "error_text_execution_report_duplicate_id_error": "這份執行報告把 ID {id} 給了不只一個結果",
     # 執行視窗自己對這次執行的說明（extend/process_executor/run_notice.py）
     "run_window_no_compiler": "[錯誤] 這個執行設定沒有指定編譯器",
     "run_window_compile": "[編譯] {command}",
