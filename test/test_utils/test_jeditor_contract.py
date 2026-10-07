@@ -43,7 +43,8 @@ INTERNAL = [
     ("je_editor.utils.encodings.text_codec", "LINE_ENDING_LF",
      "menu/plugin_menu/build_run_with_menu.py"),
     ("je_editor.pyside_ui.main_ui.save_settings.user_color_setting_file", "actually_color_dict",
-     "show_code_window/code_window.py, auto_control_menu/build_autocontrol_menu.py, tools_gui/diff_gui.py"),
+     "show_code_window/code_window.py, auto_control_menu/build_autocontrol_menu.py, tools_gui/diff_gui.py, "
+     "design/tokens.py"),
     ("je_editor.utils.redirect_manager.redirect_manager_class", "RedirectStdErr",
      "code_result_logs.py"),
     ("je_editor.pyside_ui.main_ui.save_settings.user_setting_file", "user_setting_dict",

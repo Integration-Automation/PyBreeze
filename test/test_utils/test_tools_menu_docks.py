@@ -76,14 +76,18 @@ def test_add_dock_unknown_type_adds_nothing(app):
         window.deleteLater()
 
 
-def test_every_tool_widget_has_a_tab_a_dock_and_a_dock_title():
+def test_every_tool_widget_has_a_tab_a_dock_and_a_dock_title(app):
     # The CoT code review panel had a widget and no entry in any menu, so there
     # was no way to open it.
-    factories = set(tools_menu._WIDGET_FACTORIES)
+    # One descriptor says all of it now; each of its four words has to be in the dictionary
+    from je_editor import language_wrapper
 
-    assert {entry[0] for entry in tools_menu._TAB_ACTIONS} == factories
-    assert {entry[0] for entry in tools_menu._DOCK_ACTIONS} == factories
-    assert set(tools_menu._DOCK_TITLES) == factories
+    words = language_wrapper.language_word_dict
+    for tool in tools_menu.TOOLS.values():
+        for key in (tool.tab_action_key, tool.tab_label_key, tool.dock_action_key, tool.dock_title_key):
+            assert words.get(key), key
+    attributes = [name for tool in tools_menu.TOOLS.values() for name in (tool.tab_attribute, tool.dock_attribute)]
+    assert len(set(attributes)) == len(attributes)
 
 
 def test_every_tools_tab_entry_opens_its_widget_under_its_label(app, tmp_path, monkeypatch):
@@ -98,17 +102,18 @@ def test_every_tools_tab_entry_opens_its_widget_under_its_label(app, tmp_path, m
     window.tab_widget = QTabWidget()
     try:
         tools_menu.build_tools_menu(window)
-        for widget_key, attribute, menu_attribute, action_key, label_key in tools_menu._TAB_ACTIONS:
-            action = getattr(window, attribute)
-            assert action in getattr(window, menu_attribute).actions()
-            assert action.text() == language_wrapper.language_word_dict.get(action_key)
+        for tool in tools_menu.TOOLS.values():
+            widget_key, label_key = tool.key, tool.tab_label_key
+            action = getattr(window, tool.tab_attribute)
+            assert action in getattr(window, tools_menu._GROUP_MENUS[tool.group][0]).actions()
+            assert action.text() == language_wrapper.language_word_dict.get(tool.tab_action_key)
 
             action.trigger()
 
             index = window.tab_widget.count() - 1
             assert window.tab_widget.tabText(index) == language_wrapper.language_word_dict.get(label_key), widget_key
             assert window.tab_widget.widget(index) is not None
-        assert window.tab_widget.count() == len(tools_menu._TAB_ACTIONS)
+        assert window.tab_widget.count() == len(tools_menu.TOOLS)
     finally:
         for index in range(window.tab_widget.count()):
             window.tab_widget.widget(index).close()

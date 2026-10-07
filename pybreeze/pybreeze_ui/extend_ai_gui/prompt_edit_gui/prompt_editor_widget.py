@@ -14,13 +14,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from PySide6.QtCore import QFileSystemWatcher
+from PySide6.QtCore import QFileSystemWatcher, Qt
 from PySide6.QtWidgets import (
-    QComboBox, QGroupBox, QHBoxLayout, QLabel, QMessageBox, QPushButton,
+    QComboBox, QGroupBox, QLabel, QMessageBox, QPushButton, QSizePolicy,
     QTextEdit, QVBoxLayout, QWidget
 )
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.design.panels import wrapping_row
 from pybreeze.pybreeze_ui.extend_ai_gui.prompt_edit_gui.prompt_file_io import save_prompt_text
 from pybreeze.pybreeze_ui.extend_ai_gui.prompt_store import (
     prompt_dir, prompt_path, read_prompt_file
@@ -88,16 +89,20 @@ class PromptEditorWidget(QWidget):
         self.create_button = QPushButton(word.get(labels.create_button))
         self.create_button.clicked.connect(self.create_file)
 
-        bottom_layout = QHBoxLayout()
-        bottom_layout.addWidget(self.file_selector)
-        bottom_layout.addStretch()
-        for button in (self.reload_button, self.save_button, self.create_button):
-            bottom_layout.addWidget(button)
+        # Wrapping: on one line the selector and the three buttons were wider than a small screen
+        bottom_layout = wrapping_row(
+            self.file_selector, self.reload_button, self.save_button, self.create_button)
 
         # 這些檔案覆寫實際送出的 prompt，位置要讓人找得到
         # These files override the prompt that is sent, so say where they are
         where = QLabel(f"{word.get('prompt_editor_stored_at_label')} {prompt_dir()}")
         where.setWordWrap(True)
+        # A path is one word and cannot wrap: a long home folder made the tab as wide as
+        # the path. The label may be narrower than its text, which the tooltip has whole
+        where.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        # The folder's name is the user's: shown as text, in the label and in the tooltip
+        where.setTextFormat(Qt.TextFormat.PlainText)
+        where.setToolTip(as_text(where.text()))
 
         main_layout = QVBoxLayout(self)
         main_layout.addWidget(group)

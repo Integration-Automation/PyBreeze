@@ -32,6 +32,8 @@ their output reaches the UI through Queue + QTimer.
 | `pybreeze/pybreeze_ui/extend_ai_gui/`, `dialog/` | LLM code-review chain and prompt editors; prthinker settings dialog |
 | `pybreeze/pybreeze_ui/connect_gui/` | `ssh/` terminal + SFTP tree; `url/` HTTP code-review client |
 | `pybreeze/pybreeze_ui/jupyter_lab_gui/`, `show_code_window/`, `syntax/` | JupyterLab tab; `CodeWindow` subprocess output window; automation keyword highlighting |
+| `pybreeze/pybreeze_ui/design/` | The design system PyBreeze's own panels are built from: `tokens.py` (gaps, text and icon sizes in ems, a state's theme colour), `flow_layout.py` (a row that wraps), `panels.py` (`Panel`, `StatusLine`, `wrapping_row`) |
+| `pybreeze/pybreeze_ui/navigation/` | The navigation panel: `navigation_model.py` reads the menus and the tool table into five categories, `navigation_dock.py` shows them as a searchable tree in a dock at the left |
 | `pybreeze/pybreeze_ui/thread_keeper.py` | `let_run_out()`: a worker `QThread` whose widget closed is kept until it ends instead of being waited for |
 | `pybreeze/pybreeze_ui/gui_thread_gc.py` | `GuiThreadGarbageCollector`: automatic garbage collection off, collected on a GUI-thread timer instead (installed by `start_editor()`) |
 | `pybreeze/extend/process_executor/` | Subprocess isolation layer: `TaskProcessManager`, `process_executor_utils.py`, `FileRunnerProcess`, `queue_pump.py`, `run_notice.py`, and `test_pioneer/` and `prthinker/` (the other automation packages run through `build_process()` from their menus) |
@@ -65,7 +67,8 @@ The layers are presentation (`pybreeze_ui/`), then execution (`extend/`), then f
 - **Plugin API (re-exported)**: `load_external_plugins`, `register_programming_language`,
   `register_natural_language`.
 - **Persisted state**: `~/.pybreeze/` via `utils/app_dirs.pybreeze_data_dir()` (SSH known hosts,
-  prthinker settings, edited prompts, review history, and `logs/PyBreeze.log`, which
+  prthinker settings, edited prompts, review history, whether the navigation panel is shown (`ui_state.json`,
+  `utils/ui_state.py`), and `logs/PyBreeze.log`, which
   `$PYBREEZE_LOG_FILE` can move). The editor settings inherited from JEditor
   stay in `.jeditor/` under the working directory.
 - **PyPI packages**: `pybreeze` (stable) and `pybreeze_dev` (dev channel), the same import package
@@ -87,7 +90,8 @@ python -m pybreeze → start_editor() → QApplication → open_main_window() �
   → update_language_dict()             [before JEditor picks the startup language]
   → EditorMain.__init__(extend=True)   [JEditor builds the editor, loads jeditor_plugins/]
   → drop JEditor Help menu → add_menu_to_menubar()
-  → syntax_extend_package() → EDITOR_EXTEND_TAB tabs → setup_file_tree_context_menu()
+  → syntax_extend_package() → navigation dock (build_navigation reads the menus just built)
+  → EDITOR_EXTEND_TAB tabs → setup_file_tree_context_menu()
      [EditorMain.__init__ has applied the saved settings and UI Style theme: startup_setting()]
   → a theme given to start_editor(): saved as ui_style, startup_setting() again
      (none given: only the window's own style sheet is set again)
@@ -136,8 +140,10 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
   - add an installer in `menu/install_menu/automation_menu/`;
   - add keywords in `pybreeze_ui/syntax/syntax_keyword.py`.
 - **New tool tab or dock**: a widget in `pybreeze_ui/tools_gui/`, its logic in `pybreeze/utils/`, and
-  rows in `_WIDGET_FACTORIES` / `_TAB_ACTIONS` / `_DOCK_ACTIONS` / `_DOCK_TITLES`
-  (`pybreeze_ui/menu/tools/tools_menu.py`). Like the other tools, a box that holds code calls
+  one `_tool(...)` line in `TOOLS` (`pybreeze_ui/menu/tools/tools_menu.py`): the Tools menu, the Dock
+  menu and the navigation panel are built from that table, and its `category` says where the panel
+  lists it (`tools`, `mcp` or `reports`). Its sizes come from `design/tokens.py` and a row that may be
+  long is a `wrapping_row()`: `test_tools_fit_small_screens.py` holds it to 60 ems of width. Like the other tools, a box that holds code calls
   `fixed_pitch.use_fixed_pitch_font()`, and the main button gets Ctrl+Enter through
   `run_shortcut.press_on_ctrl_enter()` (`act_on_ctrl_enter()` when the input decides the action).
 - **New import target** (something a cURL command or a HAR export can be generated as): one
@@ -169,7 +175,7 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
   | `choose_file_get_save_file_path` | `pyside_ui.dialog.file_dialog.save_file_dialog` | `menu/plugin_menu/build_run_with_menu.py` |
   | `write_file_with_encoding` | `utils.file.save.save_file` | `menu/plugin_menu/build_run_with_menu.py` |
   | `DEFAULT_ENCODING`, `LINE_ENDING_LF` | `utils.encodings.text_codec` | `menu/plugin_menu/build_run_with_menu.py` |
-  | `actually_color_dict` | `pyside_ui.main_ui.save_settings.user_color_setting_file` | `show_code_window/code_window.py`, `automation_menu/auto_control_menu/build_autocontrol_menu.py`, `tools_gui/diff_gui.py` (the diff's line colours: `diff_added_marker_color`, `diff_removed_marker_color`, `syntax_keyword_color`, `blame_annotation_color`) |
+  | `actually_color_dict` | `pyside_ui.main_ui.save_settings.user_color_setting_file` | `show_code_window/code_window.py`, `automation_menu/auto_control_menu/build_autocontrol_menu.py`, `design/tokens.py` (a state's colour), `tools_gui/diff_gui.py` (the diff's line colours: `diff_added_marker_color`, `diff_removed_marker_color`, `syntax_keyword_color`, `blame_annotation_color`) |
   | `RedirectStdErr` | `utils.redirect_manager.redirect_manager_class` | `code_result_logs.py` (the handler `EditorMain` hooks onto every logger to show records in Code Result; PyBreeze raises its level to `WARNING`) |
   | `user_setting_dict` | `pyside_ui.main_ui.save_settings.user_setting_file` | `editor_main/main_ui.py` (`open_main_window()` makes a `theme` given to `start_editor()` the saved `ui_style`, which `EditorMain.startup_setting()` applies over any theme applied before it) |
 
@@ -183,7 +189,9 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
   `EditorMain.__init__` calling `startup_setting()` (the window is built with the saved settings and
   theme; `open_main_window()` applies them again only for a theme given to `start_editor()`), its
   `dock_menu` and its AI submenu `dock_ai_menu` (PyBreeze's AI docks join it; without one they get an
-  AI submenu of their own, `menu/tools/tools_menu.py`), on the syntax highlighter
+  AI submenu of their own, `menu/tools/tools_menu.py`), on its `language_menu` and `venv_menu` and on the
+  `style_menu_label` word that titles its UI Style menu (the navigation panel lists the three under
+  Settings and leaves out one it does not find), on the syntax highlighter
   taking a theme colour key (`warning_output_color`, `diff_modified_marker_color`, in both JEditor's dark and light
   sets) for a registered keyword's colour (`syntax/syntax_extend.py`), and on `language_wrapper`'s
   `choose_language_dict` serving English and Traditional Chinese from the exported dict objects

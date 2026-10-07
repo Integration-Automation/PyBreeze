@@ -57,7 +57,7 @@ def test_each_entry_opens_its_own_dock(app, monkeypatch):
     window = SimpleNamespace(dock_menu=QMenu())
     extend_dock_menu(window)
 
-    for widget_key, attribute, _menu, _label in tools_menu._DOCK_ACTIONS:
-        getattr(window, attribute).trigger()
+    for tool in tools_menu.TOOLS.values():
+        getattr(window, tool.dock_attribute).trigger()
 
-    assert opened == [widget_key for widget_key, *_rest in tools_menu._DOCK_ACTIONS]
+    assert opened == list(tools_menu.TOOLS)

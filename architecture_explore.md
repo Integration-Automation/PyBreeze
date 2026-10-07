@@ -1,6 +1,6 @@
 # PyBreeze 架構探勘 / Architecture Exploration
 
-> 掃描範圍：`pybreeze/`（207 個 `.py`、約 26,000 行，不含空行與註解約 20,200 行）＋ `test/`、`exe/`、`docs/`、CI 設定
+> 掃描範圍：`pybreeze/`（215 個 `.py`、約 26,700 行，不含空行與註解約 20,700 行）＋ `test/`、`exe/`、`docs/`、CI 設定
 > 對應版本：`pyproject.toml` 1.0.21（stable）／`dev.toml` 1.0.14（dev；只是下限，發佈的版號由 CI 取 PyPI 最新版加一），分支 `dev`
 
 ---
@@ -38,6 +38,8 @@ PyBreeze 是一個「自動化優先」的 Python IDE，建構在 **PySide6 + JE
    │  show_code_window CodeWindow：所有子行程輸出的顯示視窗                   │
    │  syntax        自動化關鍵字語法高亮定義                                  │
    │  dialog        prthinker 設定對話框                                     │
+   │  design        設計系統：以 em 計的間距與字級、會換行的列、Panel          │
+   │  navigation    導覽面板：選單與工具表攤成可搜尋的樹（左側 dock）        │
    └────────────────────────────────┬────────────────────────────────────────┘
                                     ▼
    ┌─────────────────────────────────────────────────────────────────────────┐
@@ -50,7 +52,7 @@ PyBreeze 是一個「自動化優先」的 Python IDE，建構在 **PySide6 + JE
    ┌─────────────────────────────────────────────────────────────────────────┐
    │ 基礎層 Foundation                                                        │
    │  pybreeze/utils/              21 個工具子套件（純邏輯，可單測）           │
-   │  pybreeze/extend_multi_language/  內建 i18n（英 / 繁中，各 772 鍵）      │
+   │  pybreeze/extend_multi_language/  內建 i18n（英 / 繁中，各 780 鍵）      │
    └─────────────────────────────────────────────────────────────────────────┘
                                     ▼
    外部子行程：python -m je_api_testka / je_auto_control / je_web_runner /
@@ -66,13 +68,14 @@ PyBreeze 是一個「自動化優先」的 Python IDE，建構在 **PySide6 + JE
 
 1. 取得（或建立）`QApplication`，裝上 `collect_garbage_on_gui_thread()`（`pybreeze_ui/gui_thread_gc.py`：關掉自動垃圾回收，改在 UI 執行緒上定時回收，見 §16）
 2. 建立 `PyBreezeMainWindow`，其 `__init__` 依序：
-   - `update_language_dict()` 併入 PyBreeze 的 772 條翻譯——**必須在 `super().__init__` 之前**：JEditor 在那裡依設定挑啟動語言，英文以外的語言讀的是當下合併出來的一份副本，之後才加進去的字串它看不到，選單拿到 `None` 標題就讓 Qt 當掉（access violation）
+   - `update_language_dict()` 併入 PyBreeze 的 780 條翻譯——**必須在 `super().__init__` 之前**：JEditor 在那裡依設定挑啟動語言，英文以外的語言讀的是當下合併出來的一份副本，之後才加進去的字串它看不到，選單拿到 `None` 標題就讓 Qt 當掉（access violation）
    - `super().__init__(..., extend=True)` — JEditor 在此已呼叫 `load_external_plugins()`，自動掃描 CWD 下的 `jeditor_plugins/`，也以 `startup_setting()` 套上存下的設定與 UI Style 主題
    - `show_only_warnings_in_code_result()`（`pybreeze_ui/code_result_logs.py`）— JEditor 剛把一個 `RedirectStdErr` 掛到當下每個 logger 上、收到的顯示在 Code Result；自動化套件 import 時把 root 設成 DEBUG，所以開檔就有 gitpython 的除錯訊息以紅字出現。把這個 handler 的門檻調到 WARNING，logger 本身的層級不動
    - 刪掉 JEditor 原本的 Help 選單
    - 設定標題、Windows AppUserModelID、圖示（`pybreeze_icon.ico`，在 `main_ui.py` 旁邊、以 package data 隨套件發佈：`pyproject.toml` / `dev.toml` 的 `[tool.setuptools.package-data]`，執行檔建置用 `datas` 帶進去，所以不論從哪個資料夾啟動都有圖示）
    - `add_menu_to_menubar()` — 建構全部選單（見 §5）
    - `syntax_extend_package()` — 註冊 `.json` / `.yml` / `.yaml` 自動化關鍵字高亮
+   - `_add_navigation_dock()` — 選單建好之後，把導覽面板加到左側（見 §5.6），它的每一行都是剛建好的某個選單 action；`~/.pybreeze/ui_state.json` 記著上次關掉就不顯示
    - 依 `EDITOR_EXTEND_TAB` 註冊表加入外部擴充分頁（`_add_extend_tabs()`：每一個分頁各自建，建不起來的只記 log，不會讓整個 IDE 起不來）
    - `setup_file_tree_context_menu()` — 掛上檔案樹右鍵選單，以及焦點在樹上時的 F2（重新命名）與 Delete（刪除，先問、預設否）快捷鍵（`_attach_keys()`，`WidgetShortcut`，走選單的同一組動作）。改名時開著的分頁跟著檔案走（改資料夾也一樣，底下每個開著的檔案都跟著走）：先停掉分頁的自動存檔、改名、再用新路徑重開一條（`_stop_auto_save()` / `_start_auto_save()`）——JEditor 的存檔執行緒只認開檔當下的路徑，沒辦法改指向。外部修改監視也跟著搬（改名前就先移除，檔案搬走後 Windows 放不掉舊名），並照 `open_an_file` 重載語法高亮、git 基準與語言伺服器（`rename_self_tab()` 會清掉「未儲存」標記，有未存的編輯就用 `_on_text_changed()` 放回去，否則改名後五秒內關分頁會直接丟掉編輯）；Dock Editor（`FullEditorWidget`，關閉時才寫回、檔案不存在就不寫）的 `current_file` 也改指新路徑（`_dock_editors_under()`）。新增與改名的名稱不能帶磁碟代號、根目錄、`..` 或 `:`，也不能解析到資料夾外（`_inside()`；改名只能是單一名稱）。刪除先移到系統的回收筒（`_move_to_trash()`：`QFile.moveToTrash`，Windows 的資源回收筒、macOS 與 freedesktop 的垃圾桶）；沒有回收筒可用時再問一次（預設否）才永久刪除，資料夾用 `remove_folder()`（唯讀檔清掉唯讀屬性再刪，git 的物件檔就是唯讀）；符號連結與 junction 只刪連結本身，不進回收筒。刪除時同樣用 `_editors_under()`：檔案或資料夾底下每個開著的分頁先停掉自動存檔，再刪；刪完只關掉檔案真的不見了的分頁，刪不掉（被鎖住、唯讀）的檔案分頁留著、自動存檔重開。「在檔案總管中顯示」由 `reveal_command()` 組指令：Windows 用 Explorer 的 `/select,`、macOS 用 `open -R` 把檔案選起來，其他平台 `xdg-open` 只能開資料夾；啟動失敗（例如沒有 `xdg-open`）經 `_perform_file_op()` 跳警告
    - `close_tab()` 覆寫 JEditor 的：分頁有 `may_close()` 就先問（提示詞編輯器、架構圖編輯器有未存的變更時會問）；關掉的工具分頁 `deleteLater()`（JEditor 的 `removeTab` 不刪 widget，關過的工具分頁會留到 IDE 結束），JEditor 自己的編輯器分頁不動，關閉 IDE 時也先問過每個分頁與 dock，有一個說不就取消關閉
@@ -194,13 +197,14 @@ Template Method 定義的子行程生命週期：
 - **`test_pioneer_menu/`** — 建範本目錄（寫在 IDE 的工作目錄，已有範本先問是否取代，寫入失敗跳警告）+ `QFileDialog` 選 `.yml` / `.yaml`（副檔名清單與語法高亮共用 `syntax_keyword.TEST_PIONEER_SUFFIXES`；會驗副檔名，選錯跳 `QMessageBox`）+ Help 子選單（`add_help_menu`，只有 GitHub：它的 readthedocs 網站沒有建出來）
 - **`prthinker_menu/`** — 審查目前檔案（先照 Run with... 的方式存檔：`save_current_file_for_run()`）/ 審查 PR（`QInputDialog` 問編號，範圍 1–1,000,000）/ 設定對話框 / Help
 
-### 5.3 `tools/tools_menu.py` — 表格驅動的工具註冊
+### 5.3 `tools/tools_menu.py` — 一張表的工具註冊
 
-這是全專案設計最乾淨的一塊。三張表把 20 個工具的「建構」「分頁開啟」「dock 開啟」完全解耦：
+每個工具在 `TOOLS: dict[str, ToolDescriptor]` 裡只有一行（`_tool(key, words, factory, ...)`），Tools 選單、Dock 選單與導覽面板都從這一張表建出來。原本是四張以同一個字串為鍵的表（`_WIDGET_FACTORIES`、`_TAB_ACTIONS`、`_DOCK_ACTIONS`、`_DOCK_TITLES`），新增一個工具要改四處：
 
-- `_WIDGET_FACTORIES: dict[str, Callable]` — widget key → 建構 lambda；SSH 的經 `_ssh_widget()`，第一次開才 import（paramiko 與 cryptography 約佔啟動的六分之一秒）
-- `_TAB_ACTIONS: tuple[...]` — (widget key, 主視窗屬性, 選單屬性, action 語言鍵, 分頁標籤鍵)
-- `_DOCK_ACTIONS` / `_DOCK_TITLES` — 同一組 widget 也能開成右側 dock（`closing.AskingDock`：關 dock 前先問 widget 的 `may_close()`，有未存變更的提示詞與架構圖編輯器不會被 dock 的關閉鈕直接丟掉）；AI 類的 dock 放進 JEditor Dock 選單原有的 AI 子選單（`dock_ai_menu`），沒有才自己建一個
+- `ToolDescriptor`（frozen dataclass）：`key`、`words`（四個語言鍵的詞幹：`extend_tools_menu_<words>` 接 `TOOL_WORD_SUFFIXES` 的 `_tab_action`／`_tab_label`／`_dock_action`／`_dock_title`，由 property 組出來）、`factory`（SSH 的經 `_ssh_widget()`，第一次開才 import：paramiko 與 cryptography 約佔啟動的六分之一秒）、`tab_attribute`／`dock_attribute`（把 QAction 掛在主視窗上的屬性名，預設 `tools_<words>_action`／`tools_<words>_dock_action`，五個歷史上不規則的照原樣指定）、`group`（列在哪個子選單：無、`ssh`、`ai`，對應 `_GROUP_MENUS`）、`category`（導覽面板把它列在哪一類：`tools`、`mcp`、`reports`）
+- `test_language_keys_used.py` 認得 `_tool("<key>", "<words>"` 這個寫法，四個語言鍵不必在原始碼裡各寫一次
+- 同一個工具也能開成右側 dock（`add_dock()`、`closing.AskingDock`：關 dock 前先問 widget 的 `may_close()`，有未存變更的提示詞與架構圖編輯器不會被 dock 的關閉鈕直接丟掉）；AI 類的 dock 放進 JEditor Dock 選單原有的 AI 子選單（`dock_ai_menu`），沒有才自己建一個
+- `build_tool_widget(window, key)` 是分頁與 dock 共用的建構點：包在 `busy_cursor()` 裡呼叫 factory，再用 `design.tokens.apply_spacing()` 給 widget 的最外層 layout 標準的邊距與間距；自己把邊距設成 0 的（架構圖編輯器的畫布貼齊分頁邊緣）不動
 
 `_register_action()` 有一段關鍵註解：QAction 必須 `setattr` 掛回主視窗，否則 Qt 不持有它、被 GC 後選單項就失效。另一種做法是建構時把選單當 parent（自動化選單工廠、插件選單用這種）。`test_started_menus.py` 在子行程啟動真的 IDE、GC 後走訪整條選單列，任何子選單變空就失敗（JEditor 的兩個字型選單除外：offscreen 平台沒有字型）。
 
@@ -215,6 +219,23 @@ Template Method 定義的子行程生命週期：
 
 - `automation_menu/` — 八個自動化套件的一鍵安裝（PyPI 上的七個列在 `PYPI_PACKAGES`）。**prthinker 例外**：不在 PyPI 上，第一次會問來源資料夾、記進設定，之後裝 `<path>[runner]`
 - `tools_menu/` — 安裝 setuptools / build / wheel
+
+### 5.6 導覽面板 `pybreeze_ui/navigation/` 與設計系統 `pybreeze_ui/design/`
+
+**導覽面板**是主視窗左側的一個 dock（`NavigationDock`，普通的 `QDockWidget`，關掉只是隱藏），把原本藏在最多四層選單裡的功能列成一棵一直看得到、可以搜尋的樹。它自己不定義任何功能：
+
+- `navigation_model.py`(151)：`CATEGORIES` 依序是 Automation、Tools、MCP、Reports、Settings；`build_navigation(window)` 回傳每一類的 `NavigationEntry`（文字、`activate`、子項）。Automation 是整個 `automation_menu` 的鏡像（`entries_from_menu()`：分隔線、隱藏的項目、空的子選單略過，`&` 助記符去掉）；Tools／MCP／Reports 取自 `TOOLS` 中該 `category` 的工具，文字用分頁標籤、`activate` 就是分頁 action 的 `trigger`，有 `group` 的收在以子選單標題命名的一行底下；Settings 是 JEditor 的 UI Style 選單（JEditor 沒留屬性，靠 `style_menu_label` 這個字在選單列上找）、`language_menu`、`venv_menu` 與 PyBreeze 的 `install_menu`，找不到的就不列。沒有內容的類別整個不列，所以 MCP 與 Reports 要等有那一類的工具註冊才出現
+- 子選單一律用 `submenus_under()` 找（`findChildren(QMenu)` 加每個選單的 `menuAction()`），不呼叫 `QAction.menu()`：PySide6 6.11.0 之下它回傳的物件被丟掉時會把選單一起刪掉（這個版本上 11 個選單測試失敗就是這個原因），讀選單不該動到選單
+- `navigation_dock.py`(128)：搜尋框加 `QTreeWidget`。輸入文字只留下含有它的行與它們的上層（不分大小寫；某一行符合就保留它底下全部；類別自己的標題不參與搜尋，不然打「Tools」會列出所有工具），都沒有就以 `StatusLine` 說沒有符合的項目；Enter 或按兩下執行該行的 `activate`，action 已經不在了（`RuntimeError`）只記 log
+- 顯示與否記在 `~/.pybreeze/ui_state.json`（`utils/ui_state.py`），而且只在使用者表示的時候記：Dock 選單裡那個項目的 `triggered`，或面板自己的關閉鈕（`closeEvent`）。不接 `toggled`／`visibilityChanged`，因為 IDE 關閉時那個項目的勾選狀態也會變，每次離開都會被記成隱藏
+
+**設計系統**是 PyBreeze 自己的面板共用的尺寸與零件，讓面板不必各自寫像素：
+
+- `tokens.py`(117)：一切以 em（目前字型的高度）計。`Space`（HAIRLINE 0.25、TIGHT 0.5、NORMAL 1、SECTION 1.5）、`TextRole`（CAPTION 0.9、BODY 1、TITLE 1.15、HEADING 1.4，後兩者粗體）、`IconSize`（1、1.5、2）、`State`（NEUTRAL／SUCCESS／WARNING／ERROR，值是 JEditor 主題色的鍵，`state_colour()` 從 `actually_color_dict` 取，沒有就用文字色）；`em()`、`space()`、`text_font()`、`icon_size()`、`apply_spacing(layout)`。字型變大、螢幕變密、主題換字級時面板維持比例，深色與淺色主題下顏色都讀得到
+- `flow_layout.py`(101)：`FlowLayout`，一列控制項由左到右排，下一個放不下就換行（`hasHeightForWidth`），所以面板的最小寬度是最寬的那一個控制項，不是全部加起來
+- `panels.py`(78)：`Panel`（有標題的群組，標準邊距）、`StatusLine`（一行結果，依 `State` 上色）、`wrapping_row(*controls)`。標題與訊息一律 `PlainText`，可能來自檔案或伺服器
+- 目前的使用者：導覽面板；`build_tool_widget()` 給每個工具標準邊距；Response Inspector 的四顆轉交按鈕、架構圖編輯器的兩列工具列、提示詞編輯器的底列改用會換行的列，HAR Import 的摘要與提示詞編輯器的資料夾標籤可以換行／縮窄。三個原本比 1280 px 螢幕還寬的工具（12 px 字型下 1382、1176、994 px）現在都在 60 em 以內，`test_tools_fit_small_screens.py` 對每個工具守著寬 60 em、高 30 em
+- 主視窗本身的最小寬度仍有約 1770 px（12 px 字型），全部來自 JEditor 編輯器分頁裡的 Git 面板，那是編輯器核心的事（`progress.md` #126）
 
 ---
 
@@ -366,6 +387,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 | `header_tools/` | `header_analyzer.py`(410) 安全稽核（照 OWASP HTTP Headers Cheat Sheet：CSP 的 `frame-ancestors` 視同 `X-Frame-Options`，`X-XSS-Protection: 0` 不報，`_DEPRECATED_HEADERS` 是現行瀏覽器已忽略的標頭；RFC 6265bis 讓瀏覽器整個丟掉的 cookie 另外回報：違反 `__Secure-`／`__Host-` 前綴規則的、`SameSite=None` 沒有 `Secure` 的）；`header_merge.py` 依 HTTP 規則合併重複 header（Cookie 用 `; ` 其餘用 `, `） |
 | `jwt_tools/`、`hash_tools/`、`timestamp_tools/`、`regex_tools/`、`query_tools/`、`url_tools/`、`diff_tools/`、`http_reference/`、`json_format/`、`response_inspector/` | 對應 §6 工具分頁的純邏輯。`json_format` 的 Format / Minify 不改內容：數字保留原文（先換成帶隨機標記的佔位字串、輸出後一次換回）、非 ASCII 原樣輸出、同一物件重複的 key 與 `NaN`/`Infinity` 報錯；`pretty_json_or_none()` 是同一套解析、不記 log 的版本，Response Inspector 的 body 與 JWT 各段（`jwt_decoder.shown_json()`）用它排版。`json_format/view_safe.py` 的 `dumps_for_view()` / `escape_for_view()`：工具顯示的 JSON 把文字框還不回原樣的字元（U+2029、U+FDD0、U+FDD1 會變換行，落單的 surrogate 會消失；U+2028 經 `toPlainText()`、U+0085 經 `splitlines()` 也會斷行）寫成 `\uXXXX`，JSON Format、Query/URL 轉 JSON、JWT、Response Inspector、cURL/HAR 產生的 JSON 與 Python 字串都經過它。`json_format/json_document.py`(229) 是文字編輯器與視覺化編輯器共用的那一份 JSON：`JsonDocument` 以文字為準（原樣保留，還不是 JSON 時也留著、不丟例外，`problem` 說哪裡不對，這時 `tree` 是 `None`），`tree` 是文字說的內容、不帶排版，數字是保留原文的 `JsonNumber`（建構時檢查 RFC 8259 的數字語法），物件的鍵照文字裡的順序；樹寫回文字一律經 `serialize_json(tree, SerializationOptions)`（縮排、`ensure_ascii`、結尾換行；預設排版和 `pretty_json_or_none()` 相同，輸出一樣經 `escape_for_view()`），排版只存在這一個地方；`parse_json()` 拒絕的和 JSON 工具一樣（同一物件重複的鍵、`NaN`、`Infinity`），錯誤是 `JsonProblem`（`ITEJsonException` 的子類別，語法錯誤帶行與欄），不記 log，因為編輯器每按一鍵就問一次；`set_text()`／`set_tree()` 都要帶這次編輯所根據的 `revision`，根據舊版本的編輯丟 `StaleRevisionError`、文件不動，另一邊在這期間改的東西不會被蓋掉。`json_process.py` 的 `HeldNumbers`（原本的 `_Numbers`）公開給它用。新增、刪除、排序節點，undo 與未存檔狀態是之後視覺化編輯器的事。`query_tools` 與 `url_tools` 讀 JSON 也保留數字原文、拒收 `NaN` 與同一物件重複的 key（`load_json_verbatim()`，用 `json_process.unique_pairs`），Query 轉 JSON 遇到不是 UTF-8 的 percent-escape 報錯而不換成 U+FFFD，`urlencode` 經 `encode_pairs()`：寫不進 URL 的字元（落單的 surrogate）報自己的錯，不從分頁的 slot 漏出去 |
 | `language_service/` | 編輯器向框架要語言功能的同一種問法，AutoControl、WebRunner、LoadDensity 之後各寫一個 adapter。`service_adapter.py`(271)：`LanguageServiceAdapter`（ABC：`framework` 是套件的 import 名稱；`capabilities()` 每次請求前都會被問，答案跟著當下安裝的框架版本走；`complete()` 與 `diagnose()` 每個 adapter 都要實作，`hover()`、`definition()` 是框架有對應資料才做的，預設什麼都不給）。型別照 Language Server Protocol（`Position`、`Range`、`TextDocument`、`Diagnostic`、`Severity`、`CompletionItem`、`Hover`、`Location`，都是 frozen dataclass），之後 adapter 後面換成真的 language server，編輯器這一側不用改；`Position.character` 以 UTF-16 code unit 計（LSP 的預設，也是 Qt 文字游標的算法，BMP 以外的字元算兩個），`utf16_offset()`／`index_at()` 和 Python 的索引互轉。編輯器不直接呼叫 adapter，而是經 `LanguageService`：只問 adapter 說它做得到的，adapter 丟出的任何例外記進 log、回空結果（連 `capabilities()` 自己失敗也一樣），框架出錯賠掉的是一次補全，不是 IDE。`LanguageServiceRegistry` 每個框架一個服務。這裡不 import 任何框架，也還沒有任何 adapter：guard 擋得住例外，擋不住當機與卡死，所以要載入框架程式碼的 adapter 得像執行器一樣放到子行程 |
+| `ui_state.py` | `read_ui_state()`／`remember(name, value)`：`~/.pybreeze/ui_state.json`，IDE 對自己面板記得的事（導覽面板關掉過）。讀取不建立資料夾；不是 JSON、不是物件、不是 UTF-8 都當作空的；寫不進去只記 log，不跳訊息 |
 | `file_process/get_dir_file_list.py` | 遞迴收集指定副檔名的檔案（大小寫不敏感） |
 | `file_process/read_capped.py` | `read_text_capped(path, encoding, max_bytes=None)`：先看大小，超過 `MAX_OPEN_BYTES`（100 MB）丟 `FileTooLargeError`（`OSError`，`strerror` 說明大小與上限），HAR 分頁與架構圖編輯器開檔都經它，不在 UI 執行緒讀好幾 GB 的檔案 |
 | `file_process/replace_file.py` | `replace_text(path, text, private=False)`：寫到旁邊的 `<名稱>.saving` 再 `os.replace` 過去，失敗時原檔不動、半成品刪掉；`private` 以 `0600` 建立（存金鑰的檔案用）；`replace_written(path, write)` 給別人寫的檔案（圖片、SVG）：`write` 拿到旁邊的 `<主檔名>.saving<副檔名>`（副檔名不變，看副檔名決定格式的寫入器照樣用），寫完才換上 |
@@ -379,7 +401,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 13. `pybreeze/extend_multi_language/`
 
-`extend_english.py` 與 `extend_traditional_chinese.py` 各 772 個鍵，`update_language_dict()` 把它們併進 `je_editor` 的字典，並把 `application_name`（「PyBreeze」）寫進 `language_wrapper.choose_language_dict` 裡每一個語言：這是 PyBreeze 唯一覆寫而非新增的 JEditor 鍵，日文、簡中等 PyBreeze 沒翻譯的語言自帶「JEditor」，不寫的話會蓋過英文退回值。`test_language_parity.py` 守住兩邊鍵值必須對齊，也檢查每個已註冊語言都解得出程式用到的每個鍵；`test_startup_language.py` 在子行程裡用存好的繁中／日文真的啟動主視窗。
+`extend_english.py` 與 `extend_traditional_chinese.py` 各 780 個鍵，`update_language_dict()` 把它們併進 `je_editor` 的字典，並把 `application_name`（「PyBreeze」）寫進 `language_wrapper.choose_language_dict` 裡每一個語言：這是 PyBreeze 唯一覆寫而非新增的 JEditor 鍵，日文、簡中等 PyBreeze 沒翻譯的語言自帶「JEditor」，不寫的話會蓋過英文退回值。`test_language_parity.py` 守住兩邊鍵值必須對齊，也檢查每個已註冊語言都解得出程式用到的每個鍵；`test_startup_language.py` 在子行程裡用存好的繁中／日文真的啟動主視窗。
 
 ---
 
@@ -407,8 +429,8 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 | **Facade** | `pybreeze/__init__.py` — 對外只暴露 `start_editor`、`PyBreezeMainWindow`、`EDITOR_EXTEND_TAB` 與轉出的插件 API；第一次用到才 import（PEP 562 `__getattr__`），所以 `import pybreeze.utils.*` 不會連帶載入 PySide6 與 JEditor |
 | **Template Method** | `TaskProcessManager` 固定 spawn → read threads → QTimer poll → drain → exit 的骨架 |
 | **Observer** | Queue + QTimer 把子行程輸出橋接到 UI 執行緒；Qt Signal/Slot（`SenderThread.update_response`、`JupyterLauncherThread.server_ready`） |
-| **Factory** | `build_automation_menu()`；`tools_menu._WIDGET_FACTORIES` |
-| **Registry / Table-driven** | `_TAB_ACTIONS`、`_DOCK_ACTIONS`、`package_keyword_list`、`EDITOR_EXTEND_TAB`、`IMPORT_TARGETS`（`ImportTargetRegistry`） |
+| **Factory** | `build_automation_menu()`；`ToolDescriptor.factory`（`tools_menu.TOOLS`） |
+| **Registry / Table-driven** | `tools_menu.TOOLS`（`ToolDescriptor`）、`navigation_model.CATEGORIES`、`package_keyword_list`、`EDITOR_EXTEND_TAB`、`IMPORT_TARGETS`（`ImportTargetRegistry`） |
 | **State** | `DiagramScene.ToolMode` 決定滑鼠事件行為 |
 | **Command** | `DiagramSnapshotCommand(QUndoCommand)` |
 | **Plugin** | `jeditor_plugins/` 自動探索，插件用 `register()` 註冊語法/翻譯/run config |
@@ -465,6 +487,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 | `prompts/*.md` | 編輯過的 CoT / Skill prompt，覆寫內建模板 |
 | `response_stats.txt` | AI 審查接受/拒絕統計 |
 | `urls.txt` | AI 審查端點歷史 |
+| `ui_state.json` | IDE 對自己的面板記得的事：目前只有導覽面板是否顯示（`navigation_visible`）。`utils/ui_state.py` 讀寫，讀取不建立任何東西，檔案壞了就當作什麼都沒記 |
 
 另有 `~/.pybreeze/logs/PyBreeze.log`（`PYBREEZE_LOG_FILE` 可改；開檔時超過 100 MB 就輪替成 `.1`）與各自動化套件自己的 log。
 
@@ -472,7 +495,7 @@ first_summary → first_code_review → judge_single_review ┐（評分前一�
 
 ## 18. 測試與 CI
 
-- **單元測試** `test/test_utils/` — 174 個 `test_*.py`、3806 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、對本機回環 SSH 伺服器實際登入並列目錄（`test_ssh_loopback.py`：密碼與各種私鑰檔，只用 SHA-1 簽章的伺服器被拒，信任過的主機換了金鑰就拒絕、不再詢問，終端機分頁說出兩個指紋而不是「金鑰驗證失敗」；終端機分頁開 shell、送指令與 Ctrl+C、伺服器結束 shell 時一併斷線；`test_sftp_tree_loopback.py`：SFTP 檔案樹對真實資料夾的列目錄、建資料夾、改名、刪除、下載與上傳；伺服器在 `ssh_loopback_server.py`）、子行程 IDE 的測試（`started_window.py`：開著的對話框會被記下並關掉、測試失敗時點名，逾時會附上子行程的 stderr）、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
+- **單元測試** `test/test_utils/` — 178 個 `test_*.py`、3903 個測試（14 個 prthinker 契約測試在沒有 prthinker 的直譯器上跳過）。純邏輯 + headless Qt widget 測試（`QT_QPA_PLATFORM=offscreen`）。涵蓋 curl/HAR 解析、SSRF 驗證、SSH 安全、對本機回環 SSH 伺服器實際登入並列目錄（`test_ssh_loopback.py`：密碼與各種私鑰檔，只用 SHA-1 簽章的伺服器被拒，信任過的主機換了金鑰就拒絕、不再詢問，終端機分頁說出兩個指紋而不是「金鑰驗證失敗」；終端機分頁開 shell、送指令與 Ctrl+C、伺服器結束 shell 時一併斷線；`test_sftp_tree_loopback.py`：SFTP 檔案樹對真實資料夾的列目錄、建資料夾、改名、刪除、下載與上傳；伺服器在 `ssh_loopback_server.py`）、子行程 IDE 的測試（`started_window.py`：開著的對話框會被記下並關掉、測試失敗時點名，逾時會附上子行程的 stderr）、process reader EOF、queue pump、語言對齊、mermaid parser、diagram 序列化、prthinker 設定、JEditor 內部介面契約（`test_jeditor_contract.py`）、`except Exception` 只能重拋或註明理由（`test_no_blind_except.py`）等。有 hypothesis fuzz 測試（`test_fuzz_pure_logic.py`）。
 - **整合測試** `test/unit_test/start_automation/` — 以 `debug_mode=True` 啟動 IDE，10 秒後自動關閉，驗證啟動流程與 extend tab
 - **CI** `.github/workflows/{dev,stable}.yml` — `unit-tests` job 跑 Windows runner、Python 3.10–3.14 矩陣，`setup-python` 快取 pip 的下載（依需求檔當鍵；版本每次仍向 PyPI 解析），3.12 那一腳額外上傳 `coverage-xml` artifact；`platform-smoke` job 在 `ubuntu-latest` 與 `macos-latest`（Python 3.12）只跑 `test_platform_smoke.py`（12 個測試：套件不靠 Qt 就能 import、真的主視窗在子行程裡建起來再關掉、子行程的輸出原樣回來、只給 IDE 自己的環境變數不進子行程、放在有空白與多種文字的資料夾裡的腳本跑得起來、一次執行的輸出一路進到執行視窗、資料夾建在家目錄而且只有擁有者能讀、檔案整檔替換、offscreen 平台上 widget 畫得出來、計時器在 GUI 執行緒觸發、QtWebEngine import 得進來；每一項都不依賴是哪個系統，檔名用的字都沒有分解形式，macOS 的檔案系統不會還回別的寫法），Linux 先用 apt 裝 PySide6 wheel 沒帶的系統函式庫（`libegl1` 等）；整個 job 30 分鐘逾時，沒有任何 job `needs` 它，所以不擋 SonarCloud 與發佈（`test_workflow_actions.py` 守著這兩個 workflow 都有這個 job、沒有人等它）。完整的測試只在 Windows 跑：某個系統上整套都過了，才把它加進 `unit-tests` 的矩陣（`progress.md` #125，這個 job 還沒有實際跑過）；`sonarcloud` job 跑 ubuntu、`needs: unit-tests`。每日 02:00 排程 + push/PR 觸發。`stable.yml` 另有 `publish` job 負責版號遞增與 PyPI 發布。`dev.yml` 另有 `publish-dev` job（`needs: unit-tests`，只在 push 到 `dev` 時跑）：`scripts/dev_release.py` 把 `dev.toml` 寫成 `pyproject.toml`、版號取 PyPI 上最新的 `pybreeze_dev` 加一，建好的 wheel 和 PyPI 上最新的不同、而且這個 commit 仍是 `dev` 最新一筆時才上傳；不寫回 repo，checkout 不留憑證。兩個拿得到 PyPI token 的 job（`publish-dev`、`publish`）只安裝 `.github/requirements/publish.txt` 鎖住的工具（`build`、`twine`、建置後端 `setuptools` 與其相依共 30 個套件，每個都有版本與雜湊；`pip install --require-hashes --only-binary :all:`，不再升級 pip），再以 `python -m build --no-isolation` 建置：建置後端就是鎖檔裡的 `setuptools`，不會在 job 執行時另外向 PyPI 下載最新版；`pyproject.toml`、`dev.toml` 的 `[build-system]` `requires` 調高下限時要一併重產鎖檔。清單與重新產生鎖檔的 `uv pip compile` 指令在 `publish.in`。每個 action 都鎖在 commit SHA、後面註明版本（Node 24 的版本：checkout v7、setup-python v7、upload-artifact v7、download-artifact v8），Dependabot 的 `github-actions` 每週、`pip` 每天在 `dev` 更新（`pip` 除了 `/` 也讀 `/.github/requirements`；新版本等 7 天才提，`cooldown`）；checkout 一律寫明 `persist-credentials`，只有要 push 版號的 `publish` 保留憑證（`test_workflow_actions.py` 守著）
 - **覆蓋率** `.coveragerc` — `relative_files = True` 是必要的：報告在 Windows 產生、由 Linux 上的 scanner 讀取，路徑不能帶機器資訊。`patch = subprocess` 也是必要的：pytest-cov 7 不再量測子行程，沒有它，測試在子直譯器裡建出的真主視窗（`started_window.py`）一行都不算。目前整體語句 98.9%、連分支 97.8%（`dialog`、`jupyter_lab_gui` 100%；`menu` 99.7%；`tools_gui`、`utils/`、`extend/`、`extend_ai_gui` 99.5%；`editor_main` 99.1%；最低的是 `connect_gui` 97.7% 與 `diagram_editor` 97.9%）。子行程的資料由 pytest-cov 併進它的報告，只看 `.coverage` 的 `coverage report` 會少算子行程裡跑的部分。coverage 只追蹤 Python 自己開的執行緒，`test/test_utils/conftest.py` 讓每個 `QThread` 子類別的 `run` 在 Qt 的執行緒上裝上 coverage 的 tracer，否則沒有一個 `QThread.run` 算得到

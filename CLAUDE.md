@@ -20,6 +20,8 @@ pybreeze/
 │   ├── connect_gui/             # ssh/ (terminal + SFTP tree), url/ (AI review client)
 │   ├── jupyter_lab_gui/         # JupyterLab tab (QWebEngineView)
 │   ├── show_code_window/        # CodeWindow — subprocess output display
+│   ├── design/                  # tokens (sizes in ems, theme colours), FlowLayout, Panel / StatusLine / wrapping_row
+│   ├── navigation/              # The navigation panel: the menus and the tool table as a searchable tree (left dock)
 │   ├── thread_keeper.py         # let_run_out: a worker QThread outlives its closed widget; if_alive: weak slots
 │   ├── gui_thread_gc.py         # Garbage collected on a GUI-thread timer, never on a worker
 │   ├── plain_text.py            # as_text: server/file text shown in message boxes as text, not markup
@@ -57,16 +59,17 @@ pybreeze/
     ├── network/                 # url_validation (SSRF), public_http (pinned connections), http_client (capped reads)
     ├── exception/               # ITEException hierarchy
     ├── logging/ file_process/ app_dirs.py / subprocess_util.py
+    ├── ui_state.py              # read_ui_state / remember: what the IDE keeps of its own panels (~/.pybreeze/ui_state.json)
     ├── terminal_text.py         # Escape sequences and controls stripped from terminal output (SSH, run window)
     ├── terminal_style.py        # SGR colours and emphasis read into a TextStyle (SSH terminal)
     └── manager/package_manager/ # PackageManager — holds syntax_check_list
 ```
 
-**Patterns:** Facade (`__init__.py`) · Template Method (`TaskProcessManager` lifecycle) · Observer (Queue + QTimer → UI thread) · Factory (`build_automation_menu`, `package_run_actions`, `_WIDGET_FACTORIES`) · Registry (`IMPORT_TARGETS`) · State (`DiagramScene.ToolMode`) · Command (`DiagramSnapshotCommand`) · Plugin (auto-discovery from `jeditor_plugins/`)
+**Patterns:** Facade (`__init__.py`) · Template Method (`TaskProcessManager` lifecycle) · Observer (Queue + QTimer → UI thread) · Factory (`build_automation_menu`, `package_run_actions`) · Registry (`IMPORT_TARGETS`, `TOOLS`) · State (`DiagramScene.ToolMode`) · Command (`DiagramSnapshotCommand`) · Plugin (auto-discovery from `jeditor_plugins/`)
 
 **Keep `architecture_explore.md` current (mandatory).** It is the module-by-module map. Update it *in the same change* that makes it stale — whenever a module/package/class is added, removed, renamed or moved; a layer boundary, executor or threading flow changes; a menu, tool tab or dock is added or removed; persisted data or the test/CI layout changes; or one of its listed observations is fixed. Re-measure any line counts it quotes, and mirror structural edits into the tree above.
 
-**`docs/adr/` records why the shared contracts are shaped as they are** (import targets, the execution report, the JSON document, the language-service adapter). It is reference material: a rule that follows from a decision is written in this file, not there. A record that has been merged is not rewritten: a decision that changes gets a new record, and the old one is marked as superseded by it.
+**`docs/adr/` records why the shared contracts are shaped as they are** (import targets, the execution report, the JSON document, the language-service adapter) and the shell (the navigation panel and the design system). It is reference material: a rule that follows from a decision is written in this file, not there. A record that has been merged is not rewritten: a decision that changes gets a new record, and the old one is marked as superseded by it.
 
 ## Key types
 
@@ -116,6 +119,8 @@ ruff check pybreeze/                              # before committing non-trivia
 - A process the IDE starts gets `child_environment()` or `utf8_subprocess_env()` (`utils/subprocess_util.py`) as its `env`, never `os.environ` as it is: a variable the IDE sets for itself alone has the value `IDE_ONLY` and stays out (`LOCUST_SKIP_MONKEY_PATCH`, which a load test must not inherit). `test_child_process_environment.py` fails on a `subprocess` call without `env`
 - Import `je_auto_control` only where it is used, never at the top of a module the IDE loads as it starts: it makes the process system DPI aware as it imports, which keeps Qt from making the IDE per-monitor aware. The automation packages' GUIs and the SSH client (paramiko) are likewise imported by the entry that opens them, which keeps almost two seconds off the start; `test_startup_imports.py` fails when one of them is imported as the IDE starts
 - An instance attribute of a Qt class never takes the name of a member of its Qt base (`self.actions`, `self.thread`, `self.layout`, …): it hides the method from everything that calls it on the widget. `test_no_qt_member_shadowing.py` fails on one
+- A tool is one `_tool(...)` line in `TOOLS` (`menu/tools/tools_menu.py`): the Tools menu, the Dock menu and the navigation panel are all built from it, and nothing else lists a tool. A panel takes its gaps, text sizes and state colours from `pybreeze_ui/design/tokens.py`, counted in ems, never a number of pixels of its own, and a row of controls that may be long is a `wrapping_row()`. `test_tools_fit_small_screens.py` fails on a tool that asks for more than 60 ems of width or 30 of height
+- A menu's submenus are found with `navigation_model.submenus_under()` (`findChildren(QMenu)` and `menuAction()`), never `QAction.menu()`: under PySide6 6.11.0 the object it returns takes the menu with it when it is dropped
 - A tool tab asks `IMPORT_TARGETS` (`utils/import_targets/builtin_targets.py`) what a captured request can be generated as and how, and never names a target itself. A new target is one `TargetDescriptor` registered there, with the request parts its output sends in `carries`. `test_import_targets.py` fails on a target's key written in `tools_gui/`, and on a `carries` that is not what the generator writes
 - Delete unused code immediately — no dead imports, unreachable branches, commented-out blocks, or `_old_` prefixes
 - Follow PEP 8 and standard Pythonic practice; `ruff` is the arbiter

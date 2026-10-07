@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+from dataclasses import replace
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -81,9 +82,9 @@ class TestTheEntriesThatBuildWidgets:
         from pybreeze.pybreeze_ui.menu.tools import tools_menu
 
         seen: list = []
-        monkeypatch.setitem(tools_menu._WIDGET_FACTORIES, "SSH", _recording_factory(seen))
+        monkeypatch.setitem(tools_menu.TOOLS, "SSH", replace(tools_menu.TOOLS["SSH"], factory=_recording_factory(seen)))
 
-        tools_menu._open_tab_handler(window, "SSH", "extend_tools_menu_ssh_client_tab_label")()
+        tools_menu._open_tab_handler(window, tools_menu.TOOLS["SSH"])()
 
         assert seen == [Qt.CursorShape.WaitCursor]
         assert window.tab_widget.count() == 1
@@ -93,7 +94,7 @@ class TestTheEntriesThatBuildWidgets:
         from pybreeze.pybreeze_ui.menu.tools import tools_menu
 
         seen: list = []
-        monkeypatch.setitem(tools_menu._WIDGET_FACTORIES, "SSH", _recording_factory(seen))
+        monkeypatch.setitem(tools_menu.TOOLS, "SSH", replace(tools_menu.TOOLS["SSH"], factory=_recording_factory(seen)))
 
         tools_menu.add_dock(window, "SSH")
 

@@ -65,6 +65,8 @@ class HarImportGUI(QWidget):
         # It lists the file's host names: plain text, or a host written as
         # <img src=...> was loaded as an image
         self.summary_label.setTextFormat(Qt.TextFormat.PlainText)
+        # Wrapped: on one line its hint made the tab wider than a small screen
+        self.summary_label.setWordWrap(True)
         self.entry_list = QListWidget()
         self.entry_list.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
 

@@ -7,11 +7,12 @@ from __future__ import annotations
 
 
 from PySide6.QtWidgets import (
-    QHBoxLayout, QLabel, QPushButton, QTextEdit, QVBoxLayout, QWidget
+    QLabel, QPushButton, QTextEdit, QVBoxLayout, QWidget
 )
 from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.busy_cursor import busy_cursor
+from pybreeze.pybreeze_ui.design.panels import wrapping_row
 from pybreeze.pybreeze_ui.run_shortcut import press_on_ctrl_enter
 from pybreeze.pybreeze_ui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.header_analyzer_gui import HeaderAnalyzerGUI
@@ -124,11 +125,9 @@ class ResponseInspectorGUI(QWidget):
             basename="response", extension="txt",
             is_valid=lambda: self._analysis is not None)
 
-        cross_tool = QHBoxLayout()
-        cross_tool.addWidget(self.open_status_button)
-        cross_tool.addWidget(self.open_headers_button)
-        cross_tool.addWidget(self.open_body_button)
-        cross_tool.addWidget(self.open_jwt_button)
+        # Wrapping: side by side the four made the tab wider than a small screen
+        cross_tool = wrapping_row(
+            self.open_status_button, self.open_headers_button, self.open_body_button, self.open_jwt_button)
 
         layout = QVBoxLayout()
         layout.addWidget(self.input_label)

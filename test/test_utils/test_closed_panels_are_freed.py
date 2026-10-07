@@ -246,7 +246,7 @@ def test_the_sftp_tree_after_an_upload(app, monkeypatch, tmp_path):
 def _tool_keys() -> list[str]:
     from pybreeze.pybreeze_ui.menu.tools import tools_menu
 
-    return list(tools_menu._WIDGET_FACTORIES)
+    return list(tools_menu.TOOLS)
 
 
 @pytest.mark.parametrize("key", _tool_keys())
@@ -260,4 +260,4 @@ def test_every_tool_tab_opened_and_closed_is_freed(app, key):
         current_run_code_window: list = []
 
     assert _freed_after_a_run(
-        app, lambda: tools_menu._WIDGET_FACTORIES[key](Main()), lambda _widget: None, lambda _widget: _NothingRunning)
+        app, lambda: tools_menu.TOOLS[key].factory(Main()), lambda _widget: None, lambda _widget: _NothingRunning)

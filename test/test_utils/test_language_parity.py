@@ -119,22 +119,22 @@ class TestLabelsAreTold:
 
     def test_every_tools_entry_says_whether_it_opens_a_tab_or_a_dock(self):
         # Tools > AI read "CoT Prompt Editor", "Skill Send GUI" beside "CoT Code Review Tab"
-        from pybreeze.pybreeze_ui.menu.tools.tools_menu import _DOCK_ACTIONS, _TAB_ACTIONS
+        from pybreeze.pybreeze_ui.menu.tools.tools_menu import TOOLS
 
-        for *_start, action_key, _label_key in _TAB_ACTIONS:
-            assert EN[action_key].endswith(" Tab"), action_key
-            assert ZH[action_key].endswith("分頁"), action_key
-        for *_start, action_key in _DOCK_ACTIONS:
-            assert EN[action_key].endswith(" Dock"), action_key
-            assert ZH[action_key].endswith("停駐窗格"), action_key
+        for tool in TOOLS.values():
+            assert EN[tool.tab_action_key].endswith(" Tab"), tool.key
+            assert ZH[tool.tab_action_key].endswith("分頁"), tool.key
+            assert EN[tool.dock_action_key].endswith(" Dock"), tool.key
+            assert ZH[tool.dock_action_key].endswith("停駐窗格"), tool.key
 
     def test_a_tab_is_titled_as_its_menu_entry_names_it(self):
         # The Regex tab was "Regex" in Traditional Chinese, opened by 正規表示式測試器分頁
-        from pybreeze.pybreeze_ui.menu.tools.tools_menu import _TAB_ACTIONS
+        from pybreeze.pybreeze_ui.menu.tools.tools_menu import TOOLS
 
-        for *_start, action_key, label_key in _TAB_ACTIONS:
+        for tool in TOOLS.values():
             for words in (EN, ZH):
-                assert words[label_key] in words[action_key], (label_key, words[label_key], words[action_key])
+                label, entry = words[tool.tab_label_key], words[tool.tab_action_key]
+                assert label in entry, (tool.key, label, entry)
 
     def test_a_dock_is_titled_like_the_tab_of_the_same_tool(self):
         # "AI Code-Review" and "Skill Send GUI" as titles; the Skill Send dock's
