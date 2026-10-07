@@ -42,7 +42,7 @@ their output reaches the UI through Queue + QTimer.
 | `pyproject.toml`, `dev.toml` | Stable packaging (CI bumps and publishes it) and the dev-channel packaging: the same package under the name `pybreeze_dev` (`test_requirement_pins.py` and `test_dev_toml_parity.py` keep the two in step) |
 | `.github/workflows/`, `scripts/` | `dev.yml`, `stable.yml` (unit tests on a Windows matrix, then SonarCloud and the upload to PyPI); `scripts/dev_release.py` numbers and gates the dev-channel release |
 | `.github/requirements/` | `publish.in` and the lock made from it, `publish.txt`: `build`, `twine`, the build backend `setuptools` and what they need, each a version and a hash. The only thing the two publish jobs install (`test_workflow_actions.py`) |
-| `docs/`, `linux_package_source/`, `architecture_diagram/` | Sphinx docs, Debian package source, architecture image |
+| `docs/`, `linux_package_source/`, `architecture_diagram/` | Sphinx docs (`docs/source/`), the decision records of the shared contracts (`docs/adr/`) and the update log (`docs/updates/`); Debian package source; architecture image |
 
 The layers are presentation (`pybreeze_ui/`), then execution (`extend/`), then foundation (`utils/`,
 `extend_multi_language/`), then external subprocesses.

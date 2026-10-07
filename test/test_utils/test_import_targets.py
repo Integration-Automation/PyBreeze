@@ -1,8 +1,12 @@
 """The import targets: each described once, and what each says it sends is what it writes."""
 from __future__ import annotations
 
+import ast
+from pathlib import Path
+
 import pytest
 
+import pybreeze
 from pybreeze.extend_multi_language.extend_english import pybreeze_english_word_dict
 from pybreeze.utils.curl_import.curl_parser import CurlRequest, parse_curl
 from pybreeze.utils.exception.exceptions import CurlParseException
@@ -15,6 +19,7 @@ from pybreeze.utils.import_targets.target_registry import (
 )
 
 _URL = "https://x.example/api"
+_TOOL_TABS = Path(pybreeze.__file__).parent / "pybreeze_ui" / "tools_gui"
 
 # For each part: curl options that give a request that part alone, and text
 # the generated output holds only when it sends the part
@@ -113,6 +118,20 @@ class TestBuiltinTargets:
 
         assert loaddensity.unrepresented(request) == [
             RequestPart.HEADERS, RequestPart.BODY, RequestPart.AUTH, RequestPart.TIMEOUT]
+
+
+def test_no_tool_tab_names_a_target():
+    # A tab that knows a target by name is a second place to change for every
+    # new one: the tabs kept an `_JSON_TARGET` each to tell which wrote JSON
+    keys = {target.key for target in IMPORT_TARGETS.targets()}
+    named = []
+    for source in sorted(_TOOL_TABS.glob("*.py")):
+        tree = ast.parse(source.read_text(encoding="utf-8"), filename=str(source))
+        named.extend(
+            f"{source.name}:{node.lineno}" for node in ast.walk(tree)
+            if isinstance(node, ast.Constant) and isinstance(node.value, str) and node.value in keys)
+
+    assert named == []
 
 
 def _target(key: str) -> TargetDescriptor:

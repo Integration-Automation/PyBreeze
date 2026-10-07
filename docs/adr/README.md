@@ -1,0 +1,41 @@
+# docs/adr: architecture decision records
+
+Why the shared contracts are shaped as they are. Each record says what was decided, what it was
+decided against, and what follows from it.
+
+They are reference material. A rule that follows from a decision is stated in `CLAUDE.md`; what a
+module does is in `architecture_explore.md`; what changed and when is in `docs/updates/`.
+
+| No. | Decision | Status | Roadmap phases that build on it |
+|---|---|---|---|
+| [0001](0001-import-target-registry.md) | Import targets are described once, in a registry | Accepted | 2 |
+| [0002](0002-execution-report-schema.md) | A run is reported in one schema, the framework's own record kept beside it | Accepted | 7, 8 |
+| [0003](0003-json-document-boundary.md) | A JSON file is one document: its text is the truth, its tree is read from it | Accepted | 5 |
+| [0004](0004-language-service-adapter.md) | Language features are asked through one adapter contract, behind a guard | Accepted | 6 |
+
+"Roadmap" is the automation platform roadmap of pull request #141
+(`docs/roadmap/2026-10-automation-platform-next.md`); these four are its Phase 0 contracts.
+
+## Format
+
+```markdown
+# NNNN. The decision, as a sentence
+
+- **Status**: Accepted | Superseded by NNNN
+- **Date**: YYYY-MM-DD
+- **Code**: where it is implemented and tested
+
+## Context
+What made a decision necessary.
+
+## Decision
+What was decided, numbered so that a later record can name one point.
+
+## Alternatives considered
+What else was weighed, and why it lost.
+
+## Consequences
+What this makes easy, what it costs, and what it leaves to a later phase.
+```
+
+A record is "Accepted" from the merge of the change that adds it.

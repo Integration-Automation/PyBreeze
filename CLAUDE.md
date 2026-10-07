@@ -66,6 +66,8 @@ pybreeze/
 
 **Keep `architecture_explore.md` current (mandatory).** It is the module-by-module map. Update it *in the same change* that makes it stale — whenever a module/package/class is added, removed, renamed or moved; a layer boundary, executor or threading flow changes; a menu, tool tab or dock is added or removed; persisted data or the test/CI layout changes; or one of its listed observations is fixed. Re-measure any line counts it quotes, and mirror structural edits into the tree above.
 
+**`docs/adr/` records why the shared contracts are shaped as they are** (import targets, the execution report, the JSON document, the language-service adapter). It is reference material: a rule that follows from a decision is written in this file, not there. A record that has been merged is not rewritten: a decision that changes gets a new record, and the old one is marked as superseded by it.
+
 ## Key types
 
 - `PyBreezeMainWindow` — main window (extends `EditorMain`); holds `tab_widget`, `current_run_code_window`, `python_compiler`
@@ -113,6 +115,7 @@ ruff check pybreeze/                              # before committing non-trivia
 - A process the IDE starts gets `child_environment()` or `utf8_subprocess_env()` (`utils/subprocess_util.py`) as its `env`, never `os.environ` as it is: a variable the IDE sets for itself alone has the value `IDE_ONLY` and stays out (`LOCUST_SKIP_MONKEY_PATCH`, which a load test must not inherit). `test_child_process_environment.py` fails on a `subprocess` call without `env`
 - Import `je_auto_control` only where it is used, never at the top of a module the IDE loads as it starts: it makes the process system DPI aware as it imports, which keeps Qt from making the IDE per-monitor aware. The automation packages' GUIs and the SSH client (paramiko) are likewise imported by the entry that opens them, which keeps almost two seconds off the start; `test_startup_imports.py` fails when one of them is imported as the IDE starts
 - An instance attribute of a Qt class never takes the name of a member of its Qt base (`self.actions`, `self.thread`, `self.layout`, …): it hides the method from everything that calls it on the widget. `test_no_qt_member_shadowing.py` fails on one
+- A tool tab asks `IMPORT_TARGETS` (`utils/import_targets/builtin_targets.py`) what a captured request can be generated as and how, and never names a target itself. A new target is one `TargetDescriptor` registered there, with the request parts its output sends in `carries`. `test_import_targets.py` fails on a target's key written in `tools_gui/`, and on a `carries` that is not what the generator writes
 - Delete unused code immediately — no dead imports, unreachable branches, commented-out blocks, or `_old_` prefixes
 - Follow PEP 8 and standard Pythonic practice; `ruff` is the arbiter
 
