@@ -49,6 +49,8 @@ INTERNAL = [
      "code_result_logs.py"),
     ("je_editor.pyside_ui.main_ui.save_settings.user_setting_file", "user_setting_dict",
      "editor_main/main_ui.py"),
+    ("je_editor.utils.lsp.language_servers", "DEFAULT_SERVERS",
+     "extend/language_server/launch.py"),
 ]
 
 # Names PyBreeze imports from je_editor's top level, i.e. from its __all__.
@@ -207,6 +209,20 @@ class TestTheShapesPyBreezeCalls:
         docked = _internal("je_editor.pyside_ui.main_ui.editor.editor_widget_dock", "FullEditorWidget")
         assert _parameters(docked.__init__) == ["current_file", "encoding", "line_ending"]
         assert "self.current_file" in inspect.getsource(docked.closeEvent)
+
+    def test_an_editor_starts_the_language_server_the_table_names_for_its_files_suffix(self):
+        # PyBreeze puts its own server in the table for .json and has the editors look again
+        servers = importlib.import_module("je_editor.utils.lsp.language_servers")
+        assert isinstance(servers.DEFAULT_SERVERS, dict)
+        assert all(isinstance(command, list) for command in servers.DEFAULT_SERVERS.values())
+        assert _parameters(servers.server_command) == ["suffix", "servers"]
+        assert inspect.signature(servers.server_command).parameters["servers"].default is None
+        client = _internal("je_editor.pyside_ui.code.lsp.lsp_client", "LspClient")
+        assert _parameters(client.start_for) == ["file_path", "servers"]
+        assert "server_command(" in inspect.getsource(client.start_for)
+        editor = _internal("je_editor.pyside_ui.code.plaintext_code_edit.code_edit_plaintext", "CodeEditor")
+        assert _parameters(editor.start_language_server) == []
+        assert "self.lsp_client.start_for(" in inspect.getsource(editor.start_language_server)
 
     def test_the_language_wrapper_has_what_pybreeze_reads(self):
         from je_editor import language_wrapper

@@ -1,0 +1,197 @@
+{
+  "schema": 1,
+  "framework": "je_auto_control",
+  "version": "0.0.178",
+  "keywords": [
+    {
+      "name": "AC_click_mouse",
+      "signature_known": true,
+      "doc": "在指定座標按下並放開滑鼠按鍵\nClick mouse button at given position\n",
+      "source_file": "je_auto_control/wrapper/auto_control_mouse.py",
+      "source_line": 151,
+      "builtin": false,
+      "parameters": [
+        {
+          "name": "mouse_keycode",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "required": true,
+          "default": "",
+          "annotation": "Union[int, str]"
+        },
+        {
+          "name": "x",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "required": false,
+          "default": "None",
+          "annotation": "int"
+        },
+        {
+          "name": "y",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "required": false,
+          "default": "None",
+          "annotation": "int"
+        }
+      ]
+    },
+    {
+      "name": "AC_set_mouse_position",
+      "signature_known": true,
+      "doc": "設定滑鼠位置\nSet mouse position\n",
+      "source_file": "je_auto_control/wrapper/auto_control_mouse.py",
+      "source_line": 75,
+      "builtin": false,
+      "parameters": [
+        {
+          "name": "x",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "required": true,
+          "default": "",
+          "annotation": "int"
+        },
+        {
+          "name": "y",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "required": true,
+          "default": "",
+          "annotation": "int"
+        }
+      ]
+    },
+    {
+      "name": "AC_write",
+      "signature_known": true,
+      "doc": "模擬輸入整個字串\nType a whole string\n",
+      "source_file": "je_auto_control/wrapper/auto_control_keyboard.py",
+      "source_line": 131,
+      "builtin": false,
+      "parameters": [
+        {
+          "name": "write_string",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "required": true,
+          "default": "",
+          "annotation": "str"
+        },
+        {
+          "name": "is_shift",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "required": false,
+          "default": "False",
+          "annotation": "bool"
+        }
+      ]
+    },
+    {
+      "name": "AC_screenshot",
+      "signature_known": true,
+      "doc": "use to capture current screen cv2_utils\n:param file_path screenshot file save path\n:param screen_region screenshot screen_region",
+      "source_file": "je_auto_control/wrapper/auto_control_screen.py",
+      "source_line": 32,
+      "builtin": false,
+      "parameters": [
+        {
+          "name": "file_path",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "required": false,
+          "default": "None",
+          "annotation": "str"
+        },
+        {
+          "name": "screen_region",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "required": false,
+          "default": "None",
+          "annotation": "list"
+        }
+      ]
+    },
+    {
+      "name": "AC_hotkey",
+      "signature_known": true,
+      "doc": "模擬組合鍵 (依序按下，再反向放開)\nSimulate hotkey (press all keys, then release in reverse order)\n",
+      "source_file": "je_auto_control/wrapper/auto_control_keyboard.py",
+      "source_line": 163,
+      "builtin": false,
+      "parameters": [
+        {
+          "name": "key_code_list",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "required": true,
+          "default": "",
+          "annotation": "list"
+        },
+        {
+          "name": "is_shift",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "required": false,
+          "default": "False",
+          "annotation": "bool"
+        }
+      ]
+    },
+    {
+      "name": "AC_get_mouse_position",
+      "signature_known": true,
+      "doc": "取得滑鼠目前位置\nGet current mouse position\n",
+      "source_file": "je_auto_control/wrapper/auto_control_mouse.py",
+      "source_line": 57,
+      "builtin": false,
+      "parameters": []
+    },
+    {
+      "name": "print",
+      "signature_known": true,
+      "doc": "Prints the values to a stream, or to sys.stdout by default.\n\nsep",
+      "source_file": "",
+      "source_line": 0,
+      "builtin": true,
+      "parameters": [
+        {
+          "name": "args",
+          "kind": "VAR_POSITIONAL",
+          "required": false,
+          "default": "",
+          "annotation": ""
+        },
+        {
+          "name": "sep",
+          "kind": "KEYWORD_ONLY",
+          "required": false,
+          "default": "' '",
+          "annotation": ""
+        },
+        {
+          "name": "end",
+          "kind": "KEYWORD_ONLY",
+          "required": false,
+          "default": "'\\n'",
+          "annotation": ""
+        },
+        {
+          "name": "file",
+          "kind": "KEYWORD_ONLY",
+          "required": false,
+          "default": "None",
+          "annotation": ""
+        },
+        {
+          "name": "flush",
+          "kind": "KEYWORD_ONLY",
+          "required": false,
+          "default": "False",
+          "annotation": ""
+        }
+      ]
+    },
+    {
+      "name": "max",
+      "signature_known": false,
+      "doc": "max(iterable, *[, default=obj, key=func]) -> value\nmax(arg1, arg2, *args, *[, key=func]) -> value\n",
+      "source_file": "",
+      "source_line": 0,
+      "builtin": true,
+      "parameters": []
+    }
+  ]
+}

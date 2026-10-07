@@ -1,0 +1,130 @@
+{
+  "schema": 1,
+  "framework": "je_load_density",
+  "version": "0.0.64",
+  "keywords": [
+    {
+      "name": "LD_start_test",
+      "signature_known": true,
+      "doc": "啟動壓力測試\nStart load test\n",
+      "source_file": "je_load_density/wrapper/start_wrapper/start_test.py",
+      "source_line": 8,
+      "builtin": false,
+      "parameters": [
+        {
+          "name": "user_detail_dict",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "required": true,
+          "default": "",
+          "annotation": "Dict[str, Any]"
+        },
+        {
+          "name": "user_count",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "required": false,
+          "default": "50",
+          "annotation": "int"
+        },
+        {
+          "name": "spawn_rate",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "required": false,
+          "default": "10",
+          "annotation": "int"
+        },
+        {
+          "name": "test_time",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "required": false,
+          "default": "60",
+          "annotation": "Optional[int]"
+        },
+        {
+          "name": "web_ui_dict",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "required": false,
+          "default": "None",
+          "annotation": "Optional[Dict[str, Any]]"
+        },
+        {
+          "name": "kwargs",
+          "kind": "VAR_KEYWORD",
+          "required": false,
+          "default": "",
+          "annotation": ""
+        }
+      ]
+    },
+    {
+      "name": "LD_generate_html_report",
+      "signature_known": true,
+      "doc": "產生完整 HTML 報告並輸出檔案\nGenerate full HTML report and save to file\n",
+      "source_file": "je_load_density/utils/generate_report/generate_html_report.py",
+      "source_line": 107,
+      "builtin": false,
+      "parameters": [
+        {
+          "name": "html_name",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "required": false,
+          "default": "'default_name'",
+          "annotation": "str"
+        }
+      ]
+    },
+    {
+      "name": "LD_generate_json",
+      "signature_known": true,
+      "doc": "產生測試紀錄的 JSON 結構\nGenerate JSON structure for test records\n",
+      "source_file": "je_load_density/utils/generate_report/generate_json_report.py",
+      "source_line": 11,
+      "builtin": false,
+      "parameters": []
+    },
+    {
+      "name": "print",
+      "signature_known": true,
+      "doc": "Prints the values to a stream, or to sys.stdout by default.\n\nsep",
+      "source_file": "",
+      "source_line": 0,
+      "builtin": true,
+      "parameters": [
+        {
+          "name": "args",
+          "kind": "VAR_POSITIONAL",
+          "required": false,
+          "default": "",
+          "annotation": ""
+        },
+        {
+          "name": "sep",
+          "kind": "KEYWORD_ONLY",
+          "required": false,
+          "default": "' '",
+          "annotation": ""
+        },
+        {
+          "name": "end",
+          "kind": "KEYWORD_ONLY",
+          "required": false,
+          "default": "'\\n'",
+          "annotation": ""
+        },
+        {
+          "name": "file",
+          "kind": "KEYWORD_ONLY",
+          "required": false,
+          "default": "None",
+          "annotation": ""
+        },
+        {
+          "name": "flush",
+          "kind": "KEYWORD_ONLY",
+          "required": false,
+          "default": "False",
+          "annotation": ""
+        }
+      ]
+    }
+  ]
+}

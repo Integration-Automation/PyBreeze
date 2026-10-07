@@ -1,0 +1,177 @@
+{
+ "about": "The server says what it can do, answers what it does not know with an error, and stops at exit.",
+ "frameworks": [
+  "je_web_runner",
+  "je_auto_control",
+  "je_load_density"
+ ],
+ "exchange": [
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "initialize",
+    "params": {
+     "processId": null,
+     "rootUri": null,
+     "capabilities": {}
+    }
+   },
+   "expect": [
+    {
+     "jsonrpc": "2.0",
+     "id": 1,
+     "result": {
+      "capabilities": {
+       "textDocumentSync": {
+        "openClose": true,
+        "change": 1,
+        "save": {
+         "includeText": true
+        }
+       },
+       "completionProvider": {
+        "triggerCharacters": [
+         "\""
+        ]
+       },
+       "hoverProvider": true,
+       "definitionProvider": true
+      },
+      "serverInfo": {
+       "name": "pybreeze-action-language-server",
+       "version": "test"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "method": "initialized",
+    "params": {}
+   },
+   "expect": []
+  },
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "id": 2,
+    "method": "workspace/symbol",
+    "params": {
+     "query": "x"
+    }
+   },
+   "expect": [
+    {
+     "jsonrpc": "2.0",
+     "id": 2,
+     "error": {
+      "code": -32601,
+      "message": "workspace/symbol"
+     }
+    }
+   ]
+  },
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "method": "$/setTrace",
+    "params": {
+     "value": "off"
+    }
+   },
+   "expect": []
+  },
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "id": 99,
+    "result": null
+   },
+   "expect": []
+  },
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "id": 3,
+    "method": "pybreeze/frameworks",
+    "params": {}
+   },
+   "expect": [
+    {
+     "jsonrpc": "2.0",
+     "id": 3,
+     "result": [
+      {
+       "framework": "je_web_runner",
+       "label": "WebRunner",
+       "state": "ready",
+       "version": "0.0.66",
+       "keywords": 6,
+       "capabilities": [
+        "completion",
+        "definition",
+        "diagnostics",
+        "hover"
+       ],
+       "reason": ""
+      },
+      {
+       "framework": "je_auto_control",
+       "label": "AutoControl",
+       "state": "ready",
+       "version": "0.0.178",
+       "keywords": 6,
+       "capabilities": [
+        "completion",
+        "definition",
+        "diagnostics",
+        "hover"
+       ],
+       "reason": ""
+      },
+      {
+       "framework": "je_load_density",
+       "label": "LoadDensity",
+       "state": "ready",
+       "version": "0.0.64",
+       "keywords": 3,
+       "capabilities": [
+        "completion",
+        "definition",
+        "diagnostics",
+        "hover"
+       ],
+       "reason": ""
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "id": 4,
+    "method": "shutdown",
+    "params": {}
+   },
+   "expect": [
+    {
+     "jsonrpc": "2.0",
+     "id": 4,
+     "result": null
+    }
+   ]
+  },
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "method": "exit",
+    "params": {}
+   },
+   "expect": []
+  }
+ ]
+}

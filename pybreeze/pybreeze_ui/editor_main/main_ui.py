@@ -22,6 +22,8 @@ from je_editor.pyside_ui.main_ui.dock.destroy_dock import DestroyDock
 from je_editor.pyside_ui.main_ui.save_settings.user_setting_file import user_setting_dict
 from qt_material import apply_stylesheet
 
+from pybreeze.extend.language_server.launch import ACTION_SCRIPT_SUFFIX, can_serve, offer_to_jeditor
+from pybreeze.extend.process_executor.python_task_process_manager import default_interpreter
 from pybreeze.extend_multi_language.update_language_dict import update_language_dict
 from pybreeze.pybreeze_ui.code_result_logs import show_only_warnings_in_code_result
 from pybreeze.pybreeze_ui.closing import AskingDock, may_close
@@ -115,6 +117,9 @@ class PyBreezeMainWindow(EditorMain):
         # Navigation: what the menus hold, as a tree that stays in view
         self._add_navigation_dock()
 
+        # Action scripts are completed and checked from the installed frameworks' keywords
+        self._offer_language_server()
+
         # Tab
         self._add_extend_tabs()
 
@@ -141,6 +146,26 @@ class PyBreezeMainWindow(EditorMain):
         toggle = self.navigation_dock.toggleViewAction()
         toggle.triggered.connect(_remember_navigation_visible)
         self.dock_menu.addAction(toggle)
+
+    def _offer_language_server(self) -> None:
+        """Have the editors ask PyBreeze's language server about JSON files.
+
+        The server reads the keywords of the frameworks installed for the
+        interpreter the scripts run with, as it is when the IDE starts. A
+        packaged build has no interpreter to run the server with, and offers
+        none. The editors JEditor restored looked for a server while it was
+        building them, before this one was on offer: those holding a JSON
+        file look again.
+        """
+        if not can_serve():
+            return
+        offer_to_jeditor(self.python_compiler or default_interpreter(), language_wrapper.language)
+        for index in range(self.tab_widget.count()):
+            widget = self.tab_widget.widget(index)
+            if not isinstance(widget, EditorWidget) or widget.code_edit.current_file is None:
+                continue
+            if Path(str(widget.code_edit.current_file)).suffix.lower() == ACTION_SCRIPT_SUFFIX:
+                widget.code_edit.start_language_server()
 
     def _add_extend_tabs(self) -> None:
         """Add every registered ``EDITOR_EXTEND_TAB`` widget as a tab.

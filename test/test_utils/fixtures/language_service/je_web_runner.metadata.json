@@ -1,0 +1,200 @@
+{
+  "schema": 1,
+  "framework": "je_web_runner",
+  "version": "0.0.66",
+  "keywords": [
+    {
+      "name": "WR_get_webdriver_manager",
+      "signature_known": true,
+      "doc": "建立新的 WebDriver 實例\nCreate a new WebDriver instance\n",
+      "source_file": "je_web_runner/manager/webrunner_manager.py",
+      "source_line": 33,
+      "builtin": false,
+      "parameters": [
+        {
+          "name": "webdriver_name",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "required": true,
+          "default": "",
+          "annotation": "str"
+        },
+        {
+          "name": "options",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "required": false,
+          "default": "None",
+          "annotation": "List[str]"
+        },
+        {
+          "name": "kwargs",
+          "kind": "VAR_KEYWORD",
+          "required": false,
+          "default": "",
+          "annotation": ""
+        }
+      ]
+    },
+    {
+      "name": "WR_to_url",
+      "signature_known": true,
+      "doc": "導航到指定 URL\nNavigate to a given URL",
+      "source_file": "je_web_runner/webdriver/webdriver_wrapper.py",
+      "source_line": 327,
+      "builtin": false,
+      "parameters": [
+        {
+          "name": "url",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "required": true,
+          "default": "",
+          "annotation": "str"
+        }
+      ]
+    },
+    {
+      "name": "WR_quit",
+      "signature_known": true,
+      "doc": "關閉並退出所有 WebDriver\nClose and quit all WebDriver instances",
+      "source_file": "je_web_runner/manager/webrunner_manager.py",
+      "source_line": 110,
+      "builtin": false,
+      "parameters": []
+    },
+    {
+      "name": "WR_add_cookie",
+      "signature_known": true,
+      "doc": "新增 cookie 到當前頁面\nAdd a cookie to the current page\n",
+      "source_file": "je_web_runner/webdriver/webdriver_wrapper.py",
+      "source_line": 468,
+      "builtin": false,
+      "parameters": [
+        {
+          "name": "cookie_dict",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "required": true,
+          "default": "",
+          "annotation": "dict"
+        }
+      ]
+    },
+    {
+      "name": "WR_set_page_load_timeout",
+      "signature_known": true,
+      "doc": "設定頁面載入最大等待時間 / Set max page load wait time",
+      "source_file": "je_web_runner/webdriver/webdriver_wrapper.py",
+      "source_line": 423,
+      "builtin": false,
+      "parameters": [
+        {
+          "name": "time_to_wait",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "required": true,
+          "default": "",
+          "annotation": "int"
+        }
+      ]
+    },
+    {
+      "name": "WR_SaveTestObject",
+      "signature_known": true,
+      "doc": "儲存新的測試物件\nSave a new test object\n",
+      "source_file": "je_web_runner/utils/test_object/test_object_record/test_object_record_class.py",
+      "source_line": 25,
+      "builtin": false,
+      "parameters": [
+        {
+          "name": "test_object_name",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "required": true,
+          "default": "",
+          "annotation": "str"
+        },
+        {
+          "name": "object_type",
+          "kind": "POSITIONAL_OR_KEYWORD",
+          "required": false,
+          "default": "None",
+          "annotation": "str"
+        },
+        {
+          "name": "kwargs",
+          "kind": "VAR_KEYWORD",
+          "required": false,
+          "default": "",
+          "annotation": ""
+        }
+      ]
+    },
+    {
+      "name": "print",
+      "signature_known": true,
+      "doc": "Prints the values to a stream, or to sys.stdout by default.\n\nsep",
+      "source_file": "",
+      "source_line": 0,
+      "builtin": true,
+      "parameters": [
+        {
+          "name": "args",
+          "kind": "VAR_POSITIONAL",
+          "required": false,
+          "default": "",
+          "annotation": ""
+        },
+        {
+          "name": "sep",
+          "kind": "KEYWORD_ONLY",
+          "required": false,
+          "default": "' '",
+          "annotation": ""
+        },
+        {
+          "name": "end",
+          "kind": "KEYWORD_ONLY",
+          "required": false,
+          "default": "'\\n'",
+          "annotation": ""
+        },
+        {
+          "name": "file",
+          "kind": "KEYWORD_ONLY",
+          "required": false,
+          "default": "None",
+          "annotation": ""
+        },
+        {
+          "name": "flush",
+          "kind": "KEYWORD_ONLY",
+          "required": false,
+          "default": "False",
+          "annotation": ""
+        }
+      ]
+    },
+    {
+      "name": "len",
+      "signature_known": true,
+      "doc": "Return the number of items in a container.",
+      "source_file": "",
+      "source_line": 0,
+      "builtin": true,
+      "parameters": [
+        {
+          "name": "obj",
+          "kind": "POSITIONAL_ONLY",
+          "required": true,
+          "default": "",
+          "annotation": ""
+        }
+      ]
+    },
+    {
+      "name": "max",
+      "signature_known": false,
+      "doc": "max(iterable, *[, default=obj, key=func]) -> value\nmax(arg1, arg2, *args, *[, key=func]) -> value\n",
+      "source_file": "",
+      "source_line": 0,
+      "builtin": true,
+      "parameters": []
+    }
+  ]
+}

@@ -24,6 +24,7 @@ from pybreeze.pybreeze_ui.tools_gui.diff_gui import DiffGUI
 from pybreeze.pybreeze_ui.tools_gui.json_editor_gui import JsonEditorGUI
 from pybreeze.pybreeze_ui.tools_gui.json_format_gui import JsonFormatGUI
 from pybreeze.pybreeze_ui.tools_gui.jwt_decoder_gui import JwtDecoderGUI
+from pybreeze.pybreeze_ui.tools_gui.keyword_reference_gui import KeywordReferenceGUI
 from pybreeze.pybreeze_ui.tools_gui.har_import_gui import HarImportGUI
 from pybreeze.pybreeze_ui.tools_gui.hash_gui import HashGUI
 from pybreeze.pybreeze_ui.tools_gui.header_analyzer_gui import HeaderAnalyzerGUI
@@ -144,6 +145,7 @@ TOOLS: dict[str, ToolDescriptor] = {tool.key: tool for tool in (
     _tool("Diff", "diff", lambda win: DiffGUI(win)),
     _tool("JsonFormat", "json_format", lambda win: JsonFormatGUI(win)),
     _tool("JsonEditor", "json_editor", lambda _win: JsonEditorGUI()),
+    _tool("KeywordReference", "keyword_reference", lambda win: KeywordReferenceGUI(win)),
     _tool("HeaderAnalyzer", "header_analyzer", lambda win: HeaderAnalyzerGUI(win)),
     _tool("ResponseInspector", "response", lambda win: ResponseInspectorGUI(win)),
 )}

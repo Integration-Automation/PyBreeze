@@ -1,0 +1,429 @@
+{
+ "about": "A WebRunner script is checked as it is opened and changed, completed, described and let go.",
+ "frameworks": [
+  "je_web_runner"
+ ],
+ "exchange": [
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "method": "textDocument/didOpen",
+    "params": {
+     "textDocument": {
+      "uri": "file:///project/script.json",
+      "languageId": "json",
+      "version": 1,
+      "text": "[\n  [\"WR_get_webdriver_manager\", {\"webdriver_name\": \"chrome\"}],\n  [\"WR_to_urll\", {\"url\": \"https://example.com\"}],\n  [\"WR_to_url\", {\"urls\": \"https://example.com\"}],\n  [\"WR_quit\"]\n]\n"
+     }
+    }
+   },
+   "expect": [
+    {
+     "jsonrpc": "2.0",
+     "method": "textDocument/publishDiagnostics",
+     "params": {
+      "uri": "file:///project/script.json",
+      "version": 1,
+      "diagnostics": [
+       {
+        "range": {
+         "start": {
+          "line": 2,
+          "character": 3
+         },
+         "end": {
+          "line": 2,
+          "character": 15
+         }
+        },
+        "severity": 1,
+        "code": "unknown-keyword",
+        "source": "je_web_runner",
+        "message": "WR_to_urll is not a keyword of WebRunner 0.0.66. Did you mean WR_to_url?"
+       },
+       {
+        "range": {
+         "start": {
+          "line": 3,
+          "character": 17
+         },
+         "end": {
+          "line": 3,
+          "character": 23
+         }
+        },
+        "severity": 1,
+        "code": "unknown-parameter",
+        "source": "je_web_runner",
+        "message": "WR_to_url has no parameter named urls. Did you mean url?"
+       },
+       {
+        "range": {
+         "start": {
+          "line": 3,
+          "character": 3
+         },
+         "end": {
+          "line": 3,
+          "character": 14
+         }
+        },
+        "severity": 1,
+        "code": "missing-parameter",
+        "source": "je_web_runner",
+        "message": "WR_to_url needs url"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "id": 5,
+    "method": "textDocument/completion",
+    "params": {
+     "textDocument": {
+      "uri": "file:///project/script.json"
+     },
+     "position": {
+      "line": 2,
+      "character": 6
+     }
+    }
+   },
+   "expect": [
+    {
+     "jsonrpc": "2.0",
+     "id": 5,
+     "result": {
+      "isIncomplete": false,
+      "items": [
+       {
+        "label": "WR_SaveTestObject",
+        "detail": "WR_SaveTestObject(test_object_name: str, object_type: str = None, **kwargs)",
+        "documentation": "儲存新的測試物件\nSave a new test object\n"
+       },
+       {
+        "label": "WR_add_cookie",
+        "detail": "WR_add_cookie(cookie_dict: dict)",
+        "documentation": "新增 cookie 到當前頁面\nAdd a cookie to the current page\n"
+       },
+       {
+        "label": "WR_get_webdriver_manager",
+        "detail": "WR_get_webdriver_manager(webdriver_name: str, options: List[str] = None, **kwargs)",
+        "documentation": "建立新的 WebDriver 實例\nCreate a new WebDriver instance\n"
+       },
+       {
+        "label": "WR_quit",
+        "detail": "WR_quit()",
+        "documentation": "關閉並退出所有 WebDriver\nClose and quit all WebDriver instances"
+       },
+       {
+        "label": "WR_set_page_load_timeout",
+        "detail": "WR_set_page_load_timeout(time_to_wait: int)",
+        "documentation": "設定頁面載入最大等待時間 / Set max page load wait time"
+       },
+       {
+        "label": "WR_to_url",
+        "detail": "WR_to_url(url: str)",
+        "documentation": "導航到指定 URL\nNavigate to a given URL"
+       },
+       {
+        "label": "len",
+        "detail": "len(obj)",
+        "documentation": "Return the number of items in a container."
+       },
+       {
+        "label": "max",
+        "detail": "max(...)",
+        "documentation": "max(iterable, *[, default=obj, key=func]) -> value\nmax(arg1, arg2, *args, *[, key=func]) -> value\n"
+       },
+       {
+        "label": "print",
+        "detail": "print(*args, sep=' ', end='\\n', file=None, flush=False)",
+        "documentation": "Prints the values to a stream, or to sys.stdout by default.\n\nsep"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "id": 6,
+    "method": "textDocument/completion",
+    "params": {
+     "textDocument": {
+      "uri": "file:///project/script.json"
+     },
+     "position": {
+      "line": 3,
+      "character": 18
+     }
+    }
+   },
+   "expect": [
+    {
+     "jsonrpc": "2.0",
+     "id": 6,
+     "result": {
+      "isIncomplete": false,
+      "items": [
+       {
+        "label": "url",
+        "detail": "url: str",
+        "documentation": ""
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "id": 7,
+    "method": "textDocument/hover",
+    "params": {
+     "textDocument": {
+      "uri": "file:///project/script.json"
+     },
+     "position": {
+      "line": 1,
+      "character": 10
+     }
+    }
+   },
+   "expect": [
+    {
+     "jsonrpc": "2.0",
+     "id": 7,
+     "result": {
+      "contents": {
+       "kind": "plaintext",
+       "value": "WR_get_webdriver_manager(webdriver_name: str, options: List[str] = None, **kwargs)\n\n建立新的 WebDriver 實例\nCreate a new WebDriver instance\n"
+      },
+      "range": {
+       "start": {
+        "line": 1,
+        "character": 3
+       },
+       "end": {
+        "line": 1,
+        "character": 29
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "id": 8,
+    "method": "textDocument/hover",
+    "params": {
+     "textDocument": {
+      "uri": "file:///project/script.json"
+     },
+     "position": {
+      "line": 1,
+      "character": 36
+     }
+    }
+   },
+   "expect": [
+    {
+     "jsonrpc": "2.0",
+     "id": 8,
+     "result": {
+      "contents": {
+       "kind": "plaintext",
+       "value": "webdriver_name: str\n\nrequired"
+      },
+      "range": {
+       "start": {
+        "line": 1,
+        "character": 32
+       },
+       "end": {
+        "line": 1,
+        "character": 48
+       }
+      }
+     }
+    }
+   ]
+  },
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "id": 9,
+    "method": "textDocument/definition",
+    "params": {
+     "textDocument": {
+      "uri": "file:///project/script.json"
+     },
+     "position": {
+      "line": 4,
+      "character": 6
+     }
+    }
+   },
+   "expect": [
+    {
+     "jsonrpc": "2.0",
+     "id": 9,
+     "result": []
+    }
+   ]
+  },
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "method": "textDocument/didChange",
+    "params": {
+     "textDocument": {
+      "uri": "file:///project/script.json",
+      "version": 2
+     },
+     "contentChanges": [
+      {
+       "text": "[\n  [\"WR_get_webdriver_manager\", {\"webdriver_name\": \"chrome\"}],\n  [\"WR_to_url\", {\"url\": \"https://example.com\"}],\n  [\"WR_to_url\", {\"url\": \"https://example.com\"}],\n  [\"WR_quit\"]\n]\n"
+      }
+     ]
+    }
+   },
+   "expect": [
+    {
+     "jsonrpc": "2.0",
+     "method": "textDocument/publishDiagnostics",
+     "params": {
+      "uri": "file:///project/script.json",
+      "version": 2,
+      "diagnostics": []
+     }
+    }
+   ]
+  },
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "method": "textDocument/didSave",
+    "params": {
+     "textDocument": {
+      "uri": "file:///project/script.json"
+     },
+     "text": "[\n  [\"WR_get_webdriver_manager\", {\"webdriver_name\": \"chrome\"}],\n  [\"WR_to_urll\", {\"url\": \"https://example.com\"}],\n  [\"WR_to_url\", {\"urls\": \"https://example.com\"}],\n  [\"WR_quit\"]\n]\n"
+    }
+   },
+   "expect": [
+    {
+     "jsonrpc": "2.0",
+     "method": "textDocument/publishDiagnostics",
+     "params": {
+      "uri": "file:///project/script.json",
+      "version": 2,
+      "diagnostics": [
+       {
+        "range": {
+         "start": {
+          "line": 2,
+          "character": 3
+         },
+         "end": {
+          "line": 2,
+          "character": 15
+         }
+        },
+        "severity": 1,
+        "code": "unknown-keyword",
+        "source": "je_web_runner",
+        "message": "WR_to_urll is not a keyword of WebRunner 0.0.66. Did you mean WR_to_url?"
+       },
+       {
+        "range": {
+         "start": {
+          "line": 3,
+          "character": 17
+         },
+         "end": {
+          "line": 3,
+          "character": 23
+         }
+        },
+        "severity": 1,
+        "code": "unknown-parameter",
+        "source": "je_web_runner",
+        "message": "WR_to_url has no parameter named urls. Did you mean url?"
+       },
+       {
+        "range": {
+         "start": {
+          "line": 3,
+          "character": 3
+         },
+         "end": {
+          "line": 3,
+          "character": 14
+         }
+        },
+        "severity": 1,
+        "code": "missing-parameter",
+        "source": "je_web_runner",
+        "message": "WR_to_url needs url"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "method": "textDocument/didClose",
+    "params": {
+     "textDocument": {
+      "uri": "file:///project/script.json"
+     }
+    }
+   },
+   "expect": [
+    {
+     "jsonrpc": "2.0",
+     "method": "textDocument/publishDiagnostics",
+     "params": {
+      "uri": "file:///project/script.json",
+      "diagnostics": []
+     }
+    }
+   ]
+  },
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "id": 10,
+    "method": "textDocument/hover",
+    "params": {
+     "textDocument": {
+      "uri": "file:///project/script.json"
+     },
+     "position": {
+      "line": 1,
+      "character": 10
+     }
+    }
+   },
+   "expect": [
+    {
+     "jsonrpc": "2.0",
+     "id": 10,
+     "result": null
+    }
+   ]
+  }
+ ]
+}

@@ -596,6 +596,10 @@ pybreeze_traditional_chinese_word_dict = {
     "extend_tools_menu_json_editor_tab_label": "JSON 編輯器",
     "extend_tools_menu_json_editor_dock_action": "JSON 編輯器停駐窗格",
     "extend_tools_menu_json_editor_dock_title": "JSON 編輯器",
+    "extend_tools_menu_keyword_reference_tab_action": "自動化關鍵字分頁",
+    "extend_tools_menu_keyword_reference_tab_label": "自動化關鍵字",
+    "extend_tools_menu_keyword_reference_dock_action": "自動化關鍵字停駐窗格",
+    "extend_tools_menu_keyword_reference_dock_title": "自動化關鍵字",
     # JSON 格式化 — 介面
     "json_format_input_label": "JSON：",
     "json_format_input_placeholder": "{\"a\": 1, \"b\": [2, 3]}",
@@ -638,6 +642,44 @@ pybreeze_traditional_chinese_word_dict = {
     "json_editor_open_dialog_title": "開啟 JSON 檔",
     "json_editor_save_dialog_title": "儲存 JSON 文件",
     "json_editor_file_filter": "JSON (*.json);;所有檔案 (*)",
+    # Automation keywords
+    "keyword_reference_framework_label": "框架：",
+    "keyword_reference_refresh_button": "重新讀取",
+    "keyword_reference_search_placeholder": "依名稱或說明篩選",
+    "keyword_reference_copy_button": "複製成動作",
+    "keyword_reference_loading": "正在讀取 {framework} 的關鍵字...",
+    "keyword_reference_ready": "{framework}：{count} 個關鍵字。在 .json 腳本裡，編輯器提供 "
+                               "{capabilities}",
+    "keyword_reference_capability_completion": "補全",
+    "keyword_reference_capability_diagnostics": "診斷",
+    "keyword_reference_capability_hover": "懸停說明",
+    "keyword_reference_capability_definition": "跳到定義",
+    "keyword_reference_defined_in": "定義在 {file} 第 {line} 行",
+    "keyword_reference_no_interpreter": "找不到可以用來讀取關鍵字的 Python 直譯器",
+    # Language service for action scripts (diagnostics and hover, shown by the editor)
+    "language_service_json_syntax": "這不是有效的 JSON",
+    "language_service_unknown_keyword": "{name} 不是 {framework} 的關鍵字",
+    "language_service_unknown_keyword_suggestion":
+        "{name} 不是 {framework} 的關鍵字。你是指 {suggestion} 嗎？",
+    "language_service_unknown_parameter": "{keyword} 沒有名為 {name} 的參數",
+    "language_service_unknown_parameter_suggestion":
+        "{keyword} 沒有名為 {name} 的參數。你是指 {suggestion} 嗎？",
+    "language_service_missing_parameter": "{keyword} 需要 {names}",
+    "language_service_too_many_values":
+        "{keyword} 的值清單最多 {most} 個，這裡給了 {count} 個",
+    "language_service_too_few_values":
+        "{keyword} 的值清單至少要 {least} 個，這裡給了 {count} 個",
+    "language_service_needs_names":
+        "{keyword} 的 {names} 只能用名稱給：請用具名值的物件，不要用清單",
+    "language_service_action_not_list":
+        "一個動作是一個清單：[\"關鍵字\"] 或 [\"關鍵字\", 引數]",
+    "language_service_action_no_keyword": "動作要以加引號的關鍵字開頭",
+    "language_service_action_too_long": "一個動作只有一個關鍵字，以及最多一組引數",
+    "language_service_arguments_shape":
+        "引數是具名值的物件，或是值的清單",
+    "language_service_actions_not_list": "{key} 放的是動作的清單",
+    "language_service_parameter_required": "必填",
+    "language_service_parameter_optional": "選填",
     # 回應檢視器 — 選單
     "extend_tools_menu_response_tab_action": "回應檢視器分頁",
     "extend_tools_menu_response_tab_label": "回應檢視器",
@@ -949,6 +991,11 @@ pybreeze_traditional_chinese_word_dict = {
     "error_text_json_edit_root_error": "文件本身不能刪除、改名或移動",
     "error_text_json_edit_not_a_number_error": "{text} 不是 JSON 的數字（例如 12、-0.5 或 1e3）",
     "error_text_json_edit_not_a_boolean_error": "{text} 不是布林值：請寫 true 或 false",
+    "error_text_language_probe_not_installed_error": "執行腳本的直譯器沒有安裝 {framework}",
+    "error_text_language_probe_timeout_error": "{framework} 列出關鍵字花了超過 {seconds} 秒",
+    "error_text_language_probe_failed_error": "{framework} 無法列出關鍵字（{reason}）",
+    "error_text_language_metadata_shape_error":
+        "{framework} 對自己關鍵字的描述，不是這一版 PyBreeze 讀得懂的形式",
     "error_text_execution_report_field_error": "這不是執行報告：{field} 不存在或型別不對",
     "error_text_execution_report_version_error":
         "這份執行報告的格式是第 {version} 版，比這個 PyBreeze 讀得懂的還新（最多第 {supported} 版）",

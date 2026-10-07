@@ -1,0 +1,281 @@
+{
+ "about": "In a file that is nobody's yet, every framework's keywords are offered where an action's name goes.",
+ "frameworks": [
+  "je_web_runner",
+  "je_auto_control",
+  "je_load_density"
+ ],
+ "exchange": [
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "method": "textDocument/didOpen",
+    "params": {
+     "textDocument": {
+      "uri": "file:///project/script.json",
+      "languageId": "json",
+      "version": 1,
+      "text": "[[\""
+     }
+    }
+   },
+   "expect": [
+    {
+     "jsonrpc": "2.0",
+     "method": "textDocument/publishDiagnostics",
+     "params": {
+      "uri": "file:///project/script.json",
+      "version": 1,
+      "diagnostics": [
+       {
+        "range": {
+         "start": {
+          "line": 0,
+          "character": 2
+         },
+         "end": {
+          "line": 0,
+          "character": 3
+         }
+        },
+        "severity": 1,
+        "code": "json-syntax",
+        "source": "json",
+        "message": "This is not valid JSON"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "id": 18,
+    "method": "textDocument/completion",
+    "params": {
+     "textDocument": {
+      "uri": "file:///project/script.json"
+     },
+     "position": {
+      "line": 0,
+      "character": 3
+     }
+    }
+   },
+   "expect": [
+    {
+     "jsonrpc": "2.0",
+     "id": 18,
+     "result": {
+      "isIncomplete": false,
+      "items": [
+       {
+        "label": "WR_SaveTestObject",
+        "detail": "WR_SaveTestObject(test_object_name: str, object_type: str = None, **kwargs)",
+        "documentation": "儲存新的測試物件\nSave a new test object\n"
+       },
+       {
+        "label": "WR_add_cookie",
+        "detail": "WR_add_cookie(cookie_dict: dict)",
+        "documentation": "新增 cookie 到當前頁面\nAdd a cookie to the current page\n"
+       },
+       {
+        "label": "WR_get_webdriver_manager",
+        "detail": "WR_get_webdriver_manager(webdriver_name: str, options: List[str] = None, **kwargs)",
+        "documentation": "建立新的 WebDriver 實例\nCreate a new WebDriver instance\n"
+       },
+       {
+        "label": "WR_quit",
+        "detail": "WR_quit()",
+        "documentation": "關閉並退出所有 WebDriver\nClose and quit all WebDriver instances"
+       },
+       {
+        "label": "WR_set_page_load_timeout",
+        "detail": "WR_set_page_load_timeout(time_to_wait: int)",
+        "documentation": "設定頁面載入最大等待時間 / Set max page load wait time"
+       },
+       {
+        "label": "WR_to_url",
+        "detail": "WR_to_url(url: str)",
+        "documentation": "導航到指定 URL\nNavigate to a given URL"
+       },
+       {
+        "label": "len",
+        "detail": "len(obj)",
+        "documentation": "Return the number of items in a container."
+       },
+       {
+        "label": "max",
+        "detail": "max(...)",
+        "documentation": "max(iterable, *[, default=obj, key=func]) -> value\nmax(arg1, arg2, *args, *[, key=func]) -> value\n"
+       },
+       {
+        "label": "print",
+        "detail": "print(*args, sep=' ', end='\\n', file=None, flush=False)",
+        "documentation": "Prints the values to a stream, or to sys.stdout by default.\n\nsep"
+       },
+       {
+        "label": "AC_click_mouse",
+        "detail": "AC_click_mouse(mouse_keycode: Union[int, str], x: int = None, y: int = None)",
+        "documentation": "在指定座標按下並放開滑鼠按鍵\nClick mouse button at given position\n"
+       },
+       {
+        "label": "AC_get_mouse_position",
+        "detail": "AC_get_mouse_position()",
+        "documentation": "取得滑鼠目前位置\nGet current mouse position\n"
+       },
+       {
+        "label": "AC_hotkey",
+        "detail": "AC_hotkey(key_code_list: list, is_shift: bool = False)",
+        "documentation": "模擬組合鍵 (依序按下，再反向放開)\nSimulate hotkey (press all keys, then release in reverse order)\n"
+       },
+       {
+        "label": "AC_screenshot",
+        "detail": "AC_screenshot(file_path: str = None, screen_region: list = None)",
+        "documentation": "use to capture current screen cv2_utils\n:param file_path screenshot file save path\n:param screen_region screenshot screen_region"
+       },
+       {
+        "label": "AC_set_mouse_position",
+        "detail": "AC_set_mouse_position(x: int, y: int)",
+        "documentation": "設定滑鼠位置\nSet mouse position\n"
+       },
+       {
+        "label": "AC_write",
+        "detail": "AC_write(write_string: str, is_shift: bool = False)",
+        "documentation": "模擬輸入整個字串\nType a whole string\n"
+       },
+       {
+        "label": "LD_generate_html_report",
+        "detail": "LD_generate_html_report(html_name: str = 'default_name')",
+        "documentation": "產生完整 HTML 報告並輸出檔案\nGenerate full HTML report and save to file\n"
+       },
+       {
+        "label": "LD_generate_json",
+        "detail": "LD_generate_json()",
+        "documentation": "產生測試紀錄的 JSON 結構\nGenerate JSON structure for test records\n"
+       },
+       {
+        "label": "LD_start_test",
+        "detail": "LD_start_test(user_detail_dict: Dict[str, Any], user_count: int = 50, spawn_rate: int = 10, test_time: Optional[int] = 60, web_ui_dict: Optional[Dict[str, Any]] = None, **kwargs)",
+        "documentation": "啟動壓力測試\nStart load test\n"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "method": "textDocument/didChange",
+    "params": {
+     "textDocument": {
+      "uri": "file:///project/script.json",
+      "version": 2
+     },
+     "contentChanges": [
+      {
+       "text": "[[\"AC_"
+      }
+     ]
+    }
+   },
+   "expect": [
+    {
+     "jsonrpc": "2.0",
+     "method": "textDocument/publishDiagnostics",
+     "params": {
+      "uri": "file:///project/script.json",
+      "version": 2,
+      "diagnostics": [
+       {
+        "range": {
+         "start": {
+          "line": 0,
+          "character": 2
+         },
+         "end": {
+          "line": 0,
+          "character": 3
+         }
+        },
+        "severity": 1,
+        "code": "json-syntax",
+        "source": "je_auto_control",
+        "message": "This is not valid JSON"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "id": 19,
+    "method": "textDocument/completion",
+    "params": {
+     "textDocument": {
+      "uri": "file:///project/script.json"
+     },
+     "position": {
+      "line": 0,
+      "character": 6
+     }
+    }
+   },
+   "expect": [
+    {
+     "jsonrpc": "2.0",
+     "id": 19,
+     "result": {
+      "isIncomplete": false,
+      "items": [
+       {
+        "label": "AC_click_mouse",
+        "detail": "AC_click_mouse(mouse_keycode: Union[int, str], x: int = None, y: int = None)",
+        "documentation": "在指定座標按下並放開滑鼠按鍵\nClick mouse button at given position\n"
+       },
+       {
+        "label": "AC_get_mouse_position",
+        "detail": "AC_get_mouse_position()",
+        "documentation": "取得滑鼠目前位置\nGet current mouse position\n"
+       },
+       {
+        "label": "AC_hotkey",
+        "detail": "AC_hotkey(key_code_list: list, is_shift: bool = False)",
+        "documentation": "模擬組合鍵 (依序按下，再反向放開)\nSimulate hotkey (press all keys, then release in reverse order)\n"
+       },
+       {
+        "label": "AC_screenshot",
+        "detail": "AC_screenshot(file_path: str = None, screen_region: list = None)",
+        "documentation": "use to capture current screen cv2_utils\n:param file_path screenshot file save path\n:param screen_region screenshot screen_region"
+       },
+       {
+        "label": "AC_set_mouse_position",
+        "detail": "AC_set_mouse_position(x: int, y: int)",
+        "documentation": "設定滑鼠位置\nSet mouse position\n"
+       },
+       {
+        "label": "AC_write",
+        "detail": "AC_write(write_string: str, is_shift: bool = False)",
+        "documentation": "模擬輸入整個字串\nType a whole string\n"
+       },
+       {
+        "label": "max",
+        "detail": "max(...)",
+        "documentation": "max(iterable, *[, default=obj, key=func]) -> value\nmax(arg1, arg2, *args, *[, key=func]) -> value\n"
+       },
+       {
+        "label": "print",
+        "detail": "print(*args, sep=' ', end='\\n', file=None, flush=False)",
+        "documentation": "Prints the values to a stream, or to sys.stdout by default.\n\nsep"
+       }
+      ]
+     }
+    }
+   ]
+  }
+ ]
+}

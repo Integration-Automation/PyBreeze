@@ -98,3 +98,8 @@ class UrlConvertException(ITEException):
 
 class ExecutionReportException(ITEException):
     pass
+
+# Language services
+
+class LanguageServiceException(ITEException):
+    pass

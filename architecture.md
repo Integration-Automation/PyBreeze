@@ -38,8 +38,9 @@ their output reaches the UI through Queue + QTimer.
 | `pybreeze/pybreeze_ui/gui_thread_gc.py` | `GuiThreadGarbageCollector`: automatic garbage collection off, collected on a GUI-thread timer instead (installed by `start_editor()`) |
 | `pybreeze/extend/process_executor/` | Subprocess isolation layer: `TaskProcessManager`, `process_executor_utils.py`, `FileRunnerProcess`, `queue_pump.py`, `run_notice.py`, and `test_pioneer/` and `prthinker/` (the other automation packages run through `build_process()` from their menus) |
 | `pybreeze/extend/mail_thunder_extend/`, `prthinker_extend/` | Post-test email hook; prthinker settings and argument assembly (pure logic) |
+| `pybreeze/extend/language_server/` | The action language server as a process: its entry (`python -m pybreeze.extend.language_server`), the frameworks it asks for their keywords, and the command JEditor's editors start it with (`launch.py`). No Qt |
 | `pybreeze/extend_multi_language/` | PyBreeze's English and Traditional Chinese strings, merged into JEditor's dictionaries; `supported_languages.py` lists the languages PyBreeze maintains, the ones it only passes on from JEditor, and the few JEditor keys it words its own way |
-| `pybreeze/utils/` | Pure logic, no Qt or JEditor (`test_utils_has_no_qt.py` guards it): request parsing and codegen, the registry of what a captured request can be generated as (`import_targets/`, with the request as it is sent, `NormalizedRequest`), the schema a run of any framework is reported in (`execution_report/`), the JSON document a text editor and a visual editor both edit (`json_format/json_document.py`) and the edits of its tree by path (`json_format/json_tree_edit.py`), the one way an editor asks a framework for completion and diagnostics (`language_service/`), HTTP tools, `network/` SSRF validation, pinned connections and capped reads, exceptions, logging, `app_dirs.py`, `subprocess_util.py`, `terminal_text.py` (terminal escapes stripped for the SSH terminal and the run window), `terminal_style.py` (SGR colours read for the SSH terminal) |
+| `pybreeze/utils/` | Pure logic, no Qt or JEditor (`test_utils_has_no_qt.py` guards it): request parsing and codegen, the registry of what a captured request can be generated as (`import_targets/`, with the request as it is sent, `NormalizedRequest`), the schema a run of any framework is reported in (`execution_report/`), the JSON document a text editor and a visual editor both edit (`json_format/json_document.py`) and the edits of its tree by path (`json_format/json_tree_edit.py`), the one way an editor asks a framework for completion and diagnostics and what answers it for the three frameworks' action scripts (`language_service/`: profiles, the keywords read from the installed package in a child process, the adapter, and a Language Server Protocol server), HTTP tools, `network/` SSRF validation, pinned connections and capped reads, exceptions, logging, `app_dirs.py`, `subprocess_util.py`, `terminal_text.py` (terminal escapes stripped for the SSH terminal and the run window), `terminal_style.py` (SGR colours read for the SSH terminal) |
 | `test/test_utils/` | Unit tests (pure logic and headless widgets). `test/unit_test/start_automation/` holds the launch tests |
 | `pyproject.toml`, `dev.toml` | Stable packaging (CI bumps and publishes it) and the dev-channel packaging: the same package under the name `pybreeze_dev` (`test_requirement_pins.py` and `test_dev_toml_parity.py` keep the two in step) |
 | `.github/workflows/`, `scripts/` | `dev.yml`, `stable.yml` (unit tests on a Windows matrix, the platform smoke tests on Linux and macOS, then SonarCloud and the upload to PyPI); `scripts/dev_release.py` numbers and gates the dev-channel release |
@@ -56,6 +57,12 @@ The layers are presentation (`pybreeze_ui/`), then execution (`extend/`), then f
   `multiprocessing.freeze_support()`: in the packaged executable the regex tester runs patterns in
   a spawned process, which re-runs the executable. From source it runs them in a plain worker script
   (`python -I -S -c`), so a launch script without the guard is safe.
+- **The action language server**: `python -m pybreeze.extend.language_server [--interpreter <python>]
+  [--language <JEditor's name for it>]` speaks the Language Server Protocol on standard input and output
+  for WebRunner, AutoControl and LoadDensity scripts (`.json`): `initialize`, `textDocument/didOpen`,
+  `didChange`, `didSave`, `didClose` (answered with `publishDiagnostics`), `completion`, `hover`,
+  `definition`, `shutdown`, `exit`, and `pybreeze/frameworks` (each framework's state, version, keyword
+  count and capabilities). The IDE starts it by the path of its `__main__.py`, never with `-m`.
 - **Header findings as SARIF, without the IDE**: `python -m pybreeze.utils.header_tools.header_sarif
   <file | -> [-o report.sarif] [--fail-on-warning]`. It analyses a block of HTTP headers and writes
   the findings as SARIF 2.1.0 to standard output or to `-o`; exit 0, 1 with `--fail-on-warning` and a
@@ -126,6 +133,22 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
   → FileRunnerProcess.run_file() → interpret, or compile then run → CodeWindow
 ```
 
+**Complete and check an action script**
+
+```
+PyBreezeMainWindow._offer_language_server() → launch.offer_to_jeditor(): JEditor's DEFAULT_SERVERS[".json"]
+editor tab holding a .json file → JEditor's LspClient → QProcess: <python> .../language_server/__main__.py
+  → server_main.main(): ActionLanguageServer + lsp_server.serve() on stdin/stdout
+  → one thread per framework: metadata_probe.read_metadata() → child process of the scripts'
+    interpreter imports <package>.utils.executor.action_executor, writes event_dict as JSON
+  → server.offer(metadata): ActionLanguageAdapter registered, open documents diagnosed again
+didOpen / didChange → framework_of(text) → adapter.diagnose() → publishDiagnostics → editor marks
+completion / hover / definition → json_scan (context_at, locate) → adapter → reply → editor popup
+```
+
+The Automation Keywords tab (`tools_gui/keyword_reference_gui.py`) calls the same `read_metadata()` on a
+`QThread`, for the interpreter chosen in the IDE at that moment.
+
 ## 5. Extension points
 
 - **Custom tabs**: add entries to `EDITOR_EXTEND_TAB` (`pybreeze_ui/editor_main/main_ui.py`) before
@@ -160,6 +183,10 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
   `normalized_request.normalize()`. `test_import_targets.py` checks `carries` against what the
   generators write, for every target and every part, and `test_import_round_trip.py` reads each
   target's output back against the fixtures in `test/test_utils/fixtures/import/`.
+- **A further framework for the language service**: one `FrameworkProfile` in
+  `utils/language_service/framework_profiles.py` (its package, its key in an object-shaped script, its
+  executor module, its keywords' prefix). The adapter, the server and the Automation Keywords tab read
+  `PROFILES`; the keywords themselves come from the installed package (`docs/adr/0010`).
 - **A further edit in the JSON editor**: a pure function in `utils/json_format/json_tree_edit.py` (a new tree
   from the old one and a path) and a control in `tools_gui/json_tree_panel.py` that emits `edit_asked`.
   The tab makes the edit, records it for Undo and shows both views again (`docs/adr/0009`).
@@ -193,6 +220,7 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
   | `actually_color_dict` | `pyside_ui.main_ui.save_settings.user_color_setting_file` | `show_code_window/code_window.py`, `automation_menu/auto_control_menu/build_autocontrol_menu.py`, `design/tokens.py` (a state's colour), `tools_gui/diff_gui.py` (the diff's line colours: `diff_added_marker_color`, `diff_removed_marker_color`, `syntax_keyword_color`, `blame_annotation_color`) |
   | `RedirectStdErr` | `utils.redirect_manager.redirect_manager_class` | `code_result_logs.py` (the handler `EditorMain` hooks onto every logger to show records in Code Result; PyBreeze raises its level to `WARNING`) |
   | `user_setting_dict` | `pyside_ui.main_ui.save_settings.user_setting_file` | `editor_main/main_ui.py` (`open_main_window()` makes a `theme` given to `start_editor()` the saved `ui_style`, which `EditorMain.startup_setting()` applies over any theme applied before it) |
+  | `DEFAULT_SERVERS` | `utils.lsp.language_servers` | `extend/language_server/launch.py` (PyBreeze's action language server is put there for `.json`; JEditor's `LspClient.start_for()` reads the table through `server_command()`, which also wants the command to exist, and `CodeEditor.start_language_server()` starts what it names) |
 
   PyBreeze also relies on `EditorWidget`'s `current_file`, `code_edit`, `file_encoding`,
   `line_ending`, `mark_ignore_next_file_change()` and `mark_saved()`, on its private `_file_watcher`,
@@ -223,6 +251,13 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
   (`extend/process_executor/python_task_process_manager.py`). TestPioneer runs as
   `python -m test_pioneer -e <yaml>` through the same manager's `start_module_process`
   (`extend/process_executor/test_pioneer/`).
+- **The automation packages' keywords**: the language service asks `je_web_runner`, `je_auto_control` and
+  `je_load_density` for their keywords in a child process (`utils/language_service/metadata_probe.py`), and
+  relies on each having `<package>.utils.executor.action_executor` with a module-level `executor` whose
+  `event_dict` maps every keyword to a callable, on `execute_action()` reading an object-shaped script's
+  actions from the key `webdriver_wrapper`, `auto_control` or `load_density`, and on their own keywords
+  starting `WR_`, `AC_` or `LD_` (`framework_profiles.py`). `test_metadata_probe.py` asks the installed
+  packages and reads their executors' source for the key.
 - **MailThunder, in process**: the report mail (`extend/mail_thunder_extend/mail_thunder_setting.py`) imports
   `SMTPWrapper`, `read_output_content` and `get_mail_thunder_os_environ` from `je_mail_thunder`, and relies on
   `SMTPWrapper()` being an `smtplib.SMTP_SSL`: `_with_timeout()` overrides its `_get_socket(host, port,
@@ -278,6 +313,9 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
 - Subprocesses use argument lists, `shell=False` and a `timeout`, and pass secrets through `env`
   (§ Security › Subprocess).
 - The JupyterLab server stays localhost-only (§ Security › JupyterLab).
+- A framework is asked for its keywords in a child process and never imported in the IDE or in the
+  language server; the server writes only protocol messages to its standard output; neither is
+  started with the folder the IDE is in on its import path (§ Security › Language server).
 - Persist data only under `~/.pybreeze/` (§ Security › File I/O).
 - Complexity, length and nesting caps; no silent `except`; no `assert` in runtime code
   (§ Code quality gates).

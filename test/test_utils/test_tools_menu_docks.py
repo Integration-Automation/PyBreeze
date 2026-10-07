@@ -23,6 +23,7 @@ from pybreeze.pybreeze_ui.tools_gui.http_status_gui import HttpStatusGUI
 from pybreeze.pybreeze_ui.tools_gui.json_editor_gui import JsonEditorGUI
 from pybreeze.pybreeze_ui.tools_gui.json_format_gui import JsonFormatGUI
 from pybreeze.pybreeze_ui.tools_gui.jwt_decoder_gui import JwtDecoderGUI
+from pybreeze.pybreeze_ui.tools_gui.keyword_reference_gui import KeywordReferenceGUI
 from pybreeze.pybreeze_ui.tools_gui.query_json_gui import QueryJsonGUI
 from pybreeze.pybreeze_ui.tools_gui.regex_gui import RegexGUI
 from pybreeze.pybreeze_ui.tools_gui.response_inspector_gui import ResponseInspectorGUI
@@ -53,6 +54,7 @@ def app():
         ("Diff", DiffGUI),
         ("JsonFormat", JsonFormatGUI),
         ("JsonEditor", JsonEditorGUI),
+        ("KeywordReference", KeywordReferenceGUI),
         ("HeaderAnalyzer", HeaderAnalyzerGUI),
         ("ResponseInspector", ResponseInspectorGUI),
     ],

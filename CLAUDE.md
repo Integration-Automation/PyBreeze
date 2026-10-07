@@ -46,7 +46,9 @@ pybreeze/
 │   │   ├── test_pioneer/        # python -m test_pioneer -e <yaml> via start_module_process
 │   │   └── prthinker/           # Code review via start_module_process (secrets via env)
 │   ├── mail_thunder_extend/     # Post-test email report hook
-│   └── prthinker_extend/        # prthinker settings + argument assembly (pure logic, no Qt)
+│   ├── prthinker_extend/        # prthinker settings + argument assembly (pure logic, no Qt)
+│   └── language_server/         # python -m pybreeze.extend.language_server: the action language server's
+│                                #   process, and launch.py, which offers it to JEditor's editors for .json
 ├── extend_multi_language/       # Built-in i18n (English, Traditional Chinese); supported_languages.py says which
 │                                #   languages PyBreeze maintains and which are JEditor's alone
 └── utils/                       # Pure logic, no Qt — unit-testable
@@ -54,7 +56,10 @@ pybreeze/
     ├── import_targets/          # TargetDescriptor + IMPORT_TARGETS: what a captured request can be generated as;
     │                            #   NormalizedRequest (the request as sent); the WebRunner target
     ├── execution_report/        # ExecutionReport / ExecutionResult: what a run produced, whatever framework ran it
-    ├── language_service/        # LanguageServiceAdapter + LanguageService: completion and diagnostics asked one way
+    ├── language_service/        # service_adapter.py (the contract: completion and diagnostics asked one way),
+    │                            #   framework_profiles.py, metadata_probe.py (keywords read from the installed
+    │                            #   package in a child process), json_scan.py, action_adapter.py (the three
+    │                            #   frameworks' action scripts), lsp_server.py (the Language Server Protocol)
     ├── header_tools/ jwt_tools/ hash_tools/ timestamp_tools/   # header_tools: the analyzer, a rule per finding
     │                                                           #   (header_rules.py), SARIF export and its CLI
     ├── regex_tools/ query_tools/ url_tools/ diff_tools/
@@ -126,6 +131,7 @@ ruff check pybreeze/                              # before committing non-trivia
 - An instance attribute of a Qt class never takes the name of a member of its Qt base (`self.actions`, `self.thread`, `self.layout`, …): it hides the method from everything that calls it on the widget. `test_no_qt_member_shadowing.py` fails on one
 - A tool is one `_tool(...)` line in `TOOLS` (`menu/tools/tools_menu.py`): the Tools menu, the Dock menu and the navigation panel are all built from it, and nothing else lists a tool. A panel takes its gaps, text sizes and state colours from `pybreeze_ui/design/tokens.py`, counted in ems, never a number of pixels of its own, and a row of controls that may be long is a `wrapping_row()`. `test_tools_fit_small_screens.py` fails on a tool that asks for more than 60 ems of width or 30 of height
 - A menu's submenus are found with `navigation_model.submenus_under()` (`findChildren(QMenu)` and `menuAction()`), never `QAction.menu()`: under PySide6 6.11.0 the object it returns takes the menu with it when it is dropped
+- A framework's keywords are never written down in PyBreeze and the framework is never imported to ask for them, in the IDE or in the language server: `utils/language_service/metadata_probe.read_metadata()` asks the installed package in a child process of the interpreter that runs the scripts. A further framework for the language service is one `FrameworkProfile` (`framework_profiles.py`). A language service's message is a dictionary key (`language_service_*`), formatted in the server from the dictionary of the language it was started with
 - A view of a `JsonDocument` never changes its tree in place and keeps no copy of it to edit. An edit is a function of `utils/json_format/json_tree_edit.py` (a new tree from the old one and a path), handed to `set_tree()` with the revision it was made against. In the JSON editor the tree panel only asks (`JsonTreePanel.edit_asked`); the tab that holds the document makes the edit, records the text before and after as one Undo step, and fills both views from the document
 - A tool tab asks `IMPORT_TARGETS` (`utils/import_targets/builtin_targets.py`) what a captured request can be generated as and how, and never names a target itself. A new target is one `TargetDescriptor` registered there, with the request parts its output sends in `carries`. `test_import_targets.py` fails on a target's key written in `tools_gui/`, and on a `carries` that is not what the generator writes. A generator written from now on reads the request through `normalized_request.normalize()`, not the parse record
 - Delete unused code immediately — no dead imports, unreachable branches, commented-out blocks, or `_old_` prefixes
@@ -171,6 +177,8 @@ Reference implementations: `utils/network/url_validation.py` (`validate_url`), `
 **Subprocess** — always argument lists, explicit `shell=False`, `timeout` on every `subprocess.run()`. Never interpolate user input into a command string. Secrets travel as `env`, never argv (see `prthinker_setting.environment_for`). The IDE intentionally runs user-authored scripts — this hardening guards against accidental shell injection, not against malicious local files.
 
 **JupyterLab** — the embedded server is localhost-only; the empty token and password (`--IdentityProvider.token`/`--PasswordIdentityProvider.hashed_password`, and jupyter_server 1.x's `--ServerApp.token`/`password`, which 2.x still reads) and `--ServerApp.disable_check_xsrf=True` are safe *only* because of that. Never change `--ServerApp.ip` to an externally reachable address, and never set `--ServerApp.allow_origin`: a loopback bind does not stop a browser, and with the origin open any page the user visits can drive a tokenless server. The view loads from the same origin and needs nothing relaxed, and its page (`jupyter_lab_gui/lab_page.LabPage`) keeps it there: a page elsewhere, or a link for a new tab, goes to the system's browser, `http`/`https` only. The server outlives its launcher thread, so its tab stops it on close whatever the thread's state.
+
+**Language server** — the action language server (`extend/language_server/`) is a process JEditor's editor starts when a `.json` file is opened, so opening a file must not run code from the folder being looked at. It is started by the path of its `__main__.py`, never `python -m` (which puts the working folder first on the import path), and the keyword probe runs with the interpreter's own folder as its working folder. The probe is a fixed script that imports only the installed framework; what the package prints goes to stderr, and its answer is read as data (`metadata_from_dict` checks every field). Only protocol messages are written to the server's standard output: never `print()` there. A failure reported to the editor or the user carries the exception's name, not its message, which may hold a path.
 
 **File I/O** — dialog-chosen paths are trusted; paths loaded from saved data (`.diagram.json`) are not: check `is_file()` and an extension allowlist, or run URLs through SSRF validation. Use `pathlib`, never string concatenation. Write to `~/.pybreeze/` via `app_dirs.pybreeze_data_dir()` with `encoding="utf-8"`; read through `pybreeze_data_path()`, which creates nothing. Replace a file the user would lose through `utils/file_process/replace_file.replace_text` (written beside it, then moved into place), never an in-place `write_text`; a file something else writes (an image, an SVG export) goes through `replace_written`. Resolve symlinks with `Path.resolve(strict=True)` and verify the result stays in bounds.
 

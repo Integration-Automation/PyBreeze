@@ -131,6 +131,24 @@ python -m pybreeze.utils.header_tools.header_sarif response-headers.txt -o heade
 
 Compare two payloads — an expected vs. actual API response, say — and get a unified diff, its added and removed lines in the theme's colours, plus a one-line added/removed summary.
 
+### Keywords for action scripts
+
+A WebRunner, AutoControl or LoadDensity script is a JSON list of actions, `["keyword"]` or `["keyword", arguments]`. Open one (`.json`) in the editor and it is completed and checked against the keywords of the framework **as it is installed**:
+
+- **Completion** — the framework's keywords where an action's name goes, a keyword's parameters where an argument's name goes.
+- **Diagnostics** — a keyword that version does not have (with the nearest one suggested), a parameter the keyword does not take, a required one left out, a list of values of the wrong length, an action of the wrong shape, and text that is not JSON. In the IDE's language.
+- **Hover** and **go to definition** — a keyword's signature and documentation, and the line of the package that defines it.
+
+Nothing about a keyword is kept in PyBreeze. Each framework is asked, in a process of its own, by the interpreter that runs your scripts (the one chosen in the IDE, a `.venv` in the project, else the IDE's own), so upgrading a framework changes what is offered. A framework that is missing or fails to import costs its own keywords and nothing else.
+
+**Tools → Automation Keywords Tab** shows the same keywords: each framework's version, what the editor offers for it, every keyword with its parameters and documentation, a filter, and **Copy as Action**. When a framework gives none, it says why.
+
+The editor gets all this from a language server, which any editor that speaks the Language Server Protocol can start too:
+
+```bash
+python -m pybreeze.extend.language_server [--interpreter /path/to/python] [--language Traditional_Chinese]
+```
+
 ### JSON Editor
 
 Edit a JSON file as a **Tree** or as **Text** (**Tools → JSON Editor Tab**). Both are views of one document, so they cannot disagree.
@@ -236,7 +254,7 @@ Loaded plugins appear under their own **Plugins** menu with an About entry and o
 - **English** (default)
 - **Traditional Chinese** (繁體中文)
 
-Menus, dialogs, the reasons a tool refuses its input and the run window's own notices (`[Error] …`, `[Run] …`) all follow the chosen language. Both dictionaries carry the same 836 keys, and a test enforces that parity so a new string can never land in one language only. English and Traditional Chinese are the languages PyBreeze maintains. The Language menu also lists JEditor's Japanese (日本語) and Simplified Chinese (简体中文), which PyBreeze passes on without translating: picked, JEditor's own menus change and PyBreeze's strings stay in English. Further languages can be added via translation plugins.
+Menus, dialogs, the reasons a tool refuses its input and the run window's own notices (`[Error] …`, `[Run] …`) all follow the chosen language. Both dictionaries carry the same 872 keys, and a test enforces that parity so a new string can never land in one language only. English and Traditional Chinese are the languages PyBreeze maintains. The Language menu also lists JEditor's Japanese (日本語) and Simplified Chinese (简体中文), which PyBreeze passes on without translating: picked, JEditor's own menus change and PyBreeze's strings stay in English. Further languages can be added via translation plugins.
 
 ---
 

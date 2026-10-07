@@ -17,6 +17,7 @@ module does is in `architecture_explore.md`; what changed and when is in `docs/u
 | [0007](0007-header-findings-as-sarif.md) | A header finding has a rule, and the findings are exported as SARIF | Accepted | 3 |
 | [0008](0008-supported-languages.md) | PyBreeze supports the languages it maintains, and passes the editor's others on | Accepted | 4 |
 | [0009](0009-visual-json-editor.md) | The JSON editor is two views of one document, with one history | Accepted | 5 |
+| [0010](0010-action-language-server.md) | One language server for the three frameworks' action scripts, fed by the installed packages | Accepted | 6 |
 
 "Roadmap" is the automation platform roadmap of pull request #141
 (`docs/roadmap/2026-10-automation-platform-next.md`); 0001 to 0004 are its Phase 0 contracts, and the

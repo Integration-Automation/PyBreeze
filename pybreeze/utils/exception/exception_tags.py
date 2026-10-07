@@ -129,6 +129,13 @@ json_edit_root_error: str = "the document itself cannot be deleted, renamed or m
 json_edit_not_a_number_error: str = "{text!r} is not a JSON number (for example 12, -0.5 or 1e3)"
 json_edit_not_a_boolean_error: str = "{text!r} is not a boolean: write true or false"
 
+# A framework whose keywords cannot be had (language_service.metadata_probe, keyword_metadata)
+language_probe_not_installed_error: str = "{framework} is not installed for the interpreter that runs the scripts"
+language_probe_timeout_error: str = "{framework} took longer than {seconds} seconds to list its keywords"
+language_probe_failed_error: str = "{framework} could not list its keywords ({reason})"
+language_metadata_shape_error: str = (
+    "what {framework} says about its keywords is not in a form this version of PyBreeze reads")
+
 # Data that is not an execution report (execution_report.report_schema)
 execution_report_field_error: str = "not an execution report: {field} is missing or of the wrong type"
 execution_report_version_error: str = (
