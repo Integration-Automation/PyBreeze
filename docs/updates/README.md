@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20261008-03 | 2026-10-08 | One JSON document for a text editor and a visual editor | #feature #json #roadmap | [2026-10](2026-10.md) |
 | U-20261008-02 | 2026-10-08 | One schema for what a run produced, whatever framework ran it | #feature #reports #roadmap | [2026-10](2026-10.md) |
 | U-20261008-01 | 2026-10-08 | Import targets described once, in one registry | #refactor #import #roadmap | [2026-10](2026-10.md) |
 | U-20261007-01 | 2026-10-07 | Read HTTP dates and bracketed time-zone suffixes in timestamps | #done #timestamp | [2026-10](2026-10.md) |
@@ -704,4 +705,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
 | [2026-09-d.md](2026-09-d.md) | 2026-09 | 91 |
 | [2026-09-e.md](2026-09-e.md) | 2026-09 | 83 |
-| [2026-10.md](2026-10.md) | 2026-10 | 9 |
+| [2026-10.md](2026-10.md) | 2026-10 | 10 |

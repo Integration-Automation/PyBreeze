@@ -24,7 +24,7 @@ class DuplicateKeyError(ValueError):
     """A key given twice in one JSON object; ``args[0]`` is the key."""
 
 
-class _Numbers:
+class HeldNumbers:
     """Keeps each number's own text while the JSON around it is re-laid out.
 
     A number is parsed to a placeholder string and put back, as written, once
@@ -78,7 +78,7 @@ def unique_pairs(pairs: list[tuple[str, object]]) -> dict:
     return members
 
 
-def _parse(json_string: str, numbers: _Numbers) -> object:
+def _parse(json_string: str, numbers: HeldNumbers) -> object:
     """Parse *json_string*, numbers held as their text.
 
     :raises ValueError: when it is not JSON, repeats a key in one object
@@ -90,7 +90,7 @@ def _parse(json_string: str, numbers: _Numbers) -> object:
         parse_constant=refuse_constant, object_pairs_hook=unique_pairs)
 
 
-def _load(json_string: str, numbers: _Numbers) -> object:
+def _load(json_string: str, numbers: HeldNumbers) -> object:
     """Parse *json_string*, numbers held as their text; raise ``ITEJsonException`` when it is not JSON."""
     try:
         return _parse(json_string, numbers)
@@ -112,7 +112,7 @@ def _process_json(json_string: str, **kwargs) -> str:
             return dumps(json_string, indent=4, sort_keys=True, **kwargs)
         except TypeError as err:
             raise ITEJsonException(wrong_json_data_error) from err
-    numbers = _Numbers()
+    numbers = HeldNumbers()
     value = _load(json_string, numbers)
     kwargs.setdefault("ensure_ascii", False)
     try:
@@ -145,7 +145,7 @@ def pretty_json_or_none(json_string: str, *, sort_keys: bool = False) -> str | N
     :param json_string: the text to lay out
     :param sort_keys: sort each object's keys; otherwise they keep their order
     """
-    numbers = _Numbers()
+    numbers = HeldNumbers()
     try:
         value = _parse(json_string, numbers)
         return numbers.restore(dumps(value, indent=4, sort_keys=sort_keys, ensure_ascii=False))
@@ -167,7 +167,7 @@ def minify_json(json_string: str) -> str:
     :raises ITEJsonException: when the input is not valid JSON, repeats a key
         in one object, or uses ``NaN`` or ``Infinity``
     """
-    numbers = _Numbers()
+    numbers = HeldNumbers()
     value = _load(json_string, numbers)
     try:
         return numbers.restore(dumps(value, separators=_MINIFY_SEPARATORS, ensure_ascii=False))

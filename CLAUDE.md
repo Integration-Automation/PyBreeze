@@ -51,7 +51,8 @@ pybreeze/
     ├── execution_report/        # ExecutionReport / ExecutionResult: what a run produced, whatever framework ran it
     ├── header_tools/ jwt_tools/ hash_tools/ timestamp_tools/
     ├── regex_tools/ query_tools/ url_tools/ diff_tools/
-    ├── http_reference/ json_format/ response_inspector/
+    ├── http_reference/ json_format/ response_inspector/   # json_format/json_document.py: JsonDocument, the one copy
+    │                                                      #   a text editor and a visual editor both edit
     ├── network/                 # url_validation (SSRF), public_http (pinned connections), http_client (capped reads)
     ├── exception/               # ITEException hierarchy
     ├── logging/ file_process/ app_dirs.py / subprocess_util.py
