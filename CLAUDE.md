@@ -49,7 +49,8 @@ pybreeze/
 ├── extend_multi_language/       # Built-in i18n (English, Traditional Chinese)
 └── utils/                       # Pure logic, no Qt — unit-testable
     ├── curl_import/ har_import/ # Request parsing + script generation
-    ├── import_targets/          # TargetDescriptor + IMPORT_TARGETS: what a captured request can be generated as
+    ├── import_targets/          # TargetDescriptor + IMPORT_TARGETS: what a captured request can be generated as;
+    │                            #   NormalizedRequest (the request as sent); the WebRunner target
     ├── execution_report/        # ExecutionReport / ExecutionResult: what a run produced, whatever framework ran it
     ├── language_service/        # LanguageServiceAdapter + LanguageService: completion and diagnostics asked one way
     ├── header_tools/ jwt_tools/ hash_tools/ timestamp_tools/
@@ -121,7 +122,7 @@ ruff check pybreeze/                              # before committing non-trivia
 - An instance attribute of a Qt class never takes the name of a member of its Qt base (`self.actions`, `self.thread`, `self.layout`, …): it hides the method from everything that calls it on the widget. `test_no_qt_member_shadowing.py` fails on one
 - A tool is one `_tool(...)` line in `TOOLS` (`menu/tools/tools_menu.py`): the Tools menu, the Dock menu and the navigation panel are all built from it, and nothing else lists a tool. A panel takes its gaps, text sizes and state colours from `pybreeze_ui/design/tokens.py`, counted in ems, never a number of pixels of its own, and a row of controls that may be long is a `wrapping_row()`. `test_tools_fit_small_screens.py` fails on a tool that asks for more than 60 ems of width or 30 of height
 - A menu's submenus are found with `navigation_model.submenus_under()` (`findChildren(QMenu)` and `menuAction()`), never `QAction.menu()`: under PySide6 6.11.0 the object it returns takes the menu with it when it is dropped
-- A tool tab asks `IMPORT_TARGETS` (`utils/import_targets/builtin_targets.py`) what a captured request can be generated as and how, and never names a target itself. A new target is one `TargetDescriptor` registered there, with the request parts its output sends in `carries`. `test_import_targets.py` fails on a target's key written in `tools_gui/`, and on a `carries` that is not what the generator writes
+- A tool tab asks `IMPORT_TARGETS` (`utils/import_targets/builtin_targets.py`) what a captured request can be generated as and how, and never names a target itself. A new target is one `TargetDescriptor` registered there, with the request parts its output sends in `carries`. `test_import_targets.py` fails on a target's key written in `tools_gui/`, and on a `carries` that is not what the generator writes. A generator written from now on reads the request through `normalized_request.normalize()`, not the parse record
 - Delete unused code immediately — no dead imports, unreachable branches, commented-out blocks, or `_old_` prefixes
 - Follow PEP 8 and standard Pythonic practice; `ruff` is the arbiter
 
@@ -139,6 +140,7 @@ across the three files above.
 **General**
 - Never `eval()` / `exec()` / `pickle.loads()` on untrusted data; `json.loads` for serialisation; `yaml.safe_load` only
 - Never log or display secrets, tokens, passwords or API keys — API URLs may embed tokens, so treat them as credentials
+- Importing a captured request never sends it: nothing under `utils/curl_import/`, `utils/har_import/` or `utils/import_targets/` imports a package that could (`requests`, `urllib.request`, `http`, `socket`, `subprocess`, an automation package). `test_import_round_trip.py` fails on one
 - Validate all input at system boundaries (file dialogs, URL inputs, network data); never leak stack traces or paths to the user
 
 **Network (SSRF)** — every outbound request to a user-supplied URL must first pass validation:

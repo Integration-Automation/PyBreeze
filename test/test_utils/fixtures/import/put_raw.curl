@@ -1,0 +1,3 @@
+curl -X PUT 'https://api.example.test/v1/items/7' \
+  -H 'Content-Type: text/plain' \
+  --data-raw 'plain text, not JSON'

@@ -22,14 +22,17 @@ _URL = "https://x.example/api"
 _TOOL_TABS = Path(pybreeze.__file__).parent / "pybreeze_ui" / "tools_gui"
 
 # For each part: curl options that give a request that part alone, and text
-# the generated output holds only when it sends the part
+# the generated output holds (in any case) only when it sends the part. A
+# payload makes curl send a POST, which is a part of its own, so those samples
+# name the method: curl then keeps it.
 _PART_SAMPLES = {
+    RequestPart.METHOD: ("-X DELETE", "delete"),
     RequestPart.HEADERS: ("-H 'X-Marker: mark-headers'", "mark-headers"),
     RequestPart.COOKIES: ("-b 'c=mark-cookies'", "mark-cookies"),
-    RequestPart.BODY: ("-d 'mark-body=1'", "mark-body"),
-    RequestPart.FORM_FIELDS: ("-F 'f=mark-form'", "mark-form"),
-    RequestPart.FILE_UPLOAD: ("-F 'f=@mark-upload.bin'", "mark-upload"),
-    RequestPart.BODY_FILE: ("-d @mark-bodyfile.bin", "mark-bodyfile"),
+    RequestPart.BODY: ("-X GET -d 'mark-body=1'", "mark-body"),
+    RequestPart.FORM_FIELDS: ("-X GET -F 'f=mark-form'", "mark-form"),
+    RequestPart.FILE_UPLOAD: ("-X GET -F 'f=@mark-upload.bin'", "mark-upload"),
+    RequestPart.BODY_FILE: ("-X GET -d @mark-bodyfile.bin", "mark-bodyfile"),
     RequestPart.COOKIE_FILE: ("-b mark-cookiefile.txt", "mark-cookiefile"),
     RequestPart.AUTH: ("-u mark-user:pw", "mark-user"),
     RequestPart.TIMEOUT: ("-m 7", "timeout"),
@@ -41,8 +44,8 @@ def _request_with(part: RequestPart) -> CurlRequest:
 
 
 def _code_lines(output: str) -> str:
-    """*output* without its comment lines: a comment names a part without sending it."""
-    return "\n".join(line for line in output.splitlines() if not line.lstrip().startswith("#"))
+    """*output* in lower case without its comment lines: a comment names a part without sending it."""
+    return "\n".join(line for line in output.lower().splitlines() if not line.lstrip().startswith("#"))
 
 
 class TestPartsOf:
@@ -63,13 +66,21 @@ class TestPartsOf:
     def test_a_form_of_text_and_a_file_is_both(self):
         request = parse_curl(f"curl {_URL} -F 'a=text' -F 'b=@up.bin'")
 
-        assert parts_of(request) == {RequestPart.FORM_FIELDS, RequestPart.FILE_UPLOAD}
+        assert parts_of(request) == {RequestPart.METHOD, RequestPart.FORM_FIELDS, RequestPart.FILE_UPLOAD}
 
     def test_a_header_left_to_requests_is_not_one_the_output_sends(self):
         # The form's own Content-Type is written by requests, with its boundary
         request = parse_curl(f"curl {_URL} -H 'Content-Type: multipart/form-data' -F 'a=text'")
 
-        assert parts_of(request) == {RequestPart.FORM_FIELDS}
+        assert parts_of(request) == {RequestPart.METHOD, RequestPart.FORM_FIELDS}
+
+    def test_a_payload_makes_the_request_a_post_which_is_a_part_too(self):
+        assert parts_of(parse_curl(f"curl {_URL} -d a=1")) == {RequestPart.METHOD, RequestPart.BODY}
+
+    def test_a_json_body_is_a_body(self):
+        request = parse_curl(f"curl -X GET {_URL} -H 'Content-Type: application/json' -d '{{}}'")
+
+        assert parts_of(request) == {RequestPart.HEADERS, RequestPart.BODY}
 
     def test_a_bearer_token_is_a_header(self):
         assert parts_of(parse_curl(f"curl {_URL} --oauth2-bearer t0ken")) == {RequestPart.HEADERS}
@@ -82,12 +93,18 @@ class TestBuiltinTargets:
 
         assert missing == []
 
-    def test_only_the_action_list_is_json(self):
+    def test_the_action_lists_are_json_and_the_rest_is_python(self):
         written_as = {target.key: (target.extension, target.single_basename, target.batch_basename)
                       for target in IMPORT_TARGETS.targets()}
 
         assert written_as.pop("apitestka_action") == ("json", "action", "actions")
+        assert written_as.pop("webrunner_action") == ("json", "web_action", "web_actions")
         assert set(written_as.values()) == {("py", "request", "session")}
+
+    def test_only_a_browser_cannot_make_another_method(self):
+        without = [target.key for target in IMPORT_TARGETS.targets() if RequestPart.METHOD not in target.carries]
+
+        assert without == ["webrunner_action"]
 
     @pytest.mark.parametrize("part", list(RequestPart))
     @pytest.mark.parametrize("target", IMPORT_TARGETS.targets(), ids=lambda target: target.key)

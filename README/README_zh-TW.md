@@ -95,7 +95,7 @@ PyBreeze 開箱即用，涵蓋自動化測試的完整範疇：
 |---|---|
 | ![cURL 匯入為 pytest](../images/tool_curl_import.png) | ![cURL 匯入為 APITestka 動作](../images/tool_curl_import_action.png) |
 
-輸出目標：Python `requests`、可直接執行的 **pytest** 測試、**APITestka**（Python，或可由 `execute_files` 直接執行的 `[["AT_test_api_method", {...}]]` 動作清單），以及 **LoadDensity** 的 Locust 負載測試。輸出可以複製、直接開到編輯器分頁，或以正確的副檔名儲存。只要按一下，也能把解析出的 URL 交給 URL 解析／建構器，或把標頭交給標頭分析器。
+輸出目標：Python `requests`、可直接執行的 **pytest** 測試、**APITestka**（Python，或可由 `execute_files` 直接執行的 `[["AT_test_api_method", {...}]]` 動作清單）、**LoadDensity** 的 Locust 負載測試，以及在瀏覽器裡造訪該網址的 **WebRunner** 動作清單。目標沒辦法送出請求裡的全部內容時，輸出下方會說少了什麼（「這個目標不會送出：標頭 · 本文」）：LoadDensity 只照方法與 URL 發送，瀏覽器造訪只保留 URL、cookie 與時間限制。輸出可以複製、直接開到編輯器分頁，或以正確的副檔名儲存。只要按一下，也能把解析出的 URL 交給 URL 解析／建構器，或把標頭交給標頭分析器。
 
 ### HAR 匯入 — 整段工作階段變成測試套件
 
@@ -217,7 +217,7 @@ PyBreeze 沿用 JEditor 的外掛架構，會自動從工作目錄中的 `jedito
 - **English**（英文，預設）
 - **繁體中文**（Traditional Chinese）
 
-選單、對話框、工具拒絕輸入時說明的原因，以及執行視窗自己的訊息（`[錯誤] …`、`[執行] …`）都會跟著所選的語言顯示。兩份字典都有相同的 780 個鍵，並有測試強制兩者一致，因此新字串不可能只出現在其中一種語言。語言選單另外列出 JEditor 的日文與簡體中文：選了之後 JEditor 自己的選單會改變，PyBreeze 的字串則維持英文。其他語言可透過翻譯外掛加入。
+選單、對話框、工具拒絕輸入時說明的原因，以及執行視窗自己的訊息（`[錯誤] …`、`[執行] …`）都會跟著所選的語言顯示。兩份字典都有相同的 792 個鍵，並有測試強制兩者一致，因此新字串不可能只出現在其中一種語言。語言選單另外列出 JEditor 的日文與簡體中文：選了之後 JEditor 自己的選單會改變，PyBreeze 的字串則維持英文。其他語言可透過翻譯外掛加入。
 
 ---
 

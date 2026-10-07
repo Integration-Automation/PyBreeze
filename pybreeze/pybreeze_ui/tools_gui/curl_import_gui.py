@@ -14,9 +14,12 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.design.panels import StatusLine
+from pybreeze.pybreeze_ui.design.tokens import State
 from pybreeze.pybreeze_ui.run_shortcut import press_on_ctrl_enter
 from pybreeze.pybreeze_ui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.header_analyzer_gui import HeaderAnalyzerGUI
+from pybreeze.pybreeze_ui.tools_gui.import_gaps import gaps_text
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.pybreeze_ui.tools_gui.tool_tabs import open_tool_tab
 from pybreeze.pybreeze_ui.tools_gui.url_builder_gui import UrlBuilderGUI
@@ -67,6 +70,9 @@ class CurlImportGUI(QWidget):
         self.output_edit = QTextEdit()
         use_fixed_pitch_font(self.output_edit)
         self.output_edit.setReadOnly(True)
+        # What the chosen target leaves out of the request, when it leaves anything out
+        self.gaps_line = StatusLine()
+        self.gaps_line.hide()
 
         # Cross-tool actions: hand the parsed parts to the tool that specialises
         # in them, rather than making the user copy them across.
@@ -93,7 +99,7 @@ class CurlImportGUI(QWidget):
         for widget in (
             self.input_label, self.input_edit,
             self.target_label, self.target_select, self.convert_button,
-            self.output_label, self.output_edit,
+            self.output_label, self.output_edit, self.gaps_line,
         ):
             layout.addWidget(widget)
         layout.addLayout(cross_tool)
@@ -124,6 +130,7 @@ class CurlImportGUI(QWidget):
         """Forget the last result, so the output and cross-tool actions go inactive."""
         self._generated_code = None
         self._request = None
+        self.gaps_line.hide()
         self.open_url_button.setEnabled(False)
         self.open_headers_button.setEnabled(False)
 
@@ -149,6 +156,9 @@ class CurlImportGUI(QWidget):
         self.open_url_button.setEnabled(bool(request.url))
         self.open_headers_button.setEnabled(bool(request.headers or request.cookies))
         self.output_edit.setPlainText(code)
+        gaps = gaps_text(self._target(), [request])
+        self.gaps_line.setVisible(bool(gaps))
+        self.gaps_line.show_state(State.WARNING, gaps)
 
     def open_url_in_builder(self) -> QWidget | None:
         """Open the parsed URL in the URL parser/builder tool, already parsed.

@@ -301,7 +301,8 @@ class TestGenerateTemplate:
     def test_targets_are_registered(self):
         keys = [target.key for target in IMPORT_TARGETS.targets()]
         assert keys == [
-            "requests", "pytest", "apitestka_python", "apitestka_action", "loaddensity_python"]
+            "requests", "pytest", "apitestka_python", "apitestka_action", "loaddensity_python",
+            "webrunner_action"]
 
     def test_pytest_target(self):
         code = IMPORT_TARGETS.generate("pytest", [parse_curl("curl https://x")])

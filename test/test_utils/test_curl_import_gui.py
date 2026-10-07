@@ -80,7 +80,8 @@ class TestCurlImportGUI:
     def test_target_selector_has_all_targets(self, widget):
         keys = [widget.target_select.itemData(i) for i in range(widget.target_select.count())]
         assert keys == [
-            "requests", "pytest", "apitestka_python", "apitestka_action", "loaddensity_python"]
+            "requests", "pytest", "apitestka_python", "apitestka_action", "loaddensity_python",
+            "webrunner_action"]
 
     def test_generate_apitestka_python(self, widget):
         widget.input_edit.setPlainText("curl https://example.com/api")

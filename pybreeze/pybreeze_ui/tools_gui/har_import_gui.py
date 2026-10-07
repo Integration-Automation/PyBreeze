@@ -17,6 +17,9 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.design.panels import StatusLine
+from pybreeze.pybreeze_ui.design.tokens import State
+from pybreeze.pybreeze_ui.tools_gui.import_gaps import gaps_text
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.utils.exception.exceptions import CurlParseException, HarParseException
 from pybreeze.utils.har_import.har_parser import HarEntry, api_entries, parse_har, summarize
@@ -91,6 +94,9 @@ class HarImportGUI(QWidget):
         self.output_edit = QTextEdit()
         use_fixed_pitch_font(self.output_edit)
         self.output_edit.setReadOnly(True)
+        # What the chosen target leaves out of the requests, when it leaves anything out
+        self.gaps_line = StatusLine()
+        self.gaps_line.hide()
 
         self.output_actions = OutputActions(
             self, self.output_edit, main_window=main_window,
@@ -107,6 +113,7 @@ class HarImportGUI(QWidget):
         layout.addLayout(generate_row)
         layout.addWidget(self.output_label)
         layout.addWidget(self.output_edit)
+        layout.addWidget(self.gaps_line)
         layout.addLayout(self.output_actions.button_row())
         self.setLayout(layout)
 
@@ -163,6 +170,7 @@ class HarImportGUI(QWidget):
         # The previous file's script is not this one's: Save wrote it
         self._generated_code = None
         self._generated_from = []
+        self.gaps_line.hide()
         self.output_edit.clear()
         return True
 
@@ -176,6 +184,7 @@ class HarImportGUI(QWidget):
         self._refresh_entry_list()
         self._generated_code = None
         self._generated_from = []
+        self.gaps_line.hide()
         self.summary_label.setText(message)
         self.output_edit.setPlainText(message)
 
@@ -217,6 +226,7 @@ class HarImportGUI(QWidget):
         """Generate a script for *entries*, or show the hint when there are none."""
         word = language_wrapper.language_word_dict
         self._generated_from = list(entries)
+        self.gaps_line.hide()
         if not entries:
             self._generated_code = None
             self.output_edit.setPlainText(word.get(empty_hint_key))
@@ -232,6 +242,9 @@ class HarImportGUI(QWidget):
             return
         self._generated_code = code
         self.output_edit.setPlainText(code)
+        gaps = gaps_text(self._target(), [entry.request for entry in entries])
+        self.gaps_line.setVisible(bool(gaps))
+        self.gaps_line.show_state(State.WARNING, gaps)
 
     def generate_selected(self) -> None:
         """Generate a script covering the selected requests."""

@@ -95,7 +95,7 @@ PyBreeze 开箱即用，涵盖自动化测试的完整范围：
 |---|---|
 | ![cURL 导入为 pytest](../images/tool_curl_import.png) | ![cURL 导入为 APITestka 动作](../images/tool_curl_import_action.png) |
 
-目标格式：Python `requests`、可直接运行的 **pytest** 测试、**APITestka**（Python，或可由 `execute_files` 直接运行的 `[["AT_test_api_method", {...}]]` 动作列表），以及 **LoadDensity** 的 Locust 负载测试。可以复制输出、直接在编辑器标签页中打开，或以正确的扩展名保存。只需一次点击，还能把解析出的 URL 交给 URL 解析器／构建器，或把请求头交给请求头分析器。
+目标格式：Python `requests`、可直接运行的 **pytest** 测试、**APITestka**（Python，或可由 `execute_files` 直接运行的 `[["AT_test_api_method", {...}]]` 动作列表）、**LoadDensity** 的 Locust 负载测试，以及在浏览器里访问该地址的 **WebRunner** 动作列表。目标无法发送请求里的全部内容时，输出下方会说明少了什么（"Not sent by this target: headers · the body"）：LoadDensity 只按方法与 URL 发送，浏览器访问只保留 URL、cookie 与时间限制。可以复制输出、直接在编辑器标签页中打开，或以正确的扩展名保存。只需一次点击，还能把解析出的 URL 交给 URL 解析器／构建器，或把请求头交给请求头分析器。
 
 ### HAR 导入——整个会话变成测试套件
 
@@ -217,7 +217,7 @@ PyBreeze 继承了 JEditor 的插件架构，会从工作目录下的 `jeditor_p
 - **English**（默认）
 - **繁體中文**（Traditional Chinese）
 
-菜单、对话框、工具拒绝输入时给出的原因，以及运行窗口自身的提示（`[Error] …`、`[Run] …`）都会跟随所选语言。两份词典包含同样的 780 个键，并有测试确保两者一致，因此新字符串绝不会只出现在一种语言中。语言菜单还列出 JEditor 的日文与简体中文：选择后 JEditor 自己的菜单会随之改变，PyBreeze 的字符串则保持英文。其他语言可以通过翻译插件添加。
+菜单、对话框、工具拒绝输入时给出的原因，以及运行窗口自身的提示（`[Error] …`、`[Run] …`）都会跟随所选语言。两份词典包含同样的 792 个键，并有测试确保两者一致，因此新字符串绝不会只出现在一种语言中。语言菜单还列出 JEditor 的日文与简体中文：选择后 JEditor 自己的菜单会随之改变，PyBreeze 的字符串则保持英文。其他语言可以通过翻译插件添加。
 
 ---
 

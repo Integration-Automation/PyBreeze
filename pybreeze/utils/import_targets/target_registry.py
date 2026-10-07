@@ -22,15 +22,16 @@ from dataclasses import dataclass
 from enum import Enum
 
 from pybreeze.utils.curl_import.curl_parser import CurlRequest
-from pybreeze.utils.curl_import.request_body import form_entries, sent_headers
+from pybreeze.utils.import_targets.normalized_request import DEFAULT_METHOD, PayloadKind, normalize
 
 
 class RequestPart(Enum):
     """A part of a captured request that not every target can write.
 
-    The method, the URL and its query are not here: every target carries them.
+    The URL and its query are not here: every target carries them.
     """
 
+    METHOD = "method"   # a method other than GET, which a browser's navigation cannot make
     HEADERS = "headers"
     COOKIES = "cookies"
     BODY = "body"
@@ -42,39 +43,30 @@ class RequestPart(Enum):
     TIMEOUT = "timeout"
 
 
-def _payload_parts(request: CurlRequest) -> set[RequestPart]:
-    """The parts *request*'s payload is made of, read as the generators read it.
-
-    A form comes first, then a body read from a file, then an inline body:
-    ``request_codegen.payload_python_parts`` writes only the first it finds.
-    """
-    if request.has_form:
-        uploads = [is_file for _name, is_file, _value in form_entries(request)]
-        parts: set[RequestPart] = set()
-        if any(uploads):
-            parts.add(RequestPart.FILE_UPLOAD)
-        if not all(uploads):
-            parts.add(RequestPart.FORM_FIELDS)
-        return parts
-    if request.data_file_refs:
-        return {RequestPart.BODY_FILE}
-    return {RequestPart.BODY} if request.body else set()
-
-
 def parts_of(request: CurlRequest) -> frozenset[RequestPart]:
     """The parts *request* has, of those a target may not carry.
+
+    Read from the request as it is sent (``normalized_request.normalize``), so
+    a part is found the same way whichever tool captured it.
 
     :param request: the parsed request
     :return: its parts; empty for a bare ``GET`` of a URL
     """
+    sent = normalize(request)
+    uploads = [is_file for _name, is_file, _value in sent.payload.fields]
     present = {
-        RequestPart.HEADERS: bool(sent_headers(request)),
-        RequestPart.COOKIES: bool(request.cookies),
-        RequestPart.COOKIE_FILE: bool(request.cookie_files),
-        RequestPart.AUTH: request.username is not None,
-        RequestPart.TIMEOUT: request.timeout is not None,
+        RequestPart.METHOD: sent.method != DEFAULT_METHOD,
+        RequestPart.HEADERS: bool(sent.headers),
+        RequestPart.COOKIES: bool(sent.cookies),
+        RequestPart.BODY: sent.payload.kind in (PayloadKind.RAW, PayloadKind.JSON),
+        RequestPart.FORM_FIELDS: not all(uploads),
+        RequestPart.FILE_UPLOAD: any(uploads),
+        RequestPart.BODY_FILE: sent.payload.kind is PayloadKind.FILES,
+        RequestPart.COOKIE_FILE: bool(sent.cookie_files),
+        RequestPart.AUTH: sent.username is not None,
+        RequestPart.TIMEOUT: sent.timeout is not None,
     }
-    return frozenset({part for part, has_it in present.items() if has_it} | _payload_parts(request))
+    return frozenset(part for part, has_it in present.items() if has_it)
 
 
 @dataclass(frozen=True)

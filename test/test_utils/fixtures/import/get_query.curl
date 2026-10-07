@@ -1,0 +1,3 @@
+curl 'https://api.example.test/v1/items?limit=10&tag=a&tag=b' \
+  -H 'Accept: application/json' \
+  -b 'sid=abc123; theme=dark'
