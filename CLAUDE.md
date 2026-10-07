@@ -47,6 +47,7 @@ pybreeze/
 ├── extend_multi_language/       # Built-in i18n (English, Traditional Chinese)
 └── utils/                       # Pure logic, no Qt — unit-testable
     ├── curl_import/ har_import/ # Request parsing + script generation
+    ├── import_targets/          # TargetDescriptor + IMPORT_TARGETS: what a captured request can be generated as
     ├── header_tools/ jwt_tools/ hash_tools/ timestamp_tools/
     ├── regex_tools/ query_tools/ url_tools/ diff_tools/
     ├── http_reference/ json_format/ response_inspector/
@@ -58,7 +59,7 @@ pybreeze/
     └── manager/package_manager/ # PackageManager — holds syntax_check_list
 ```
 
-**Patterns:** Facade (`__init__.py`) · Template Method (`TaskProcessManager` lifecycle) · Observer (Queue + QTimer → UI thread) · Factory (`build_automation_menu`, `package_run_actions`, `_WIDGET_FACTORIES`) · State (`DiagramScene.ToolMode`) · Command (`DiagramSnapshotCommand`) · Plugin (auto-discovery from `jeditor_plugins/`)
+**Patterns:** Facade (`__init__.py`) · Template Method (`TaskProcessManager` lifecycle) · Observer (Queue + QTimer → UI thread) · Factory (`build_automation_menu`, `package_run_actions`, `_WIDGET_FACTORIES`) · Registry (`IMPORT_TARGETS`) · State (`DiagramScene.ToolMode`) · Command (`DiagramSnapshotCommand`) · Plugin (auto-discovery from `jeditor_plugins/`)
 
 **Keep `architecture_explore.md` current (mandatory).** It is the module-by-module map. Update it *in the same change* that makes it stale — whenever a module/package/class is added, removed, renamed or moved; a layer boundary, executor or threading flow changes; a menu, tool tab or dock is added or removed; persisted data or the test/CI layout changes; or one of its listed observations is fixed. Re-measure any line counts it quotes, and mirror structural edits into the tree above.
 

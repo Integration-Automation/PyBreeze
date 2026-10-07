@@ -17,8 +17,7 @@ from PySide6.QtWidgets import QApplication, QPlainTextEdit
 
 from pybreeze.utils.curl_import.curl_parser import parse_curl
 from pybreeze.utils.curl_import.request_codegen import python_string
-from pybreeze.utils.curl_import.script_templates import generate_template
-from pybreeze.utils.har_import.har_codegen import generate_har_script
+from pybreeze.utils.import_targets.builtin_targets import IMPORT_TARGETS
 
 _BREAKS = ["\u2028", "\u2029", "\x85"]
 
@@ -51,7 +50,7 @@ def test_a_string_keeps_the_break_as_an_escape(line_break):
 def test_a_cookie_file_name_cannot_add_code(app, line_break):
     request = parse_curl(f'curl https://x.example -b "s{line_break}raise SystemExit(1){line_break}#"')
 
-    code = _through_an_editor(generate_template("requests", request))
+    code = _through_an_editor(IMPORT_TARGETS.generate("requests", [request]))
 
     assert not _raises(code)
 
@@ -65,6 +64,6 @@ def test_a_har_url_cannot_add_code(app, line_break):
            + 'raise SystemExit(1)", "headers": []}, "response": {"status": 200}}]}}')
     requests = [entry.request for entry in parse_har(har)]
 
-    code = _through_an_editor(generate_har_script("requests", requests))
+    code = _through_an_editor(IMPORT_TARGETS.generate("requests", requests))
 
     assert not _raises(code)

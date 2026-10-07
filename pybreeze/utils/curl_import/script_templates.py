@@ -23,7 +23,7 @@ from pybreeze.utils.json_format.view_safe import dumps_for_view
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.utils.curl_import.request_codegen import (
     REQUESTS_IMPORT, cookie_file_notes, data_from_file_expr, form_has_repeats, form_value_expr, python_literal,
-    python_string, request_statements, to_requests_code,
+    python_string, request_statements,
 )
 
 # APITestka action command that performs an HTTP request
@@ -259,35 +259,3 @@ def to_pytest_test(request: CurlRequest) -> str:
     :return: Python source defining a ``test_...`` function
     """
     return "\n".join([REQUESTS_IMPORT, "", "", pytest_function(request)]) + "\n"
-
-
-# Target key -> (i18n label key, generator). The first entry is the default.
-# Only HTTP-oriented modules are offered: a curl command is an HTTP request, which
-# maps to APITestka and LoadDensity but not to browser (WebRunner) or desktop-GUI
-# (AutoControl) automation.
-TEMPLATE_TARGETS: list[tuple[str, str]] = [
-    ("requests", "curl_import_target_requests"),
-    ("pytest", "curl_import_target_pytest"),
-    ("apitestka_python", "curl_import_target_apitestka_python"),
-    ("apitestka_action", "curl_import_target_apitestka_action"),
-    ("loaddensity_python", "curl_import_target_loaddensity_python"),
-]
-
-_GENERATORS = {
-    "requests": to_requests_code,
-    "pytest": to_pytest_test,
-    "apitestka_python": to_apitestka_python,
-    "apitestka_action": to_apitestka_action_json,
-    "loaddensity_python": to_loaddensity_python,
-}
-
-
-def generate_template(target: str, request: CurlRequest) -> str:
-    """Generate the template for *target*, falling back to ``requests`` code.
-
-    :param target: a target key from :data:`TEMPLATE_TARGETS`
-    :param request: the parsed curl request
-    :return: the generated template text
-    """
-    generator = _GENERATORS.get(target, to_requests_code)
-    return generator(request)

@@ -6,12 +6,12 @@ once — one pytest file of several tests, one APITestka action list that replay
 the flow in order, one ``requests`` script that walks through it.
 
 Each target is built from the same per-request blocks the single-request
-templates use, so the two paths cannot drift apart.
+templates use, so the two paths cannot drift apart. Which generator belongs to
+which target is said in ``import_targets/builtin_targets.py``.
 """
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
 
 from pybreeze.utils.curl_import.curl_parser import CurlRequest
 from pybreeze.utils.curl_import.request_codegen import REQUESTS_IMPORT, request_statements
@@ -20,7 +20,6 @@ from pybreeze.utils.curl_import.script_templates import (
     APITESTKA_IMPORT,
     LOADDENSITY_IMPORT,
     apitestka_call_block,
-    generate_template,
     loaddensity_start_block,
     pytest_function,
     test_function_name,
@@ -76,7 +75,7 @@ def _numbered_comment(index: int, request: CurlRequest) -> str:
     return f"# {index}. " + _CONTROL_CHARACTERS.sub(lambda match: f"\\u{ord(match.group()):04x}", text)
 
 
-def _requests_script(requests: list[CurlRequest]) -> str:
+def requests_script(requests: list[CurlRequest]) -> str:
     """Write every request as ``requests`` statements in one script."""
     lines = [REQUESTS_IMPORT]
     for index, request in enumerate(requests, start=1):
@@ -87,7 +86,7 @@ def _requests_script(requests: list[CurlRequest]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _pytest_script(requests: list[CurlRequest]) -> str:
+def pytest_script(requests: list[CurlRequest]) -> str:
     """Write every request as its own test in one pytest file."""
     functions = [
         pytest_function(request, name)
@@ -96,7 +95,7 @@ def _pytest_script(requests: list[CurlRequest]) -> str:
     return "\n".join([REQUESTS_IMPORT, "", "", _BETWEEN_FUNCTIONS.join(functions)]) + "\n"
 
 
-def _apitestka_python_script(requests: list[CurlRequest]) -> str:
+def apitestka_python_script(requests: list[CurlRequest]) -> str:
     """Write every request as an APITestka call in one script."""
     lines = [APITESTKA_IMPORT]
     for index, request in enumerate(requests, start=1):
@@ -107,13 +106,13 @@ def _apitestka_python_script(requests: list[CurlRequest]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _apitestka_action_script(requests: list[CurlRequest]) -> str:
+def apitestka_action_script(requests: list[CurlRequest]) -> str:
     """Collect every request into one action list, replayed in capture order."""
     actions = [to_apitestka_action(request) for request in requests]
     return dumps_for_view(actions, indent=4) + "\n"
 
 
-def _loaddensity_script(requests: list[CurlRequest]) -> str:
+def loaddensity_script(requests: list[CurlRequest]) -> str:
     """Write one load test per request.
 
     The shared Locust task template holds one URL per HTTP method, so merging
@@ -131,31 +130,3 @@ def _loaddensity_script(requests: list[CurlRequest]) -> str:
         lines.append(_numbered_comment(index, request))
         lines.append(loaddensity_start_block(request))
     return "\n".join(lines) + "\n"
-
-
-# Target key -> the generator that writes several requests into one script.
-_BATCH_GENERATORS: dict[str, Callable[[list[CurlRequest]], str]] = {
-    "requests": _requests_script,
-    "pytest": _pytest_script,
-    "apitestka_python": _apitestka_python_script,
-    "apitestka_action": _apitestka_action_script,
-    "loaddensity_python": _loaddensity_script,
-}
-
-
-def generate_har_script(target: str, requests: list[CurlRequest]) -> str:
-    """Generate one script for *target* covering every request in *requests*.
-
-    A single request produces exactly what the cURL importer would produce for
-    it, so the two tools agree.
-
-    :param target: a target key from ``TEMPLATE_TARGETS``
-    :param requests: the requests to write, in capture order
-    :return: the generated script, or an empty string when there is nothing to write
-    """
-    if not requests:
-        return ""
-    if len(requests) == 1:
-        return generate_template(target, requests[0])
-    generator = _BATCH_GENERATORS.get(target, _requests_script)
-    return generator(requests)

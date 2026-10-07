@@ -6,13 +6,14 @@ import json
 import pytest
 
 from pybreeze.utils.exception.exceptions import HarParseException
-from pybreeze.utils.har_import.har_codegen import generate_har_script, unique_test_names
+from pybreeze.utils.har_import.har_codegen import unique_test_names
 from pybreeze.utils.har_import.har_parser import (
     api_entries,
     is_api_like,
     parse_har,
     summarize,
 )
+from pybreeze.utils.import_targets.builtin_targets import IMPORT_TARGETS
 
 
 def _har(*entries: dict) -> str:
@@ -327,40 +328,40 @@ class TestGenerateHarScript:
         return [e.request for e in parse_har(_har(*[_entry(url=url) for url in urls]))]
 
     def test_no_requests_yields_empty_text(self):
-        assert generate_har_script("requests", []) == ""
+        assert IMPORT_TARGETS.generate("requests", []) == ""
 
     @pytest.mark.parametrize("target", ["pytest", "requests", "apitestka_python", "loaddensity_python"])
     def test_single_request_matches_the_curl_importer(self, target):
-        from pybreeze.utils.curl_import.script_templates import generate_template
         requests = self._requests("https://x/api/items")
-        assert generate_har_script(target, requests) == generate_template(target, requests[0])
+        single_form = IMPORT_TARGETS.target(target).generate_one(requests[0])
+        assert IMPORT_TARGETS.generate(target, requests) == single_form
 
     @pytest.mark.parametrize("target", ["requests", "apitestka_python", "loaddensity_python"])
     def test_the_blocks_are_numbered_from_one(self, target):
-        code = generate_har_script(target, self._requests("https://x/one", "https://x/two"))
+        code = IMPORT_TARGETS.generate(target, self._requests("https://x/one", "https://x/two"))
 
         assert "# 1. GET https://x/one" in code
         assert "# 2. GET https://x/two" in code
 
     def test_requests_script_covers_every_request(self):
-        code = generate_har_script("requests", self._requests("https://x/one", "https://x/two"))
+        code = IMPORT_TARGETS.generate("requests", self._requests("https://x/one", "https://x/two"))
         assert code.count("import requests") == 1
         assert "https://x/one" in code
         assert "https://x/two" in code
 
     def test_pytest_script_defines_one_test_per_request(self):
-        code = generate_har_script("pytest", self._requests("https://x/api/a", "https://x/api/b"))
+        code = IMPORT_TARGETS.generate("pytest", self._requests("https://x/api/a", "https://x/api/b"))
         assert "def test_get_api_a():" in code
         assert "def test_get_api_b():" in code
         assert code.count("import requests") == 1
 
     def test_pytest_script_never_defines_the_same_test_twice(self):
-        code = generate_har_script("pytest", self._requests("https://x/api/a", "https://x/api/a"))
+        code = IMPORT_TARGETS.generate("pytest", self._requests("https://x/api/a", "https://x/api/a"))
         assert "def test_get_api_a():" in code
         assert "def test_get_api_a_2():" in code
 
     def test_apitestka_action_script_is_one_action_list(self):
-        code = generate_har_script(
+        code = IMPORT_TARGETS.generate(
             "apitestka_action", self._requests("https://x/api/a", "https://x/api/b"))
         actions = json.loads(code)
         assert [action[0] for action in actions] == ["AT_test_api_method"] * 2
@@ -368,21 +369,21 @@ class TestGenerateHarScript:
             "https://x/api/a", "https://x/api/b"]
 
     def test_apitestka_python_script_imports_once(self):
-        code = generate_har_script(
+        code = IMPORT_TARGETS.generate(
             "apitestka_python", self._requests("https://x/api/a", "https://x/api/b"))
         assert code.count("from je_api_testka import") == 1
         assert code.count("test_api_method_requests(") == 2
 
     def test_loaddensity_script_keeps_every_request(self):
         # Merging into one tasks dict would drop all but the last GET.
-        code = generate_har_script(
+        code = IMPORT_TARGETS.generate(
             "loaddensity_python", self._requests("https://x/api/a", "https://x/api/b"))
         assert code.count("start_test(") == 2
         assert "https://x/api/a" in code
         assert "https://x/api/b" in code
 
     def test_unknown_target_falls_back_to_requests(self):
-        code = generate_har_script("nonsense", self._requests("https://x/one", "https://x/two"))
+        code = IMPORT_TARGETS.generate("nonsense", self._requests("https://x/one", "https://x/two"))
         assert "import requests" in code
 
 
@@ -437,7 +438,7 @@ class TestWhatReachesTheGeneratedCode:
         url = "https://x/a\nimport os; os.system('calc')  #"
         requests = [e.request for e in parse_har(_har(_entry(url=url), _entry()))]
 
-        code = generate_har_script("requests", requests)
+        code = IMPORT_TARGETS.generate("requests", requests)
 
         imports = [node for node in ast.parse(code).body if isinstance(node, ast.Import)]
         assert [alias.name for node in imports for alias in node.names] == ["requests"]

@@ -9,8 +9,6 @@ from pybreeze.utils.curl_import.curl_parser import parse_curl
 from pybreeze.utils.curl_import.request_body import body_kind, form_parts
 from pybreeze.utils.curl_import.request_codegen import to_requests_code
 from pybreeze.utils.curl_import.script_templates import (
-    TEMPLATE_TARGETS,
-    generate_template,
     to_apitestka_action_json,
     to_apitestka_python,
     to_loaddensity_python,
@@ -20,6 +18,7 @@ from pybreeze.utils.curl_import.script_templates import (
 from pybreeze.utils.curl_import.script_templates import (
     test_function_name as derive_test_function_name,
 )
+from pybreeze.utils.import_targets.builtin_targets import IMPORT_TARGETS
 
 
 class TestBodyKind:
@@ -50,8 +49,8 @@ class TestBodyKind:
         request = parse_curl(f"curl -H 'Content-Type: application/json' -d '{body}' https://x")
 
         assert body_kind(request) == ("data", body)
-        for target, _label in TEMPLATE_TARGETS:
-            generate_template(target, request)
+        for target in IMPORT_TARGETS.targets():
+            target.generate_one(request)
         compile(to_requests_code(request), "generated", "exec")
 
     def test_numbers_a_float_holds_still_go_as_json(self):
@@ -300,32 +299,32 @@ class TestToPytestTest:
 
 class TestGenerateTemplate:
     def test_targets_are_registered(self):
-        keys = [key for key, _label in TEMPLATE_TARGETS]
+        keys = [target.key for target in IMPORT_TARGETS.targets()]
         assert keys == [
             "requests", "pytest", "apitestka_python", "apitestka_action", "loaddensity_python"]
 
     def test_pytest_target(self):
-        code = generate_template("pytest", parse_curl("curl https://x"))
+        code = IMPORT_TARGETS.generate("pytest", [parse_curl("curl https://x")])
         assert "def test_" in code
 
     def test_loaddensity_target(self):
-        code = generate_template("loaddensity_python", parse_curl("curl https://x"))
+        code = IMPORT_TARGETS.generate("loaddensity_python", [parse_curl("curl https://x")])
         assert "start_test" in code
 
     def test_requests_target(self):
-        code = generate_template("requests", parse_curl("curl https://x"))
+        code = IMPORT_TARGETS.generate("requests", [parse_curl("curl https://x")])
         assert "import requests" in code
 
     def test_apitestka_python_target(self):
-        code = generate_template("apitestka_python", parse_curl("curl https://x"))
+        code = IMPORT_TARGETS.generate("apitestka_python", [parse_curl("curl https://x")])
         assert "test_api_method_requests" in code
 
     def test_apitestka_action_target(self):
-        code = generate_template("apitestka_action", parse_curl("curl https://x"))
+        code = IMPORT_TARGETS.generate("apitestka_action", [parse_curl("curl https://x")])
         assert "AT_test_api_method" in code
 
     def test_unknown_target_falls_back_to_requests(self):
-        code = generate_template("nope", parse_curl("curl https://x"))
+        code = IMPORT_TARGETS.generate("nope", [parse_curl("curl https://x")])
         assert "import requests" in code
 
 
@@ -360,11 +359,9 @@ class TestJsonBodiesInGeneratedPython:
     def test_every_python_target_is_free_of_json_names(self):
         import ast
 
-        from pybreeze.utils.curl_import.script_templates import generate_template
-
         request = parse_curl(self._COMMAND)
         for target in ("requests", "pytest", "apitestka_python"):
-            tree = ast.parse(generate_template(target, request))
+            tree = ast.parse(IMPORT_TARGETS.generate(target, [request]))
             names = {node.id for node in ast.walk(tree) if isinstance(node, ast.Name)}
             assert not names & {"true", "false", "null"}, target
 
@@ -449,7 +446,7 @@ def test_a_whole_apitestka_call_as_written():
 
 
 def test_an_apitestka_action_list_as_written():
-    assert generate_template("apitestka_action", parse_curl("curl https://x/p")) == (
+    assert IMPORT_TARGETS.generate("apitestka_action", [parse_curl("curl https://x/p")]) == (
         "[\n"
         "    [\n"
         '        "AT_test_api_method",\n'

@@ -21,15 +21,13 @@ from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.pybreeze_ui.tools_gui.tool_tabs import open_tool_tab
 from pybreeze.pybreeze_ui.tools_gui.url_builder_gui import UrlBuilderGUI
 from pybreeze.utils.curl_import.curl_parser import CurlRequest, parse_curl
-from pybreeze.utils.curl_import.script_templates import TEMPLATE_TARGETS, generate_template
 from pybreeze.utils.exception.exceptions import CurlParseException
 from pybreeze.utils.header_tools.header_merge import stored_header_name
+from pybreeze.utils.import_targets.builtin_targets import IMPORT_TARGETS
+from pybreeze.utils.import_targets.target_registry import TargetDescriptor
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.pybreeze_ui.error_text import error_text
 from pybreeze.pybreeze_ui.fixed_pitch import use_fixed_pitch_font
-
-# The single target that generates JSON rather than Python
-_JSON_TARGET = "apitestka_action"
 
 
 class CurlImportGUI(QWidget):
@@ -53,11 +51,11 @@ class CurlImportGUI(QWidget):
         self.input_edit.setPlaceholderText(word.get("curl_import_input_placeholder"))
         self.input_edit.setAcceptRichText(False)
 
-        # Target selector: each item stores its template key as user data.
+        # Target selector: each item stores its target's key as user data.
         self.target_label = QLabel(word.get("curl_import_target_label"))
         self.target_select = QComboBox()
-        for target_key, label_key in TEMPLATE_TARGETS:
-            self.target_select.addItem(word.get(label_key), target_key)
+        for target in IMPORT_TARGETS.targets():
+            self.target_select.addItem(word.get(target.label_key), target.key)
         self.target_select.currentIndexChanged.connect(self._on_target_changed)
 
         self.convert_button = QPushButton()
@@ -87,8 +85,8 @@ class CurlImportGUI(QWidget):
         # follow the selected target; open/save are no-ops until a valid template.
         self.output_actions = OutputActions(
             self, self.output_edit, main_window=main_window,
-            basename=lambda: "action" if self.selected_target() == _JSON_TARGET else "request",
-            extension=lambda: "json" if self.selected_target() == _JSON_TARGET else "py",
+            basename=lambda: self._target().single_basename,
+            extension=lambda: self._target().extension,
             is_valid=lambda: self._generated_code is not None)
 
         layout = QVBoxLayout()
@@ -103,8 +101,12 @@ class CurlImportGUI(QWidget):
         self.setLayout(layout)
 
     def selected_target(self) -> str:
-        """Return the template key of the currently selected target."""
+        """Return the key of the currently selected target."""
         return self.target_select.currentData()
+
+    def _target(self) -> TargetDescriptor:
+        """The selected target: what it generates and what a file of it is called."""
+        return IMPORT_TARGETS.target(self.selected_target())
 
     def _name_convert_button(self) -> None:
         """Name the chosen target on the button that generates it."""
@@ -135,7 +137,7 @@ class CurlImportGUI(QWidget):
             return
         try:
             request = parse_curl(command)
-            code = generate_template(self.selected_target(), request)
+            code = IMPORT_TARGETS.generate(self.selected_target(), [request])
         except CurlParseException as error:
             pybreeze_logger.info("curl_import_gui.py convert failed: %r", error)
             self._clear_result()

@@ -37,7 +37,7 @@ their output reaches the UI through Queue + QTimer.
 | `pybreeze/extend/process_executor/` | Subprocess isolation layer: `TaskProcessManager`, `process_executor_utils.py`, `FileRunnerProcess`, `queue_pump.py`, `run_notice.py`, and `test_pioneer/` and `prthinker/` (the other automation packages run through `build_process()` from their menus) |
 | `pybreeze/extend/mail_thunder_extend/`, `prthinker_extend/` | Post-test email hook; prthinker settings and argument assembly (pure logic) |
 | `pybreeze/extend_multi_language/` | PyBreeze's English and Traditional Chinese strings, merged into JEditor's dictionaries |
-| `pybreeze/utils/` | Pure logic, no Qt or JEditor (`test_utils_has_no_qt.py` guards it): request parsing and codegen, HTTP tools, `network/` SSRF validation, pinned connections and capped reads, exceptions, logging, `app_dirs.py`, `subprocess_util.py`, `terminal_text.py` (terminal escapes stripped for the SSH terminal and the run window), `terminal_style.py` (SGR colours read for the SSH terminal) |
+| `pybreeze/utils/` | Pure logic, no Qt or JEditor (`test_utils_has_no_qt.py` guards it): request parsing and codegen, the registry of what a captured request can be generated as (`import_targets/`), HTTP tools, `network/` SSRF validation, pinned connections and capped reads, exceptions, logging, `app_dirs.py`, `subprocess_util.py`, `terminal_text.py` (terminal escapes stripped for the SSH terminal and the run window), `terminal_style.py` (SGR colours read for the SSH terminal) |
 | `test/test_utils/` | Unit tests (pure logic and headless widgets). `test/unit_test/start_automation/` holds the launch tests |
 | `pyproject.toml`, `dev.toml` | Stable packaging (CI bumps and publishes it) and the dev-channel packaging: the same package under the name `pybreeze_dev` (`test_requirement_pins.py` and `test_dev_toml_parity.py` keep the two in step) |
 | `.github/workflows/`, `scripts/` | `dev.yml`, `stable.yml` (unit tests on a Windows matrix, then SonarCloud and the upload to PyPI); `scripts/dev_release.py` numbers and gates the dev-channel release |
@@ -140,6 +140,12 @@ Run with… / Plugins menu (menu/plugin_menu/) → get_all_plugin_run_configs()
   (`pybreeze_ui/menu/tools/tools_menu.py`). Like the other tools, a box that holds code calls
   `fixed_pitch.use_fixed_pitch_font()`, and the main button gets Ctrl+Enter through
   `run_shortcut.press_on_ctrl_enter()` (`act_on_ctrl_enter()` when the input decides the action).
+- **New import target** (something a cURL command or a HAR export can be generated as): one
+  `TargetDescriptor` registered in `utils/import_targets/builtin_targets.py`, naming its key, its
+  label's language key, the extension of its output, a generator for one request and one for
+  several, and the request parts its output sends (`carries`). The cURL and HAR tabs list whatever
+  `IMPORT_TARGETS` holds and know no target by name. `test_import_targets.py` checks `carries`
+  against what the generators write, for every target and every part.
 - **UI strings**: add keys to both `extend_multi_language/extend_english.py` and
   `extend_traditional_chinese.py`. `test/test_utils/test_language_parity.py` enforces parity, and the
   key count in the READMEs and `architecture_explore.md` must follow (`test_the_readmes_count_the_keys_there_are`).

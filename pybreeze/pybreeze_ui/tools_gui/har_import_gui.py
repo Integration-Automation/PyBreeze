@@ -18,18 +18,16 @@ from PySide6.QtWidgets import (
 from je_editor import language_wrapper
 
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
-from pybreeze.utils.curl_import.script_templates import TEMPLATE_TARGETS
 from pybreeze.utils.exception.exceptions import CurlParseException, HarParseException
-from pybreeze.utils.har_import.har_codegen import generate_har_script
 from pybreeze.utils.har_import.har_parser import HarEntry, api_entries, parse_har, summarize
+from pybreeze.utils.import_targets.builtin_targets import IMPORT_TARGETS
+from pybreeze.utils.import_targets.target_registry import TargetDescriptor
 from pybreeze.utils.file_process.read_capped import read_text_capped
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.pybreeze_ui.busy_cursor import busy_cursor
 from pybreeze.pybreeze_ui.error_text import error_text
 from pybreeze.pybreeze_ui.fixed_pitch import use_fixed_pitch_font
 
-# The single target that generates JSON rather than Python
-_JSON_TARGET = "apitestka_action"
 # Separator between hosts in the summary line
 _HOST_SEPARATOR = ", "
 # Hosts listed before the summary is shortened
@@ -72,8 +70,8 @@ class HarImportGUI(QWidget):
 
         self.target_label = QLabel(word.get("curl_import_target_label"))
         self.target_select = QComboBox()
-        for target_key, label_key in TEMPLATE_TARGETS:
-            self.target_select.addItem(word.get(label_key), target_key)
+        for target in IMPORT_TARGETS.targets():
+            self.target_select.addItem(word.get(target.label_key), target.key)
         # Save names the file after the target: the output has to follow it,
         # or Python was saved as actions.json
         self.target_select.currentIndexChanged.connect(self._regenerate)
@@ -94,8 +92,8 @@ class HarImportGUI(QWidget):
 
         self.output_actions = OutputActions(
             self, self.output_edit, main_window=main_window,
-            basename=lambda: "actions" if self.selected_target() == _JSON_TARGET else "session",
-            extension=lambda: "json" if self.selected_target() == _JSON_TARGET else "py",
+            basename=lambda: self._target().batch_basename,
+            extension=lambda: self._target().extension,
             is_valid=lambda: self._generated_code is not None)
 
         layout = QVBoxLayout()
@@ -111,8 +109,12 @@ class HarImportGUI(QWidget):
         self.setLayout(layout)
 
     def selected_target(self) -> str:
-        """Return the template key of the currently selected target."""
+        """Return the key of the currently selected target."""
         return self.target_select.currentData()
+
+    def _target(self) -> TargetDescriptor:
+        """The selected target: what it generates and what a file of it is called."""
+        return IMPORT_TARGETS.target(self.selected_target())
 
     def open_file(self) -> str | None:
         """Ask for a ``.har`` file, then load it; return the path or ``None``."""
@@ -218,7 +220,7 @@ class HarImportGUI(QWidget):
             self.output_edit.setPlainText(word.get(empty_hint_key))
             return
         try:
-            code = generate_har_script(
+            code = IMPORT_TARGETS.generate(
                 self.selected_target(), [entry.request for entry in entries])
         except CurlParseException as error:
             # A target that cannot carry a recorded file upload says so
