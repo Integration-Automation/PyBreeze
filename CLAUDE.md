@@ -49,6 +49,7 @@ pybreeze/
     ├── curl_import/ har_import/ # Request parsing + script generation
     ├── import_targets/          # TargetDescriptor + IMPORT_TARGETS: what a captured request can be generated as
     ├── execution_report/        # ExecutionReport / ExecutionResult: what a run produced, whatever framework ran it
+    ├── language_service/        # LanguageServiceAdapter + LanguageService: completion and diagnostics asked one way
     ├── header_tools/ jwt_tools/ hash_tools/ timestamp_tools/
     ├── regex_tools/ query_tools/ url_tools/ diff_tools/
     ├── http_reference/ json_format/ response_inspector/   # json_format/json_document.py: JsonDocument, the one copy
