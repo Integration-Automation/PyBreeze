@@ -6,6 +6,7 @@ from pybreeze.utils.exception.error_templates import (
     ERROR_TEXT_KEY_PREFIX,
     error_templates,
 )
+from pybreeze.utils.header_tools.header_rules import HEADER_FINDING_KEY_PREFIX, RULES
 
 _COT_PROMPT_EDITOR = "CoT Prompt Editor"
 _SKILL_PROMPT_EDITOR = "Skill Prompt Editor"
@@ -681,46 +682,9 @@ pybreeze_english_word_dict = {
     "header_analyzer_level_warning": "WARNING",
     "header_analyzer_level_info": "INFO",
     "header_analyzer_open_jwt_button": "Open JWT in decoder",
-    # HTTP Header Analyzer — Findings ({header} is the header, {detail} its value)
-    "header_finding_duplicate_header":
-        "{header}: sent {detail} times; the receiver joins the values into one.",
-    "header_finding_content_type_options_not_nosniff":
-        "{header}: '{detail}' has no effect, only 'nosniff' stops MIME sniffing.",
-    "header_finding_hsts_weak_max_age":
-        "{header}: max-age={detail} is short; 15552000 (180 days) is the usual minimum.",
-    "header_finding_csp_unsafe_directive":
-        "{header}: contains '{detail}', which re-allows what the policy should block.",
-    "header_finding_cors_wildcard_origin": "{header}: every origin is allowed (*).",
-    "header_finding_cors_wildcard_with_credentials":
-        "{header}: '*' with Access-Control-Allow-Credentials: true is rejected by browsers.",
-    "header_finding_cookie_not_secure":
-        "{header}: cookie '{detail}' has no Secure attribute, so it can travel over plain HTTP.",
-    "header_finding_cookie_not_httponly":
-        "{header}: cookie '{detail}' has no HttpOnly attribute, so scripts can read it.",
-    "header_finding_cookie_no_samesite":
-        "{header}: cookie '{detail}' has no SameSite attribute; browsers default it to Lax.",
-    "header_finding_cookie_prefix_rejected":
-        "{header}: cookie '{detail}' breaks its prefix's rules (__Secure- needs Secure; __Host- needs "
-        "Secure, Path=/ and no Domain), so browsers drop it.",
-    "header_finding_cookie_samesite_none_not_secure":
-        "{header}: cookie '{detail}' is SameSite=None without Secure, so browsers drop it.",
-    "header_finding_content_type_no_charset":
-        "{header}: '{detail}' names no charset, so the client has to guess the encoding.",
-    "header_finding_server_banner": "{header}: '{detail}' reveals the software in use.",
-    "header_finding_deprecated_header":
-        "{header}: '{detail}' is deprecated and ignored by current browsers.",
-    "header_finding_sensitive_header":
-        "{header}: carries a credential; mask it before sharing this output.",
-    "header_finding_missing_hsts":
-        "{header}: not set, so a browser may fall back to plain HTTP.",
-    "header_finding_missing_csp":
-        "{header}: not set, so nothing limits where scripts may be loaded from.",
-    "header_finding_missing_content_type_options":
-        "{header}: not set, so a browser may MIME-sniff the response.",
-    "header_finding_missing_frame_options":
-        "{header}: not set; it (or CSP frame-ancestors) controls who may frame the page.",
-    "header_finding_missing_referrer_policy":
-        "{header}: not set, so full URLs may leak to other sites.",
+    "header_analyzer_export_sarif_button": "Export findings as SARIF",
+    "header_analyzer_sarif_dialog_title": "Export findings as SARIF",
+    "header_analyzer_sarif_filter": "SARIF (*.sarif);;JSON (*.json)",
     # Diagram Editor — Tools
     "diagram_editor_tool_select": "Select",
     "diagram_editor_tool_rect": "Rect",
@@ -863,6 +827,11 @@ pybreeze_english_word_dict = {
 # constants the tools raise
 pybreeze_english_word_dict.update(
     {ERROR_TEXT_KEY_PREFIX + name: template for name, template in error_templates().items()})
+
+# What the header analyzer found ({header} is the header, {detail} its value): in
+# English, the sentence of each rule, which an exported SARIF report carries too
+pybreeze_english_word_dict.update(
+    {HEADER_FINDING_KEY_PREFIX + rule.id: rule.message for rule in RULES.values()})
 
 
 def update_english_word_dict():

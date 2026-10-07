@@ -16,7 +16,7 @@ from __future__ import annotations
 import re
 import textwrap
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 # Severity of a finding: something to fix, or something merely worth knowing.
 LEVEL_WARNING = "warning"
@@ -100,10 +100,13 @@ class HeaderField:
 
     :param name: the header name, in its original casing
     :param value: the header value, stripped of surrounding whitespace
+    :param line: the line of the text it starts on, from 1, when it was read from text;
+        two fields of one name and value are equal wherever they stand
     """
 
     name: str
     value: str
+    line: int | None = field(default=None, compare=False)
 
 
 @dataclass(frozen=True)
@@ -115,12 +118,15 @@ class HeaderFinding:
     :param header: the header the finding is about
     :param detail: an untranslated fragment for the message (a value, a count,
         a cookie name); never a credential
+    :param line: the line of the text the finding is about, from 1; ``None``
+        for one about the block as a whole (a header that is missing)
     """
 
     code: str
     level: str
     header: str
     detail: str = ""
+    line: int | None = field(default=None, compare=False)
 
 
 @dataclass
@@ -154,7 +160,7 @@ def parse_headers(text: str) -> list[HeaderField]:
     # The block's common indent is not folding: a block copied from an indented
     # document read as one header folded over every line, and nothing was checked
     block = textwrap.dedent(text.replace("\r\n", "\n").replace("\r", "\n"))
-    for line in block.split("\n"):
+    for number, line in enumerate(block.split("\n"), start=1):
         if not line.strip():
             if fields:
                 break  # the blank line between the headers and the body
@@ -163,19 +169,20 @@ def parse_headers(text: str) -> list[HeaderField]:
             # A folded continuation: part of the value above, joined by one
             # space. Dropped, a CSP directive written on it went unchecked.
             last = fields[-1]
-            fields[-1] = HeaderField(name=last.name, value=f"{last.value} {line.strip()}".strip())
+            fields[-1] = HeaderField(
+                name=last.name, value=f"{last.value} {line.strip()}".strip(), line=last.line)
             continue
         match = HEADER_LINE_RE.match(line)
         if match is not None:
-            fields.append(HeaderField(name=match.group(1), value=match.group(2).strip()))
+            fields.append(HeaderField(name=match.group(1), value=match.group(2).strip(), line=number))
     return fields
 
 
-def _first_value(fields: list[HeaderField], name: str) -> str | None:
-    """Return the first value of the header called *name*, or ``None``."""
+def _first_field(fields: list[HeaderField], name: str) -> HeaderField | None:
+    """Return the first header called *name*, or ``None``."""
     for header in fields:
         if header.name.lower() == name:
-            return header.value
+            return header
     return None
 
 
@@ -188,13 +195,15 @@ def _duplicate_counts(fields: list[HeaderField]) -> dict[str, int]:
     return {name: count for name, count in counts.items() if count > 1}
 
 
-def _duplicate_findings(duplicates: dict[str, int]) -> list[HeaderFinding]:
-    """Report repeated headers, except the ones HTTP expects to repeat."""
-    return [
-        HeaderFinding("duplicate_header", LEVEL_WARNING, name, str(count))
-        for name, count in duplicates.items()
-        if name not in _REPEATABLE_HEADERS
-    ]
+def _duplicate_findings(fields: list[HeaderField], duplicates: dict[str, int]) -> list[HeaderFinding]:
+    """Report repeated headers, except the ones HTTP expects to repeat, each at its first repeat."""
+    findings: list[HeaderFinding] = []
+    for name, count in duplicates.items():
+        if name in _REPEATABLE_HEADERS:
+            continue
+        repeats = [header.line for header in fields if header.name.lower() == name][1:]
+        findings.append(HeaderFinding("duplicate_header", LEVEL_WARNING, name, str(count), line=repeats[0]))
+    return findings
 
 
 def _check_content_type_options(header: HeaderField) -> list[HeaderFinding]:
@@ -330,10 +339,10 @@ def _field_findings(fields: list[HeaderField]) -> list[HeaderFinding]:
         lowered = header.name.lower()
         check = _FIELD_CHECKS.get(lowered)
         if check is not None:
-            findings.extend(check(header))
+            findings.extend(replace(finding, line=header.line) for finding in check(header))
         if lowered in _SENSITIVE_HEADERS:
             # The value is a credential, so it is deliberately not reported.
-            findings.append(HeaderFinding("sensitive_header", LEVEL_INFO, header.name))
+            findings.append(HeaderFinding("sensitive_header", LEVEL_INFO, header.name, line=header.line))
     return findings
 
 
@@ -343,13 +352,14 @@ def _cors_credentials_findings(fields: list[HeaderField]) -> list[HeaderFinding]
     Browsers reject that combination outright, so a policy that sends both never
     worked the way its author expected.
     """
-    origin = _first_value(fields, _CORS_ORIGIN_HEADER)
-    credentials = _first_value(fields, _CORS_CREDENTIALS_HEADER)
-    if origin is None or origin.strip() != "*":
+    origin = _first_field(fields, _CORS_ORIGIN_HEADER)
+    credentials = _first_field(fields, _CORS_CREDENTIALS_HEADER)
+    if origin is None or origin.value.strip() != "*":
         return []
-    if credentials is None or credentials.strip().lower() != "true":
+    if credentials is None or credentials.value.strip().lower() != "true":
         return []
-    return [HeaderFinding("cors_wildcard_with_credentials", LEVEL_WARNING, _CORS_ORIGIN_HEADER)]
+    return [HeaderFinding(
+        "cors_wildcard_with_credentials", LEVEL_WARNING, _CORS_ORIGIN_HEADER, line=origin.line)]
 
 
 def _has_enforced_csp_directive(fields: list[HeaderField], directive: str) -> bool:
@@ -397,7 +407,7 @@ def analyze_headers(text: str) -> HeaderAnalysis:
     duplicates = _duplicate_counts(fields)
     from_response = _looks_like_response(text, fields)
 
-    findings = _duplicate_findings(duplicates)
+    findings = _duplicate_findings(fields, duplicates)
     findings.extend(_field_findings(fields))
     findings.extend(_cors_credentials_findings(fields))
     if from_response:

@@ -641,6 +641,9 @@ pybreeze_traditional_chinese_word_dict = {
     "header_analyzer_level_warning": "警告",
     "header_analyzer_level_info": "資訊",
     "header_analyzer_open_jwt_button": "在解碼器開啟 JWT",
+    "header_analyzer_export_sarif_button": "將發現匯出為 SARIF",
+    "header_analyzer_sarif_dialog_title": "將發現匯出為 SARIF",
+    "header_analyzer_sarif_filter": "SARIF (*.sarif);;JSON (*.json)",
     # HTTP 標頭分析器 — 發現（{header} 為標頭名稱，{detail} 為其值）
     "header_finding_duplicate_header":
         "{header}：送出 {detail} 次，接收端會把這些值合併成一個。",

@@ -56,6 +56,11 @@ The layers are presentation (`pybreeze_ui/`), then execution (`extend/`), then f
   `multiprocessing.freeze_support()`: in the packaged executable the regex tester runs patterns in
   a spawned process, which re-runs the executable. From source it runs them in a plain worker script
   (`python -I -S -c`), so a launch script without the guard is safe.
+- **Header findings as SARIF, without the IDE**: `python -m pybreeze.utils.header_tools.header_sarif
+  <file | -> [-o report.sarif] [--fail-on-warning]`. It analyses a block of HTTP headers and writes
+  the findings as SARIF 2.1.0 to standard output or to `-o`; exit 0, 1 with `--fail-on-warning` and a
+  warning found, 2 when the input cannot be read or the report written. It imports no Qt, and CI jobs
+  of other repositories may call it: the arguments, the exit codes and the rule ids are a contract.
 - **Programmatic**: `pybreeze.start_editor(debug_mode=False, theme=None, **kwargs)`. A `theme` replaces
   the one picked from UI Style (JEditor's saved `ui_style`) and is saved as it; `None` keeps the saved one.
   `debug_mode=True` adds an auto-close timer, which CI uses.

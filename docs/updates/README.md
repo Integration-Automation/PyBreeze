@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20261008-09 | 2026-10-08 | Header findings have rules and are exported as SARIF 2.1.0 | #feature #security #sarif #roadmap | [2026-10](2026-10.md) |
 | U-20261008-08 | 2026-10-08 | A WebRunner import target, and a line that says what a target leaves out | #feature #import #roadmap | [2026-10](2026-10.md) |
 | U-20261008-07 | 2026-10-08 | A navigation panel, one table of tools and sizes in ems | #feature #ui #roadmap | [2026-10](2026-10.md) |
 | U-20261008-06 | 2026-10-08 | Platform smoke tests, and a CI job that runs them on Linux and macOS | #ci #test #roadmap | [2026-10](2026-10.md) |
@@ -710,4 +711,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
 | [2026-09-d.md](2026-09-d.md) | 2026-09 | 91 |
 | [2026-09-e.md](2026-09-e.md) | 2026-09 | 83 |
-| [2026-10.md](2026-10.md) | 2026-10 | 15 |
+| [2026-10.md](2026-10.md) | 2026-10 | 16 |

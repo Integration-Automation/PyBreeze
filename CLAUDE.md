@@ -53,7 +53,8 @@ pybreeze/
     │                            #   NormalizedRequest (the request as sent); the WebRunner target
     ├── execution_report/        # ExecutionReport / ExecutionResult: what a run produced, whatever framework ran it
     ├── language_service/        # LanguageServiceAdapter + LanguageService: completion and diagnostics asked one way
-    ├── header_tools/ jwt_tools/ hash_tools/ timestamp_tools/
+    ├── header_tools/ jwt_tools/ hash_tools/ timestamp_tools/   # header_tools: the analyzer, a rule per finding
+    │                                                           #   (header_rules.py), SARIF export and its CLI
     ├── regex_tools/ query_tools/ url_tools/ diff_tools/
     ├── http_reference/ json_format/ response_inspector/   # json_format/json_document.py: JsonDocument, the one copy
     │                                                      #   a text editor and a visual editor both edit
@@ -70,7 +71,7 @@ pybreeze/
 
 **Keep `architecture_explore.md` current (mandatory).** It is the module-by-module map. Update it *in the same change* that makes it stale — whenever a module/package/class is added, removed, renamed or moved; a layer boundary, executor or threading flow changes; a menu, tool tab or dock is added or removed; persisted data or the test/CI layout changes; or one of its listed observations is fixed. Re-measure any line counts it quotes, and mirror structural edits into the tree above.
 
-**`docs/adr/` records why the shared contracts are shaped as they are** (import targets, the execution report, the JSON document, the language-service adapter) and the shell (the navigation panel and the design system). It is reference material: a rule that follows from a decision is written in this file, not there. A record that has been merged is not rewritten: a decision that changes gets a new record, and the old one is marked as superseded by it.
+**`docs/adr/` records why the shared contracts are shaped as they are** (import targets, the execution report, the JSON document, the language-service adapter), the shell (the navigation panel and the design system) and the features built on them. It is reference material: a rule that follows from a decision is written in this file, not there. A record that has been merged is not rewritten: a decision that changes gets a new record, and the old one is marked as superseded by it.
 
 ## Key types
 
@@ -140,6 +141,7 @@ across the three files above.
 **General**
 - Never `eval()` / `exec()` / `pickle.loads()` on untrusted data; `json.loads` for serialisation; `yaml.safe_load` only
 - Never log or display secrets, tokens, passwords or API keys — API URLs may embed tokens, so treat them as credentials
+- A header finding never carries a credential: its `detail` is a cookie's name, a count, a directive or a value that is not a secret, and an exported SARIF report quotes no line of the input. A new finding gets a `HeaderRule` (`utils/header_tools/header_rules.py`), where its English sentence lives, and its Traditional Chinese sentence in the dictionary. `test_header_sarif.py` fails on a code without a rule, a rule without its sentence, and a secret that reaches the report
 - Importing a captured request never sends it: nothing under `utils/curl_import/`, `utils/har_import/` or `utils/import_targets/` imports a package that could (`requests`, `urllib.request`, `http`, `socket`, `subprocess`, an automation package). `test_import_round_trip.py` fails on one
 - Validate all input at system boundaries (file dialogs, URL inputs, network data); never leak stack traces or paths to the user
 

@@ -8,10 +8,15 @@ headers that are missing.
 from __future__ import annotations
 
 import textwrap
+from pathlib import Path
 
-from PySide6.QtWidgets import QLabel, QPushButton, QTextEdit, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QFileDialog, QLabel, QMessageBox, QPushButton, QTextEdit, QVBoxLayout, QWidget
+)
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.design.panels import wrapping_row
+from pybreeze.pybreeze_ui.plain_text import as_text
 from pybreeze.pybreeze_ui.run_shortcut import press_on_ctrl_enter
 from pybreeze.pybreeze_ui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.jwt_decoder_gui import JwtDecoderGUI
@@ -20,14 +25,17 @@ from pybreeze.pybreeze_ui.tools_gui.tool_tabs import open_tool_tab
 from pybreeze.utils.header_tools.header_analyzer import (
     HeaderAnalysis, HeaderFinding, analyze_headers
 )
+from pybreeze.utils.header_tools.header_rules import HEADER_FINDING_KEY_PREFIX
+from pybreeze.utils.header_tools.header_sarif import write_sarif
 from pybreeze.utils.jwt_tools.jwt_decoder import find_tokens
+from pybreeze.utils.logging.logger import pybreeze_logger
 
 
 def _finding_line(finding: HeaderFinding) -> str:
     """Render one finding as a translated, level-prefixed line."""
     word = language_wrapper.language_word_dict
     level = word.get(f"header_analyzer_level_{finding.level}") or finding.level
-    message = word.get(f"header_finding_{finding.code}") or finding.code
+    message = word.get(HEADER_FINDING_KEY_PREFIX + finding.code) or finding.code
     return f"[{level}] {message.format(header=finding.header, detail=finding.detail)}"
 
 
@@ -87,6 +95,10 @@ class HeaderAnalyzerGUI(QWidget):
         self.open_jwt_button = QPushButton(word.get("header_analyzer_open_jwt_button"))
         self.open_jwt_button.clicked.connect(self.open_jwt_in_decoder)
         self.open_jwt_button.setEnabled(False)
+        # The findings for a tool that reads them: a code-scanning service, a CI step
+        self.export_sarif_button = QPushButton(word.get("header_analyzer_export_sarif_button"))
+        self.export_sarif_button.clicked.connect(self.export_sarif)
+        self.export_sarif_button.setEnabled(False)
 
         self.output_actions = OutputActions(
             self, self.output_edit, main_window=main_window,
@@ -96,9 +108,10 @@ class HeaderAnalyzerGUI(QWidget):
         layout = QVBoxLayout()
         for widget in (
             self.input_label, self.input_edit, self.analyze_button,
-            self.output_label, self.output_edit, self.open_jwt_button,
+            self.output_label, self.output_edit,
         ):
             layout.addWidget(widget)
+        layout.addLayout(wrapping_row(self.open_jwt_button, self.export_sarif_button))
         layout.addLayout(self.output_actions.button_row())
         self.setLayout(layout)
 
@@ -110,6 +123,7 @@ class HeaderAnalyzerGUI(QWidget):
         """Forget the analysis and show *message* instead of a report."""
         self._analysis = None
         self.open_jwt_button.setEnabled(False)
+        self.export_sarif_button.setEnabled(False)
         self.output_edit.setPlainText(message)
 
     def analyze(self) -> None:
@@ -127,7 +141,33 @@ class HeaderAnalyzerGUI(QWidget):
             return
         self._analysis = analysis
         self.open_jwt_button.setEnabled(bool(self.header_tokens()))
+        self.export_sarif_button.setEnabled(True)
         self.output_edit.setPlainText(build_header_report(analysis))
+
+    def export_sarif(self) -> str | None:
+        """Save the analysed headers' findings as a SARIF file; return its path, or ``None``.
+
+        The file names rules and lines, never a header's value: what the
+        analyzer keeps out of a finding stays out of the report.
+        """
+        if self._analysis is None:
+            return None
+        word = language_wrapper.language_word_dict
+        path, _selected = QFileDialog.getSaveFileName(
+            self, word.get("header_analyzer_sarif_dialog_title"), "headers.sarif",
+            word.get("header_analyzer_sarif_filter"))
+        if not path:
+            return None
+        try:
+            write_sarif(Path(path), self._analysis)
+        except OSError as error:
+            pybreeze_logger.error("header_analyzer_gui.py SARIF export failed: %r", error)
+            QMessageBox.warning(
+                self, word.get("output_actions_save_failed_title"),
+                as_text(word.get("output_actions_save_failed_message").format(
+                    file=Path(path).name, error=error.strerror or error)))
+            return None
+        return path
 
     def header_tokens(self) -> list[str]:
         """Return the JWT-looking tokens carried by the analysed headers."""
