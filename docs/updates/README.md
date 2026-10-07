@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20261008-06 | 2026-10-08 | Platform smoke tests, and a CI job that runs them on Linux and macOS | #ci #test #roadmap | [2026-10](2026-10.md) |
 | U-20261008-05 | 2026-10-08 | Decision records for the four shared contracts | #decision #docs #roadmap | [2026-10](2026-10.md) |
 | U-20261008-04 | 2026-10-08 | One way to ask a framework for completion and diagnostics | #feature #language-service #roadmap | [2026-10](2026-10.md) |
 | U-20261008-03 | 2026-10-08 | One JSON document for a text editor and a visual editor | #feature #json #roadmap | [2026-10](2026-10.md) |
@@ -707,4 +708,4 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 | [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
 | [2026-09-d.md](2026-09-d.md) | 2026-09 | 91 |
 | [2026-09-e.md](2026-09-e.md) | 2026-09 | 83 |
-| [2026-10.md](2026-10.md) | 2026-10 | 12 |
+| [2026-10.md](2026-10.md) | 2026-10 | 13 |

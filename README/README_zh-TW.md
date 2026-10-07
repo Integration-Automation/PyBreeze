@@ -448,7 +448,7 @@ python -m pytest test/test_utils/ -v --tb=short
 
 - **單元測試** — `test/test_utils/`，涵蓋純邏輯層（curl 與 HAR 解析、標頭分析、SSRF 驗證、JWT、雜湊、時間戳記、比對），加上透過 `QT_QPA_PLATFORM=offscreen` 的無視窗 Qt 元件測試，以及針對各解析器的 Hypothesis 性質測試。SSH 終端機與 SFTP 檔案樹另外會實際登入測試在本機回環位址啟動的 SSH 伺服器，它以 SFTP 提供一個暫存資料夾
 - **啟動測試** — `test/unit_test/start_automation/` 以 debug 模式啟動 IDE，確認它能正常開啟並乾淨地結束
-- **CI** — 在 Windows 上以 GitHub Actions 跑 Python 3.10 – 3.14，每次 push 與 PR 都會執行，另外每晚執行一次；推送到 `dev` 通過測試、而且套件內容有變動時，還會發佈 `pybreeze_dev`
+- **CI** — 以 GitHub Actions 執行：在 Windows 上以 Python 3.10 – 3.14 跑完整測試，在 Linux 與 macOS 上跑一小組平台冒煙測試；每次 push 與 PR 都會執行，另外每晚執行一次；推送到 `dev` 通過完整測試、而且套件內容有變動時，還會發佈 `pybreeze_dev`
 - **靜態分析** — SonarCloud、Codacy 與 Bandit
 
 ---

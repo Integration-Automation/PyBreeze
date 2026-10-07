@@ -16,6 +16,10 @@ The build backend is one of those packages. ``python -m build`` alone builds
 in an isolated environment and downloads the newest ``setuptools`` into it as
 the job runs, so the jobs pass ``--no-isolation`` and the build imports the
 ``setuptools`` the lock installed.
+
+The whole suite runs on Windows. Each workflow also runs the platform smoke
+tests on Linux and macOS (the ``platform-smoke`` job), and no job waits for
+that one: a system that is still being brought up must not hold a release.
 """
 from __future__ import annotations
 
@@ -38,6 +42,8 @@ _JOB = re.compile(r"^  ([\w-]+):[ \t]*$", re.MULTILINE)
 _INSTALL = re.compile(r"\bpip[x3]?\b.*\binstall\b")
 _LOCKED_PACKAGE = re.compile(r"^([a-z0-9][a-z0-9._-]*)==(\S+) \\$")
 _METADATA = ("pyproject.toml", "dev.toml")  # what a publish job can build from
+_SMOKE_JOB = "platform-smoke"
+_SMOKE_SYSTEMS = ["ubuntu-latest", "macos-latest"]  # Windows runs the whole suite
 _BUILD_REQUIRES = re.compile(r"^\[build-system\]\n(?:[^\[\n].*\n|\n)*?requires\s*=\s*\[([^\]]*)\]", re.MULTILINE)
 
 
@@ -233,3 +239,31 @@ def test_dependabot_reads_the_lock_of_the_publish_jobs():
     pip = [block for block in blocks if block.split()[0].strip("\"'") == "pip"]
     assert len(pip) == 1
     assert re.findall(r"^\s*-\s*\"(/[^\"]*)\"\s*$", pip[0], re.MULTILINE) == ["/", "/.github/requirements"]
+
+
+def _jobs(workflow: Path) -> dict[str, str]:
+    """Each job of *workflow* and its text."""
+    parts = _JOB.split(workflow.read_text(encoding="utf-8").split("\njobs:\n", 1)[1])
+    return dict(zip(parts[1::2], parts[2::2]))
+
+
+@pytest.mark.parametrize("workflow", _WORKFLOWS, ids=lambda path: path.name)
+def test_the_smoke_tests_run_on_linux_and_macos(workflow):
+    job = _jobs(workflow).get(_SMOKE_JOB)
+    assert job is not None
+    systems = re.search(r"^\s*os:\s*\[([^\]]*)\]\s*$", job, re.MULTILINE)
+    assert systems is not None
+    assert [system.strip() for system in systems.group(1).split(",")] == _SMOKE_SYSTEMS
+    assert "pytest test/test_utils/test_platform_smoke.py" in job
+    # No display on a runner: the tests ask for the offscreen platform themselves,
+    # and the job says it too, for anything else a step starts
+    assert re.search(r"^\s*QT_QPA_PLATFORM:\s*offscreen\s*$", job, re.MULTILINE)
+
+
+@pytest.mark.parametrize("workflow", _WORKFLOWS, ids=lambda path: path.name)
+def test_no_job_waits_for_the_smoke_tests(workflow):
+    # A system still being brought up must not hold the tests' other consumers:
+    # the scan, and the two jobs that publish
+    waiting = [name for name, job in _jobs(workflow).items()
+               if any(_SMOKE_JOB in needs for needs in re.findall(r"^\s*needs:\s*(.+?)\s*$", job, re.MULTILINE))]
+    assert waiting == []
