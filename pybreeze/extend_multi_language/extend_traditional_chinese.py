@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from je_editor import traditional_chinese_word_dict
-
 _COT_PROMPT_EDITOR = "CoT 提示詞編輯器"
 _SKILL_PROMPT_EDITOR = "Skill 提示詞編輯器"
 _RESULT_LABEL = "結果："
@@ -930,12 +928,3 @@ pybreeze_traditional_chinese_word_dict = {
     "run_window_process_exited": "[行程已結束，結束代碼 {code}]",
     "run_window_output_still_held": "[這次執行啟動的某個行程仍握著輸出；它之後寫出的內容不會顯示]",
 }
-
-
-def update_traditional_chinese_word_dict():
-    # Mutate jeditor's built-in Traditional Chinese dict in-place.
-    # This works because language_wrapper.choose_language_dict["Traditional_Chinese"]
-    # is a direct reference to traditional_chinese_word_dict — do NOT use
-    # register_natural_language() for built-in languages, as that would replace
-    # the reference and break the link.
-    traditional_chinese_word_dict.update(pybreeze_traditional_chinese_word_dict)

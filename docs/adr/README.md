@@ -15,6 +15,7 @@ module does is in `architecture_explore.md`; what changed and when is in `docs/u
 | [0005](0005-navigation-and-design-system.md) | The shell gets a navigation panel that mirrors the menus, and panels are sized in ems | Accepted | 1 (and the tabs of 5, 7, 8) |
 | [0006](0006-webrunner-import-target.md) | A captured request becomes a browser visit, and what a visit cannot carry is said | Accepted | 2 |
 | [0007](0007-header-findings-as-sarif.md) | A header finding has a rule, and the findings are exported as SARIF | Accepted | 3 |
+| [0008](0008-supported-languages.md) | PyBreeze supports the languages it maintains, and passes the editor's others on | Accepted | 4 |
 
 "Roadmap" is the automation platform roadmap of pull request #141
 (`docs/roadmap/2026-10-automation-platform-next.md`); 0001 to 0004 are its Phase 0 contracts, and the

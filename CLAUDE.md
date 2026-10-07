@@ -46,7 +46,8 @@ pybreeze/
 │   │   └── prthinker/           # Code review via start_module_process (secrets via env)
 │   ├── mail_thunder_extend/     # Post-test email report hook
 │   └── prthinker_extend/        # prthinker settings + argument assembly (pure logic, no Qt)
-├── extend_multi_language/       # Built-in i18n (English, Traditional Chinese)
+├── extend_multi_language/       # Built-in i18n (English, Traditional Chinese); supported_languages.py says which
+│                                #   languages PyBreeze maintains and which are JEditor's alone
 └── utils/                       # Pure logic, no Qt — unit-testable
     ├── curl_import/ har_import/ # Request parsing + script generation
     ├── import_targets/          # TargetDescriptor + IMPORT_TARGETS: what a captured request can be generated as;
@@ -135,6 +136,14 @@ features, commands, CLI flags, install/setup, configuration or requirements — 
 **and every language variant in the same commit**, structure and content aligned. Never update one
 language and leave the others stale. No README-parity test guards this, so it is a manual check
 across the three files above.
+
+**Supported languages.** PyBreeze supports the languages it maintains: every key translated, listed in
+`extend_multi_language/supported_languages.py` (`MAINTAINED`: English, Traditional Chinese). JEditor's other
+languages are passed on untranslated (`EDITOR_ONLY`) and are not PyBreeze's to fix. A language joins `MAINTAINED`
+whole: its dictionary, its line in that file and its name, as the Language menu shows it, in all three READMEs.
+PyBreeze defines no key JEditor defines except those in `REWORDED_JEDITOR_KEYS`. `test_supported_languages.py`
+fails on a language JEditor offers that is in neither list, on a maintained dictionary that differs from the
+first, on a new key shared with JEditor, and on a README that leaves a language out.
 
 ## Security
 

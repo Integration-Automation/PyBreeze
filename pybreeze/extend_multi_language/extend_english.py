@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from je_editor import english_word_dict
-
 from pybreeze.utils.exception.error_templates import (
     ERROR_TEXT_KEY_PREFIX,
     error_templates,
@@ -832,11 +830,3 @@ pybreeze_english_word_dict.update(
 # English, the sentence of each rule, which an exported SARIF report carries too
 pybreeze_english_word_dict.update(
     {HEADER_FINDING_KEY_PREFIX + rule.id: rule.message for rule in RULES.values()})
-
-
-def update_english_word_dict():
-    # Mutate jeditor's built-in English dict in-place.
-    # This works because language_wrapper.language_word_dict is a direct reference
-    # to english_word_dict — do NOT use register_natural_language() for built-in
-    # languages, as that would replace the reference and break the link.
-    english_word_dict.update(pybreeze_english_word_dict)
