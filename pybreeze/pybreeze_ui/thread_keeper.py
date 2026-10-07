@@ -1,6 +1,7 @@
 """Let a worker QThread run out after the widget that started it has closed.
 
 ``if_alive`` lets a worker's signal reach its widget without keeping it alive.
+``KeptThread`` is a worker kept from its start, for one a panel starts on its own.
 
 A panel that closes while its request is still in flight has two bad options:
 destroy the running QThread with it (Qt aborts the process), or wait for it on
@@ -61,3 +62,32 @@ def if_alive(widget_ref: weakref.ref, act: Callable[[_Widget], None]) -> None:
     widget = widget_ref()
     if widget is not None:
         act(widget)
+
+# Workers that are running, each kept from its start until it ends
+_RUNNING: set[QThread] = set()
+
+
+class KeptThread(QThread):
+    """A worker that is kept alive from the moment it starts until it ends.
+
+    For a worker a panel starts on its own (as it is shown, as a list is
+    filled), which nothing may have closed by the time the panel is gone: a
+    tab deleted without being closed drops its last reference to the thread,
+    and a ``QThread`` destroyed while it runs ends the IDE. ``let_run_out``
+    is for a worker handed over as its panel closes; this one is never the
+    panel's alone to begin with.
+    """
+
+    def start_kept(self) -> None:
+        """Start, kept here until the thread has ended."""
+        _RUNNING.add(self)
+        self.finished.connect(self._forget)
+        self.start()
+
+    def _forget(self) -> None:
+        _RUNNING.discard(self)
+
+
+def running_kept() -> set[QThread]:
+    """The kept workers that are still running."""
+    return set(_RUNNING)

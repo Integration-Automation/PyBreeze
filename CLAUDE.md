@@ -20,10 +20,12 @@ pybreeze/
 │   ├── extend_ai_gui/           # CoT code review, prompt editors, skill send
 │   ├── connect_gui/             # ssh/ (terminal + SFTP tree), url/ (AI review client)
 │   ├── jupyter_lab_gui/         # JupyterLab tab (QWebEngineView)
+│   ├── mcp_gui/                 # MCP client tab: servers, tools/resources/prompts, asking before a call, the calls
 │   ├── show_code_window/        # CodeWindow — subprocess output display
 │   ├── design/                  # tokens (sizes in ems, theme colours), FlowLayout, Panel / StatusLine / wrapping_row
 │   ├── navigation/              # The navigation panel: the menus and the tool table as a searchable tree (left dock)
-│   ├── thread_keeper.py         # let_run_out: a worker QThread outlives its closed widget; if_alive: weak slots
+│   ├── thread_keeper.py         # let_run_out: a worker QThread outlives its closed widget; if_alive: weak slots;
+│   │                            #   KeptThread: a worker kept from its start (one a panel starts on its own)
 │   ├── gui_thread_gc.py         # Garbage collected on a GUI-thread timer, never on a worker
 │   ├── plain_text.py            # as_text: server/file text shown in message boxes as text, not markup
 │   ├── exact_text.py            # exact_text: a text box read as typed (toPlainText changes U+00A0, U+2028)
@@ -50,7 +52,8 @@ pybreeze/
 │   └── language_server/         # python -m pybreeze.extend.language_server: the action language server's
 │                                #   process, and launch.py, which offers it to JEditor's editors for .json
 ├── extend_multi_language/       # Built-in i18n (English, Traditional Chinese); supported_languages.py says which
-│                                #   languages PyBreeze maintains and which are JEditor's alone
+│                                #   languages PyBreeze maintains and which are JEditor's alone; *_integrations.py
+│                                #   and traditional_chinese_error_text.py are parts of the two dictionaries
 └── utils/                       # Pure logic, no Qt — unit-testable
     ├── curl_import/ har_import/ # Request parsing + script generation
     ├── import_targets/          # TargetDescriptor + IMPORT_TARGETS: what a captured request can be generated as;
@@ -67,6 +70,8 @@ pybreeze/
     │                                                      #   a text editor and a visual editor both edit;
     │                                                      #   json_tree_edit.py: an edit of its tree by path
     ├── network/                 # url_validation (SSRF), public_http (pinned connections), http_client (capped reads)
+    ├── mcp/                     # MCP client: mcp_profile.py (servers, ~/.pybreeze/mcp_servers.json), mcp_transport.py
+    │                            #   (a server process), mcp_client.py, mcp_redaction.py, mcp_call_log.py (a report)
     ├── exception/               # ITEException hierarchy
     ├── logging/ file_process/ app_dirs.py / subprocess_util.py
     ├── ui_state.py              # read_ui_state / remember: what the IDE keeps of its own panels (~/.pybreeze/ui_state.json)
@@ -121,6 +126,7 @@ ruff check pybreeze/                              # before committing non-trivia
 - Python 3.10+: `X | Y` unions, `from __future__ import annotations`, `TYPE_CHECKING` guard for hint-only imports
 - **Never update UI from a worker thread** — Queue + QTimer (see `TaskProcessManager`) or Qt Signal/Slot
 - A slot on a thread (or any object) the widget keeps must not hold the widget: connect a bound method, or `thread_keeper.if_alive(weakref.ref(self), ...)`. A lambda capturing `self` there is a cycle through Qt that Python's collector cannot see, and the closed widget is never freed
+- A worker a panel starts on its own (as it is shown, as a list is filled) is a `thread_keeper.KeptThread` started with `start_kept()`: the panel may be deleted without being closed, and a `QThread` destroyed while it runs ends the IDE. Whether a worker is in flight is the panel's own flag, set as it starts and cleared in the slots of its result signals, never `isRunning()`: a thread still runs for a moment after its result has been delivered, and what was asked for in that moment was never started
 - Automatic garbage collection is off in the IDE: `start_editor()` collects on a GUI-thread timer (`gui_thread_gc.py`), because a collection on a worker destroys Qt objects there. Never call `gc.enable()`
 - Custom exceptions inherit from `ITEException`; log via `pybreeze_logger` (lazy `%s` formatting, never `print()`)
 - Plugin API: `register_programming_language()` / `register_natural_language()` from `je_editor.plugins`
@@ -131,6 +137,7 @@ ruff check pybreeze/                              # before committing non-trivia
 - An instance attribute of a Qt class never takes the name of a member of its Qt base (`self.actions`, `self.thread`, `self.layout`, …): it hides the method from everything that calls it on the widget. `test_no_qt_member_shadowing.py` fails on one
 - A tool is one `_tool(...)` line in `TOOLS` (`menu/tools/tools_menu.py`): the Tools menu, the Dock menu and the navigation panel are all built from it, and nothing else lists a tool. A panel takes its gaps, text sizes and state colours from `pybreeze_ui/design/tokens.py`, counted in ems, never a number of pixels of its own, and a row of controls that may be long is a `wrapping_row()`. `test_tools_fit_small_screens.py` fails on a tool that asks for more than 60 ems of width or 30 of height
 - A menu's submenus are found with `navigation_model.submenus_under()` (`findChildren(QMenu)` and `menuAction()`), never `QAction.menu()`: under PySide6 6.11.0 the object it returns takes the menu with it when it is dropped
+- A dictionary file stays under the 1000-line gate. The words of the features that reach outside the IDE (language service, automation keywords, MCP client) are in `english_integrations.py` and `traditional_chinese_integrations.py`, the Traditional Chinese error texts in `traditional_chinese_error_text.py`; each is merged into its dictionary in `extend_english.py` / `extend_traditional_chinese.py`, which stay the only objects anything reads
 - A framework's keywords are never written down in PyBreeze and the framework is never imported to ask for them, in the IDE or in the language server: `utils/language_service/metadata_probe.read_metadata()` asks the installed package in a child process of the interpreter that runs the scripts. A further framework for the language service is one `FrameworkProfile` (`framework_profiles.py`). A language service's message is a dictionary key (`language_service_*`), formatted in the server from the dictionary of the language it was started with
 - A view of a `JsonDocument` never changes its tree in place and keeps no copy of it to edit. An edit is a function of `utils/json_format/json_tree_edit.py` (a new tree from the old one and a path), handed to `set_tree()` with the revision it was made against. In the JSON editor the tree panel only asks (`JsonTreePanel.edit_asked`); the tab that holds the document makes the edit, records the text before and after as one Undo step, and fills both views from the document
 - A tool tab asks `IMPORT_TARGETS` (`utils/import_targets/builtin_targets.py`) what a captured request can be generated as and how, and never names a target itself. A new target is one `TargetDescriptor` registered there, with the request parts its output sends in `carries`. `test_import_targets.py` fails on a target's key written in `tools_gui/`, and on a `carries` that is not what the generator writes. A generator written from now on reads the request through `normalized_request.normalize()`, not the parse record
@@ -177,6 +184,8 @@ Reference implementations: `utils/network/url_validation.py` (`validate_url`), `
 **Subprocess** — always argument lists, explicit `shell=False`, `timeout` on every `subprocess.run()`. Never interpolate user input into a command string. Secrets travel as `env`, never argv (see `prthinker_setting.environment_for`). The IDE intentionally runs user-authored scripts — this hardening guards against accidental shell injection, not against malicious local files.
 
 **JupyterLab** — the embedded server is localhost-only; the empty token and password (`--IdentityProvider.token`/`--PasswordIdentityProvider.hashed_password`, and jupyter_server 1.x's `--ServerApp.token`/`password`, which 2.x still reads) and `--ServerApp.disable_check_xsrf=True` are safe *only* because of that. Never change `--ServerApp.ip` to an externally reachable address, and never set `--ServerApp.allow_origin`: a loopback bind does not stop a browser, and with the origin open any page the user visits can drive a tokenless server. The view loads from the same origin and needs nothing relaxed, and its page (`jupyter_lab_gui/lab_page.LabPage`) keeps it there: a page elsewhere, or a link for a new tab, goes to the system's browser, `http`/`https` only. The server outlives its launcher thread, so its tab stops it on close whatever the thread's state.
+
+**MCP** — an MCP server is a program that acts with the user's rights, and it describes its own tools. A tool call is asked about first (tool, server, arguments as sent; default No) unless the user trusted that tool of that server; `readOnlyHint` / `destructiveHint` are shown and decide nothing. A server named by a project's `.mcp.json` is listed and never started without a yes that shows its command, and none of its tools is trusted whatever the file says. A server is started from an argument list (`shell=False`) with `utf8_subprocess_env()` plus the profile's variables; keys and tokens are environment variables, kept in `~/.pybreeze/mcp_servers.json` with `replace_text(..., private=True)`, shown as dots, and taken out of every log line, error message and exported session by `utils/mcp/mcp_redaction.py` (by name, and by value wherever it turns up). Everything a server sends is data: read field by field, shown as text. Only the standard-input-and-output transport is offered; an HTTP one needs a decision about loopback addresses first.
 
 **Language server** — the action language server (`extend/language_server/`) is a process JEditor's editor starts when a `.json` file is opened, so opening a file must not run code from the folder being looked at. It is started by the path of its `__main__.py`, never `python -m` (which puts the working folder first on the import path), and the keyword probe runs with the interpreter's own folder as its working folder. The probe is a fixed script that imports only the installed framework; what the package prints goes to stderr, and its answer is read as data (`metadata_from_dict` checks every field). Only protocol messages are written to the server's standard output: never `print()` there. A failure reported to the editor or the user carries the exception's name, not its message, which may hold a path.
 

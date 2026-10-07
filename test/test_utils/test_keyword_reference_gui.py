@@ -12,6 +12,7 @@ from je_editor import JEditorExecException, language_wrapper
 
 from pybreeze.extend_multi_language.update_language_dict import update_language_dict
 from pybreeze.pybreeze_ui.design.tokens import State
+from pybreeze.pybreeze_ui.thread_keeper import running_kept
 from pybreeze.pybreeze_ui.tools_gui import keyword_reference_gui
 from pybreeze.pybreeze_ui.tools_gui.keyword_reference_gui import KeywordReadThread, KeywordReferenceGUI
 from pybreeze.utils.exception.exception_tags import language_probe_not_installed_error
@@ -80,7 +81,7 @@ def tab(app, frameworks):
     gui = KeywordReferenceGUI(_Main())
     yield gui
     frameworks.hold.set()
-    _until(lambda: not gui.is_reading() and not keyword_reference_gui._READING)
+    _until(lambda: not gui.is_reading() and not running_kept())
     gui.close()
     gui.deleteLater()
 
@@ -237,7 +238,7 @@ def test_a_reader_outlives_a_tab_that_goes_while_it_reads(app, frameworks):
     frameworks.hold.clear()
     gui = KeywordReferenceGUI(_Main())
     gui.read()
-    (reader,) = keyword_reference_gui._READING
+    (reader,) = running_kept()
     _until(lambda: frameworks.asked != [])
 
     gui.close()
@@ -246,9 +247,9 @@ def test_a_reader_outlives_a_tab_that_goes_while_it_reads(app, frameworks):
     QApplication.processEvents()
 
     assert reader.isRunning()
-    assert reader in keyword_reference_gui._READING
+    assert reader in running_kept()
     frameworks.hold.set()
-    _until(lambda: reader not in keyword_reference_gui._READING)
+    _until(lambda: reader not in running_kept())
     assert reader.wait(5000)
 
 
@@ -267,7 +268,7 @@ def test_the_reader_says_what_it_read_or_why_it_could_not(app, frameworks):
     failed.start_kept()
     _until(lambda: failures != [])
     assert failures == [("je_load_density", language_probe_not_installed_error.format(framework="je_load_density"))]
-    _until(lambda: not keyword_reference_gui._READING)
+    _until(lambda: not running_kept())
 
 
 # ----------------------------------------------------------------------

@@ -153,11 +153,15 @@ class TestBuildNavigation:
         assert _outline(build_navigation(window)["settings"]) == [
             [_word("style_menu_label"), [["dark_amber.xml", []]]], ["Language", [["English", []]]]]
 
-    def test_what_has_no_tool_yet_is_empty(self, window):
+    def test_a_tool_is_listed_under_the_category_it_names(self, window):
         navigation = build_navigation(window)
 
-        assert navigation["mcp"] == []
-        assert navigation["reports"] == []
+        assert _outline(navigation["mcp"]) == [[_word("extend_tools_menu_mcp_client_tab_label"), []]]
+        assert _word("extend_tools_menu_mcp_client_tab_label") not in [
+            name for name, _children in _outline(navigation["tools"])]
+
+    def test_what_has_no_tool_yet_is_empty(self, window):
+        assert build_navigation(window)["reports"] == []
 
     def test_a_window_without_those_menus_has_nothing_to_list(self, app):
         bare = SimpleNamespace(menuBar=QMenuBar)
@@ -356,7 +360,8 @@ class TestTheMainWindow:
     def test_the_shell_has_the_navigation_at_its_left(self, shell):
         seen = shell
 
-        assert list(seen["categories"]) == ["Automation", "Tools", "Settings"]
+        assert list(seen["categories"]) == ["Automation", "Tools", "MCP", "Settings"]
+        assert seen["categories"]["MCP"] == ["MCP Client"]
         assert "APITestka" in seen["categories"]["Automation"]
         assert {"SSH", "AI", "cURL Import", "HTTP Status"} <= set(seen["categories"]["Tools"])
         assert {"UI Style", "Language", "Install"} <= set(seen["categories"]["Settings"])

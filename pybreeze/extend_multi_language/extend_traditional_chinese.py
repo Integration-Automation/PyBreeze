@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+from pybreeze.extend_multi_language.traditional_chinese_error_text import TRADITIONAL_CHINESE_ERROR_TEXT
+from pybreeze.extend_multi_language.traditional_chinese_integrations import (
+    TRADITIONAL_CHINESE_INTEGRATION_WORDS,
+)
+
 _COT_PROMPT_EDITOR = "CoT 提示詞編輯器"
 _SKILL_PROMPT_EDITOR = "Skill 提示詞編輯器"
 _RESULT_LABEL = "結果："
@@ -642,44 +647,6 @@ pybreeze_traditional_chinese_word_dict = {
     "json_editor_open_dialog_title": "開啟 JSON 檔",
     "json_editor_save_dialog_title": "儲存 JSON 文件",
     "json_editor_file_filter": "JSON (*.json);;所有檔案 (*)",
-    # Automation keywords
-    "keyword_reference_framework_label": "框架：",
-    "keyword_reference_refresh_button": "重新讀取",
-    "keyword_reference_search_placeholder": "依名稱或說明篩選",
-    "keyword_reference_copy_button": "複製成動作",
-    "keyword_reference_loading": "正在讀取 {framework} 的關鍵字...",
-    "keyword_reference_ready": "{framework}：{count} 個關鍵字。在 .json 腳本裡，編輯器提供 "
-                               "{capabilities}",
-    "keyword_reference_capability_completion": "補全",
-    "keyword_reference_capability_diagnostics": "診斷",
-    "keyword_reference_capability_hover": "懸停說明",
-    "keyword_reference_capability_definition": "跳到定義",
-    "keyword_reference_defined_in": "定義在 {file} 第 {line} 行",
-    "keyword_reference_no_interpreter": "找不到可以用來讀取關鍵字的 Python 直譯器",
-    # Language service for action scripts (diagnostics and hover, shown by the editor)
-    "language_service_json_syntax": "這不是有效的 JSON",
-    "language_service_unknown_keyword": "{name} 不是 {framework} 的關鍵字",
-    "language_service_unknown_keyword_suggestion":
-        "{name} 不是 {framework} 的關鍵字。你是指 {suggestion} 嗎？",
-    "language_service_unknown_parameter": "{keyword} 沒有名為 {name} 的參數",
-    "language_service_unknown_parameter_suggestion":
-        "{keyword} 沒有名為 {name} 的參數。你是指 {suggestion} 嗎？",
-    "language_service_missing_parameter": "{keyword} 需要 {names}",
-    "language_service_too_many_values":
-        "{keyword} 的值清單最多 {most} 個，這裡給了 {count} 個",
-    "language_service_too_few_values":
-        "{keyword} 的值清單至少要 {least} 個，這裡給了 {count} 個",
-    "language_service_needs_names":
-        "{keyword} 的 {names} 只能用名稱給：請用具名值的物件，不要用清單",
-    "language_service_action_not_list":
-        "一個動作是一個清單：[\"關鍵字\"] 或 [\"關鍵字\", 引數]",
-    "language_service_action_no_keyword": "動作要以加引號的關鍵字開頭",
-    "language_service_action_too_long": "一個動作只有一個關鍵字，以及最多一組引數",
-    "language_service_arguments_shape":
-        "引數是具名值的物件，或是值的清單",
-    "language_service_actions_not_list": "{key} 放的是動作的清單",
-    "language_service_parameter_required": "必填",
-    "language_service_parameter_optional": "選填",
     # 回應檢視器 — 選單
     "extend_tools_menu_response_tab_action": "回應檢視器分頁",
     "extend_tools_menu_response_tab_label": "回應檢視器",
@@ -908,99 +875,6 @@ pybreeze_traditional_chinese_word_dict = {
     "plugin_browser_status_downloading": "正在下載 {name}...",
     "plugin_browser_status_installed": "已安裝：{path}",
     "plugin_browser_restart_hint": "外掛已下載至：\n{path}\n\n請重新啟動編輯器以啟用。",
-    # 工具拒絕輸入的原因（pybreeze_ui/error_text.py）：exception_tags 各常數的翻譯
-    "error_text_cant_reformat_json_error": "無法重新格式化 JSON：型別正確嗎？",
-    "error_text_wrong_json_data_error": "無法解析 JSON",
-    "error_text_json_duplicate_key_error": "這份 JSON 在同一個物件裡給了兩次 {key} 鍵",
-    "error_text_empty_curl_command_error": "沒有提供 curl 指令",
-    "error_text_not_a_curl_command_error": "這看起來不是 curl 指令",
-    "error_text_malformed_curl_command_error": "無法解析 curl 指令：請檢查引號",
-    "error_text_no_url_in_curl_error": "curl 指令裡找不到 URL",
-    "error_text_get_with_file_body_error":
-        "-G 會把資料放進查詢字串，產生的腳本無法從檔案讀取：請把資料直接寫在指令裡",
-    "error_text_action_cannot_read_files_error":
-        "APITestka JSON 動作無法上傳檔案，也無法從檔案讀取內容或 Cookie：請選擇 Python 目標",
-    "error_text_malformed_url_error": "URL 格式錯誤（例如 [ 沒有關上，或連接埠不是數字）",
-    "error_text_invalid_http_method_error":
-        "不是 HTTP 方法：方法是由字母、數字與 !#$%&'*+.^_`|~- 組成的一個字",
-    "error_text_empty_har_error": "沒有提供 HAR 內容",
-    "error_text_invalid_har_json_error": "無法把檔案解析為 JSON：這不是有效的 HAR 匯出檔",
-    "error_text_not_a_har_document_error": "這份 JSON 沒有 log.entries 清單，不是 HAR 匯出檔",
-    "error_text_no_entries_in_har_error": "這份 HAR 匯出檔沒有任何請求",
-    "error_text_empty_jwt_error": "沒有提供權杖",
-    "error_text_malformed_jwt_error": "JWT 必須是以點分隔的三段",
-    "error_text_encrypted_jwt_error": "這是加密的 JWT（JWE）：只有持有接收方的金鑰才能讀出其中的宣告",
-    "error_text_jwt_segment_decode_error": "無法解碼 JWT 的某一段：base64url 或 JSON 無效",
-    "error_text_empty_timestamp_error": "沒有提供數值",
-    "error_text_unrecognized_timestamp_error": "無法辨識為 epoch 數值或 ISO-8601 日期時間",
-    "error_text_invalid_json_object_error": "輸入必須是由鍵值組成的 JSON 物件",
-    "error_text_nested_query_value_error": "查詢值必須是字串、數字、true/false 或 null，或由它們組成的清單",
-    "error_text_invalid_json_for_query_error": "無法把輸入解析為 JSON",
-    "error_text_query_not_utf8_error": "查詢字串裡的百分比跳脫不是 UTF-8 文字（例如 %B0），因此沒有對應的 JSON",
-    "error_text_unencodable_text_error": "有個值含有 URL 無法表示的字元（例如 \\ud83d 這種落單的代理字元）",
-    "error_text_empty_regex_pattern_error": "沒有提供正規表示式",
-    "error_text_invalid_regex_pattern_error": "無效的正規表示式：{detail}",
-    "error_text_invalid_json_for_url_error": "無法把輸入解析為 JSON",
-    "error_text_invalid_url_components_error": "輸入必須是由 URL 各部分組成的 JSON 物件",
-    "error_text_unreadable_url_error": "輸入不是可以讀取的 URL",
-    "error_text_url_port_out_of_range_error": "連接埠必須是 0 到 65535 之間的數字",
-    "error_text_regex_timeout_error":
-        "這個正規表示式執行 {seconds} 秒後仍未結束，已被停止；(a+)+ 這類巢狀重複遇到幾乎符合的文字時，"
-        "執行時間可能呈指數成長",
-    "error_text_regex_worker_error": "無法執行這個正規表示式：{detail}",
-    "error_text_url_unsafe_characters_error": "URL 含有反斜線、空白或控制字元。",
-    "error_text_url_unparsable_error": "無法解析這個 URL。",
-    "error_text_url_ambiguous_host_error": "這個 URL 的主機名稱有兩種讀法。",
-    "error_text_url_scheme_not_allowed_error": "不允許 '{scheme}' 協定，請使用 http 或 https。",
-    "error_text_url_no_hostname_error": "URL 沒有主機名稱。",
-    "error_text_hostname_unresolved_error": "無法解析主機名稱 '{hostname}'：{detail}",
-    "error_text_hostname_without_address_error": "無法解析主機名稱 '{hostname}'。",
-    "error_text_address_not_public_error": "不允許連到非公開位址 {address}。",
-    "error_text_response_too_large_error": "回應內容超過 {limit} 位元組的上限。",
-    "error_text_request_timed_out_error": "請求逾時",
-    "error_text_request_tls_failed_error": "無法建立安全連線",
-    "error_text_request_no_connection_error": "無法連線到伺服器",
-    "error_text_request_too_many_redirects_error": "重新導向次數過多",
-    "error_text_request_invalid_url_error": "URL 無效",
-    "error_text_image_is_text_error": "預期收到圖片，伺服器卻傳回 '{content_type}'。",
-    "error_text_image_declared_too_large_error": "圖片太大（{size} 位元組，上限 {limit}）。",
-    "error_text_image_too_large_error": "圖片超過 {megabytes} MB 的上限。",
-    "error_text_host_key_rejected_error": "已拒絕 {hostname} 的主機金鑰。",
-    "error_text_host_key_changed_error": (
-        "{hostname} 的主機金鑰變了：現在是 {fingerprint}，不是先前信任的 {trusted}。"
-        "可能有人在攔截這條連線。如果伺服器的金鑰是刻意更換的，請從 {known_hosts} 刪掉它那一行，再重新連線。"
-    ),
-    "error_text_redirect_not_followed_error": "重新導向（未跟隨）至 {where}",
-    "error_text_redirect_same_server_error": "重新導向（未跟隨）至這台伺服器上的另一個路徑",
-    "error_text_redirect_nowhere_error": "重新導向（未跟隨），但沒有指出目的地",
-    "error_text_authorization_failed_error": "驗證或授權失敗",
-    "error_text_server_error_error": "伺服器錯誤：{body}",
-    "error_text_diagram_not_an_object_error": "架構圖檔案應該是一個物件，而不是 {kind}",
-    "error_text_diagram_section_not_a_list_error": "架構圖的 '{section}' 應該是清單，而不是 {kind}",
-    "error_text_mail_not_installed_error": "沒有安裝 je_mail_thunder",
-    "error_text_mail_settings_unreadable_error": "無法讀取郵件設定檔（mail_thunder_content.json）",
-    "error_text_mail_no_user_error": "沒有設定郵件使用者",
-    "error_text_mail_login_failed_error": "郵件伺服器登入失敗",
-    "error_text_mail_send_failed_error": "寄送失敗（{kind}）",
-    "error_text_report_missing_error": "這次執行沒有寫出 {name}",
-    "error_text_report_not_a_file_error": "{name} 不是檔案",
-    "error_text_report_stale_error": "這次執行沒有寫出新的 {name}；現有的是之前執行留下的",
-    "error_text_json_edit_no_such_place_error": "JSON 文件裡的那個位置沒有東西",
-    "error_text_json_edit_key_exists_error": "這個物件已經有一個成員叫 {key}",
-    "error_text_json_edit_not_a_container_error": "只有物件或陣列才能包含其他值",
-    "error_text_json_edit_root_error": "文件本身不能刪除、改名或移動",
-    "error_text_json_edit_not_a_number_error": "{text} 不是 JSON 的數字（例如 12、-0.5 或 1e3）",
-    "error_text_json_edit_not_a_boolean_error": "{text} 不是布林值：請寫 true 或 false",
-    "error_text_language_probe_not_installed_error": "執行腳本的直譯器沒有安裝 {framework}",
-    "error_text_language_probe_timeout_error": "{framework} 列出關鍵字花了超過 {seconds} 秒",
-    "error_text_language_probe_failed_error": "{framework} 無法列出關鍵字（{reason}）",
-    "error_text_language_metadata_shape_error":
-        "{framework} 對自己關鍵字的描述，不是這一版 PyBreeze 讀得懂的形式",
-    "error_text_execution_report_field_error": "這不是執行報告：{field} 不存在或型別不對",
-    "error_text_execution_report_version_error":
-        "這份執行報告的格式是第 {version} 版，比這個 PyBreeze 讀得懂的還新（最多第 {supported} 版）",
-    "error_text_execution_report_depth_error": "這份執行報告的結果巢狀超過 {limit} 層",
-    "error_text_execution_report_duplicate_id_error": "這份執行報告把 ID {id} 給了不只一個結果",
     # 執行視窗自己對這次執行的說明（extend/process_executor/run_notice.py）
     "run_window_no_compiler": "[錯誤] 這個執行設定沒有指定編譯器",
     "run_window_compile": "[編譯] {command}",
@@ -1019,3 +893,7 @@ pybreeze_traditional_chinese_word_dict = {
     "run_window_process_exited": "[行程已結束，結束代碼 {code}]",
     "run_window_output_still_held": "[這次執行啟動的某個行程仍握著輸出；它之後寫出的內容不會顯示]",
 }
+# The words of the features that reach outside the IDE, and the reasons a tool
+# refuses its input: each kept in a file of its own
+pybreeze_traditional_chinese_word_dict.update(TRADITIONAL_CHINESE_INTEGRATION_WORDS)
+pybreeze_traditional_chinese_word_dict.update(TRADITIONAL_CHINESE_ERROR_TEXT)

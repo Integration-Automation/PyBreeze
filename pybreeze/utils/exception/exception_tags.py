@@ -136,6 +136,17 @@ language_probe_failed_error: str = "{framework} could not list its keywords ({re
 language_metadata_shape_error: str = (
     "what {framework} says about its keywords is not in a form this version of PyBreeze reads")
 
+# An MCP server that cannot be set up or talked to (utils.mcp)
+mcp_profile_command_error: str = "the MCP server {name!r} has no command to start it with"
+mcp_profile_file_error: str = "this is not a list of MCP servers (a JSON object with mcpServers)"
+mcp_start_error: str = "the MCP server could not be started ({reason})"
+mcp_closed_error: str = "the MCP server closed the connection"
+mcp_timeout_error: str = "the MCP server did not answer {method} within {seconds} seconds"
+mcp_cancelled_error: str = "{method} was cancelled before the MCP server answered"
+mcp_remote_error: str = "the MCP server refused {method} (error {code}): {message}"
+mcp_reply_error: str = "the MCP server answered {method} with something that is not a reply to it"
+mcp_version_error: str = "the MCP server speaks protocol version {version!r}, which PyBreeze does not"
+
 # Data that is not an execution report (execution_report.report_schema)
 execution_report_field_error: str = "not an execution report: {field} is missing or of the wrong type"
 execution_report_version_error: str = (

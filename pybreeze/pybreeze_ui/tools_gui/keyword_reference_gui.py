@@ -14,7 +14,7 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QApplication, QComboBox, QLabel, QLineEdit, QListWidget, QListWidgetItem, QPlainTextEdit, QPushButton,
     QSplitter, QVBoxLayout, QWidget,
@@ -26,6 +26,7 @@ from pybreeze.pybreeze_ui.design.panels import StatusLine, wrapping_row
 from pybreeze.pybreeze_ui.design.tokens import State
 from pybreeze.pybreeze_ui.error_text import error_text
 from pybreeze.pybreeze_ui.fixed_pitch import use_fixed_pitch_font
+from pybreeze.pybreeze_ui.thread_keeper import KeptThread
 from pybreeze.utils.exception.exceptions import LanguageServiceException
 from pybreeze.utils.language_service.action_adapter import ActionLanguageAdapter
 from pybreeze.utils.language_service.framework_profiles import PROFILES, FrameworkProfile
@@ -49,17 +50,16 @@ _BETWEEN = " · "
 # Where an item keeps its keyword's name
 _NAME_ROLE = Qt.ItemDataRole.UserRole
 
-# Readers that are running. A QThread destroyed while it runs ends the IDE, and
-# a tab can go without being closed: each reader is kept here until it ends.
-_READING: set[KeywordReadThread] = set()
-
 
 def _word(key: str) -> str:
     return language_wrapper.language_word_dict.get(key)
 
 
-class KeywordReadThread(QThread):
+class KeywordReadThread(KeptThread):
     """Asks one framework for its keywords, off the UI thread.
+
+    Kept from its start until it ends (``KeptThread``): the tab reads as it is
+    first shown, and can be gone before the framework has answered.
 
     :param profile: the framework
     :param interpreter: the Python that runs the scripts
@@ -72,15 +72,6 @@ class KeywordReadThread(QThread):
         super().__init__()
         self._profile = profile
         self._interpreter = interpreter
-
-    def start_kept(self) -> None:
-        """Start, kept alive until it ends whatever becomes of the tab that started it."""
-        _READING.add(self)
-        self.finished.connect(self._forget)
-        self.start()
-
-    def _forget(self) -> None:
-        _READING.discard(self)
 
     def run(self) -> None:
         try:

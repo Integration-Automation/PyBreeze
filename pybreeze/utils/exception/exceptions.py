@@ -103,3 +103,8 @@ class ExecutionReportException(ITEException):
 
 class LanguageServiceException(ITEException):
     pass
+
+# MCP
+
+class McpException(ITEException):
+    pass

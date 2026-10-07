@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pybreeze.extend_multi_language.english_integrations import ENGLISH_INTEGRATION_WORDS
 from pybreeze.utils.exception.error_templates import (
     ERROR_TEXT_KEY_PREFIX,
     error_templates,
@@ -683,44 +684,6 @@ pybreeze_english_word_dict = {
     "json_editor_open_dialog_title": "Open a JSON file",
     "json_editor_save_dialog_title": "Save the JSON document",
     "json_editor_file_filter": "JSON (*.json);;All Files (*)",
-    # Automation keywords
-    "keyword_reference_framework_label": "Framework:",
-    "keyword_reference_refresh_button": "Read Again",
-    "keyword_reference_search_placeholder": "Filter by name or description",
-    "keyword_reference_copy_button": "Copy as Action",
-    "keyword_reference_loading": "Reading the keywords of {framework}...",
-    "keyword_reference_ready": "{framework}: {count} keywords. In a .json script the editor offers "
-                               "{capabilities}",
-    "keyword_reference_capability_completion": "completion",
-    "keyword_reference_capability_diagnostics": "diagnostics",
-    "keyword_reference_capability_hover": "hover",
-    "keyword_reference_capability_definition": "go to definition",
-    "keyword_reference_defined_in": "Defined in {file}, line {line}",
-    "keyword_reference_no_interpreter": "No Python interpreter was found to read the keywords with",
-    # Language service for action scripts (diagnostics and hover, shown by the editor)
-    "language_service_json_syntax": "This is not valid JSON",
-    "language_service_unknown_keyword": "{name} is not a keyword of {framework}",
-    "language_service_unknown_keyword_suggestion":
-        "{name} is not a keyword of {framework}. Did you mean {suggestion}?",
-    "language_service_unknown_parameter": "{keyword} has no parameter named {name}",
-    "language_service_unknown_parameter_suggestion":
-        "{keyword} has no parameter named {name}. Did you mean {suggestion}?",
-    "language_service_missing_parameter": "{keyword} needs {names}",
-    "language_service_too_many_values":
-        "{keyword} takes at most {most} values in a list, and this one gives {count}",
-    "language_service_too_few_values":
-        "{keyword} needs at least {least} values in a list, and this one gives {count}",
-    "language_service_needs_names":
-        "{keyword} takes {names} by name only: give an object of named values, not a list",
-    "language_service_action_not_list":
-        "An action is a list: [\"keyword\"] or [\"keyword\", arguments]",
-    "language_service_action_no_keyword": "An action starts with its keyword, in quotes",
-    "language_service_action_too_long": "An action holds a keyword and at most one set of arguments",
-    "language_service_arguments_shape":
-        "Arguments are an object of named values, or a list of values",
-    "language_service_actions_not_list": "{key} holds a list of actions",
-    "language_service_parameter_required": "required",
-    "language_service_parameter_optional": "optional",
     # Response Inspector — Menu
     "extend_tools_menu_response_tab_action": "Response Inspector Tab",
     "extend_tools_menu_response_tab_label": "Response Inspector",
@@ -901,6 +864,9 @@ pybreeze_english_word_dict = {
     "run_window_output_still_held":
         "[A process started by this run still holds its output; what it writes from now on is not shown]",
 }
+# The words of the features that reach outside the IDE, kept in a file of their own
+pybreeze_english_word_dict.update(ENGLISH_INTEGRATION_WORDS)
+
 # Why a tool refused its input (pybreeze_ui/error_text.py): in English, the
 # constants the tools raise
 pybreeze_english_word_dict.update(

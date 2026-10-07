@@ -34,13 +34,14 @@ their output reaches the UI through Queue + QTimer.
 | `pybreeze/pybreeze_ui/jupyter_lab_gui/`, `show_code_window/`, `syntax/` | JupyterLab tab; `CodeWindow` subprocess output window; automation keyword highlighting |
 | `pybreeze/pybreeze_ui/design/` | The design system PyBreeze's own panels are built from: `tokens.py` (gaps, text and icon sizes in ems, a state's theme colour), `flow_layout.py` (a row that wraps), `panels.py` (`Panel`, `StatusLine`, `wrapping_row`) |
 | `pybreeze/pybreeze_ui/navigation/` | The navigation panel: `navigation_model.py` reads the menus and the tool table into five categories, `navigation_dock.py` shows them as a searchable tree in a dock at the left |
+| `pybreeze/pybreeze_ui/mcp_gui/` | The MCP client tab: `mcp_client_gui.py` (connecting, asking before a call, cancelling, the session's log), `mcp_server_panel.py` (the user's servers and the project's), `mcp_profile_dialog.py`, `mcp_panels.py` (tools, resources, prompts, calls), `mcp_worker.py` (one blocking call on a `KeptThread`) |
 | `pybreeze/pybreeze_ui/thread_keeper.py` | `let_run_out()`: a worker `QThread` whose widget closed is kept until it ends instead of being waited for |
 | `pybreeze/pybreeze_ui/gui_thread_gc.py` | `GuiThreadGarbageCollector`: automatic garbage collection off, collected on a GUI-thread timer instead (installed by `start_editor()`) |
 | `pybreeze/extend/process_executor/` | Subprocess isolation layer: `TaskProcessManager`, `process_executor_utils.py`, `FileRunnerProcess`, `queue_pump.py`, `run_notice.py`, and `test_pioneer/` and `prthinker/` (the other automation packages run through `build_process()` from their menus) |
 | `pybreeze/extend/mail_thunder_extend/`, `prthinker_extend/` | Post-test email hook; prthinker settings and argument assembly (pure logic) |
 | `pybreeze/extend/language_server/` | The action language server as a process: its entry (`python -m pybreeze.extend.language_server`), the frameworks it asks for their keywords, and the command JEditor's editors start it with (`launch.py`). No Qt |
 | `pybreeze/extend_multi_language/` | PyBreeze's English and Traditional Chinese strings, merged into JEditor's dictionaries; `supported_languages.py` lists the languages PyBreeze maintains, the ones it only passes on from JEditor, and the few JEditor keys it words its own way |
-| `pybreeze/utils/` | Pure logic, no Qt or JEditor (`test_utils_has_no_qt.py` guards it): request parsing and codegen, the registry of what a captured request can be generated as (`import_targets/`, with the request as it is sent, `NormalizedRequest`), the schema a run of any framework is reported in (`execution_report/`), the JSON document a text editor and a visual editor both edit (`json_format/json_document.py`) and the edits of its tree by path (`json_format/json_tree_edit.py`), the one way an editor asks a framework for completion and diagnostics and what answers it for the three frameworks' action scripts (`language_service/`: profiles, the keywords read from the installed package in a child process, the adapter, and a Language Server Protocol server), HTTP tools, `network/` SSRF validation, pinned connections and capped reads, exceptions, logging, `app_dirs.py`, `subprocess_util.py`, `terminal_text.py` (terminal escapes stripped for the SSH terminal and the run window), `terminal_style.py` (SGR colours read for the SSH terminal) |
+| `pybreeze/utils/` | Pure logic, no Qt or JEditor (`test_utils_has_no_qt.py` guards it): request parsing and codegen, the registry of what a captured request can be generated as (`import_targets/`, with the request as it is sent, `NormalizedRequest`), the schema a run of any framework is reported in (`execution_report/`), the JSON document a text editor and a visual editor both edit (`json_format/json_document.py`) and the edits of its tree by path (`json_format/json_tree_edit.py`), the one way an editor asks a framework for completion and diagnostics and what answers it for the three frameworks' action scripts (`language_service/`: profiles, the keywords read from the installed package in a child process, the adapter, and a Language Server Protocol server), an MCP client over the standard transport with its server profiles, redaction and call log (`mcp/`), HTTP tools, `network/` SSRF validation, pinned connections and capped reads, exceptions, logging, `app_dirs.py`, `subprocess_util.py`, `terminal_text.py` (terminal escapes stripped for the SSH terminal and the run window), `terminal_style.py` (SGR colours read for the SSH terminal) |
 | `test/test_utils/` | Unit tests (pure logic and headless widgets). `test/unit_test/start_automation/` holds the launch tests |
 | `pyproject.toml`, `dev.toml` | Stable packaging (CI bumps and publishes it) and the dev-channel packaging: the same package under the name `pybreeze_dev` (`test_requirement_pins.py` and `test_dev_toml_parity.py` keep the two in step) |
 | `.github/workflows/`, `scripts/` | `dev.yml`, `stable.yml` (unit tests on a Windows matrix, the platform smoke tests on Linux and macOS, then SonarCloud and the upload to PyPI); `scripts/dev_release.py` numbers and gates the dev-channel release |
@@ -149,6 +150,20 @@ completion / hover / definition → json_scan (context_at, locate) → adapter �
 The Automation Keywords tab (`tools_gui/keyword_reference_gui.py`) calls the same `read_metadata()` on a
 `QThread`, for the interpreter chosen in the IDE at that moment.
 
+**Call an MCP tool**
+
+```
+MCP Client tab → Connect → McpWorker (KeptThread): McpClient.connect()
+  → StdioTransport: Popen(the profile's argument list, child env + the profile's variables)
+  → initialize / notifications/initialized → tools/list, resources/list, prompts/list → the pages
+Call → arguments typed as a JSON object → asked about (unless that tool is trusted)
+  → McpWorker: client.call_tool(name, arguments, cancel) → reply | time limit | cancel | server gone
+  → McpCallLog: one ExecutionResult per call, secrets taken out → Calls page → Export Session (JSON)
+```
+
+A project's `.mcp.json` is read by `discovered_profiles()` and listed; nothing in it is started until the
+user connects to it and says yes to its command.
+
 ## 5. Extension points
 
 - **Custom tabs**: add entries to `EDITOR_EXTEND_TAB` (`pybreeze_ui/editor_main/main_ui.py`) before
@@ -183,6 +198,9 @@ The Automation Keywords tab (`tools_gui/keyword_reference_gui.py`) calls the sam
   `normalized_request.normalize()`. `test_import_targets.py` checks `carries` against what the
   generators write, for every target and every part, and `test_import_round_trip.py` reads each
   target's output back against the fixtures in `test/test_utils/fixtures/import/`.
+- **A further MCP transport**: a class with `start()`, `send(message)`, `close()` and `log_tail()` that calls
+  back with each message and once when the server is gone, given to `McpClient(profile, version, transport)`
+  (`utils/mcp/mcp_transport.py`, `docs/adr/0011`).
 - **A further framework for the language service**: one `FrameworkProfile` in
   `utils/language_service/framework_profiles.py` (its package, its key in an object-shaped script, its
   executor module, its keywords' prefix). The adapter, the server and the Automation Keywords tab read
@@ -258,6 +276,13 @@ The Automation Keywords tab (`tools_gui/keyword_reference_gui.py`) calls the sam
   actions from the key `webdriver_wrapper`, `auto_control` or `load_density`, and on their own keywords
   starting `WR_`, `AC_` or `LD_` (`framework_profiles.py`). `test_metadata_probe.py` asks the installed
   packages and reads their executors' source for the key.
+- **MCP servers**: the client (`utils/mcp/mcp_client.py`) speaks protocol revisions `2025-06-18`, `2025-03-26`
+  and `2024-11-05` over the standard-input-and-output transport, and uses `initialize`,
+  `notifications/initialized`, `tools/list`, `tools/call`, `resources/list`, `resources/read`, `prompts/list`,
+  `prompts/get`, `ping` and `notifications/cancelled`. It reads the servers file other clients write
+  (`mcpServers`: `command`, `args`, `env`) from `~/.pybreeze/mcp_servers.json` and, as servers found but not
+  trusted, from a project's `.mcp.json`; PyBreeze's own fields there are `cwd`, `timeout` and `trustedTools`.
+  A session exported from the tab is an `ExecutionReport` with `framework` `mcp`.
 - **MailThunder, in process**: the report mail (`extend/mail_thunder_extend/mail_thunder_setting.py`) imports
   `SMTPWrapper`, `read_output_content` and `get_mail_thunder_os_environ` from `je_mail_thunder`, and relies on
   `SMTPWrapper()` being an `smtplib.SMTP_SSL`: `_with_timeout()` overrides its `_get_socket(host, port,
@@ -316,6 +341,8 @@ The Automation Keywords tab (`tools_gui/keyword_reference_gui.py`) calls the sam
 - A framework is asked for its keywords in a child process and never imported in the IDE or in the
   language server; the server writes only protocol messages to its standard output; neither is
   started with the folder the IDE is in on its import path (§ Security › Language server).
+- An MCP tool call is asked about before it is sent unless the user trusted that tool; a server a project
+  names is never started without a yes; nothing secret reaches a log or a report (§ Security › MCP).
 - Persist data only under `~/.pybreeze/` (§ Security › File I/O).
 - Complexity, length and nesting caps; no silent `except`; no `assert` in runtime code
   (§ Code quality gates).

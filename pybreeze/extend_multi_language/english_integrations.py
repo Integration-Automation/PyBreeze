@@ -1,0 +1,128 @@
+"""PyBreeze's English strings for the features that reach outside the IDE.
+
+The frameworks' keywords and the language service that answers the editor from
+them, and the MCP client. They are merged into ``pybreeze_english_word_dict``
+(``extend_english.py``), which is the dictionary everything reads: this file
+only keeps that one under a thousand lines.
+"""
+from __future__ import annotations
+
+ENGLISH_INTEGRATION_WORDS: dict[str, str] = {
+    # MCP client
+    "extend_tools_menu_mcp_client_tab_action": "MCP Client Tab",
+    "extend_tools_menu_mcp_client_tab_label": "MCP Client",
+    "extend_tools_menu_mcp_client_dock_action": "MCP Client Dock",
+    "extend_tools_menu_mcp_client_dock_title": "MCP Client",
+    "mcp_servers_label": "Servers",
+    "mcp_servers_found_label": "{name} (from this project)",
+    "mcp_servers_add_button": "Add...",
+    "mcp_servers_edit_button": "Edit...",
+    "mcp_servers_remove_button": "Remove",
+    "mcp_servers_connect_button": "Connect",
+    "mcp_servers_disconnect_button": "Disconnect",
+    "mcp_servers_remove_title": "Remove a server",
+    "mcp_servers_remove_question": "Remove {name} from your servers?",
+    "mcp_page_tools": "Tools",
+    "mcp_page_resources": "Resources",
+    "mcp_page_prompts": "Prompts",
+    "mcp_page_calls": "Calls",
+    "mcp_tools_filter_placeholder": "Filter the tools",
+    "mcp_tools_arguments_label": "Arguments (a JSON object):",
+    "mcp_tools_call_button": "Call",
+    "mcp_tools_cancel_button": "Cancel",
+    "mcp_tools_hint_read_only": "The server says this tool changes nothing.",
+    "mcp_tools_hint_destructive": "The server says this tool may destroy or overwrite something.",
+    "mcp_tools_hint_unknown": "The server does not say whether this tool changes anything.",
+    "mcp_result_cut": "(cut here: {shown} of {whole} characters are shown)",
+    "mcp_resources_read_button": "Read",
+    "mcp_prompts_get_button": "Get",
+    "mcp_prompts_arguments_label": "Arguments (a JSON object of texts):",
+    "mcp_calls_column_when": "When",
+    "mcp_calls_column_tool": "Tool",
+    "mcp_calls_column_status": "Ended",
+    "mcp_calls_column_seconds": "Seconds",
+    "mcp_calls_status_passed": "answered",
+    "mcp_calls_status_failed": "failed",
+    "mcp_calls_status_error": "not answered",
+    "mcp_calls_status_skipped": "not called",
+    "mcp_calls_export_button": "Export Session...",
+    "mcp_calls_export_title": "Export the session",
+    "mcp_calls_file_filter": "JSON (*.json)",
+    "mcp_client_not_connected": "Not connected. Choose a server and connect.",
+    "mcp_client_servers_unreadable": "Your MCP servers could not be read: {reason}",
+    "mcp_client_connecting": "Connecting to {name}...",
+    "mcp_client_connected": "Connected to {server}: {tools} tools, {resources} resources, {prompts} prompts",
+    "mcp_client_disconnected": "Disconnected from {name}",
+    "mcp_client_failed_with_log": "{reason}. The server's log ends: {line}",
+    "mcp_client_arguments_not_object": "The arguments have to be a JSON object: names and their values, in braces",
+    "mcp_client_calling": "Calling {tool}...",
+    "mcp_client_called": "{tool} answered in {seconds} s",
+    "mcp_client_tool_failed": "{tool} ran and says it failed",
+    "mcp_client_declined": "{tool} was not called",
+    "mcp_client_fetching": "Getting {name}...",
+    "mcp_client_fetched": "Done",
+    "mcp_client_exported": "The session was saved to {file}",
+    "mcp_confirm_title": "Call an MCP tool",
+    "mcp_confirm_question": "Call {tool} on {server}?",
+    "mcp_confirm_arguments": "It will be called with:",
+    "mcp_confirm_trust": "Do not ask again for {tool} on {server}",
+    "mcp_found_title": "Start a server from this project",
+    "mcp_found_question":
+        "{name} comes from a file in the project folder (.mcp.json), not from your own servers. Starting it runs this command on your machine. Start it?",
+    "mcp_profile_dialog_title": "MCP server",
+    "mcp_profile_name_label": "Name:",
+    "mcp_profile_command_label": "Command:",
+    "mcp_profile_command_placeholder": "The program, then one argument on each line",
+    "mcp_profile_folder_label": "Start in:",
+    "mcp_profile_browse_button": "Browse...",
+    "mcp_profile_timeout_label": "Seconds a request may take:",
+    "mcp_profile_environment_label": "Environment variables:",
+    "mcp_profile_environment_note":
+        "Keys and tokens go here, not in the command: the command is shown when the server is started, and these values are not. They are kept in a file only you can read, and left out of the log and of exported sessions.",
+    "mcp_profile_variable_name": "Name",
+    "mcp_profile_variable_value": "Value",
+    "mcp_profile_add_variable_button": "Add Variable",
+    "mcp_profile_remove_variable_button": "Remove Variable",
+    "mcp_profile_show_values": "Show values",
+    "mcp_profile_needs_name": "A server needs a name",
+    "mcp_profile_name_taken": "Another server already has that name",
+    "mcp_profile_needs_command": "A server needs a command: the program that starts it",
+    # Automation keywords
+    "keyword_reference_framework_label": "Framework:",
+    "keyword_reference_refresh_button": "Read Again",
+    "keyword_reference_search_placeholder": "Filter by name or description",
+    "keyword_reference_copy_button": "Copy as Action",
+    "keyword_reference_loading": "Reading the keywords of {framework}...",
+    "keyword_reference_ready": "{framework}: {count} keywords. In a .json script the editor offers "
+                               "{capabilities}",
+    "keyword_reference_capability_completion": "completion",
+    "keyword_reference_capability_diagnostics": "diagnostics",
+    "keyword_reference_capability_hover": "hover",
+    "keyword_reference_capability_definition": "go to definition",
+    "keyword_reference_defined_in": "Defined in {file}, line {line}",
+    "keyword_reference_no_interpreter": "No Python interpreter was found to read the keywords with",
+    # Language service for action scripts (diagnostics and hover, shown by the editor)
+    "language_service_json_syntax": "This is not valid JSON",
+    "language_service_unknown_keyword": "{name} is not a keyword of {framework}",
+    "language_service_unknown_keyword_suggestion":
+        "{name} is not a keyword of {framework}. Did you mean {suggestion}?",
+    "language_service_unknown_parameter": "{keyword} has no parameter named {name}",
+    "language_service_unknown_parameter_suggestion":
+        "{keyword} has no parameter named {name}. Did you mean {suggestion}?",
+    "language_service_missing_parameter": "{keyword} needs {names}",
+    "language_service_too_many_values":
+        "{keyword} takes at most {most} values in a list, and this one gives {count}",
+    "language_service_too_few_values":
+        "{keyword} needs at least {least} values in a list, and this one gives {count}",
+    "language_service_needs_names":
+        "{keyword} takes {names} by name only: give an object of named values, not a list",
+    "language_service_action_not_list":
+        "An action is a list: [\"keyword\"] or [\"keyword\", arguments]",
+    "language_service_action_no_keyword": "An action starts with its keyword, in quotes",
+    "language_service_action_too_long": "An action holds a keyword and at most one set of arguments",
+    "language_service_arguments_shape":
+        "Arguments are an object of named values, or a list of values",
+    "language_service_actions_not_list": "{key} holds a list of actions",
+    "language_service_parameter_required": "required",
+    "language_service_parameter_optional": "optional",
+}
