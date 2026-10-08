@@ -98,7 +98,7 @@ jobs:
         sudo apt-get update
         sudo apt-get install --yes --no-install-recommends \
           libegl1 libgl1 libxkbcommon0 libdbus-1-3 libfontconfig1 \
-          libnss3 libxcomposite1 libxdamage1 libxrandr2 libxkbfile1 xvfb xauth
+          libnss3 libxcomposite1 libxdamage1 libxrandr2 libxkbfile1 libpulse0 xvfb xauth
     - name: Update pip wheel setuptools
       run: python -m pip install --upgrade pip setuptools wheel
     - name: Install dependencies

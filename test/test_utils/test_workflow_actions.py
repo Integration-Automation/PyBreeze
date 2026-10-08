@@ -264,6 +264,7 @@ def test_the_smoke_tests_run_on_linux_and_macos(workflow):
 def test_linux_smoke_has_an_x11_display_for_the_automation_dependency(workflow):
     job = _jobs(workflow)[_SMOKE_JOB]
     assert "xvfb xauth" in job
+    assert "libpulse0" in job
     assert "if: runner.os == 'Linux'" in job
     assert "xvfb-run --auto-servernum python -m pytest" in job
     assert "if: runner.os != 'Linux'" in job
