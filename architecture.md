@@ -282,7 +282,9 @@ MCP Client → Calls → Open in Report Viewer → ReportViewerGUI.show_report(M
   `test_language_parity.py` green.
 - **Automation packages**: `je_auto_control`, `je_web_runner`, `je_api_testka`, `je_load_density`,
   `automation_file` and `je_mail_thunder` run as `python -m <pkg> --execute_str/--execute_file`
-  (`extend/process_executor/python_task_process_manager.py`). TestPioneer runs as
+  (`extend/process_executor/python_task_process_manager.py`). The distribution depends on
+  `automation-file[all]` so FileAutomation storage backends and GUI stay installed after the extras split.
+  TestPioneer runs as
   `python -m test_pioneer -e <yaml>` through the same manager's `start_module_process`
   (`extend/process_executor/test_pioneer/`).
 - **The automation packages' keywords**: the language service asks `je_web_runner`, `je_auto_control` and

@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20261008-19 | 2026-10-08 | Keep FileAutomation backends installed after its extras split | #done #dependencies | [2026-10](2026-10.md) |
 | U-20261008-18 | 2026-10-08 | Name independent deterministic results and normalize hosts with HTTPS | #done #tests #security | [2026-10](2026-10.md) |
 | U-20261008-17 | 2026-10-08 | Let framework executors choose the built-ins they register | #done #tests #compatibility | [2026-10](2026-10.md) |
 | U-20261008-16 | 2026-10-08 | Give Linux platform tests an X11 display and review XML scan findings | #ci #security | [2026-10](2026-10.md) |
