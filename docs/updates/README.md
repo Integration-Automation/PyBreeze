@@ -58,6 +58,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20261008-17 | 2026-10-08 | Let framework executors choose the built-ins they register | #done #tests #compatibility | [2026-10](2026-10.md) |
 | U-20261008-16 | 2026-10-08 | Give Linux platform tests an X11 display and review XML scan findings | #ci #security | [2026-10](2026-10.md) |
 | U-20261008-15 | 2026-10-08 | Thirteen tutorials in two languages, each with an example that is run and checked | #docs #tutorials #roadmap | [2026-10](2026-10.md) |
 | U-20261008-14 | 2026-10-08 | A report viewer for every run: the packages' own reports, JUnit XML and MCP sessions in one view | #feature #reports #roadmap | [2026-10](2026-10.md) |
