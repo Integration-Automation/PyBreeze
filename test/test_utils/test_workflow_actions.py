@@ -261,6 +261,15 @@ def test_the_smoke_tests_run_on_linux_and_macos(workflow):
 
 
 @pytest.mark.parametrize("workflow", _WORKFLOWS, ids=lambda path: path.name)
+def test_linux_smoke_has_an_x11_display_for_the_automation_dependency(workflow):
+    job = _jobs(workflow)[_SMOKE_JOB]
+    assert "xvfb xauth" in job
+    assert "if: runner.os == 'Linux'" in job
+    assert "xvfb-run --auto-servernum python -m pytest" in job
+    assert "if: runner.os != 'Linux'" in job
+
+
+@pytest.mark.parametrize("workflow", _WORKFLOWS, ids=lambda path: path.name)
 def test_no_job_waits_for_the_smoke_tests(workflow):
     # A system still being brought up must not hold the tests' other consumers:
     # the scan, and the two jobs that publish

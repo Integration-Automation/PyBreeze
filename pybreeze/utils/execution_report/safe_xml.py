@@ -14,8 +14,12 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+# The parser rejects all DTD and entity declarations in parse_xml before expansion.
+# nosemgrep: python.lang.security.use-defused-xml.use-defused-xml
 from xml.parsers import expat
-from xml.sax.saxutils import escape, quoteattr
+# These functions only escape output text and attributes, never parse input.
+# nosemgrep: python.lang.security.use-defused-xml.use-defused-xml
+from xml.sax.saxutils import escape, quoteattr  # nosec B406 - output escaping only
 
 from pybreeze.utils.exception.exception_tags import report_xml_error
 from pybreeze.utils.exception.exceptions import ExecutionReportException
