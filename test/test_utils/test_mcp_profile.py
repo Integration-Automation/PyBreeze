@@ -343,8 +343,10 @@ def test_calls_of_the_same_tool_have_ids_of_their_own_that_are_the_same_in_every
         log.record("list", {}, 1.0, 0.1, _result("x"))
         return [result.id for result in log.results()]
 
-    assert len(set(session())) == 4
-    assert session() == session()
+    first_session = session()
+    second_session = session()
+    assert len(set(first_session)) == 4
+    assert first_session == second_session
 
 
 def test_the_session_is_an_execution_report_that_can_be_written_and_read_back():

@@ -199,7 +199,9 @@ class TestSarif:
         assert order == sorted(order)
 
     def test_the_same_headers_give_the_same_text(self):
-        assert sarif_text(analyze_headers(_HEADERS)) == sarif_text(analyze_headers(_HEADERS))
+        first_report = sarif_text(analyze_headers(_HEADERS))
+        second_report = sarif_text(analyze_headers(_HEADERS))
+        assert first_report == second_report
 
     def test_no_credential_reaches_the_report(self):
         text = sarif_text(analyze_headers(_HEADERS))

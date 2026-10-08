@@ -114,7 +114,7 @@ def _as_ascii(host: str) -> str:
     if host.isascii():
         return host.lower()
     try:
-        return (parse_url(f"http://{host}/").host or host).lower()
+        return (parse_url(f"https://{host}/").host or host).lower()
     except LocationParseError:
         return host
 
