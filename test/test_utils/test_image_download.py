@@ -83,37 +83,42 @@ def test_an_image_comes_back_whole(loopback_only, serve):
 
 def test_a_text_page_is_not_an_image(loopback_only, serve):
     server = serve({"/a.png": (200, {"Content-Type": "text/html; charset=utf-8"}, b"<html>not found</html>")})
+    url = server.url("/a.png")
     with pytest.raises(ImageDownloadError, match="text/html"):
-        safe_download_image(server.url("/a.png"))
+        safe_download_image(url)
 
 
 def test_a_declared_size_over_the_cap_is_refused_unread(loopback_only, serve, monkeypatch):
     monkeypatch.setattr(diagram_net_utils, "MAX_DOWNLOAD_BYTES", 100)
     server = serve({"/big.png": (200, {"Content-Type": "image/png", "Content-Length": "1000"}, b"\x00" * 1000)})
+    url = server.url("/big.png")
     with pytest.raises(ImageDownloadError):
-        safe_download_image(server.url("/big.png"))
+        safe_download_image(url)
 
 
 def test_a_body_over_the_cap_with_no_length_is_refused(loopback_only, serve, monkeypatch):
     # An absent or low Content-Length must not let a larger body through
     monkeypatch.setattr(diagram_net_utils, "MAX_DOWNLOAD_BYTES", 100)
     server = serve({"/big.png": (200, {"Content-Type": "image/png"}, b"\x00" * 500)})
+    url = server.url("/big.png")
     with pytest.raises(ImageDownloadError):
-        safe_download_image(server.url("/big.png"))
+        safe_download_image(url)
 
 
 def test_an_unsafe_url_is_refused_as_a_download_error(serve):
     # The canvas catches ImageDownloadError; an UnsafeURLError would escape it
     server = serve({"/a.png": (200, {"Content-Type": "image/png"}, _PNG)})
+    url = server.url("/a.png")
     with pytest.raises(ImageDownloadError):
-        safe_download_image(server.url("/a.png"))
+        safe_download_image(url)
     assert server.requests == []
 
 
 def test_a_redirect_to_a_private_address_is_not_followed(loopback_only, serve):
     server = serve({"/a.png": (302, {"Location": "http://169.254.169.254/latest/meta-data/"}, b"")})
+    url = server.url("/a.png")
     with pytest.raises(ImageDownloadError):
-        safe_download_image(server.url("/a.png"))
+        safe_download_image(url)
     assert server.requests == ["/a.png"]
 
 

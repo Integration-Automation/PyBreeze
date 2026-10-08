@@ -37,6 +37,7 @@ no_entries_in_har_error: str = "the HAR export contains no requests"
 # JWT decode
 empty_jwt_error: str = "no token provided"
 malformed_jwt_error: str = "a JWT must have three dot-separated parts"
+encrypted_jwt_error: str = "an encrypted JWT (JWE): its claims can be read only with the recipient's key"
 jwt_segment_decode_error: str = "can't decode a JWT segment: invalid base64url or JSON"
 
 # Timestamp conversion
@@ -93,6 +94,11 @@ image_too_large_error: str = "Image exceeds {megabytes} MB limit."
 
 # SSH
 host_key_rejected_error: str = "Host key for {hostname} rejected by user."
+host_key_changed_error: str = (
+    "The host key of {hostname} has changed: it is now {fingerprint}, not the {trusted} trusted before. "
+    "Someone may be intercepting the connection. If the server's key was changed on purpose, "
+    "remove its line from {known_hosts} and connect again."
+)
 
 # An answer the Skills panel got that is not 2xx
 redirect_not_followed_error: str = "Redirect (not followed) to {where}"
@@ -114,3 +120,42 @@ mail_send_failed_error: str = "sending failed ({kind})"
 report_missing_error: str = "the run wrote no {name}"
 report_not_a_file_error: str = "{name} is not a file"
 report_stale_error: str = "the run wrote no new {name}; the one there is from an earlier run"
+
+# An edit of a JSON tree that cannot be made (json_format.json_tree_edit)
+json_edit_no_such_place_error: str = "there is nothing at that place in the JSON document"
+json_edit_key_exists_error: str = "the object already has a member named {key!r}"
+json_edit_not_a_container_error: str = "only an object or an array holds other values"
+json_edit_root_error: str = "the document itself cannot be deleted, renamed or moved"
+json_edit_not_a_number_error: str = "{text!r} is not a JSON number (for example 12, -0.5 or 1e3)"
+json_edit_not_a_boolean_error: str = "{text!r} is not a boolean: write true or false"
+
+# A framework whose keywords cannot be had (language_service.metadata_probe, keyword_metadata)
+language_probe_not_installed_error: str = "{framework} is not installed for the interpreter that runs the scripts"
+language_probe_timeout_error: str = "{framework} took longer than {seconds} seconds to list its keywords"
+language_probe_failed_error: str = "{framework} could not list its keywords ({reason})"
+language_metadata_shape_error: str = (
+    "what {framework} says about its keywords is not in a form this version of PyBreeze reads")
+
+# An MCP server that cannot be set up or talked to (utils.mcp)
+mcp_profile_command_error: str = "the MCP server {name!r} has no command to start it with"
+mcp_profile_file_error: str = "this is not a list of MCP servers (a JSON object with mcpServers)"
+mcp_start_error: str = "the MCP server could not be started ({reason})"
+mcp_closed_error: str = "the MCP server closed the connection"
+mcp_timeout_error: str = "the MCP server did not answer {method} within {seconds} seconds"
+mcp_cancelled_error: str = "{method} was cancelled before the MCP server answered"
+mcp_remote_error: str = "the MCP server refused {method} (error {code}): {message}"
+mcp_reply_error: str = "the MCP server answered {method} with something that is not a reply to it"
+mcp_version_error: str = "the MCP server speaks protocol version {version!r}, which PyBreeze does not"
+
+# A file that cannot be read as a report (execution_report.report_files and the adapters)
+report_format_error: str = (
+    "this file is not a report PyBreeze reads: an execution report, a package's record file, or JUnit XML")
+report_xml_error: str = "the XML is not well formed, declares a document type, or is larger than a report is"
+report_html_error: str = "this page holds no execution report: only a page exported from PyBreeze does"
+
+# Data that is not an execution report (execution_report.report_schema)
+execution_report_field_error: str = "not an execution report: {field} is missing or of the wrong type"
+execution_report_version_error: str = (
+    "the execution report is of schema version {version}, newer than this PyBreeze reads (up to {supported})")
+execution_report_depth_error: str = "the execution report nests results more than {limit} levels deep"
+execution_report_duplicate_id_error: str = "the execution report gives the ID {id!r} to more than one result"

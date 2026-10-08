@@ -31,9 +31,17 @@ The menu bar holds these top-level menus, from left to right:
 - **Language** -- the interface language
 - **Automation** -- the automation modules (see :doc:`menu_automation`)
 - **Install** -- install automation packages and build tools (see :doc:`menu_install`)
-- **Tools** -- the SSH client, AI tools, diagram editor and HTTP / API utilities (see
-  :doc:`menu_tools`)
+- **Tools** -- the SSH client, AI tools, diagram editor, HTTP / API utilities, JSON
+  editor, automation keywords, MCP client and report viewer (see :doc:`menu_tools`)
 - **Plugins** -- the Plugin Browser and the loaded plugins (see :doc:`menu_plugins`)
+
+Navigation Panel
+^^^^^^^^^^^^^^^^
+
+A dock at the left lists what the menus hold, in five categories: **Automation**,
+**Tools**, **MCP**, **Reports** and **Settings**. Typing in its box keeps the lines that
+hold the text; Enter or a double click on a line does what the menu entry does.
+**Dock > Navigation** shows and hides it, and whether it is shown is remembered.
 
 File Tree
 ^^^^^^^^^
@@ -128,7 +136,8 @@ opens a window of its own for its output. This window:
 - Shows the output as it arrives, errors in the error colour, in a fixed-pitch font, and
   keeps the last 10,000 lines
 - Has a **Stop** button, enabled while the run goes on
-- Can be closed while the run goes on: the run continues, and closing the IDE stops it
+- Asks, when closed while the run goes on, whether to stop it: **Yes** stops it, **No** lets it
+  run on without a window (closing the IDE still stops it), **Cancel** keeps the window open
 - Sizes itself to a third of the screen
 
 Dock Widgets

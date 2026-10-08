@@ -91,7 +91,8 @@ class TestListing:
         client.gate("/").set()
         _wait_for(lambda: _idle(widget) and _names(root) == ["etc", "a.txt", "b.txt"])
 
-        assert client.listed_on and client.listed_on[0] is not app.thread()
+        assert client.listed_on
+        assert client.listed_on[0] is not app.thread()
         widget.close()
 
     def test_a_listing_that_returns_after_the_tree_is_cleared_is_dropped(self, app):

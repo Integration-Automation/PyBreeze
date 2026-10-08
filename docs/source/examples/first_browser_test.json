@@ -1,0 +1,7 @@
+[
+  ["WR_set_record_enable", {"set_enable": true}],
+  ["WR_get_webdriver_manager", {"webdriver_name": "chrome"}],
+  ["WR_to_url", {"url": "http://127.0.0.1:8765/"}],
+  ["WR_quit"],
+  ["WR_generate_json_report", {"json_file_name": "web_report"}]
+]

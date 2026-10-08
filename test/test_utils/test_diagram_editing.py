@@ -89,6 +89,26 @@ class TestTheContextMenu:
         assert scene.get_all_nodes() == []
 
 
+    def test_a_click_on_the_empty_canvas_can_paste_what_was_copied(self, app, monkeypatch):
+        scene = DiagramScene()
+        node = _node(scene, 0, "copied")
+        node.setSelected(True)
+        scene.copy_selected()
+
+        _right_click_and_choose(scene, monkeypatch, QPointF(600, 400), "Paste")
+
+        assert sorted(item.text() for item in scene.get_all_nodes()) == ["copied", "copied"]
+        scene.deleteLater()
+
+    def test_with_nothing_copied_the_empty_canvas_offers_no_paste(self, app, monkeypatch):
+        scene = DiagramScene()
+        _node(scene, 0, "only")
+
+        with pytest.raises(KeyError):  # the menu has no Paste entry to choose
+            _right_click_and_choose(scene, monkeypatch, QPointF(600, 400), "Paste")
+        scene.deleteLater()
+
+
 class TestStacking:
     def test_bring_to_front_goes_above_every_other_node(self, app):
         scene = DiagramScene()
@@ -111,6 +131,27 @@ class TestStacking:
         scene._change_z(-1)
 
         assert first.zValue() < second.zValue() < -3
+
+    @pytest.mark.parametrize("direction", [1, -1], ids=["front", "back"])
+    def test_a_node_alone_on_the_canvas_stays_and_leaves_no_undo_step(self, app, direction):
+        scene = DiagramScene()
+        node = _node(scene, 0, "alone", z=3)
+        node.setSelected(True)
+
+        scene._change_z(direction)
+
+        assert node.zValue() == 3
+        assert not scene.undo_stack.canUndo()
+        scene.deleteLater()
+
+    def test_pasting_with_nothing_copied_does_nothing(self, app):
+        scene = DiagramScene()
+
+        scene.paste_clipboard()
+
+        assert scene.get_all_nodes() == []
+        assert not scene.undo_stack.canUndo()
+        scene.deleteLater()
 
     def test_undo_keeps_overlapping_nodes_of_equal_z_the_same_way_up(self, app):
         scene = DiagramScene()
@@ -219,7 +260,8 @@ class TestThePropertyPanelAndTheCanvas:
         assert panel._node_w.value() == 340  # the panel follows the canvas
         panel._node_h.setValue(80)
 
-        assert (node.node_w, node.node_h) == (340, 80)
+        size = (node.node_w, node.node_h)
+        assert size == (340, 80)
 
     def test_steps_on_one_property_are_one_undo_step(self, app):
         # Every arrow click was its own step, each with two whole-scene snapshots
@@ -341,7 +383,8 @@ class TestResizeFromAHandle:
         node = DiagramNode(x=10, y=10, w=140, h=60, text="A")
         node._apply_resize(role, QPointF(dx, dy), QRectF(0, 0, 140, 60), QPointF(10, 10))
 
-        assert (node.pos().x(), node.pos().y(), node.node_w, node.node_h) == expected
+        geometry = (node.pos().x(), node.pos().y(), node.node_w, node.node_h)
+        assert geometry == expected
 
     @pytest.mark.parametrize("role,dx,dy,expected", [
         ("r", 60, 0, (10, 10, 200, 60)),
@@ -355,4 +398,5 @@ class TestResizeFromAHandle:
         image = DiagramImage(x=10, y=10, w=140, h=60)
         image._apply_resize(role, QPointF(dx, dy), QRectF(0, 0, 140, 60), QPointF(10, 10))
 
-        assert (image.pos().x(), image.pos().y(), image.img_w, image.img_h) == expected
+        geometry = (image.pos().x(), image.pos().y(), image.img_w, image.img_h)
+        assert geometry == expected

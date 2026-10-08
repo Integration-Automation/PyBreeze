@@ -635,7 +635,8 @@ class TestDeletingAFolder:
 
         _action_delete(tree, FakeWindow(), link)
 
-        assert not link.exists() and not os.path.lexists(link)
+        assert not link.exists()
+        assert not os.path.lexists(link)
         assert (target / "keep.txt").read_text(encoding="utf-8") == "keep"
 
 
@@ -655,7 +656,8 @@ def test_a_rename_keeps_the_unsaved_mark_of_an_edited_tab(tree, tmp_path, monkey
     _action_rename(tree, FakeWindow(), original)
 
     assert (tmp_path / "b.py").is_file()
-    assert editor.renamed and editor._is_modified
+    assert editor.renamed
+    assert editor._is_modified
 
 
 
@@ -688,14 +690,15 @@ class TestRevealing:
 
     def test_a_missing_file_manager_is_shown_not_raised(self, tree, tmp_path, monkeypatch, warnings):
         # No xdg-open: FileNotFoundError left the slot as a traceback
-        def missing(_command):
+        def missing(_command, **_options):
             raise FileNotFoundError(2, "No such file or directory", "xdg-open")
 
         monkeypatch.setattr(ctx.subprocess, "Popen", missing)
 
         ctx._action_reveal_in_explorer(tree, tmp_path)
 
-        assert len(warnings) == 1 and "xdg-open" in warnings[0]
+        assert len(warnings) == 1
+        assert "xdg-open" in warnings[0]
 
 
 class TestTheMenuEntries:
@@ -753,3 +756,61 @@ class TestTheMenuEntries:
         assert {text for text, on in enabled.items() if on} == {
             words.get("file_tree_ctx_new_file"), words.get("file_tree_ctx_new_folder")}
         assert len(enabled) == 7
+
+
+class TestWhatTheHelpersDoWhenTheFileSystemSaysNo:
+    def test_an_index_that_is_no_item_has_no_path(self, tree):
+        from PySide6.QtCore import QModelIndex
+
+        assert ctx._get_path_from_index(tree, QModelIndex()) is None
+
+    def test_a_view_with_no_root_falls_back_to_the_working_folder(self, app, tmp_path, monkeypatch):
+        view = QTreeView()
+        view.setModel(QFileSystemModel())
+        monkeypatch.chdir(tmp_path)
+
+        assert _get_tree_root_path(view) == tmp_path
+        view.deleteLater()
+
+    def test_two_paths_that_cannot_be_compared_are_not_the_same_file(self, tmp_path):
+        assert ctx._is_the_same_file(tmp_path / "missing", tmp_path / "missing too") is False
+
+    def test_a_path_that_cannot_be_looked_at_is_no_link(self, tmp_path):
+        assert ctx._is_link(tmp_path / "missing") is False
+
+    def test_a_link_unlink_refuses_is_removed_as_a_folder(self, tmp_path, monkeypatch):
+        # A junction, or a directory symlink on an older Windows: unlink refuses it
+        removed: list = []
+
+        def refuse(_path):
+            raise IsADirectoryError(21, "Is a directory")
+
+        monkeypatch.setattr(ctx.os, "unlink", refuse)
+        monkeypatch.setattr(ctx.os, "rmdir", removed.append)
+
+        ctx._remove_link(tmp_path / "link")
+
+        assert removed == [tmp_path / "link"]
+
+    def test_a_name_whose_place_cannot_be_resolved_is_refused(self, tree, tmp_path, monkeypatch, warnings):
+        def cannot_resolve(self, strict=False):
+            raise OSError(22, "Invalid argument")
+
+        monkeypatch.setattr(Path, "resolve", cannot_resolve)
+
+        assert ctx._inside(tree, tmp_path, "new.py") is None
+        assert len(warnings) == 1
+
+    def test_a_new_folder_with_a_name_that_leaves_the_folder_makes_nothing(
+            self, tree, tmp_path, monkeypatch, warnings):
+        answer(monkeypatch, "../outside")
+
+        _action_new_folder(tree, tmp_path)
+
+        assert not (tmp_path.parent / "outside").exists()
+        assert len(warnings) == 1
+
+    def test_reveal_with_nothing_under_the_cursor_starts_nothing(self, tree, monkeypatch):
+        monkeypatch.setattr(ctx.subprocess, "Popen", lambda *a, **k: pytest.fail("a file manager was started"))
+
+        ctx._action_reveal_in_explorer(tree, None)

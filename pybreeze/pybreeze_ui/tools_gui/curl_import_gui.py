@@ -14,22 +14,23 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.design.panels import StatusLine
+from pybreeze.pybreeze_ui.design.tokens import State
 from pybreeze.pybreeze_ui.run_shortcut import press_on_ctrl_enter
 from pybreeze.pybreeze_ui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.header_analyzer_gui import HeaderAnalyzerGUI
+from pybreeze.pybreeze_ui.tools_gui.import_gaps import gaps_text
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
 from pybreeze.pybreeze_ui.tools_gui.tool_tabs import open_tool_tab
 from pybreeze.pybreeze_ui.tools_gui.url_builder_gui import UrlBuilderGUI
 from pybreeze.utils.curl_import.curl_parser import CurlRequest, parse_curl
-from pybreeze.utils.curl_import.script_templates import TEMPLATE_TARGETS, generate_template
 from pybreeze.utils.exception.exceptions import CurlParseException
 from pybreeze.utils.header_tools.header_merge import stored_header_name
+from pybreeze.utils.import_targets.builtin_targets import IMPORT_TARGETS
+from pybreeze.utils.import_targets.target_registry import TargetDescriptor
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.pybreeze_ui.error_text import error_text
 from pybreeze.pybreeze_ui.fixed_pitch import use_fixed_pitch_font
-
-# The single target that generates JSON rather than Python
-_JSON_TARGET = "apitestka_action"
 
 
 class CurlImportGUI(QWidget):
@@ -53,11 +54,11 @@ class CurlImportGUI(QWidget):
         self.input_edit.setPlaceholderText(word.get("curl_import_input_placeholder"))
         self.input_edit.setAcceptRichText(False)
 
-        # Target selector: each item stores its template key as user data.
+        # Target selector: each item stores its target's key as user data.
         self.target_label = QLabel(word.get("curl_import_target_label"))
         self.target_select = QComboBox()
-        for target_key, label_key in TEMPLATE_TARGETS:
-            self.target_select.addItem(word.get(label_key), target_key)
+        for target in IMPORT_TARGETS.targets():
+            self.target_select.addItem(word.get(target.label_key), target.key)
         self.target_select.currentIndexChanged.connect(self._on_target_changed)
 
         self.convert_button = QPushButton()
@@ -69,6 +70,9 @@ class CurlImportGUI(QWidget):
         self.output_edit = QTextEdit()
         use_fixed_pitch_font(self.output_edit)
         self.output_edit.setReadOnly(True)
+        # What the chosen target leaves out of the request, when it leaves anything out
+        self.gaps_line = StatusLine()
+        self.gaps_line.hide()
 
         # Cross-tool actions: hand the parsed parts to the tool that specialises
         # in them, rather than making the user copy them across.
@@ -87,15 +91,15 @@ class CurlImportGUI(QWidget):
         # follow the selected target; open/save are no-ops until a valid template.
         self.output_actions = OutputActions(
             self, self.output_edit, main_window=main_window,
-            basename=lambda: "action" if self.selected_target() == _JSON_TARGET else "request",
-            extension=lambda: "json" if self.selected_target() == _JSON_TARGET else "py",
+            basename=lambda: self._target().single_basename,
+            extension=lambda: self._target().extension,
             is_valid=lambda: self._generated_code is not None)
 
         layout = QVBoxLayout()
         for widget in (
             self.input_label, self.input_edit,
             self.target_label, self.target_select, self.convert_button,
-            self.output_label, self.output_edit,
+            self.output_label, self.output_edit, self.gaps_line,
         ):
             layout.addWidget(widget)
         layout.addLayout(cross_tool)
@@ -103,8 +107,12 @@ class CurlImportGUI(QWidget):
         self.setLayout(layout)
 
     def selected_target(self) -> str:
-        """Return the template key of the currently selected target."""
+        """Return the key of the currently selected target."""
         return self.target_select.currentData()
+
+    def _target(self) -> TargetDescriptor:
+        """The selected target: what it generates and what a file of it is called."""
+        return IMPORT_TARGETS.target(self.selected_target())
 
     def _name_convert_button(self) -> None:
         """Name the chosen target on the button that generates it."""
@@ -122,6 +130,7 @@ class CurlImportGUI(QWidget):
         """Forget the last result, so the output and cross-tool actions go inactive."""
         self._generated_code = None
         self._request = None
+        self.gaps_line.hide()
         self.open_url_button.setEnabled(False)
         self.open_headers_button.setEnabled(False)
 
@@ -135,7 +144,7 @@ class CurlImportGUI(QWidget):
             return
         try:
             request = parse_curl(command)
-            code = generate_template(self.selected_target(), request)
+            code = IMPORT_TARGETS.generate(self.selected_target(), [request])
         except CurlParseException as error:
             pybreeze_logger.info("curl_import_gui.py convert failed: %r", error)
             self._clear_result()
@@ -147,6 +156,9 @@ class CurlImportGUI(QWidget):
         self.open_url_button.setEnabled(bool(request.url))
         self.open_headers_button.setEnabled(bool(request.headers or request.cookies))
         self.output_edit.setPlainText(code)
+        gaps = gaps_text(self._target(), [request])
+        self.gaps_line.setVisible(bool(gaps))
+        self.gaps_line.show_state(State.WARNING, gaps)
 
     def open_url_in_builder(self) -> QWidget | None:
         """Open the parsed URL in the URL parser/builder tool, already parsed.

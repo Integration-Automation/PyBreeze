@@ -16,12 +16,28 @@ from pathlib import Path
 _REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 _START_TIMEOUT_SECONDS = 120
 
-_PRELUDE = """
+# A modal dialog in a child nobody watches waits for ever: the run timed out
+# after two minutes with nothing to say what was on screen. Each one open when
+# the watch looks is noted and closed, and the test fails naming it.
+_MODAL_WATCH_MS = 3000
+
+_PRELUDE = f"""
 import gc, json, sys
+from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication
 app = QApplication([])
 from je_editor import language_wrapper
 from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
+_modal_dialogs = []
+def _close_a_waiting_dialog():
+    dialog = QApplication.activeModalWidget()
+    if dialog is not None:
+        text = dialog.text() if hasattr(dialog, "text") else ""
+        _modal_dialogs.append(dialog.windowTitle() + ": " + text)
+        dialog.reject()
+_modal_watch = QTimer()
+_modal_watch.timeout.connect(_close_a_waiting_dialog)
+_modal_watch.start({_MODAL_WATCH_MS})
 """
 
 _BUILD_WINDOW = """
@@ -36,6 +52,8 @@ gc.collect()
 # on a busy machine, with nothing in the output to say why.
 _REPORT = """
 window.close()
+with open(sys.argv[1] + ".modal", "w", encoding="utf-8") as handle:
+    json.dump(_modal_dialogs, handle, ensure_ascii=False)
 with open(sys.argv[1], "w", encoding="utf-8") as handle:
     json.dump(result, handle, ensure_ascii=False)
 """
@@ -71,13 +89,23 @@ def run_started_window(
         "PYTHONPATH": os.pathsep.join(
             filter(None, [str(_REPOSITORY_ROOT), os.environ.get("PYTHONPATH")])),
     }
-    completed = subprocess.run(  # noqa: S603 — fixed argv: this interpreter and a script built from literals
-        [sys.executable, "-c", _PRELUDE + before_window + build + body + _REPORT,
-         str(result_file)],
-        cwd=tmp_path, env=environment, capture_output=True, timeout=_START_TIMEOUT_SECONDS,
-        check=False, shell=False,
-    )
+    try:
+        completed = subprocess.run(  # noqa: S603 — fixed argv: this interpreter and a script built from literals
+            [sys.executable, "-c", _PRELUDE + before_window + build + body + _REPORT,
+             str(result_file)],
+            cwd=tmp_path, env=environment, capture_output=True, timeout=_START_TIMEOUT_SECONDS,
+            check=False, shell=False,
+        )
+    except subprocess.TimeoutExpired as error:
+        raise AssertionError(
+            f"the IDE did not finish in {_START_TIMEOUT_SECONDS} s\n{_tail(error.stderr)}") from None
     assert completed.returncode == 0, (
-        f"the IDE did not start (exit {completed.returncode})\n"
-        f"{completed.stderr.decode('utf-8', 'replace')[-2000:]}")
+        f"the IDE did not start (exit {completed.returncode})\n{_tail(completed.stderr)}")
+    modal = json.loads((tmp_path / "result.json.modal").read_text(encoding="utf-8"))
+    assert modal == [], f"a modal dialog opened and would have waited for ever: {modal}"
     return json.loads(result_file.read_text(encoding="utf-8"))
+
+
+def _tail(output: bytes | None) -> str:
+    """The end of what the child wrote, for a failure message."""
+    return (output or b"").decode("utf-8", "replace")[-2000:]

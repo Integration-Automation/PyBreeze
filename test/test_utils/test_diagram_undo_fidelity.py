@@ -135,3 +135,19 @@ def test_a_half_made_connection_does_not_outlive_a_rebuild(app, rebuild):
 
     assert scene.get_all_connections() == []
     scene.to_dict()
+
+
+def test_a_step_merges_only_with_one_on_the_same_property(app):
+    # Qt asks only commands of the same id(); two keys can still share a CRC
+    from pybreeze.pybreeze_ui.diagram_editor.diagram_commands import DiagramSnapshotCommand
+
+    scene = DiagramScene()
+    first = DiagramSnapshotCommand(scene, "Width", {"step": 0}, {"step": 1}, merge_key="width")
+    same = DiagramSnapshotCommand(scene, "Width", {"step": 1}, {"step": 2}, merge_key="width")
+    other = DiagramSnapshotCommand(scene, "Height", {"step": 1}, {"step": 2}, merge_key="height")
+
+    assert not first.mergeWith(other)
+    assert first.mergeWith(same)
+    assert first._new_data == {"step": 2}
+    assert DiagramSnapshotCommand(scene, "Add", {}, {}).id() == -1  # no key: never merged
+    scene.deleteLater()

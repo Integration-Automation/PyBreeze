@@ -108,4 +108,5 @@ class TestTheCategoryInTheIdeLanguage:
 
         for code in (100, 200, 300, 400, 500, 999):
             key = category_key(status_of(code))
-            assert pybreeze_english_word_dict.get(key) and pybreeze_traditional_chinese_word_dict.get(key), key
+            assert pybreeze_english_word_dict.get(key), key
+            assert pybreeze_traditional_chinese_word_dict.get(key), key

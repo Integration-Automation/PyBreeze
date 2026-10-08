@@ -1,0 +1,11 @@
+{
+    "Failure_Test": {
+        "http_method": "get",
+        "test_url": "https://example.com/api/missing",
+        "soap": "False",
+        "record_request_info": "True",
+        "clean_record": "False",
+        "result_check_dict": "{'status_code': 200}",
+        "error": "APIAssertException('value should be 200 but value was 404')"
+    }
+}

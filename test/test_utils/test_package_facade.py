@@ -70,3 +70,24 @@ def test_an_unknown_name_is_an_attribute_error():
         "    print(json.dumps({'raised': True}))\n")
 
     assert seen["raised"]
+
+
+def test_dir_lists_every_public_name():
+    import pybreeze
+
+    assert set(pybreeze.__all__) <= set(dir(pybreeze))
+
+
+def test_python_m_pybreeze_starts_the_editor_and_importing_it_does_not(monkeypatch):
+    # Imported (a spawned regex worker re-runs the main module), it must not open an IDE
+    import runpy
+
+    import pybreeze
+
+    started: list = []
+    monkeypatch.setattr(pybreeze, "start_editor", lambda: started.append("started"))
+
+    runpy.run_module("pybreeze.__main__", run_name="pybreeze.__main__")
+    assert started == []
+    runpy.run_module("pybreeze.__main__", run_name="__main__")
+    assert started == ["started"]

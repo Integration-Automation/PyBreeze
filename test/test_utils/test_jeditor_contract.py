@@ -43,11 +43,14 @@ INTERNAL = [
     ("je_editor.utils.encodings.text_codec", "LINE_ENDING_LF",
      "menu/plugin_menu/build_run_with_menu.py"),
     ("je_editor.pyside_ui.main_ui.save_settings.user_color_setting_file", "actually_color_dict",
-     "show_code_window/code_window.py, auto_control_menu/build_autocontrol_menu.py, tools_gui/diff_gui.py"),
+     "show_code_window/code_window.py, auto_control_menu/build_autocontrol_menu.py, tools_gui/diff_gui.py, "
+     "design/tokens.py"),
     ("je_editor.utils.redirect_manager.redirect_manager_class", "RedirectStdErr",
      "code_result_logs.py"),
     ("je_editor.pyside_ui.main_ui.save_settings.user_setting_file", "user_setting_dict",
      "editor_main/main_ui.py"),
+    ("je_editor.utils.lsp.language_servers", "DEFAULT_SERVERS",
+     "extend/language_server/launch.py"),
 ]
 
 # Names PyBreeze imports from je_editor's top level, i.e. from its __all__.
@@ -149,7 +152,8 @@ class TestTheShapesPyBreezeCalls:
 
         assert "actually_color_dict.get(color)" in inspect.getsource(PythonHighlighter._make_format)
         for key in (JSON_KEYWORD_COLOUR, YAML_KEYWORD_COLOUR):
-            assert key in DARK_COLORS and key in LIGHT_COLORS, key
+            assert key in DARK_COLORS, key
+            assert key in LIGHT_COLORS, key
 
     def test_the_widgets_build_without_arguments(self):
         from PySide6.QtWidgets import QDockWidget, QWidget
@@ -158,7 +162,8 @@ class TestTheShapesPyBreezeCalls:
         browser = _internal(
             "je_editor.pyside_ui.main_ui.plugin_browser.plugin_browser_widget",
             "PluginBrowserWidget")
-        assert issubclass(dock, QDockWidget) and not _parameters(dock.__init__)
+        assert issubclass(dock, QDockWidget)
+        assert not _parameters(dock.__init__)
         assert issubclass(browser, QWidget)
         assert all(
             parameter.default is not inspect.Parameter.empty
@@ -174,7 +179,8 @@ class TestTheShapesPyBreezeCalls:
         assert isinstance(_internal(module, "file_is_open_manager_dict"), dict)
         thread = _internal("je_editor.pyside_ui.code.auto_save.auto_save_thread", "CodeEditSaveThread")
         source = inspect.getsource(thread)
-        assert "self.still_run" in source and "self.file" in source
+        assert "self.still_run" in source
+        assert "self.file" in source
 
     def test_a_rename_can_move_what_an_editor_tab_follows_its_file_with(self):
         # The file tree moves the tab's watcher, as open_an_file does, and
@@ -203,6 +209,20 @@ class TestTheShapesPyBreezeCalls:
         docked = _internal("je_editor.pyside_ui.main_ui.editor.editor_widget_dock", "FullEditorWidget")
         assert _parameters(docked.__init__) == ["current_file", "encoding", "line_ending"]
         assert "self.current_file" in inspect.getsource(docked.closeEvent)
+
+    def test_an_editor_starts_the_language_server_the_table_names_for_its_files_suffix(self):
+        # PyBreeze puts its own server in the table for .json and has the editors look again
+        servers = importlib.import_module("je_editor.utils.lsp.language_servers")
+        assert isinstance(servers.DEFAULT_SERVERS, dict)
+        assert all(isinstance(command, list) for command in servers.DEFAULT_SERVERS.values())
+        assert _parameters(servers.server_command) == ["suffix", "servers"]
+        assert inspect.signature(servers.server_command).parameters["servers"].default is None
+        client = _internal("je_editor.pyside_ui.code.lsp.lsp_client", "LspClient")
+        assert _parameters(client.start_for) == ["file_path", "servers"]
+        assert "server_command(" in inspect.getsource(client.start_for)
+        editor = _internal("je_editor.pyside_ui.code.plaintext_code_edit.code_edit_plaintext", "CodeEditor")
+        assert _parameters(editor.start_language_server) == []
+        assert "self.lsp_client.start_for(" in inspect.getsource(editor.start_language_server)
 
     def test_the_language_wrapper_has_what_pybreeze_reads(self):
         from je_editor import language_wrapper

@@ -548,7 +548,8 @@ class TestParseCurlForm:
     def test_form_string_flag(self):
         request = parse_curl("curl --form-string 'a=1' https://x")
         assert request.form_strings == ["a=1"]
-        assert request.has_form and request.has_body
+        assert request.has_form
+        assert request.has_body
 
     def test_form_string_takes_an_at_sign_literally(self):
         from pybreeze.utils.curl_import.request_body import form_parts
@@ -673,6 +674,8 @@ class TestBashAnsiCQuoting:
     @pytest.mark.parametrize(("escape", "character"), [
         ("\\t", "\t"), ("\\\\", "\\"), ("\\x41", "A"), ("\\u00e9", "\u00e9"),
         ("\\U0001F600", "\U0001F600"), ("\\101", "A"), ("\\e", "\x1b"), ("\\q", "\\q"),
+        ("\\x9", "\t"),     # one hex digit is enough
+        ("\\377", "\xff"),  # the highest byte an octal escape gives
     ])
     def test_each_escape_stands_for_its_character(self, escape, character):
         assert parse_curl(f"curl https://x -d $'[{escape}]'").body == f"[{character}]"
@@ -681,9 +684,182 @@ class TestBashAnsiCQuoting:
         assert parse_curl("curl https://x -d \"a $'b'\"").body == "a $'b'"
         assert parse_curl("curl https://x -d 'a $b'").body == "a $b"
 
+    def test_an_escaped_quote_does_not_end_double_quotes_early(self):
+        # "say \"$'no'\" there": the $' after \" is still inside the double quotes
+        assert parse_curl("curl https://x -d \"say \\\"$'no'\\\" there\"").body == "say \"$'no'\" there"
+
+    def test_an_escaped_dollar_starts_no_dollar_quote(self):
+        # \$'x' in bash is a literal $ followed by the single-quoted x
+        assert parse_curl("curl https://x -d \\$'not-ansi'").body == "$not-ansi"
+
     def test_an_unterminated_one_is_refused(self):
         from pybreeze.utils.exception.exceptions import CurlParseException
 
         with pytest.raises(CurlParseException):
             parse_curl("curl https://x -d $'open")
 
+    def test_one_that_starts_with_an_escaped_quote(self):
+        assert parse_curl("curl https://x -d $'\\'q\\''").body == "'q'"
+
+    def test_the_command_goes_on_after_one(self):
+        request = parse_curl("curl -H $'X-A: 1' -d x https://x/p")
+
+        assert (request.headers, request.body, request.url) == ({"X-A": "1"}, "x", "https://x/p")
+
+    # Double-quoted text of odd and even length before a $'...': a double quote
+    # read two characters at a time could be passed over, the $'...' then read
+    # as inside it
+    @pytest.mark.parametrize("header", ["A: b", "A: bc"])
+    def test_double_quotes_before_one_end_where_they_end(self, header):
+        request = parse_curl(f"curl -H \"{header}\" -d $'x\\ny' https://x")
+
+        assert request.body == "x\ny"
+        assert request.headers == {header.split(": ")[0]: header.split(": ")[1]}
+
+
+def test_get_data_keeps_an_empty_value():
+    assert parse_curl("curl -G -d 'a=' -d 'b=1' https://x").params == {"a": "", "b": "1"}
+
+
+class TestTheEdgesOfTheCommand:
+    """Survivors of a mutation run: what bash and curl do at the edges of a command."""
+
+    def test_text_right_after_a_dollar_quote_joins_it(self):
+        # As in bash: $'a'b is the word ab
+        assert parse_curl("curl -d $'a'b https://x").body == "ab"
+
+    def test_a_backslash_ends_nothing_inside_single_quotes(self):
+        # In bash a backslash is plain inside '...': the quote after it closes them
+        request = parse_curl("curl -d 'a\\' -H $'X: 1' https://x")
+
+        assert (request.body, request.headers) == ("a\\", {"X": "1"})
+
+    def test_an_escaped_double_quote_outside_quotes_is_a_quote(self):
+        assert parse_curl('curl -d \\"a https://x').body == '"a'
+
+    def test_an_x_escape_with_no_digits_stays_as_written(self):
+        assert parse_curl("curl -d $'[\\x]' https://x").body == "[\\x]"
+
+    @pytest.mark.parametrize("command", ["curl --unknown-flag https://x", "curl https://x extra"])
+    def test_the_url_is_the_first_word_that_is_no_flag(self, command):
+        assert parse_curl(command).url == "https://x"
+
+    @pytest.mark.parametrize("command", [
+        "abc https://x",             # sorting before "curl" as well as after it
+        "wget https://x",
+        "curl -X 'GE T' https://x",  # no method
+        "curl 'https://x",           # a quote never closed
+    ])
+    def test_what_is_no_curl_command_is_refused(self, command):
+        from pybreeze.utils.exception.exceptions import CurlParseException
+
+        with pytest.raises(CurlParseException):
+            parse_curl(command)
+
+
+
+class TestTheRestOfTheFlags:
+    def test_every_value_flag_kind_has_a_handler(self):
+        # A kind without one was silently ignored: its value simply vanished
+        from pybreeze.utils.curl_import import curl_parser
+
+        kinds = set(curl_parser._VALUE_FLAGS.values())
+        assert kinds - set(curl_parser._VALUE_FLAG_HANDLERS) == set()
+
+    def test_plain_binary_data_is_the_body_and_names_no_file(self):
+        request = parse_curl("curl https://x/ --data-binary raw")
+
+        assert request.body == "raw"
+        assert request.binary_data_files == set()
+
+    def test_cookie_segments_without_a_name_or_an_equals_sign_are_left_out(self):
+        assert parse_curl("curl https://x/ -b 'a=1; junk; =x; b=2'").cookies == {"a": "1", "b": "2"}
+
+    def test_a_query_parameter_given_three_times_keeps_all_three(self):
+        assert parse_curl("curl 'https://x/?a=1&a=2&a=3'").params == {"a": ["1", "2", "3"]}
+
+
+class TestEveryFlagThatTakesAValue:
+    """Each curl option that takes a value consumes it: an unknown one left it to be read as the URL."""
+
+    @pytest.mark.parametrize("flag", [
+        "--max-redirs 5",
+        "--noproxy '*'",
+        "--proxy-header 'X-Proxy: y'",
+        "--connect-to example.test:443:127.0.0.1:8443",
+        "--doh-url https://dns.test/query",
+        "--rate 2/s",
+        "--request-target /other",
+        "--etag-save etag.txt",
+        "--variable name=value",
+        "--unix-socket /tmp/api.sock",
+        "-Q 'NOOP'",
+        "--max-filesize 10M",
+        "--expect100-timeout 2",
+    ])
+    def test_the_value_is_not_the_url(self, flag):
+        # "curl --max-redirs 5 https://x.test/p" had the URL "5"
+        request = parse_curl(f"curl {flag} https://x.test/p")
+
+        assert request.url == "https://x.test/p"
+
+
+class TestUrlQueryFlag:
+    """``--url-query`` (curl 7.87) adds to the URL's query what ``--data-urlencode`` would send."""
+
+    def test_it_is_added_to_the_query(self):
+        # Its value was taken for the URL, and the URL was dropped
+        request = parse_curl("curl --url-query 'q=1 2' 'https://x.test/p?z=1'")
+
+        assert request.url == "https://x.test/p"
+        assert request.params == {"z": "1", "q": "1 2"}
+        assert request.method == "GET"
+
+    def test_a_plus_sends_it_as_written(self):
+        encoded = parse_curl("curl --url-query 'a=%2F' https://x.test")
+        as_written = parse_curl("curl --url-query '+a=%2F' https://x.test")
+
+        assert encoded.params == {"a": "%2F"}
+        assert as_written.params == {"a": "/"}
+
+    def test_several_are_added_in_order(self):
+        request = parse_curl("curl --url-query a=1 --url-query b=2 --url-query a=3 https://x.test")
+
+        assert request.params == {"a": ["1", "3"], "b": "2"}
+
+    def test_a_body_stays_the_body(self):
+        request = parse_curl("curl --url-query a=b -d x=1 https://x.test")
+
+        assert request.method == "POST"
+        assert request.body == "x=1"
+        assert request.params == {"a": "b"}
+
+    def test_get_without_data_still_adds_it(self):
+        assert parse_curl("curl -G --url-query a=b https://x.test").params == {"a": "b"}
+
+    def test_get_with_data_sends_the_data_instead(self):
+        # As curl does (single_transfer, tool_operate.c): the -G data is the
+        # query, and the --url-query pieces are not sent
+        request = parse_curl("curl -G -d c=d --url-query a=b https://x.test")
+
+        assert request.params == {"c": "d"}
+
+
+class TestExpandOptions:
+    """``--expand-<option>`` (curl 8.3) is ``--<option>`` with ``{{variables}}`` in its value, kept as written."""
+
+    def test_an_expanded_header_is_a_header(self):
+        # The header was taken for the URL
+        request = parse_curl(
+            "curl --variable token=abc --expand-header 'Authorization: Bearer {{token}}' https://x.test")
+
+        assert request.url == "https://x.test"
+        assert request.headers == {"Authorization": "Bearer {{token}}"}
+
+    def test_expanded_data_is_the_body(self):
+        request = parse_curl("curl --expand-data 'a={{v}}' https://x.test")
+
+        assert (request.method, request.body, request.url) == ("POST", "a={{v}}", "https://x.test")
+
+    def test_an_expanded_url_is_the_url(self):
+        assert parse_curl("curl --variable host=x.test --expand-url 'https://{{host}}/p'").url == "https://{{host}}/p"

@@ -66,6 +66,8 @@ class TestFormatSize:
         (1048576, "1.0 MB"),
         (1073741824, "1.0 GB"),
         (1099511627776, "1.0 TB"),
+        (1024 ** 5, "1.0 PB"),
+        (1024 ** 6, "1024.0 PB"),  # past the last unit it stays in PB
     ])
     def test_human_readable(self, num_bytes, expected):
         assert format_size(num_bytes) == expected

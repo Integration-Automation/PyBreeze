@@ -57,6 +57,12 @@ class TestResponseInspectorGUI:
         widget.analyze()
         assert '"sub": "42"' in widget.output_edit.toPlainText()
 
+    def test_a_tokens_timestamp_claims_are_shown_as_dates(self, widget):
+        token = _jwt({"alg": "HS256"}, {"sub": "42", "exp": 1790380800})
+        widget.input_edit.setPlainText(f"HTTP/1.1 200 OK\nAuthorization: Bearer {token}\n\n{{}}")
+        widget.analyze()
+        assert "    exp: 2026-09-26" in widget.output_edit.toPlainText()
+
     def test_empty_shows_hint(self, widget):
         widget.input_edit.setPlainText("   ")
         widget.analyze()
@@ -160,6 +166,7 @@ class TestResponseInspectorActions:
     def test_open_before_analyze_is_noop(self, widget_with_window):
         gui, window = widget_with_window
         assert gui.open_status_in_reference() is None
+        assert gui.open_jwt_in_decoder() is None
         assert window.tab_widget.added == []
 
 
@@ -207,7 +214,8 @@ class TestResponseInspectorHeaderHandOff:
         gui.open_headers_in_analyzer()
 
         report = window.tab_widget.added[0][0].output_edit.toPlainText()
-        assert "analysed/1" in report and "pasted-later/2" not in report
+        assert "analysed/1" in report
+        assert "pasted-later/2" not in report
 
     def test_open_headers_before_analyze_is_noop(self, widget_with_window):
         gui, window = widget_with_window
@@ -259,4 +267,5 @@ def test_the_report_lists_every_value_of_a_repeated_header(app):
     text = build_report_text(analyze_response(
         "HTTP/1.1 200 OK\nSet-Cookie: a=1\nSet-Cookie: b=2\n\nok"))
 
-    assert "Set-Cookie: a=1" in text and "Set-Cookie: b=2" in text
+    assert "Set-Cookie: a=1" in text
+    assert "Set-Cookie: b=2" in text

@@ -72,6 +72,8 @@ class CurlRequest:
     :param password: basic-auth password, or ``None``
     :param send_data_as_params: ``True`` when ``-G`` moves the body to the query
     :param head_only: ``True`` when ``-I`` / ``--head`` asks for the headers only
+    :param method_given: ``True`` when ``-X`` / ``--request`` named the method, which
+        neither ``-I`` nor a body then changes (curl sends ``-X GET -d ...`` as a GET)
     :param bearer_token: the ``--oauth2-bearer`` token, or ``None``; sent as
         the ``Authorization`` header unless ``-H`` gives one
     :param form_fields: multipart form fragments from ``-F`` / ``--form``, in
@@ -84,6 +86,8 @@ class CurlRequest:
     :param binary_data_files: those of them given with ``--data-binary``, sent
         byte for byte; curl drops carriage returns and newlines from the others
     :param cookie_files: files ``-b`` names, which curl reads cookies from
+    :param url_query_parts: the ``--url-query`` pieces, as query text, in order;
+        moved into :attr:`params` as the command is finished
     :param timeout: request timeout in seconds from ``--max-time`` / ``-m``, or
         ``None`` when the command sets none
     :param cookies: cookies parsed from ``-b`` / ``--cookie`` name=value pairs
@@ -98,6 +102,7 @@ class CurlRequest:
     password: str | None = None
     send_data_as_params: bool = False
     head_only: bool = False
+    method_given: bool = False
     bearer_token: str | None = None
     form_fields: list[str] = field(default_factory=list)
     form_strings: list[str] = field(default_factory=list)
@@ -105,6 +110,7 @@ class CurlRequest:
     data_file_positions: list[int] = field(default_factory=list)
     binary_data_files: set[str] = field(default_factory=set)
     cookie_files: list[str] = field(default_factory=list)
+    url_query_parts: list[str] = field(default_factory=list)
     timeout: str | None = None
     cookies: dict[str, str] = field(default_factory=dict)
 
@@ -161,7 +167,11 @@ _VALUE_FLAGS: dict[str, str] = {
     "--url": "url",
     "-m": "timeout", "--max-time": "timeout",
     "--oauth2-bearer": "oauth2_bearer",
+    "--url-query": "url_query",
 }
+
+# "--expand-header" is "--header" with {{variables}} in its value
+_EXPAND_PREFIX = "--expand-"
 
 # Value-less flags that still change behaviour.
 _GET_FLAGS = frozenset({"-G", "--get"})
@@ -195,6 +205,27 @@ _IGNORED_VALUE_FLAGS = frozenset({
     "-Y", "--speed-limit", "--keepalive-time", "--aws-sigv4",
     "-C", "--continue-at", "-z", "--time-cond", "-D", "--dump-header",
     "-K", "--config",
+    # Every other option curl's option table gives a value (``tool_getparam.c``,
+    # curl 8.x). Unknown here, each was skipped as valueless and its value read
+    # as the URL: "curl --max-redirs 5 https://x" requested "5".
+    "--abstract-unix-socket", "--alt-svc", "--connect-to", "--create-file-mode", "--crlfile", "--curves",
+    "--delegation", "--dns-interface", "--dns-ipv4-addr", "--dns-ipv6-addr", "--doh-url", "--ech", "--egd-file",
+    "--engine", "--etag-compare", "--etag-save", "--expect100-timeout", "--ftp-account",
+    "--ftp-alternative-to-user", "--ftp-method", "--ftp-port", "--ftp-ssl-ccc-mode",
+    "--happy-eyeballs-timeout-ms", "--haproxy-clientip", "--help", "--hostpubmd5", "--hostpubsha256", "--hsts",
+    "--httpsig-algo", "--httpsig-headers", "--httpsig-key", "--httpsig-keyid", "--ip-tos", "--ipfs-gateway",
+    "--keepalive-cnt", "--knownhosts", "--krb", "--krb4", "--libcurl", "--login-options", "--mail-auth",
+    "--mail-from", "--mail-rcpt", "--max-filesize", "--max-redirs", "--netrc-file", "--noproxy", "--output-dir",
+    "--parallel-max", "--parallel-max-host", "--pinnedpubkey", "--preproxy", "--proto", "--proto-default",
+    "--proto-redir", "--proxy-cacert", "--proxy-capath", "--proxy-cert", "--proxy-cert-type", "--proxy-ciphers",
+    "--proxy-crlfile", "--proxy-header", "--proxy-key", "--proxy-key-type", "--proxy-pass",
+    "--proxy-pinnedpubkey", "--proxy-service-name", "--proxy-tls13-ciphers", "--proxy-tlsauthtype",
+    "--proxy-tlspassword", "--proxy-tlsuser", "--proxy1.0", "--pubkey", "--quote", "--random-file", "--rate",
+    "--request-target", "--sasl-authzid", "--service-name", "--sigalgs", "--socks4", "--socks4a", "--socks5",
+    "--socks5-gssapi-service", "--socks5-hostname", "--ssl-sessions", "--stderr", "--telnet-option",
+    "--tftp-blksize", "--tls-max", "--tls13-ciphers", "--tlsauthtype", "--tlspassword", "--tlsuser", "--trace",
+    "--trace-ascii", "--trace-config", "--unix-socket", "--upload-flags", "--variable", "--vlan-priority", "-P",
+    "-Q", "-h", "-t",
 })
 
 
@@ -417,6 +448,7 @@ def _apply_cookie(request: CurlRequest, value: str) -> None:
 def _apply_method(request: CurlRequest, value: str) -> None:
     try:
         request.method = http_method(value)
+        request.method_given = True
     except ValueError as error:
         raise CurlParseException(str(error)) from None
 
@@ -435,6 +467,11 @@ def _apply_user(request: CurlRequest, value: str) -> None:
 def _apply_oauth2_bearer(request: CurlRequest, value: str) -> None:
     # Applied once every -H is in (_finalise_method): an explicit one wins
     request.bearer_token = value
+
+
+def _apply_url_query(request: CurlRequest, value: str) -> None:
+    """Keep a ``--url-query`` piece as query text: encoded as ``--data-urlencode`` does, or after a ``+`` as written."""
+    request.url_query_parts.append(value[1:] if value.startswith("+") else _urlencode_data_part(value))
 
 
 def _set_url(request: CurlRequest, value: str) -> None:
@@ -459,14 +496,26 @@ _VALUE_FLAG_HANDLERS: dict[str, Callable[[CurlRequest, str], None]] = {
     "timeout": _apply_timeout,
     "user": _apply_user,
     "oauth2_bearer": _apply_oauth2_bearer,
+    "url_query": _apply_url_query,
 }
 
 
 def _apply_value_flag(request: CurlRequest, kind: str, value: str) -> None:
-    """Apply one value-taking flag to *request* according to its *kind*."""
-    handler = _VALUE_FLAG_HANDLERS.get(kind)
-    if handler is not None:
-        handler(request, value)
+    """Apply one value-taking flag to *request* according to its *kind*.
+
+    Every kind in ``_VALUE_FLAGS`` has a handler (``test_curl_import.py`` checks):
+    looked up with ``.get``, a kind without one had its value vanish without a word.
+    """
+    _VALUE_FLAG_HANDLERS[kind](request, value)
+
+
+def _unexpanded(flag: str) -> str:
+    """The option an ``--expand-`` one expands: ``--expand-header`` is ``--header`` (curl 8.3).
+
+    Its value's ``{{variables}}`` are kept as written, and the value lands where
+    the option's own would; an unknown one was skipped, and its value taken for the URL.
+    """
+    return "--" + flag.removeprefix(_EXPAND_PREFIX) if flag.startswith(_EXPAND_PREFIX) else flag
 
 
 def _consume_tokens(tokens: list[str], request: CurlRequest) -> None:
@@ -477,7 +526,7 @@ def _consume_tokens(tokens: list[str], request: CurlRequest) -> None:
     """
     index = 0
     while index < len(tokens):
-        token = tokens[index]
+        token = _unexpanded(tokens[index])
         kind = _VALUE_FLAGS.get(token)
         if kind is not None:
             index += 1
@@ -500,25 +549,32 @@ def _consume_tokens(tokens: list[str], request: CurlRequest) -> None:
 def _finalise_method(request: CurlRequest) -> None:
     """Settle what depends on the whole command.
 
-    The method (``-I``, or POST for a body), the ``--oauth2-bearer`` header
-    unless ``-H`` set one, and the body moved to the query when ``-G`` was given.
+    The method (``-I``, or POST for a body, unless ``-X`` named one), the ``--oauth2-bearer`` header
+    unless ``-H`` set one, and the query: the body moved there when ``-G`` was
+    given, else the ``--url-query`` pieces.
     """
-    if request.head_only and request.method == _DEFAULT_METHOD:
+    if request.head_only and not request.method_given:
         request.method = "HEAD"
     if request.bearer_token is not None:
         set_default_header(request.headers, "Authorization", f"Bearer {request.bearer_token}")
-    if request.method == _DEFAULT_METHOD and request.has_body and not request.send_data_as_params:
+    # Only curl's default: a body sent with -X GET stays a GET (an Elasticsearch
+    # search is often written so), and -I with a body stays HEAD
+    if (not request.method_given and request.method == _DEFAULT_METHOD
+            and request.has_body and not request.send_data_as_params):
         request.method = _METHOD_WITH_BODY
     if request.send_data_as_params and request.data_file_refs:
         # The file's content is the query, and it is not known until the script runs
         raise CurlParseException(get_with_file_body_error)
-    if request.send_data_as_params:
-        # With -G, curl appends the data to the URL exactly as given, joined by
-        # '&': each fragment is query text already, so it is split on '&' and
-        # decoded here, or full_url would encode it a second time.
-        for part in request.data_parts:
-            for key, value in parse_qsl(part, keep_blank_values=True):
-                add_repeated_value(request.params, key, value)
+    # curl puts one or the other in the query (single_transfer, tool_operate.c):
+    # the -G data when there is any, else the --url-query pieces
+    moved_to_query = request.data_parts if request.send_data_as_params else []
+    # With -G, curl appends the data to the URL exactly as given, joined by '&':
+    # each fragment is query text already, so it is split on '&' and decoded
+    # here, or full_url would encode it a second time. So is each --url-query piece.
+    for part in moved_to_query or request.url_query_parts:
+        for key, value in parse_qsl(part, keep_blank_values=True):
+            add_repeated_value(request.params, key, value)
+    if moved_to_query:
         request.data_parts = []
 
 

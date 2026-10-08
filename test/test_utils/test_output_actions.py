@@ -145,7 +145,8 @@ class TestSaveToFile:
         ):
             assert actions.save_to_file() is None
         # It went to the log only, and the user took the file as saved.
-        assert warned and "out.txt" in warned[0][2]
+        assert warned
+        assert "out.txt" in warned[0][2]
         parent.deleteLater()
 
 

@@ -84,7 +84,8 @@ class TestSaving:
 
         button.click()
 
-        assert second.is_file() and not first.exists()
+        assert second.is_file()
+        assert not first.exists()
         assert editor._current_path == second
 
 
@@ -210,7 +211,8 @@ class TestExporting:
         renderer.render(painter, QRectF(0, 0, image.width(), image.height()))
         painter.end()
         middle = QColor(image.pixel(image.width() // 2, image.height() // 2))
-        assert middle.red() > 200 and middle.green() < 60
+        assert middle.red() > 200
+        assert middle.green() < 60
 
     @pytest.mark.parametrize("kind", ["png", "svg"])
     def test_an_export_that_fails_leaves_the_previous_one(self, editor, tmp_path, monkeypatch, kind):
@@ -265,6 +267,40 @@ class TestMermaidImport:
         editor._import_mermaid()
         assert [n.text() for n in editor._scene.get_all_nodes()] == ["A"]
 
+    def test_text_with_no_nodes_says_so_and_leaves_the_canvas(self, editor, monkeypatch):
+        from PySide6.QtWidgets import QMessageBox
+
+        told: list = []
+        monkeypatch.setattr(QMessageBox, "information", lambda *args: told.append(args[2]))
+        editor._scene.load_from_dict(_A_DIAGRAM)
+        self._answer(monkeypatch, "flowchart TD\n    %% nothing drawn yet")
+
+        editor._import_mermaid()
+
+        assert len(told) == 1
+        assert [n.text() for n in editor._scene.get_all_nodes()] == ["A"]
+
+    def test_text_that_cannot_be_read_is_reported_and_leaves_the_canvas(self, editor, monkeypatch):
+        from PySide6.QtWidgets import QMessageBox
+
+        from pybreeze.pybreeze_ui.diagram_editor import diagram_editor_widget
+
+        told: list = []
+        monkeypatch.setattr(QMessageBox, "warning", lambda *args: told.append(args[2]))
+
+        def unreadable(_text):
+            raise ValueError("unexpected <b>token</b>")
+
+        monkeypatch.setattr(diagram_editor_widget, "parse_mermaid", unreadable)
+        editor._scene.load_from_dict(_A_DIAGRAM)
+        self._answer(monkeypatch, "flowchart TD\n    A -->")
+
+        editor._import_mermaid()
+
+        (message,) = told
+        assert "&lt;b&gt;token&lt;/b&gt;" in message, "the reason is shown as text, its markup escaped"
+        assert [n.text() for n in editor._scene.get_all_nodes()] == ["A"]
+
     @pytest.mark.parametrize("accepted", [True, False])
     def test_the_dialog_goes_once_closed(self, editor, monkeypatch, accepted):
         # It was a child of the editor, kept for good: one more per import
@@ -306,7 +342,8 @@ class TestFileDialogFilters:
         monkeypatch.setattr(language_wrapper, "language_word_dict", pybreeze_traditional_chinese_word_dict)
         filters = self._filters(editor, monkeypatch)
 
-        assert "所有檔案 (*)" in filters["open"] and "所有檔案 (*)" in filters["image"]
+        assert "所有檔案 (*)" in filters["open"]
+        assert "所有檔案 (*)" in filters["image"]
         assert filters["open"] == filters["save"]
         assert all("Image" not in text and "Files" not in text for text in filters.values()), filters
 
@@ -316,3 +353,67 @@ class TestFileDialogFilters:
 
         image_filter = self._filters(editor, monkeypatch)["image"]
         assert all(f"*{suffix}" in image_filter for suffix in IMAGE_SUFFIXES)
+
+
+class TestTheGridSwitches:
+    def test_show_grid_switches_the_view_and_snap_every_item_kind(self, editor, monkeypatch):
+        from pybreeze.pybreeze_ui.diagram_editor.diagram_items import DiagramImage, DiagramNode
+
+        # Snapping is a class setting the scene sets: put back as it was after the test
+        monkeypatch.setattr(DiagramNode, "grid_enabled", DiagramNode.grid_enabled)
+        monkeypatch.setattr(DiagramImage, "grid_enabled", DiagramImage.grid_enabled)
+
+        editor._toggle_grid(True)
+        editor._toggle_snap(True)
+
+        assert editor._view.draw_grid is True
+        assert editor._scene.grid_enabled is True
+        assert DiagramNode.grid_enabled is True
+        editor._toggle_grid(False)
+        editor._toggle_snap(False)
+        assert editor._view.draw_grid is False
+        assert DiagramImage.grid_enabled is False
+
+
+def test_save_with_no_file_yet_asks_where(editor, monkeypatch):
+    asked: list = []
+    monkeypatch.setattr(editor, "_save_as_diagram", lambda: asked.append("save as"))
+
+    editor._save_diagram()
+
+    assert asked == ["save as"]
+
+
+class TestAddingAnImageFromAFile:
+    def test_a_picture_is_added(self, editor, tmp_path, monkeypatch):
+        from PySide6.QtGui import QColor, QImage
+
+        from pybreeze.pybreeze_ui.diagram_editor import diagram_editor_widget
+
+        picture = tmp_path / "logo.png"
+        image = QImage(40, 30, QImage.Format.Format_RGB32)
+        image.fill(QColor("teal"))
+        assert image.save(str(picture))
+        monkeypatch.setattr(diagram_editor_widget.QFileDialog, "getOpenFileName",
+                            staticmethod(lambda *_args: (str(picture), "")))
+
+        editor._add_image_from_file()
+
+        (added,) = editor._scene.get_all_images()
+        assert added.to_dict(0)["source"] == str(picture)
+
+    def test_a_file_that_is_no_picture_says_so_and_adds_nothing(self, editor, tmp_path, monkeypatch):
+        from pybreeze.pybreeze_ui.diagram_editor import diagram_editor_widget
+
+        not_a_picture = tmp_path / "notes.png"
+        not_a_picture.write_text("these are notes", encoding="utf-8")
+        warned: list = []
+        monkeypatch.setattr(diagram_editor_widget.QFileDialog, "getOpenFileName",
+                            staticmethod(lambda *_args: (str(not_a_picture), "")))
+        monkeypatch.setattr(diagram_editor_widget.QMessageBox, "warning",
+                            staticmethod(lambda *args: warned.append(args)))
+
+        editor._add_image_from_file()
+
+        assert editor._scene.get_all_images() == []
+        assert len(warned) == 1

@@ -39,7 +39,8 @@ class TestQueryToJson:
         assert json.loads(result) == {"a": "1", "b": "2"}
 
     def test_is_pretty_printed(self):
-        assert "\n" in query_to_json("a=1&b=2")
+        # Keys sorted, four spaces a level
+        assert query_to_json("b=2&a=1") == '{\n    "a": "1",\n    "b": "2"\n}'
 
     def test_repeated_key_is_array(self):
         assert json.loads(query_to_json("a=1&a=2")) == {"a": ["1", "2"]}
@@ -138,3 +139,16 @@ class TestNothingIsLostWithoutAWord:
 
         with pytest.raises(UrlConvertException, match="twice"):
             json_to_url('{"scheme": "http", "host": "a", "host": "b"}')
+
+
+@pytest.mark.parametrize(("query", "round_trips"), [
+    ("", True),                  # nothing to split: the importers rely on this
+    ("a=1&b=2", True),
+    ("a=&b=1", True),            # an empty value is kept: the blank key is not dropped
+    ("flag&q=1", False),         # a valueless key would gain "="
+    ("r=/x", False),             # "/" would be escaped
+])
+def test_which_queries_round_trip(query, round_trips):
+    from pybreeze.utils.query_tools.query_convert import query_round_trips
+
+    assert query_round_trips(query) is round_trips

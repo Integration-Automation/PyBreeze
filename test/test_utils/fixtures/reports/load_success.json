@@ -1,0 +1,20 @@
+{
+    "Success_Test1": {
+        "Method": "GET",
+        "test_url": "https://example.com/",
+        "name": "/",
+        "status_code": "200",
+        "text": "<html>ok</html>",
+        "content": "b'<html>ok</html>'",
+        "headers": "{'Content-Type': 'text/html'}"
+    },
+    "Success_Test2": {
+        "Method": "GET",
+        "test_url": "https://example.com/",
+        "name": "/",
+        "status_code": "200",
+        "text": "<html>ok</html>",
+        "content": "b'<html>ok</html>'",
+        "headers": "{'Content-Type': 'text/html'}"
+    }
+}

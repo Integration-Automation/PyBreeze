@@ -1,0 +1,9 @@
+<?xml version="1.0" ?>
+<xml_data>
+	<Failure_Test1>
+		<function_name>locate_image_center</function_name>
+		<param>{'image': 'button.png', 'detect_threshold': 0.9}</param>
+		<time>2026-10-08 11:30:01.000000</time>
+		<exception>ImageNotFoundException('could not find &lt;button.png&gt; on screen')</exception>
+	</Failure_Test1>
+</xml_data>

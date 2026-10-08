@@ -152,6 +152,11 @@ class TestReadStreamIntoQueue:
     def test_a_carriage_return_at_the_very_end_is_not_lost(self):
         assert "".join(self._pieces(b"50%\r", buffer_size=1024)) == "50%\r"
 
+    def test_a_character_cut_off_by_the_end_of_the_output_is_still_shown(self):
+        # The first two of the three bytes of 中: the decoder is told it is the
+        # end, so they come out as one replacement character, not as nothing
+        assert "".join(self._pieces("ok 中".encode("utf-8")[:-1], buffer_size=1024)) == "ok �"
+
     def test_an_unknown_encoding_falls_back_to_utf8(self):
         assert self._pieces("ok 中\n".encode("utf-8"), 1024, encoding="no-such-codec") == ["ok 中\n"]
 
@@ -179,7 +184,8 @@ class TestABoundedQueue:
         reader.start()
         reader.join(0.5)
 
-        assert reader.is_alive() and target.qsize() == 3
+        assert reader.is_alive()
+        assert target.qsize() == 3
         got = [target.get(timeout=2) for _ in range(10)]
         reader.join(2)
         assert got == [f"{i}\n" for i in range(10)]
@@ -260,3 +266,72 @@ def test_the_pump_says_how_many_it_took():
         target.put(message)
 
     assert pump_message_queue(target, lambda _text, _is_error: None, is_error=False) == 3
+
+
+class TestAQueueNobodyEmpties:
+    def test_the_reader_stops_waiting_once_it_is_told_to(self):
+        # The run window gone, the queue full: the reader must not wait for room for ever
+        import threading
+
+        full: Queue = Queue(maxsize=1)
+        full.put("already there")
+        asked = {"count": 0}
+
+        def keep_reading() -> bool:
+            asked["count"] += 1
+            return asked["count"] < 3  # a check to start reading, then a wait or two for room
+
+        reader = threading.Thread(target=read_stream_into_queue, args=(io.BytesIO(b"one\ntwo\n"), full), kwargs={
+            "buffer_size": 1024, "encoding": "utf-8", "keep_reading": keep_reading}, daemon=True)
+        reader.start()
+        reader.join(10)
+
+        assert not reader.is_alive()
+        assert list(full.queue) == ["already there"]
+
+
+def test_an_escape_cut_off_by_the_end_of_the_output_is_still_passed_on():
+    # Held for the rest that never comes: at the end it goes out as it is
+    assert "".join(_read_all(b"done \x1b[3")) == "done \x1b[3"
+
+
+class TestWhenTheReadersAreDone:
+    def test_no_reader_alive_is_no_reader_alive(self):
+        import threading
+
+        from pybreeze.extend.process_executor.queue_pump import any_alive
+
+        finished = threading.Thread(target=lambda: None)
+        finished.start()
+        finished.join()
+        waiting = threading.Event()
+        running = threading.Thread(target=waiting.wait)
+        running.start()
+        try:
+            assert any_alive(None, finished) is False  # no thread at all is not an error
+            assert any_alive(None, finished, running) is True
+        finally:
+            waiting.set()
+            running.join()
+
+    def test_the_grace_ends_at_once_when_no_reader_is_left(self):
+        # Answered True, a finished run would never end
+        from pybreeze.extend.process_executor.queue_pump import ReaderGrace
+
+        assert ReaderGrace().still_reading(None, None) is False
+        assert ReaderGrace().still_reading(None, progressed=True) is False
+
+
+class TestTheBoundsTheMapGives:
+    """architecture_explore.md: at most 256 a tick, and 10,000 waiting on each pipe."""
+
+    def test_256_messages_a_tick(self):
+        q, received = _collect_pump([f"m{index}" for index in range(300)])
+
+        assert len(received) == 256
+        assert q.qsize() == 44
+
+    def test_10000_waiting_on_each_pipe(self):
+        from pybreeze.extend.process_executor.queue_pump import output_queue
+
+        assert output_queue().maxsize == 10000

@@ -24,6 +24,11 @@ DEFAULT_REPORT_PATH = "default_name.html"
 # systems keep modification times to a second or two
 _MTIME_SLACK_SECONDS = 2.0
 
+# How long the mail server gets for each step: connecting, the TLS handshake,
+# every reply. MailThunder's SMTPWrapper passes no timeout on, and a server that
+# took the connection and fell silent held the report thread for good
+_SMTP_TIMEOUT_SECONDS = 30
+
 
 def send_after_test(
         html_report_path: str | None = None,
@@ -97,7 +102,7 @@ def send_report(html_report_path: str | None = None, *, not_before: float | None
             html_string = file.read()
         # The client connects when it is built, and quits when the block ends
         # however it ends.
-        with SMTPWrapper() as mail_thunder_smtp:
+        with _with_timeout(SMTPWrapper)() as mail_thunder_smtp:
             mail_thunder_smtp.later_init()
             if not mail_thunder_smtp.login_state:
                 raise ITESendHtmlReportException
@@ -115,6 +120,20 @@ def send_report(html_report_path: str | None = None, *, not_before: float | None
         pybreeze_logger.error("Failed to send report: %r", error)
         return mail_send_failed_error.format(kind=type(error).__name__)
     return None
+
+
+def _with_timeout(smtp_class: type) -> type:
+    """*smtp_class* (an ``smtplib.SMTP``) whose socket gives up after ``_SMTP_TIMEOUT_SECONDS``.
+
+    ``SMTPWrapper(host, port)`` takes no timeout. Every SMTP client gets its
+    socket from ``_get_socket(host, port, timeout)``, which ``SMTP_SSL``
+    itself overrides; this one hands it the timeout instead.
+    """
+    class TimedSMTP(smtp_class):
+        def _get_socket(self, host, port, _timeout):
+            return super()._get_socket(host, port, _SMTP_TIMEOUT_SECONDS)
+
+    return TimedSMTP
 
 
 def _report_problem(report_path: str, not_before: float | None) -> str | None:

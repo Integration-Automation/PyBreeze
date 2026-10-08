@@ -14,6 +14,7 @@ from collections.abc import Callable
 import paramiko
 from PySide6.QtCore import QThread, Signal
 
+from pybreeze.pybreeze_ui.connect_gui.ssh.ssh_host_key_policy import changed_host_key_message
 from pybreeze.utils.logging.logger import pybreeze_logger
 
 # What a connect can raise: paramiko's own errors (a rejected host key or
@@ -51,6 +52,10 @@ class SshConnectThread(QThread):
     def run(self) -> None:
         try:
             self._connect()
+        except paramiko.BadHostKeyException as error:
+            # Not a new host to ask about: one trusted before, showing another key
+            pybreeze_logger.warning("SSH host key for %s is not the one trusted", error.hostname)
+            self.failed.emit(changed_host_key_message(error))
         except CONNECT_ERRORS as error:
             # Its text, not the exception: a handler that keeps records kept the
             # traceback, and through its frames the panel that connected

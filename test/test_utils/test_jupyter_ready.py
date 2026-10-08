@@ -6,6 +6,9 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest
 
+# Releases with none of the flaws the tab upgrades for
+_CURRENT = {"jupyterlab": "4.6.4", "jupyter_server": "2.21.1"}
+
 
 @pytest.fixture(scope="module")
 def qt_app():
@@ -73,6 +76,73 @@ class TestWaitUntilReady:
         # Should return without raising and without sleeping.
         assert thread._wait_until_ready(59999) is None
 
+    def test_with_no_server_started_it_says_so(self, qt_app):
+        thread = _thread(qt_app)
+
+        with pytest.raises(RuntimeError, match="not started"):
+            thread._wait_until_ready(59999)
+
+
+class TestIsThePortOpen:
+    def test_a_port_something_listens_on(self, qt_app):
+        import socket
+
+        thread = _thread(qt_app)
+        with socket.create_server(("127.0.0.1", 0)) as listener:
+            assert thread._port_open(listener.getsockname()[1])
+
+    def test_a_port_nothing_listens_on(self, qt_app):
+        import socket
+
+        thread = _thread(qt_app)
+        with socket.create_server(("127.0.0.1", 0)) as listener:
+            port = listener.getsockname()[1]
+        # Closed: a connect is refused
+
+        assert not thread._port_open(port)
+
+
+class TestWhatTheServerWrote:
+    def test_nothing_before_the_server_starts(self, qt_app):
+        assert _thread(qt_app)._output_tail() == ""
+
+    def test_nothing_from_output_that_cannot_be_read(self, qt_app):
+        import tempfile
+
+        thread = _thread(qt_app)
+        thread._output = tempfile.TemporaryFile(mode="w+", encoding="utf-8")
+        thread._output.close()  # read() on it raises ValueError
+
+        assert thread._output_tail() == ""
+
+    def test_only_the_end_of_a_long_output(self, qt_app):
+        import tempfile
+
+        thread = _thread(qt_app)
+        thread._output = tempfile.TemporaryFile(mode="w+", encoding="utf-8")
+        thread._output.write("x" * 1000 + "the last words")
+
+        assert thread._output_tail(20) == "xxxxxxthe last words"
+        thread.stop()
+
+
+def test_stopping_a_server_that_cannot_be_terminated_still_lets_go_of_its_output(qt_app):
+    import tempfile
+
+    class Unkillable:
+        def terminate(self):
+            raise PermissionError(5, "Access is denied")
+
+    thread = _thread(qt_app)
+    thread.process = Unkillable()
+    output = tempfile.TemporaryFile(mode="w+", encoding="utf-8")
+    thread._output = output
+
+    thread.stop()
+
+    assert thread.process is None
+    assert output.closed
+
 
 class TestTheReasonIsInTheIdeLanguage:
     """A start that timed out or a server that exited read in English whatever the IDE spoke."""
@@ -122,7 +192,7 @@ class TestRunCleansUpOnFailure:
 
         proc = _RecordingProc()
         monkeypatch.setattr(mod, "default_interpreter", lambda: "python")
-        monkeypatch.setattr(mod, "is_jupyter_installed", lambda exe: True)
+        monkeypatch.setattr(mod, "installed_jupyter", lambda exe: _CURRENT)
         monkeypatch.setattr(mod, "find_free_port", lambda: 59999)
         monkeypatch.setattr(mod.subprocess, "Popen", lambda *a, **k: proc)
 
@@ -271,13 +341,17 @@ class TestWhichInterpreterRunsTheLab:
         (tmp_path / "jupyterlab").mkdir()
         (tmp_path / "jupyterlab" / "__init__.py").write_text("", encoding="utf-8")
 
-        monkeypatch.setenv("PYTHONPATH", str(tmp_path))
-        found = mod.is_jupyter_installed(sys.executable)
-        monkeypatch.setenv("PYTHONPATH", os.devnull)
-        monkeypatch.setattr(mod, "_HAS_JUPYTERLAB", mod._HAS_JUPYTERLAB.replace("jupyterlab", "no_such_lab"))
-        missing = mod.is_jupyter_installed(sys.executable)
+        (tmp_path / "jupyterlab-9.8.7.dist-info").mkdir()
+        (tmp_path / "jupyterlab-9.8.7.dist-info" / "METADATA").write_text(
+            "Metadata-Version: 2.1\nName: jupyterlab\nVersion: 9.8.7\n", encoding="utf-8")
 
-        assert (found, missing) == (True, False)
+        monkeypatch.setenv("PYTHONPATH", str(tmp_path))
+        found = mod.installed_jupyter(sys.executable)
+        monkeypatch.setenv("PYTHONPATH", os.devnull)
+        monkeypatch.setattr(mod, "_JUPYTER_VERSIONS", mod._JUPYTER_VERSIONS.replace("jupyterlab", "no_such_lab"))
+        missing = mod.installed_jupyter(sys.executable)
+
+        assert (found["jupyterlab"], missing) == ("9.8.7", None)
         assert all("pip" not in argv for argv in asked)
 
 
@@ -294,11 +368,38 @@ def test_the_server_is_told_not_to_move_to_another_port(monkeypatch):
     assert "--ServerApp.port=8888" in started[0]
 
 
+# Both named: upgraded alone, jupyterlab left an older jupyter_server as it was
+_PIP_INSTALL = ["C:/envs/lab/python.exe", "-m", "pip", "install", "-U", "jupyterlab", "jupyter_server"]
+
+
+@pytest.mark.parametrize(("package", "version", "vulnerable"), [
+    ("jupyterlab", "4.5.6", True),
+    ("jupyterlab", "4.5.9", True),
+    ("jupyterlab", "4.5.10", False),
+    ("jupyterlab", "4.6", True),
+    ("jupyterlab", "4.6.1", True),
+    ("jupyterlab", "4.6.2", False),
+    ("jupyterlab", "3.6.8", True),
+    ("jupyterlab", "5.0.0", False),
+    ("jupyter_server", "2.17.0", True),
+    ("jupyter_server", "2.19.9", True),
+    ("jupyter_server", "2.20.0", False),
+    ("jupyter_server", "2.21.1", False),
+    ("jupyterlab", "", False),           # a version that cannot be told is not judged
+    ("jupyterlab", "dev", False),
+    ("notebook", "1.0.0", False),        # nor a package with no list
+])
+def test_which_releases_are_upgraded(package, version, vulnerable):
+    from pybreeze.pybreeze_ui.jupyter_lab_gui.jupyter_lab_thread import is_vulnerable_release
+
+    assert is_vulnerable_release(package, version) is vulnerable
+
+
 class TestInstallingJupyterLab:
     """When the interpreter has no JupyterLab, it is installed there first."""
 
     @staticmethod
-    def _launch(monkeypatch, pip_result, during_pip=None):
+    def _launch(monkeypatch, pip_result, during_pip=None, versions=None):
         from types import SimpleNamespace
 
         from pybreeze.pybreeze_ui.jupyter_lab_gui import jupyter_lab_thread as mod
@@ -312,7 +413,7 @@ class TestInstallingJupyterLab:
                 during_pip(thread)
             return SimpleNamespace(returncode=pip_result[0], stderr=pip_result[1])
 
-        monkeypatch.setattr(mod, "is_jupyter_installed", lambda exe: False)
+        monkeypatch.setattr(mod, "installed_jupyter", lambda exe: versions)
         monkeypatch.setattr(mod.subprocess, "run", run)
         monkeypatch.setattr(mod, "find_free_port", lambda: 58888)
         monkeypatch.setattr(thread, "_start_server", lambda exe, port: seen["started"].append((exe, port)) or object())
@@ -328,11 +429,74 @@ class TestInstallingJupyterLab:
 
         seen = self._launch(monkeypatch, (0, ""))
 
-        assert seen["pip"] == [(["C:/envs/lab/python.exe", "-m", "pip", "install", "jupyterlab", "-U"], 300)]
+        assert seen["pip"] == [(_PIP_INSTALL, 300)]
         assert seen["status"][0] == language_wrapper.language_word_dict.get("jupyterlab_downloading")
         assert seen["started"] == [("C:/envs/lab/python.exe", 58888)]
         assert seen["ready"] == ["http://localhost:58888/lab"]
         assert seen["errors"] == []
+
+    def test_what_pip_says_reaches_the_tab_in_any_language(self, qt_app, monkeypatch, tmp_path):
+        # An interpreter in UTF-8 mode (every Python from 3.15, PEP 686) writes
+        # UTF-8 whatever the IDE's code page is: read in the code page, the tab
+        # showed a codec error instead of the reason
+        import sys
+
+        from pybreeze.pybreeze_ui.jupyter_lab_gui import jupyter_lab_thread as mod
+
+        fake_pip = tmp_path / "pip"
+        fake_pip.mkdir()
+        (fake_pip / "__init__.py").write_text("", encoding="utf-8")
+        (fake_pip / "__main__.py").write_text(
+            "import sys\n"
+            "sys.stderr.buffer.write('錯誤：找不到 jupyterlab 的版本'.encode('utf-8'))\n"
+            "sys.exit(1)\n", encoding="utf-8")
+        monkeypatch.setenv("PYTHONPATH", str(tmp_path))
+        monkeypatch.setattr(mod.pybreeze_logger, "error", lambda *args: None)
+        monkeypatch.setattr(mod, "installed_jupyter", lambda exe: None)
+        thread = mod.JupyterLauncherThread(python_exe=sys.executable)
+        monkeypatch.setattr(thread, "_start_server", lambda exe, port: pytest.fail("a server was started"))
+        errors: list = []
+        thread.error_occurred.connect(errors.append)
+
+        thread.run()
+
+        assert errors == ["錯誤：找不到 jupyterlab 的版本"]
+
+    def test_vulnerable_releases_are_upgraded_first(self, qt_app, monkeypatch):
+        # It ran whatever the interpreter had, and the tab's server has no token
+        from je_editor import language_wrapper
+
+        from pybreeze.pybreeze_ui.jupyter_lab_gui import jupyter_lab_thread as mod
+
+        warnings: list = []
+        monkeypatch.setattr(mod.pybreeze_logger, "warning", lambda *args: warnings.append(args))
+
+        seen = self._launch(monkeypatch, (0, ""), versions={"jupyterlab": "4.5.6", "jupyter_server": "2.21.1"})
+
+        assert seen["pip"] == [(_PIP_INSTALL, 300)]
+        assert seen["status"][0] == language_wrapper.language_word_dict.get("jupyterlab_upgrading").format(
+            found="jupyterlab 4.5.6")
+        assert seen["started"] == [("C:/envs/lab/python.exe", 58888)]
+        assert len(warnings) == 1
+
+    def test_releases_that_cannot_be_upgraded_still_start_with_a_warning(self, qt_app, monkeypatch):
+        from pybreeze.pybreeze_ui.jupyter_lab_gui import jupyter_lab_thread as mod
+
+        warnings: list = []
+        monkeypatch.setattr(mod.pybreeze_logger, "warning", lambda *args: warnings.append(args))
+
+        seen = self._launch(monkeypatch, (1, "ERROR: offline"),
+                            versions={"jupyterlab": "4.6.4", "jupyter_server": "2.17.0"})
+
+        assert seen["started"] == [("C:/envs/lab/python.exe", 58888)]
+        assert seen["errors"] == []
+        assert "ERROR: offline" in warnings[-1][-1]
+
+    def test_current_releases_are_left_as_they_are(self, qt_app, monkeypatch):
+        seen = self._launch(monkeypatch, (0, ""), versions=_CURRENT)
+
+        assert seen["pip"] == []
+        assert seen["started"] == [("C:/envs/lab/python.exe", 58888)]
 
     def test_a_failed_install_says_why_and_starts_no_server(self, qt_app, monkeypatch):
         monkeypatch.setattr("pybreeze.pybreeze_ui.jupyter_lab_gui.jupyter_lab_thread.pybreeze_logger.error",
@@ -377,9 +541,10 @@ class TestTheTab:
         tab.load_lab("http://localhost:58888/lab")
         tab.update_status("Loading... (3s / 60s)")  # queued before the lab was ready
         tab.show_error("too late to matter")
+        tab.load_lab("http://localhost:58888/lab")  # a second ready, with no status left to take down
 
         assert tab.status_label is None
-        assert loaded == ["http://localhost:58888/lab"]
+        assert loaded == ["http://localhost:58888/lab", "http://localhost:58888/lab"]
         assert tab.browser.isVisibleTo(tab)
         tab.close()  # deleted on close; the delete is carried out here, not at exit
         QCoreApplication.sendPostedEvents(tab, QEvent.Type.DeferredDelete)

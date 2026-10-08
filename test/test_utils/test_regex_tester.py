@@ -23,7 +23,8 @@ class TestBuildFlags:
     def test_multiple(self):
         import re
         combined = build_flags(["IGNORECASE", "DOTALL"])
-        assert combined & re.IGNORECASE and combined & re.DOTALL
+        assert combined & re.IGNORECASE
+        assert combined & re.DOTALL
 
     def test_unknown_ignored(self):
         assert build_flags(["NOPE"]) == 0
@@ -113,6 +114,42 @@ class TestABoundedRun:
         with pytest.raises(RegexTesterException):
             regex_tester.find_matches_bounded("(", "abc")
 
+    def test_a_worker_that_cannot_start_is_reported(self, monkeypatch):
+        from pybreeze.utils.regex_tools import regex_tester
+
+        def cannot_start(*_args, **_kwargs):
+            raise OSError(24, "Too many open files")
+
+        monkeypatch.setattr(regex_tester.subprocess, "Popen", cannot_start)
+
+        with pytest.raises(RegexTesterException):
+            regex_tester.find_matches_bounded(r"\d+", "a1")
+
+    def test_a_worker_that_died_part_way_is_reported(self, monkeypatch):
+        # Killed, or out of memory: what it wrote stops mid-way
+        from pybreeze.utils.regex_tools import regex_tester
+
+        monkeypatch.setattr(regex_tester, "_run_worker", lambda _job, _timeout: b'[["1", 1')
+
+        with pytest.raises(RegexTesterException):
+            regex_tester.find_matches_bounded(r"\d+", "a1")
+
+    # Whatever it wrote: an exit code other than 0 is a failure, a signal's (negative) included
+    @pytest.mark.parametrize("code", [1, -9])
+    def test_a_worker_that_exits_with_an_error_is_reported(self, monkeypatch, code):
+        from pybreeze.utils.regex_tools import regex_tester
+
+        class Exited:
+            returncode = code
+
+            def communicate(self, _job, timeout=None):
+                return b"[]", None
+
+        monkeypatch.setattr(regex_tester.subprocess, "Popen", lambda *_args, **_options: Exited())
+
+        with pytest.raises(RegexTesterException, match=f"exit code {code}"):
+            regex_tester.find_matches_bounded("a", "a")
+
     def test_catastrophic_backtracking_is_stopped(self):
         import time
 
@@ -142,6 +179,44 @@ class TestPatternsTheCompilerCannotTake:
 
         with pytest.raises(RegexTesterException):
             compile_pattern("(" * 5000 + "a" + ")" * 5000)
+
+    def test_a_parenthesis_in_a_character_class_or_escaped_opens_no_group(self):
+        from pybreeze.utils.regex_tools.regex_tester import MAX_GROUP_NESTING, _group_nesting_too_deep
+
+        many = MAX_GROUP_NESTING + 5  # more than one past the cap: the class holds them all
+        assert not _group_nesting_too_deep("[" + "(" * many + "]")
+        assert not _group_nesting_too_deep("\\(" * many)
+        assert compile_pattern("[" + "(" * many + "]").match("(")
+
+    def test_groups_after_a_character_class_are_counted_again(self):
+        from pybreeze.utils.regex_tools.regex_tester import MAX_GROUP_NESTING, _group_nesting_too_deep
+
+        assert _group_nesting_too_deep("[(]" + "(" * (MAX_GROUP_NESTING + 1))
+
+    def test_only_the_character_after_a_backslash_is_escaped(self):
+        from pybreeze.utils.regex_tools.regex_tester import _group_nesting_too_deep
+
+        assert _group_nesting_too_deep(r"\." + "(" * 101)
+
+    def test_the_cap_is_100_groups_deep(self):
+        # On CPython 3.10 re's parser overflows the C stack not far past it
+        from pybreeze.utils.regex_tools.regex_tester import _group_nesting_too_deep
+
+        assert not _group_nesting_too_deep("(" * 100 + ")" * 100)
+        assert _group_nesting_too_deep("(" * 101 + ")" * 101)
+
+    def test_a_closed_group_is_no_longer_counted(self):
+        from pybreeze.utils.regex_tools.regex_tester import _group_nesting_too_deep
+
+        assert not _group_nesting_too_deep("()" * 500)
+        assert not _group_nesting_too_deep("(a)" * 500)
+
+    # Characters before and after ")" in the code table close no group
+    @pytest.mark.parametrize("between", ["a", "!", "*"])
+    def test_other_characters_close_no_group(self, between):
+        from pybreeze.utils.regex_tools.regex_tester import _group_nesting_too_deep
+
+        assert _group_nesting_too_deep(f"({between}" * 101)
 
 
 class TestTheWorkerProcess:
@@ -193,8 +268,25 @@ class TestTheWorkerProcess:
         regex_tester.stop_running_workers()
         worker.join(20)
 
-        assert failures and time.monotonic() - started < 10
+        assert failures
+        assert time.monotonic() - started < 10
         assert not regex_tester._RUNNING
+
+    def test_a_packaged_build_runs_the_pattern_in_a_spawned_worker(self, monkeypatch):
+        # With sys stood in for in the module only: the real sys.frozen would
+        # make multiprocessing hand this interpreter the frozen app's arguments
+        from types import SimpleNamespace
+
+        from pybreeze.utils.regex_tools import regex_tester
+
+        asked: list = []
+        monkeypatch.setattr(regex_tester, "sys", SimpleNamespace(frozen=True))
+        monkeypatch.setattr(regex_tester, "_find_in_spawned_process",
+                            lambda *args: asked.append(args) or ["found"])
+        monkeypatch.setattr(regex_tester, "_run_worker", lambda *_args: pytest.fail("a script was run"))
+
+        assert regex_tester.find_matches_bounded(r"\d+", "a1", ["IGNORECASE"], 7.0) == ["found"]
+        assert asked == [(r"\d+", "a1", ["IGNORECASE"], 7.0)]
 
     def test_the_packaged_builds_spawned_worker_finds_matches(self):
         # A packaged build has no interpreter to run a script with; it keeps the
@@ -261,5 +353,6 @@ class TestWhatTheSpawnedWorkerSends:
         _matches_into_pipe(pipe, "(", "abc", [])
 
         ((kind, message),) = pipe.sent
-        assert kind == "error" and message
+        assert kind == "error"
+        assert message
         assert pipe.closed

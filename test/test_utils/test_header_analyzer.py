@@ -1,6 +1,8 @@
 """Tests for the HTTP header analyzer's pure logic."""
 from __future__ import annotations
 
+import pytest
+
 from pybreeze.utils.header_tools.header_analyzer import (
     LEVEL_INFO,
     LEVEL_WARNING,
@@ -232,3 +234,141 @@ class TestAnIndentedBlock:
 
         assert [field.name for field in fields] == ["Content-Security-Policy", "Server"]
         assert fields[0].value == "default-src 'self'; script-src 'self'"
+
+
+class TestTheEdgesOfEachCheck:
+    """Survivors of a mutation run: a check that could move or turn over unseen."""
+
+    def test_blank_lines_before_the_headers_are_skipped(self):
+        assert [field.name for field in parse_headers("\n\nX-A: 1\nX-B: 2")] == ["X-A", "X-B"]
+
+    def test_a_folded_line_joins_the_header_just_above_it(self):
+        fields = parse_headers("A: 1\nB: 2\n  more")
+
+        assert [(field.name, field.value) for field in fields] == [("A", "1"), ("B", "2 more")]
+
+    def test_only_a_name_given_more_than_once_is_a_duplicate(self):
+        assert analyze_headers("X-A: 1\nX-B: 2\nx-a: 3").duplicates == {"x-a": 2}
+
+    # Values before and after "nosniff" in the alphabet
+    @pytest.mark.parametrize("value", ["block", "sniff"])
+    def test_any_value_but_nosniff_is_reported(self, value):
+        assert "content_type_options_not_nosniff" in _codes(f"X-Content-Type-Options: {value}")
+
+    def test_a_max_age_of_the_longest_length_read_is_still_read(self):
+        from pybreeze.utils.header_tools.header_analyzer import _MAX_AGE_DIGITS
+
+        one_second = "0" * (_MAX_AGE_DIGITS - 1) + "1"
+
+        assert _finding(f"Strict-Transport-Security: max-age={one_second}", "hsts_weak_max_age").detail == "1"
+
+    # Values before and after "true" in the alphabet
+    @pytest.mark.parametrize("credentials", ["false", "yes"])
+    def test_a_wildcard_origin_without_credentials_true_is_not_the_combination(self, credentials):
+        text = f"Access-Control-Allow-Origin: *\nAccess-Control-Allow-Credentials: {credentials}"
+
+        assert "cors_wildcard_with_credentials" not in _codes(text)
+
+    def test_a_cookie_with_every_attribute_has_nothing_to_report(self):
+        codes = _codes("Set-Cookie: id=1; Secure; HttpOnly; SameSite=Lax")
+
+        assert not {code for code in codes if code.startswith("cookie_")}
+
+    def test_a_header_is_looked_up_by_its_own_name(self):
+        # Accept sorts before both CORS headers: its value is neither of theirs
+        text = "Accept: text/html\nAccess-Control-Allow-Origin: *\nAccess-Control-Allow-Credentials: true"
+
+        assert "cors_wildcard_with_credentials" in _codes(text)
+
+    def test_an_origin_that_sorts_before_the_wildcard_is_not_it(self):
+        text = "Access-Control-Allow-Origin: (none)\nAccess-Control-Allow-Credentials: true"
+
+        assert not {"cors_wildcard_origin", "cors_wildcard_with_credentials"} & _codes(text)
+
+    def test_hsts_at_exactly_the_minimum_max_age_is_enough(self):
+        from pybreeze.utils.header_tools.header_analyzer import _MIN_HSTS_MAX_AGE
+
+        assert "hsts_weak_max_age" not in _codes(f"Strict-Transport-Security: max-age={_MIN_HSTS_MAX_AGE}")
+        assert "hsts_weak_max_age" in _codes(f"Strict-Transport-Security: max-age={_MIN_HSTS_MAX_AGE - 1}")
+
+    def test_an_empty_analysis_is_of_no_response(self):
+        from pybreeze.utils.header_tools.header_analyzer import HeaderAnalysis
+
+        assert HeaderAnalysis().looks_like_response is False
+
+    def test_a_cookie_named_like_an_attribute_is_not_its_own_attribute(self):
+        codes = _codes("Set-Cookie: SameSite=Lax; Secure; HttpOnly")
+
+        assert "cookie_no_samesite" in codes
+
+
+class TestWhatOwaspRecommends:
+    """The OWASP HTTP Headers Cheat Sheet's advice, as the findings follow it."""
+
+    @pytest.mark.parametrize("policy", [
+        "frame-ancestors 'none'",
+        "default-src 'self'; frame-ancestors 'self' https://partner.test",
+        "default-src 'self'; FRAME-ANCESTORS 'none'",
+    ])
+    def test_csp_frame_ancestors_stands_for_x_frame_options(self, policy):
+        # "CSP frame-ancestors directive obsoletes X-Frame-Options"; it was still reported missing
+        assert "missing_frame_options" not in _codes(f"HTTP/1.1 200 OK\nContent-Security-Policy: {policy}")
+
+    @pytest.mark.parametrize("csp", [
+        "Content-Security-Policy: default-src 'self'",
+        "Content-Security-Policy-Report-Only: frame-ancestors 'none'",
+        "Content-Security-Policy: default-src 'self' https://frame-ancestors.test",
+    ])
+    def test_without_an_enforced_frame_ancestors_it_is_still_missing(self, csp):
+        assert "missing_frame_options" in _codes(f"HTTP/1.1 200 OK\n{csp}")
+
+    @pytest.mark.parametrize("header", [
+        "Expect-CT: max-age=86400, enforce",
+        "Public-Key-Pins: pin-sha256=\"x\"; max-age=5184000",
+        "Public-Key-Pins-Report-Only: pin-sha256=\"x\"; max-age=5184000",
+        "P3P: CP=\"IDC DSP COR\"",
+        "X-Content-Security-Policy: default-src 'self'",
+        "X-WebKit-CSP: default-src 'self'",
+    ])
+    def test_a_header_browsers_dropped_is_deprecated(self, header):
+        # Only X-XSS-Protection was noted
+        assert "deprecated_header" in _codes(header)
+
+    @pytest.mark.parametrize("value", ["0", " 0 "])
+    def test_x_xss_protection_turned_off_is_what_owasp_recommends(self, value):
+        assert "deprecated_header" not in _codes(f"X-XSS-Protection:{value}")
+
+
+class TestCookiesBrowsersDrop:
+    """What RFC 6265bis (draft 22, section 5.7) makes a browser ignore entirely."""
+
+    @pytest.mark.parametrize("cookie", [
+        "__Secure-id=1; Path=/; HttpOnly; SameSite=Lax",
+        "__Host-id=1; Path=/; HttpOnly; SameSite=Lax",
+        "__Host-id=1; Secure; HttpOnly; SameSite=Lax",
+        "__Host-id=1; Secure; Path=/app; HttpOnly; SameSite=Lax",
+        "__Host-id=1; Secure; Path=/; Domain=example.test; HttpOnly; SameSite=Lax",
+        "__host-id=1; Path=/; HttpOnly; SameSite=Lax",
+    ])
+    def test_a_cookie_that_breaks_its_prefix_is_dropped(self, cookie):
+        finding = _finding(f"Set-Cookie: {cookie}", "cookie_prefix_rejected")
+
+        assert (finding.level, finding.detail) == (LEVEL_WARNING, cookie.split("=", 1)[0])
+
+    @pytest.mark.parametrize("cookie", [
+        "__Secure-id=1; Secure; HttpOnly; SameSite=Lax",
+        "__Host-id=1; Secure; Path=/; HttpOnly; SameSite=Lax",
+        "__Host-id=1; secure; path = /; HttpOnly; SameSite=Lax",
+        "id=1; Domain=example.test; Path=/app; HttpOnly; SameSite=Lax",
+    ])
+    def test_a_cookie_that_keeps_its_prefix_rules_is_not(self, cookie):
+        assert "cookie_prefix_rejected" not in _codes(f"Set-Cookie: {cookie}")
+
+    @pytest.mark.parametrize("attributes", ["SameSite=None", "SameSite = none", "samesite=None"])
+    def test_same_site_none_without_secure_is_dropped(self, attributes):
+        finding = _finding(f"Set-Cookie: id=1; HttpOnly; {attributes}", "cookie_samesite_none_not_secure")
+
+        assert (finding.level, finding.detail) == (LEVEL_WARNING, "id")
+
+    def test_same_site_none_with_secure_is_kept(self):
+        assert "cookie_samesite_none_not_secure" not in _codes("Set-Cookie: id=1; Secure; HttpOnly; SameSite=None")

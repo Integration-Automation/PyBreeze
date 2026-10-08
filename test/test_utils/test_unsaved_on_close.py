@@ -120,6 +120,32 @@ class TestTheDiagramEditor:
         assert editor._current_path == other
 
 
+    def test_a_new_diagram_after_a_save_starts_unasked(self, app, answers, tmp_path):
+        # New asked "Discard current diagram?" whenever the canvas had anything
+        # on it, a diagram just saved included, where Open and Close ask only
+        # about unsaved changes
+        editor = self._editor()
+        editor._write_json(tmp_path / "saved.diagram.json")
+
+        editor._new_diagram()
+
+        assert answers["asked"] == 0
+        assert editor._scene.get_all_nodes() == []
+        assert editor._current_path is None
+
+    def test_a_new_diagram_asks_before_unsaved_changes_go(self, app, answers):
+        editor = self._editor()
+
+        editor._new_diagram()
+
+        assert answers["asked"] == 1
+        assert len(editor._scene.get_all_nodes()) == 1, "the edits were dropped after No"
+        answers["reply"] = QMessageBox.StandardButton.Yes
+        editor._new_diagram()
+        assert editor._scene.get_all_nodes() == []
+        assert editor._scene.undo_stack.isClean()
+
+
 class TestThePromptEditor:
     def test_unsaved_edits_are_asked_about(self, app, answers, tmp_path, monkeypatch):
         from pybreeze.pybreeze_ui.extend_ai_gui import prompt_store
@@ -163,23 +189,97 @@ class TestTheMainWindowsQuestion:
         assert may_close(Keeps()) is False
 
 
+class _Answering:
+    """Stands in for a tool tab with unsaved work: ``may_close()`` gives *answer*."""
+
+    def __init__(self, answer: bool) -> None:
+        from PySide6.QtWidgets import QWidget
+
+        self.widget = QWidget()
+        self.widget.may_close = lambda: answer
+
+
+def _window(*answers: bool):
+    """A main window's stand-in holding one tab per answer."""
+    from PySide6.QtWidgets import QMainWindow, QTabWidget
+
+    from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
+
+    window = QMainWindow()
+    window.tab_widget = QTabWidget()
+    window._tool_tabs_may_close = lambda: PyBreezeMainWindow._tool_tabs_may_close(window)
+    for answer in answers:
+        window.tab_widget.addTab(_Answering(answer).widget, "tool")
+    return window
+
+
+def _dock(window, answer: bool):
+    """An asking dock on *window* whose widget answers *answer*."""
+    from PySide6.QtCore import Qt
+
+    from pybreeze.pybreeze_ui.closing import AskingDock
+
+    dock = AskingDock()
+    dock.setWidget(_Answering(answer).widget)
+    window.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock)
+    return dock
+
+
+class TestTheMainWindow:
+    def test_a_tab_the_user_keeps_is_not_closed(self, app):
+        from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
+
+        window = _window(False)
+
+        PyBreezeMainWindow.close_tab(window, 0)
+
+        assert window.tab_widget.count() == 1
+        window.deleteLater()
+
+    def test_a_no_from_one_tab_keeps_the_ide_open(self, app):
+        from PySide6.QtGui import QCloseEvent
+
+        from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
+
+        window = _window(True, False)
+        event = QCloseEvent()
+
+        PyBreezeMainWindow.closeEvent(window, event)
+
+        assert not event.isAccepted()
+        assert window.tab_widget.count() == 2
+        window.deleteLater()
+
+    def test_docks_are_marked_as_asked_only_when_all_agree(self, app):
+        from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
+
+        for tab_answer, marked in ((False, False), (True, True)):
+            window = _window(tab_answer)
+            dock = _dock(window, True)
+
+            assert PyBreezeMainWindow._tool_tabs_may_close(window) is tab_answer
+            # Marked, the dock does not ask again as the IDE closes it
+            assert dock.already_asked is marked
+            window.deleteLater()
+
+    def test_a_docked_widget_is_asked_too(self, app):
+        from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
+
+        window = _window(True)
+        _dock(window, False)
+
+        assert PyBreezeMainWindow._tool_tabs_may_close(window) is False
+        window.deleteLater()
+
+
 class TestADock:
     """A docked editor closed from its dock's own button, without a word."""
-
-    class _Keeps:
-        """Stands in for an editor with unsaved work the user keeps."""
-
-        def __init__(self, answer: bool) -> None:
-            from PySide6.QtWidgets import QWidget
-
-            self.widget = QWidget()
-            self.widget.may_close = lambda: answer
 
     def test_a_dock_whose_widget_says_no_stays_open(self, app):
         from pybreeze.pybreeze_ui.closing import AskingDock
 
         dock = AskingDock()
-        dock.setWidget(self._Keeps(False).widget)
+        dock.setWidget(_Answering(False).widget)
         dock.show()
 
         assert dock.close() is False
@@ -191,15 +291,22 @@ class TestADock:
         from pybreeze.pybreeze_ui.closing import AskingDock
 
         dock = AskingDock()
-        dock.setWidget(self._Keeps(True).widget)
+        dock.setWidget(_Answering(True).widget)
         dock.show()
 
         assert dock.close() is True
 
     def test_the_dock_menu_builds_docks_that_ask(self, app):
-        import inspect
+        from PySide6.QtCore import Qt
+        from PySide6.QtWidgets import QMainWindow
 
-        from pybreeze.pybreeze_ui.menu.tools import tools_menu
+        from pybreeze.pybreeze_ui.closing import AskingDock
+        from pybreeze.pybreeze_ui.menu.tools.tools_menu import add_dock
 
-        assert "AskingDock()" in inspect.getsource(tools_menu.add_dock)
+        window = QMainWindow()
+        add_dock(window, "Hash")
+
+        (dock,) = [dock for dock in window.findChildren(AskingDock) if dock.widget() is not None]
+        assert window.dockWidgetArea(dock) == Qt.DockWidgetArea.RightDockWidgetArea
+        window.deleteLater()
 

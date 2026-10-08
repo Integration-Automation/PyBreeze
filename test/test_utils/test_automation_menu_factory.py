@@ -156,3 +156,19 @@ def test_a_gui_entry_imports_the_packages_gui_when_chosen(
 
     assert isinstance(window.tab_widget.widget(0), PackageGUI)
     assert window.tab_widget.tabText(0) == label
+
+
+@pytest.mark.parametrize("create_project_dir", [
+    lambda project_path=None: None,                       # no parent_name at all
+    lambda project_path=None, parent_name=None: None,     # one that is not a folder name
+])
+def test_a_package_that_names_no_project_folder_gets_none(create_project_dir):
+    # The message then says the project went into the chosen folder itself
+    assert automation_menu_factory._project_folder_name(create_project_dir) == ""
+
+
+def test_the_project_folder_is_the_default_parent_name():
+    def create_project_dir(project_path=None, parent_name="WebRunner"):
+        """A package's own, as je_web_runner's."""
+
+    assert automation_menu_factory._project_folder_name(create_project_dir) == "WebRunner"

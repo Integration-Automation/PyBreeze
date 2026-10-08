@@ -20,7 +20,7 @@ Tools 選單
    * - 架構圖編輯器
      - **Tools > Diagram Editor Tab**
      - **Dock > Diagram Editor Dock**
-   * - HTTP / API 小工具
+   * - HTTP / API 小工具、JSON 編輯器、自動化關鍵字、MCP 用戶端、報告檢視器
      - **Tools >** *<工具>* **Tab**
      - **Dock >** *<工具>* **Dock**
 
@@ -55,7 +55,7 @@ AI 工具
 HTTP 與 API 小工具
 ------------------
 
-共十三個工具，都可以從 **Tools** 以分頁、或從 **Dock** 以停靠面板開啟。它們都不會送出請求，
+共十四個工具，都可以從 **Tools** 以分頁、或從 **Dock** 以停靠面板開啟。它們都不會送出請求，
 只做解析、轉換與產生文字。在只有一個主要按鈕的工具裡，於任何位置按 **Ctrl+Enter** 就會按下那個按鈕
 （文字框裡的 Enter 是換行）；Query / JSON 與 URL 解析／組建器可以雙向轉換，Ctrl+Enter 依輸入的內容決定方向：
 輸入是 JSON 物件時從 JSON 轉回。
@@ -68,7 +68,9 @@ HTTP 與 API 小工具
      - 說明
    * - **cURL Import**
      - 把從瀏覽器開發者工具複製的 ``curl`` 指令轉成 Python ``requests`` 腳本、pytest 測試、
-       APITestka（Python 或 JSON 動作清單），或 LoadDensity 的 Locust 負載測試。
+       APITestka（Python 或 JSON 動作清單）、LoadDensity 的 Locust 負載測試，
+       或用瀏覽器前往該 URL 的 WebRunner 動作清單。產生的程式碼下方有一行說明所選目標省略了請求的哪些部分。
+       見 :doc:`tutorials/t06_curl_har_to_tests`。
    * - **HAR Import**
      - 列出瀏覽器 HAR 匯出檔裡的請求，把選取的請求轉成一份測試腳本，目標格式與 cURL Import 相同。
    * - **JWT Decoder**
@@ -90,11 +92,45 @@ HTTP 與 API 小工具
      - 兩段文字的 unified diff，附新增／刪除行數摘要。
    * - **JSON Format**
      - 美化或壓縮 JSON。
+   * - **JSON Editor**
+     - 把 JSON 檔當成樹狀與文字來編輯，兩者是同一份文件的兩個檢視：在樹裡新增、刪除、移動、
+       改名與換類型，在文字裡直接輸入；兩邊共用一份復原歷史；有未儲存的變更時會先詢問。
+       檔案會照它原本的縮排寫回去。見 :doc:`tutorials/t08_visual_json_editing`。
    * - **HTTP Header Analyzer**
      - 找出重複的標頭、Cookie 旗標、CORS、HSTS 與 CSP 的弱點，以及缺少的安全標頭。
-       帶有憑證的標頭只列出名稱。
+       帶有憑證的標頭只列出名稱。 **將發現匯出為 SARIF** 會把結果存成 SARIF 2.1.0；
+       同樣的分析不需要 IDE 也能以 ``python -m pybreeze.utils.header_tools.header_sarif`` 執行。
+       見 :doc:`tutorials/t07_header_sarif_ci`。
    * - **Response Inspector**
      - 解讀貼上的 HTTP 回應：狀態碼、標頭、JSON 本文與其中的 JWT，每一項都能一鍵在對應的工具中開啟。
+
+自動化關鍵字
+------------
+
+**Automation Keywords Tab** 列出 WebRunner、AutoControl 或 LoadDensity 動作腳本可以使用的關鍵字，
+內容來自實際安裝的套件：每個框架的版本、每個關鍵字的參數與說明、篩選，以及 **複製成動作**。
+關鍵字是針對執行你腳本的那個直譯器讀取的；某個框架沒有關鍵字時，分頁會說明原因。
+編輯器也用同一份關鍵字替 ``.json`` 動作腳本補全與檢查。
+見 :doc:`tutorials/t09_keywords_language_service`。
+
+MCP 用戶端
+----------
+
+**MCP Client Tab** 連線到以本機程式方式啟動的 Model Context Protocol 伺服器。
+伺服器設定一次即可（名稱、每行一個引數的指令、環境變數、時限），保存在
+``~/.pybreeze/mcp_servers.json``。分頁會列出已連線伺服器的工具、資源與提示。
+呼叫工具之前會先顯示引數並詢問，除非你已經信任該伺服器的那個工具；專案的 ``.mcp.json``
+指明的伺服器，沒有經過詢問絕不會啟動。呼叫可以取消，這次工作階段的呼叫可以匯出，
+或在報告檢視器開啟。見 :doc:`tutorials/t10_mcp_client`。
+
+報告檢視器
+----------
+
+**Report Viewer Tab** 把各種執行結果開進同一個檢視：自動化套件自己的報告
+（ ``<name>_success.json`` ／ ``<name>_failure.json`` 或 ``.xml`` 那一對）、JUnit XML，
+以及從 PyBreeze 匯出的報告。執行結果以樹狀顯示，並可依結果、花費時間、套件與文字一起篩選；
+選取的結果會顯示詳細資料、輸出、附件與套件自己的紀錄。一次執行可以匯出成 JSON、JUnit XML 或
+HTML 頁面。見 :doc:`tutorials/t11_reports_ci`。
 
 架構圖編輯器
 ------------
@@ -130,7 +166,7 @@ HTTP 與 API 小工具
    * - 按鈕
      - 說明
    * - **New**
-     - 清空畫布；畫布上有東西時會先詢問。
+     - 清空畫布；有沒存的變更時會先詢問。
    * - **Open**
      - 載入先前儲存的 ``.diagram.json`` 檔案；目前的架構圖有沒存的變更時會先詢問。
        不是架構圖的檔案不會改動任何東西。
@@ -140,6 +176,9 @@ HTTP 與 API 小工具
      - 另存為新的 ``.diagram.json`` 檔案。
    * - **Import**
      - 貼上 Mermaid ``flowchart`` / ``graph`` 原始碼，轉換為自動排版、可編輯的節點與連線。
+       標籤照 Mermaid 的顯示方式讀：``<br>`` 換行，實體碼（``#quot;``、``#9829;``）換成它代表的字元，
+       markdown 字串（``"`**bold**`"``）以純文字呈現，跨幾行就是幾行。
+       Mermaid 11 的具名形狀（``A@{ shape: circle }``）會換成四種節點形狀中最接近的一種。
        它會取代整個畫布，並算作一個復原步驟。
    * - **PNG** / **SVG**
      - 將畫布輸出為點陣圖（PNG）或向量圖（SVG）。

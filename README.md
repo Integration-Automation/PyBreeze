@@ -74,9 +74,11 @@ Each module gets the same menu shape: **Run** (single script, batch directory, w
 
 - **Automation keyword sets** — the `AT_*` / GUI / Web / Load keyword sets are registered for `.json`, and TestPioneer's schema for `.yml` and `.yaml`, on top of JEditor's language support. JEditor does not colour them yet: it highlights those files with its own rules for the suffix, which leave registered keywords out
 - **Code editor** — built on [JEditor](https://github.com/Integration-Automation/JEDITOR): tabs, project tree, format checker, debugger, terminal and a git client pane
-- **Script execution** — single or batch, each run in a window of its own with a Stop button (Run ▸ Stop All Program stops them all); action files are passed by path, and a script from the tab in front that is too long for a Windows command line (~32 KB) goes through a temporary file
+- **Navigation panel** — a dock at the left lists what the menus hold as one tree (Automation, Tools, Settings): type in its box to find a tool or a command by name, then press Enter or double-click to open it. **Dock ▸ Navigation** shows and hides it, and a panel closed on purpose stays closed at the next start
+- **Fits a small screen** — a tool tab never asks for more than 60 font heights of width: a row of buttons too long for the tab wraps onto the next line instead of pushing the window wider than the display
+- **Script execution** — single or batch, each run in a window of its own with a Stop button (Run ▸ Stop All Program stops them all), which asks whether to stop the run when it is closed while the run goes on; action files are passed by path, and a script from the tab in front that is too long for a Windows command line (~32 KB) goes through a temporary file
 - **Report generation** — HTML / JSON / XML after a run, with optional email delivery
-- **Integrated JupyterLab** — launches as a tab, in the same interpreter a run would use, installing JupyterLab there if it is missing
+- **Integrated JupyterLab** — launches as a tab, in the same interpreter a run would use, installing JupyterLab there if it is missing, and upgrading it and its server first when either is a release with a known vulnerability (JupyterLab before 4.5.10 or 4.6.0–4.6.1, jupyter_server before 2.20.0); the tab stays on the lab, and a link to anywhere else opens in your browser
 - **Virtual environment awareness** — a run uses the interpreter chosen under **Python Env**; with none chosen, a `venv/` or `.venv/` in the working folder is detected and used, and without one, the interpreter the IDE runs on
 
 ---
@@ -87,13 +89,13 @@ In a tool with one main button, Ctrl+Enter anywhere in it presses that button: i
 
 ### cURL Import — a copied request becomes a runnable script
 
-Paste a `curl` command from your browser's dev tools and pick a target. The parser handles method, URL, headers, bodies, basic auth, `-G` query parameters, `-F` multipart fields (uploads become `files=open(...)`), the `--json` shortcut, `-d @file` bodies and multi-line continuations. Repeated `-H` values are combined the way HTTP combines them (`; ` for cookies, `, ` otherwise) instead of the last one silently winning. Nothing is ever executed — it is pure parsing.
+Paste a `curl` command from your browser's dev tools and pick a target. The parser handles method, URL, headers, bodies, basic auth, `-G` and `--url-query` query parameters, `-F` multipart fields (uploads become `files=open(...)`), the `--json` shortcut, `-d @file` bodies and multi-line continuations. Every other curl option that takes a value has it consumed, so it is never mistaken for the URL, and an `--expand-` option is read as the one it expands, its `{{variables}}` kept as written. Repeated `-H` values are combined the way HTTP combines them (`; ` for cookies, `, ` otherwise) instead of the last one silently winning. A browser's `Accept-Encoding` that accepts `br`, `zstd` or `*` is left out of the generated code, so `requests` asks only for what it can decode (with it, a server answering in zstd left a script with only `requests` installed printing compressed bytes). The method is the one curl sends: POST for a body and HEAD for `-I`, unless `-X` names one (`-X GET -d ...` stays a GET with a body). Nothing is ever executed — it is pure parsing.
 
 | Target: pytest | Target: APITestka JSON action |
 |---|---|
 | ![cURL import to pytest](images/tool_curl_import.png) | ![cURL import to APITestka action](images/tool_curl_import_action.png) |
 
-Targets: Python `requests`, a ready-to-run **pytest** test, **APITestka** (Python or a `[["AT_test_api_method", {...}]]` action list that `execute_files` runs directly), and a **LoadDensity** Locust load test. Copy the output, open it straight into an editor tab, or save it with the right extension. One click also hands the parsed URL to the URL parser/builder or the headers to the header analyzer.
+Targets: Python `requests`, a ready-to-run **pytest** test, **APITestka** (Python or a `[["AT_test_api_method", {...}]]` action list that `execute_files` runs directly), a **LoadDensity** Locust load test, and a **WebRunner** action list that visits the address in a browser. A target that cannot send everything a request holds says so under the output ("Not sent by this target: headers · the body"): a LoadDensity run drives a method and a URL, and a browser visit keeps the URL, the cookies and a time limit. Copy the output, open it straight into an editor tab, or save it with the right extension. One click also hands the parsed URL to the URL parser/builder or the headers to the header analyzer.
 
 ### HAR Import — a whole session becomes a test suite
 
@@ -113,7 +115,15 @@ The status code is looked up in the HTTP reference, headers are parsed, a JSON b
 
 ![Header Analyzer](images/tool_header_analyzer.png)
 
-Reports names sent more than once, `Set-Cookie` entries missing `Secure` / `HttpOnly` / `SameSite`, wildcard CORS (and the wildcard-plus-credentials combination browsers reject outright), an HSTS `max-age` too short to survive a restart, CSP `unsafe-inline` / `unsafe-eval`, product banners, deprecated headers, and — for responses — the security headers that are absent. Headers carrying credentials are reported **by name only**; their values never enter the report.
+Reports names sent more than once, `Set-Cookie` entries missing `Secure` / `HttpOnly` / `SameSite` and those a browser drops outright (a `__Secure-` / `__Host-` name whose rules are broken, `SameSite=None` without `Secure`), wildcard CORS (and the wildcard-plus-credentials combination browsers reject outright), an HSTS `max-age` too short to survive a restart, CSP `unsafe-inline` / `unsafe-eval`, product banners, headers current browsers ignore (`X-XSS-Protection` other than `0`, `Expect-CT`, `Public-Key-Pins`, `P3P`, the old prefixed CSP names), and — for responses — the security headers that are absent, counting a CSP `frame-ancestors` directive as `X-Frame-Options`, as the OWASP HTTP Headers Cheat Sheet does. Headers carrying credentials are reported **by name only**; their values never enter the report.
+
+**Export findings as SARIF** saves the analysis as a SARIF 2.1.0 file that GitHub Code Scanning and other security tooling read: each finding with its rule, level, line, what to do about it and a link. The same export runs without the IDE, for CI:
+
+```bash
+python -m pybreeze.utils.header_tools.header_sarif response-headers.txt -o headers.sarif
+```
+
+`-` reads the headers from standard input, leaving out `-o` writes to standard output, and `--fail-on-warning` exits with 1 when a finding is a warning. The report names rules and lines and quotes no header value.
 
 ### Text Diff
 
@@ -121,20 +131,73 @@ Reports names sent more than once, `Set-Cookie` entries missing `Secure` / `Http
 
 Compare two payloads — an expected vs. actual API response, say — and get a unified diff, its added and removed lines in the theme's colours, plus a one-line added/removed summary.
 
+### Report Viewer
+
+**Tools → Report Viewer Tab** opens what a run produced, whatever ran it, into one view.
+
+- **Reads** the automation packages' own reports (APITestka, AutoControl, WebRunner, LoadDensity: the `<name>_success.json` / `<name>_failure.json` pair or the `.xml` pair; open either and the other is read with it), **JUnit XML** (pytest's `--junitxml`, and most other runners), and reports exported from PyBreeze. What a file is, is told from what it holds.
+- **Shows** each run as a tree with how every result ended and how long it took; the selected result's details and error, its output, what it left behind, and the package's own record of it, untouched.
+- **Filters** all open runs together: by ending (passed, failed, error, skipped), by time taken, by package, and by text in a name or an error. A line under the tree counts what is shown.
+- **Exports** a run as an execution report (JSON), as **JUnit XML** for a CI service's test summary, or as one self-contained **HTML page** for people, which can be opened here again.
+- The **MCP Client**'s Calls page opens its session here with **Open in Report Viewer**.
+
+A report is a file from somewhere: it is read as data (XML that declares a document type is refused), everything in it is shown as text, and the paths it names are listed, not opened.
+
+### MCP Client
+
+**Tools → MCP Client Tab** connects to [Model Context Protocol](https://modelcontextprotocol.io) servers and shows what each offers: **tools** to call, **resources** to read, **prompts** to fill in.
+
+- **Servers** are set up once and kept for you (`~/.pybreeze/mcp_servers.json`, readable by you alone): a name, the command that starts the server (one argument a line, never a shell line), its environment variables, and how long a request may take. The file uses the `mcpServers` layout other clients write, so a list made elsewhere can be dropped in.
+- **A call is asked about first**: the tool, the server and the arguments as they will be sent, with No as the default. Tick *Do not ask again* to trust one tool of one server. What a server says of its own tool ("changes nothing") is shown, not relied on.
+- **A server that comes with a project** (`.mcp.json` in the project folder) is listed, never started by itself: connecting to it shows its command and asks.
+- **Cancel** gives up a call on its way; a server that does not answer within its time limit is given up on; one that goes away is said so, with the last line of its own log. **Connect** again to start over.
+- **Calls** lists the session: when, which tool, how it ended, how long it took. **Export Session...** saves it as an execution report (JSON).
+
+Put keys and tokens in the server's environment variables, not in its command: their values are shown as dots, and are taken out of the log, of error messages and of exported sessions wherever they turn up. Servers are started as local programs (the protocol's standard-input-and-output transport).
+
+### Keywords for action scripts
+
+A WebRunner, AutoControl or LoadDensity script is a JSON list of actions, `["keyword"]` or `["keyword", arguments]`. Open one (`.json`) in the editor and it is completed and checked against the keywords of the framework **as it is installed**:
+
+- **Completion** — the framework's keywords where an action's name goes, a keyword's parameters where an argument's name goes.
+- **Diagnostics** — a keyword that version does not have (with the nearest one suggested), a parameter the keyword does not take, a required one left out, a list of values of the wrong length, an action of the wrong shape, and text that is not JSON. In the IDE's language.
+- **Hover** and **go to definition** — a keyword's signature and documentation, and the line of the package that defines it.
+
+Nothing about a keyword is kept in PyBreeze. Each framework is asked, in a process of its own, by the interpreter that runs your scripts (the one chosen in the IDE, a `.venv` in the project, else the IDE's own), so upgrading a framework changes what is offered. A framework that is missing or fails to import costs its own keywords and nothing else.
+
+**Tools → Automation Keywords Tab** shows the same keywords: each framework's version, what the editor offers for it, every keyword with its parameters and documentation, a filter, and **Copy as Action**. When a framework gives none, it says why.
+
+The editor gets all this from a language server, which any editor that speaks the Language Server Protocol can start too:
+
+```bash
+python -m pybreeze.extend.language_server [--interpreter /path/to/python] [--language Traditional_Chinese]
+```
+
+### JSON Editor
+
+Edit a JSON file as a **Tree** or as **Text** (**Tools → JSON Editor Tab**). Both are views of one document, so they cannot disagree.
+
+- **Tree** — add, delete, move up or down, and rename in place; type over a value, or give it another type (object, array, string, number, boolean, null). A number is kept as it is written: `1.0` stays `1.0`.
+- **Text** — the JSON itself, always there. It is checked as you type and a line under the views says where it stops being JSON; the tree waits until it is JSON again, and nothing typed is thrown away.
+- **Undo / Redo** step through the document whichever view changed it, and a tab with unsaved changes asks before it closes or opens another file.
+- A file is written back the way it was found: its indent (spaces or tabs), on one line if it was, with its final line break. Alignment by hand and blank lines are not kept by an edit in the tree.
+
+It is a JSON editor, not a second code editor: a file is opened into it from its **Open...** button.
+
 ### The everyday utilities
 
 Each is a tab or a dock, each has the same copy / open-in-editor / save-to-file row along the bottom.
 
 ![JWT decoder, regex tester, HTTP status reference, JSON format](images/tools_montage_a.png)
 
-- **JWT Decoder** — header and payload as pretty JSON, with `exp` / `iat` / `nbf` / `auth_time` as readable UTC. Inspection only: the signature is never verified and the token is never trusted.
+- **JWT Decoder** — header and payload as pretty JSON, with `exp` / `iat` / `nbf` / `auth_time` as readable UTC. Inspection only: the signature is never verified and the token is never trusted. An encrypted token (JWE, five parts) is named as one: its claims need the recipient's key.
 - **Regex Tester** — `IGNORECASE` / `MULTILINE` / `DOTALL` / `VERBOSE`, every match with offsets, numbered groups and named groups. Enter in the pattern runs it. An invalid pattern reports a friendly error instead of crashing.
-- **HTTP Status Reference** — search the full status table (sourced from the standard library, so it stays current) by code prefix or keyword.
+- **HTTP Status Reference** — search the full status table (from the standard library, in the words RFC 9110 and Python 3.14 give on every supported Python) by code prefix or keyword; a status is also found by the name RFC 9110 replaced (`Unprocessable Entity`).
 - **JSON Format** — pretty-print or minify, with a clear validation error when the input is not JSON.
 
 ![Timestamp converter, hash generator, query/JSON, URL builder](images/tools_montage_b.png)
 
-- **Timestamp Converter** — a Unix epoch (seconds, milliseconds, microseconds or nanoseconds, auto-detected) or an ISO-8601 date-time (with `Z`, `+08`, `+0800` or `+08:00`, any number of fraction digits, basic or extended) in, every representation out in UTC. Deterministic and independent of the local time zone.
+- **Timestamp Converter** — a Unix epoch (seconds, milliseconds, microseconds or nanoseconds, auto-detected) or an ISO-8601 date-time (with `Z`, `+08`, `+0800` or `+08:00`, any number of fraction digits, basic or extended, and an RFC 9557 zone after the offset as Java's `ZonedDateTime` writes it: `+01:00[Europe/Paris]`) or an HTTP date (`Sun, 06 Nov 1994 08:49:37 GMT`, as in `Date` or `Last-Modified`, and the two older forms RFC 9110 accepts) in, every representation out in UTC. Deterministic and independent of the local time zone.
 - **Hash Generator** — SHA-256, SHA-512, SHA-1 and MD5 at once (MD5/SHA-1 for interoperability with `usedforsecurity=False`, never for security decisions).
 - **Query ⇄ JSON** — `application/x-www-form-urlencoded` to pretty JSON and back; repeated keys become arrays and vice versa.
 - **URL Parser / Builder** — scheme, host, port, path, query, fragment and credentials as an editable JSON object, and back again. Brackets IPv6 literals and re-encodes query parameters for you.
@@ -145,13 +208,13 @@ Each is a tab or a dock, each has the same copy / open-in-editor / save-to-file 
 
 *A Mermaid `flowchart` pasted into the importer and laid out automatically.*
 
-A WYSIWYG `QGraphicsScene` editor: rectangle, rounded, ellipse and diamond nodes, bezier connections with edge labels, free text and images. Mermaid `flowchart` / `graph` import runs a Sugiyama-style layout (layering, crossing reduction, cross-axis alignment). Save and open as `.diagram.json`, export to PNG or SVG, with undo/redo, align, distribute, grid, snap and zoom. Images fetched from a URL are SSRF-validated and size-capped.
+A WYSIWYG `QGraphicsScene` editor: rectangle, rounded, ellipse and diamond nodes, bezier connections with edge labels, free text and images. Mermaid `flowchart` / `graph` import reads labels as Mermaid shows them (`<br>` line breaks, `#quot;` / `#9829;` entity codes, markdown strings as plain text), takes Mermaid 11's named shapes (`A@{ shape: circle }`) as the nearest of the four, and runs a Sugiyama-style layout (layering, crossing reduction, cross-axis alignment). Save and open as `.diagram.json`, export to PNG or SVG, with undo/redo, align, distribute, grid, snap and zoom. Images fetched from a URL are SSRF-validated and size-capped.
 
 ### SSH Client — terminal and remote file tree side by side
 
 ![SSH client](images/ssh_client.png)
 
-Password or private-key authentication (the key file picked with Browse, starting in `~/.ssh`: an RSA, Ed25519 or ECDSA key in OpenSSH or PEM format, PKCS#8 included; a PuTTY `.ppk` key is exported from PuTTYgen as an OpenSSH key first, as the error message says; with key authentication the password field reads Passphrase and takes the key's passphrase), an interactive shell with keepalive that shows ANSI colours, in a fixed-pitch font, whose width and height the shell is told as the view is resized (Up and Down bring back earlier commands, Enter on an empty line reaches the shell, `clear` and `reset` wipe the view, and **Interrupt**, or Ctrl+C in the command line with nothing selected, stops what runs in it; the view shows output line by line, so programs that draw on the whole screen by moving the cursor, such as `vim` or `htop`, come out garbled), and a lazy-loading SFTP tree with create-folder / rename / delete / upload / download (F2 renames and Delete deletes the entry in focus, as in the project tree). Every SFTP request runs in the background, so a stalled link never freezes the IDE. An upload asks before it replaces a file on the server, and a transfer can be cancelled from the tree's menu. Both directions write to a temporary file first, so a dropped link leaves the old copy whole. Unknown host keys are **not** auto-accepted: the SHA256 fingerprint is shown for confirmation on first connection (trust on first use) and persisted to `~/.pybreeze/ssh_known_hosts`.
+Password or private-key authentication (the key file picked with Browse, starting in `~/.ssh`: an RSA, Ed25519 or ECDSA key in OpenSSH or PEM format, PKCS#8 included; a PuTTY `.ppk` key is exported from PuTTYgen as an OpenSSH key first, as the error message says; with key authentication the password field reads Passphrase and takes the key's passphrase), an interactive shell with keepalive that shows ANSI colours, in a fixed-pitch font, whose width and height the shell is told as the view is resized (Up and Down bring back earlier commands, Enter on an empty line reaches the shell, `clear` and `reset` wipe the view, and **Interrupt**, or Ctrl+C in the command line with nothing selected, stops what runs in it; the view shows output line by line, so programs that draw on the whole screen by moving the cursor, such as `vim` or `htop`, come out garbled), and a lazy-loading SFTP tree with create-folder / rename / delete / upload / download (F2 renames and Delete deletes the entry in focus, as in the project tree). Every SFTP request runs in the background, so a stalled link never freezes the IDE. An upload asks before it replaces a file on the server, and a transfer can be cancelled from the tree's menu. Both directions write to a temporary file first, so a dropped link leaves the old copy whole. Unknown host keys are **not** auto-accepted: the SHA256 fingerprint is shown for confirmation on first connection (trust on first use) and persisted to `~/.pybreeze/ssh_known_hosts`; hosts in `~/.ssh/known_hosts` are trusted as well. A host trusted before that shows another key is refused without a question, naming both SHA256 fingerprints and the file to remove its line from if the key was changed on purpose.
 
 ### And also
 
@@ -177,7 +240,7 @@ Run the [prthinker](https://github.com/JE-Chen/Code-Review-Framework-Combining-L
 
 ![prthinker settings](images/prthinker_setting.png)
 
-One settings form holds the inference backend (`remote`, `local`, OpenAI-compatible, Anthropic, Gemini, Cohere, Mistral, `claude-cli`, `codex-cli`), the code host (GitHub / GitLab / Gitea) and the repository. **Keys and tokens are handed to the review as environment variables, never on a command line** where a process list would show them — and they are masked in logs. The model name goes to whichever backend is chosen. Rule retrieval (RAG) is `off` unless set to `remote`, which asks the prthinker server's `/rag`: prthinker's local rule index ships with its repository, not with the package installed from it. The review runs with the interpreter chosen in `Python Env`, so PyBreeze itself can stay on an older Python than the 3.12 prthinker needs.
+One settings form holds the inference backend (`remote`, `local`, OpenAI-compatible, Anthropic, Gemini, Cohere, Mistral, `claude-cli`, `codex-cli`), the code host (GitHub / GitLab / Gitea) and the repository. **Keys and tokens are handed to the review as environment variables, never on a command line** where a process list would show them — and they are masked in logs. The model name goes to whichever backend is chosen. Gemini, Cohere and Mistral have no key field: chosen, the form names the variable prthinker reads their key from (`PRTHINKER_GEMINI_API_KEY`, `PRTHINKER_COHERE_API_KEY`, `PRTHINKER_MISTRAL_API_KEY`), which is set before PyBreeze starts. Rule retrieval (RAG) is `off` unless set to `remote`, which asks the prthinker server's `/rag`: prthinker's local rule index ships with its repository, not with the package installed from it. The review runs with the interpreter chosen in `Python Env`, so PyBreeze itself can stay on an older Python than the 3.12 prthinker needs.
 
 ### CoT Prompt Editor
 
@@ -215,7 +278,7 @@ Loaded plugins appear under their own **Plugins** menu with an About entry and o
 - **English** (default)
 - **Traditional Chinese** (繁體中文)
 
-Menus, dialogs, the reasons a tool refuses its input and the run window's own notices (`[Error] …`, `[Run] …`) all follow the chosen language. Both dictionaries carry the same 760 keys, and a test enforces that parity so a new string can never land in one language only. The Language menu also lists JEditor's Japanese and Simplified Chinese: picked, JEditor's own menus change and PyBreeze's strings stay in English. Further languages can be added via translation plugins.
+Menus, dialogs, the reasons a tool refuses its input and the run window's own notices (`[Error] …`, `[Run] …`) all follow the chosen language. Both dictionaries carry the same 995 keys, and a test enforces that parity so a new string can never land in one language only. English and Traditional Chinese are the languages PyBreeze maintains. The Language menu also lists JEditor's Japanese (日本語) and Simplified Chinese (简体中文), which PyBreeze passes on without translating: picked, JEditor's own menus change and PyBreeze's strings stay in English. Further languages can be added via translation plugins.
 
 ---
 
@@ -299,6 +362,13 @@ For a module-by-module walkthrough of the codebase, see [architecture_explore.md
 pip install pybreeze
 ```
 
+The development channel follows the `dev` branch. CI publishes a new `pybreeze_dev` each time a push to
+`dev` passes the tests and changes what the package ships:
+
+```bash
+pip install pybreeze_dev
+```
+
 ### From source
 
 ```bash
@@ -337,6 +407,17 @@ Once launched:
 4. **Generate** an HTML / JSON / XML report
 5. **Send** it by email through the MailThunder integration
 
+New here? The [tutorials](https://pybreeze.readthedocs.io/en/latest/Eng/tutorials/index.html) are thirteen short pages, each with an example that runs and what to expect from it: the first launch, a first API, browser, desktop and load run, tests from cURL and HAR, header findings as SARIF in CI, the JSON editor, keywords for action scripts, the MCP client, reports in CI, plugins, and troubleshooting. They test a small site on your own machine, so none of them needs an account.
+
+### Log file
+
+PyBreeze writes its log to `~/.pybreeze/logs/PyBreeze.log`: UTF-8, appended to by every run, each line carrying the process ID. Only warnings and errors also appear in the editor's Code Result panel. Two environment variables change this:
+
+| Variable | Effect |
+|---|---|
+| `PYBREEZE_LOG_FILE` | The log file to write instead |
+| `PYBREEZE_LOG_MAX_BYTES` | When a PyBreeze process first writes to the log and the file is larger than this many bytes, the file is first renamed with `.1` appended, replacing the previous one (default 104857600, 100 MB; `0` never renames it) |
+
 ---
 
 ## Integrated Automation Modules
@@ -367,8 +448,6 @@ PyBreeze/
 │   │   │   ├── process_executor_utils.py        # build_process / start_process
 │   │   │   ├── file_runner_process.py           # Plugin run configs (any language)
 │   │   │   ├── queue_pump.py                    # Shared pipe reader + QTimer drain
-│   │   │   ├── api_testka/ auto_control/ web_runner/
-│   │   │   ├── load_density/ file_automation/ mail_thunder/
 │   │   │   ├── test_pioneer/ prthinker/
 │   │   ├── mail_thunder_extend/       # Post-test email report hook
 │   │   └── prthinker_extend/          # prthinker settings & argument assembly
@@ -389,6 +468,7 @@ PyBreeze/
 ├── exe/                               # Standalone launcher & build configs
 ├── docs/                              # Sphinx documentation source; updates/ is the change log
 ├── test/                              # Unit tests (test_utils) + startup tests
+├── scripts/                           # Release helper for the dev channel (dev_release.py)
 ├── images/                            # Screenshots
 ├── architecture.md                    # Architecture overview: layers, flows, cross-project contracts
 ├── architecture_explore.md            # Module-by-module architecture notes
@@ -432,9 +512,9 @@ python -m pip install -r dev_requirements.txt
 python -m pytest test/test_utils/ -v --tb=short
 ```
 
-- **Unit tests** — `test/test_utils/`, covering the pure-logic layer (curl and HAR parsing, header analysis, SSRF validation, JWT, hashing, timestamps, diffing) plus headless Qt widget tests via `QT_QPA_PLATFORM=offscreen`, with Hypothesis property tests over the parsers
+- **Unit tests** — `test/test_utils/`, covering the pure-logic layer (curl and HAR parsing, header analysis, SSRF validation, JWT, hashing, timestamps, diffing) plus headless Qt widget tests via `QT_QPA_PLATFORM=offscreen`, with Hypothesis property tests over the parsers. The SSH terminal and the SFTP file tree also log in to an SSH server the tests start on the loopback address, which serves a temporary folder over SFTP
 - **Startup tests** — `test/unit_test/start_automation/` launches the IDE in debug mode and verifies it comes up and exits cleanly
-- **CI** — GitHub Actions on Windows across Python 3.10 – 3.14, on every push and PR plus a nightly run
+- **CI** — GitHub Actions: the whole suite on Windows across Python 3.10 – 3.14, and a short set of platform smoke tests on Linux and macOS, on every push and PR plus a nightly run; a push to `dev` that passes the suite also publishes `pybreeze_dev` when the package changed
 - **Static analysis** — SonarCloud, Codacy and Bandit
 
 ---

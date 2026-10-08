@@ -39,7 +39,7 @@ class TestApplySgr:
         assert apply_sgr(styled, "22;23") == TextStyle(foreground=1, background=2, underline=True, inverse=True)
         assert apply_sgr(styled, "39;49;24;27") == TextStyle(bold=True, italic=True)
 
-    @pytest.mark.parametrize("parameters", ["38;5", "38;5;256", "38;2;1;2", "38;2;1;2;300", "38;9;1", "38", "5", "1000"])
+    @pytest.mark.parametrize("parameters", ["38;5", "38;5;256", "38;2", "38;2;1", "38;2;1;2", "38;2;1;2;300", "38;9;1", "38", "5", "1000"])
     def test_what_cannot_be_read_changes_nothing(self, parameters):
         styled = TextStyle(foreground=3)
 
@@ -48,6 +48,25 @@ class TestApplySgr:
     def test_a_parameter_thousands_of_digits_long_is_ignored(self):
         # int() refuses more than 4300 digits: a server could send them
         assert apply_sgr(PLAIN, "9" * 5000 + ";31") == TextStyle(foreground=1)
+
+    def test_a_parameter_too_long_to_read_leaves_the_style_as_it_was(self):
+        # Ignored, not taken for the 0 that resets everything
+        assert apply_sgr(TextStyle(bold=True), "123456") == TextStyle(bold=True)
+
+    def test_a_parameter_of_five_digits_is_still_read(self):
+        assert apply_sgr(PLAIN, "00031") == TextStyle(foreground=1)
+
+    @pytest.mark.parametrize(("parameters", "expected"), [
+        ("1;38;5;196", TextStyle(bold=True, foreground=196)),
+        ("1;4;48;2;10;20;30", TextStyle(bold=True, underline=True, background=(10, 20, 30))),
+        # A palette index that is also a parameter is read once, as the colour
+        ("38;5;1", TextStyle(foreground=1)),
+        ("1;4;38;5;196;3", TextStyle(bold=True, underline=True, italic=True, foreground=196)),
+        # From the fifth parameter on, where start | 4 is not start + 4
+        ("1;3;4;38;2;10;20;30", TextStyle(bold=True, italic=True, underline=True, foreground=(10, 20, 30))),
+    ])
+    def test_an_extended_colour_after_other_parameters(self, parameters, expected):
+        assert apply_sgr(PLAIN, parameters) == expected
 
 
 class TestColourRgb:

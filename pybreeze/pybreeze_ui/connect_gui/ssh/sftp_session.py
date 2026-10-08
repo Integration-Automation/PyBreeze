@@ -391,7 +391,7 @@ class SftpTransferThread(QThread):
     # Cancelled by the user: what had arrived is removed, the old copy stays
     cancelled = Signal()
 
-    def __init__(self, client: "SFTPClientWrapper", downloading: bool,
+    def __init__(self, client: SFTPClientWrapper, downloading: bool,
                  remote_path: str, local_path: str, replace: bool = False) -> None:
         super().__init__()
         self._client = client
@@ -436,7 +436,7 @@ class SftpListThread(QThread):
     listed = Signal(object)  # [(name, SFTPAttributes)], directories first
     failed = Signal(str)
 
-    def __init__(self, client: "SFTPClientWrapper", path: str) -> None:
+    def __init__(self, client: SFTPClientWrapper, path: str) -> None:
         super().__init__()
         self._client = client
         self._path = path

@@ -1,0 +1,190 @@
+{
+ "about": "Requests that are not what the protocol says are answered as such, and nothing breaks.",
+ "frameworks": [
+  "je_web_runner"
+ ],
+ "exchange": [
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "id": 20,
+    "method": "textDocument/completion",
+    "params": {}
+   },
+   "expect": [
+    {
+     "jsonrpc": "2.0",
+     "id": 20,
+     "error": {
+      "code": -32602,
+      "message": "textDocument/completion"
+     }
+    }
+   ]
+  },
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "id": 21,
+    "method": "textDocument/hover",
+    "params": {
+     "textDocument": {
+      "uri": "file:///project/script.json"
+     },
+     "position": {
+      "line": "x"
+     }
+    }
+   },
+   "expect": [
+    {
+     "jsonrpc": "2.0",
+     "id": 21,
+     "error": {
+      "code": -32602,
+      "message": "textDocument/hover"
+     }
+    }
+   ]
+  },
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "id": 22,
+    "method": "textDocument/definition",
+    "params": {}
+   },
+   "expect": [
+    {
+     "jsonrpc": "2.0",
+     "id": 22,
+     "error": {
+      "code": -32602,
+      "message": "textDocument/definition"
+     }
+    }
+   ]
+  },
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "id": 23,
+    "method": "textDocument/hover",
+    "params": {
+     "textDocument": {
+      "uri": "file:///never/opened.json"
+     },
+     "position": {
+      "line": 0,
+      "character": 0
+     }
+    }
+   },
+   "expect": [
+    {
+     "jsonrpc": "2.0",
+     "id": 23,
+     "result": null
+    }
+   ]
+  },
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "id": 24,
+    "method": "textDocument/completion",
+    "params": {
+     "textDocument": {
+      "uri": "file:///never/opened.json"
+     },
+     "position": {
+      "line": 0,
+      "character": 0
+     }
+    }
+   },
+   "expect": [
+    {
+     "jsonrpc": "2.0",
+     "id": 24,
+     "result": {
+      "isIncomplete": false,
+      "items": []
+     }
+    }
+   ]
+  },
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "id": 25,
+    "method": "textDocument/definition",
+    "params": {
+     "textDocument": {
+      "uri": "file:///never/opened.json"
+     },
+     "position": {
+      "line": 0,
+      "character": 0
+     }
+    }
+   },
+   "expect": [
+    {
+     "jsonrpc": "2.0",
+     "id": 25,
+     "result": []
+    }
+   ]
+  },
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "method": "textDocument/didOpen",
+    "params": {
+     "textDocument": {
+      "uri": "file:///project/script.json"
+     }
+    }
+   },
+   "expect": []
+  },
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "method": "textDocument/didChange",
+    "params": {
+     "textDocument": {
+      "uri": "file:///project/script.json"
+     },
+     "contentChanges": []
+    }
+   },
+   "expect": []
+  },
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "method": "textDocument/didClose",
+    "params": {
+     "textDocument": {
+      "uri": "file:///never/opened.json"
+     }
+    }
+   },
+   "expect": []
+  },
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "method": "textDocument/didSave",
+    "params": {
+     "textDocument": {
+      "uri": "file:///never/opened.json"
+     }
+    }
+   },
+   "expect": []
+  }
+ ]
+}

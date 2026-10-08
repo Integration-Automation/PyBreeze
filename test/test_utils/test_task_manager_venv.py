@@ -59,3 +59,42 @@ class TestRenewPathNoInterpreter:
 
         assert manager.renew_path() is True
         assert manager.compiler_path == "C:/python/python.exe"
+
+
+class TestWithNoInterpreterFound:
+    """A run asked for with no Python to run it starts nothing: renew_path has already said why."""
+
+    @pytest.fixture
+    def manager(self, qt_app, monkeypatch):
+        from pybreeze.extend.process_executor import python_task_process_manager as mod
+        from pybreeze.extend.process_executor.python_task_process_manager import TaskProcessManager
+        from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
+
+        monkeypatch.setattr(mod.subprocess, "Popen", lambda *a, **k: pytest.fail("a process was started"))
+        made = TaskProcessManager(CodeWindow())
+        made.renew_path = lambda: False
+        return made
+
+    def test_a_script_starts_nothing(self, manager):
+        manager.start_test_process("je_web_runner", '[["WR_quit"]]')
+
+        assert manager.process is None
+        assert not manager.timer.isActive()
+
+    def test_a_script_file_starts_nothing(self, manager, tmp_path):
+        manager.start_test_process_file("je_web_runner", str(tmp_path / "actions.json"))
+
+        assert manager.process is None
+        assert not manager.timer.isActive()
+
+
+def test_a_tick_after_the_run_is_gone_stops_the_timer(qt_app):
+    from pybreeze.extend.process_executor.python_task_process_manager import TaskProcessManager
+    from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
+
+    manager = TaskProcessManager(CodeWindow())
+    manager.timer.start(1000)
+
+    manager.pull_text()
+
+    assert not manager.timer.isActive()

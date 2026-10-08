@@ -5,6 +5,8 @@ import re
 from pathlib import Path
 
 from pybreeze.extend_multi_language.extend_english import pybreeze_english_word_dict
+from pybreeze.pybreeze_ui.menu.automation_menu.automation_menu_factory import RUN_ENTRY_LABEL_SUFFIXES
+from pybreeze.pybreeze_ui.menu.tools.tools_menu import TOOL_WORD_SUFFIXES
 
 PACKAGE = Path(__file__).resolve().parents[2] / "pybreeze"
 
@@ -31,11 +33,33 @@ def _source_outside_the_dictionaries() -> str:
     )
 
 
+def _a_tools_word(key: str, source: str) -> bool:
+    """Whether *key* is one of a tool's four words: ``_tool("<key>", "<words>", ...)`` in the tools table."""
+    for suffix in TOOL_WORD_SUFFIXES:
+        words = key.removeprefix("extend_tools_menu_").removesuffix(suffix)
+        if (key.startswith("extend_tools_menu_") and key.endswith(suffix)
+                and re.search(rf"_tool\(\s*[\"']\w+[\"'],\s*[\"']{re.escape(words)}[\"']", source)):
+            return True
+    return False
+
+
+def _used(key: str, source: str) -> bool:
+    """Whether *source* names *key*, or a menu builds it: package_run_actions(ui, "<prefix>", ...)."""
+    if re.search(rf"[\"']{re.escape(key)}[\"']", source):
+        return True
+    if _a_tools_word(key, source):
+        return True
+    return any(
+        key.endswith(suffix)
+        and re.search(rf"package_run_actions\([^)]*[\"']{re.escape(key.removesuffix(suffix))}[\"']", source)
+        for suffix in RUN_ENTRY_LABEL_SUFFIXES
+    )
+
+
 def test_no_word_is_left_unused():
     source = _source_outside_the_dictionaries()
     unused = [
         key for key in pybreeze_english_word_dict
-        if not key.startswith(BUILT_OR_READ_ELSEWHERE)
-        and not re.search(rf"[\"']{re.escape(key)}[\"']", source)
+        if not key.startswith(BUILT_OR_READ_ELSEWHERE) and not _used(key, source)
     ]
     assert unused == []

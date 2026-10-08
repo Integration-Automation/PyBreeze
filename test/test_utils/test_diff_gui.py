@@ -116,6 +116,29 @@ class TestALargeComparison:
         assert "+b" in widget.output_edit.toPlainText()
 
 
+    def test_closing_the_tab_mid_comparison_lets_it_run_out_unwaited(self, widget, monkeypatch):
+        import threading
+
+        from pybreeze.pybreeze_ui import thread_keeper
+        from pybreeze.pybreeze_ui.tools_gui import diff_gui
+
+        release = threading.Event()
+        real = diff_gui.compare_texts
+        monkeypatch.setattr(diff_gui, "compare_texts", lambda left, right: release.wait(10) and real(left, right))
+        widget.left_edit.setPlainText("a")
+        widget.right_edit.setPlainText("b")
+        widget.compare()
+        running = widget._compare_thread
+
+        widget.close()  # returns at once: the comparison is still waiting
+
+        assert running.isRunning()
+        assert thread_keeper.is_kept(running)
+        release.set()
+        assert running.wait(10_000)
+        QApplication.processEvents()
+        assert not thread_keeper.is_kept(running)
+
 class TestTheColours:
     @pytest.mark.parametrize(("line", "number", "key"), [
         ("--- expected", 0, None),

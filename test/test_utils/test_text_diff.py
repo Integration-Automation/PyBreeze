@@ -62,6 +62,113 @@ class TestDiffSummary:
         assert not summary.is_equal
 
 
+def _patched(left: list[str], diff: str) -> list[str]:
+    """*left* with *diff* applied, each hunk header checked against its lines.
+
+    The diff's lines are shown without their endings; every line here ends in
+    one, so no "No newline" note comes into it.
+    """
+    import re
+
+    result: list[str] = []
+    position = 0
+    for hunk in re.split(r"^(?=@@ )", "\n".join(diff.splitlines()[2:]), flags=re.MULTILINE):
+        if not hunk:
+            continue
+        header, *body = hunk.splitlines()
+        a, b, c, d = (int(value) if value else 1 for value in re.fullmatch(
+            r"@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@", header).groups())
+        start = a - 1 if b else a
+        result += left[position:start]
+        position = start
+        assert c == (len(result) + 1 if d else len(result))  # where the hunk starts on the right
+        kept = [line for line in body if line.startswith(" ")]
+        assert len(kept) + sum(line.startswith("-") for line in body) == b
+        assert len(kept) + sum(line.startswith("+") for line in body) == d
+        for line in body:
+            if line[0] in " -":
+                assert left[position] == line[1:]
+                position += 1
+            if line[0] in " +":
+                result.append(line[1:])
+    return result + left[position:]
+
+
+class TestTheDiffIsAPatch:
+    """Applied to the left text the diff gives the right one, its headers true to their lines."""
+
+    def test_on_texts_full_of_repeated_lines(self):
+        lines = st.lists(st.sampled_from(["a", "b", "c", "}", ""]), max_size=25)
+
+        @settings(max_examples=300, deadline=None)
+        @given(lines, lines)
+        def applies(left, right):
+            left_text = "".join(f"{line}\n" for line in left)
+            right_text = "".join(f"{line}\n" for line in right)
+            diff = unified_diff(left_text, right_text)
+
+            assert _patched(left, diff) == right
+            assert diff_summary(left_text, right_text).is_equal is (left == right)
+
+        applies()
+
+    def test_no_two_blocks_next_to_each_other_are_of_one_kind(self):
+        # As difflib's own: the head and tail set aside stand next to a change,
+        # never next to another equal block
+        from pybreeze.utils.diff_tools.text_diff import _TrimmedMatcher
+
+        lines = st.lists(st.sampled_from(["a", "b", "}"]), max_size=15)
+
+        @settings(max_examples=400, deadline=None)
+        @given(lines, lines)
+        def alternate(left, right):
+            codes = _TrimmedMatcher(left, right).get_opcodes()
+
+            assert all(first[0] != second[0] for first, second in zip(codes, codes[1:]))
+            assert codes[0][1:4:2] == (0, 0)
+            assert (codes[-1][2], codes[-1][4]) == (len(left), len(right))
+
+        alternate()
+
+    @pytest.mark.parametrize("lines", [[], ["a"], ["a", "b", "a"]])
+    def test_identical_texts_are_one_equal_block(self, lines):
+        from pybreeze.utils.diff_tools.text_diff import _TrimmedMatcher
+
+        assert _TrimmedMatcher(lines, list(lines)).get_opcodes() == [("equal", 0, len(lines), 0, len(lines))]
+
+    @pytest.mark.parametrize(("left", "right", "changed"), [
+        # _closest_match's own example: the first b taken as unchanged left a
+        # match of five changed lines, where difflib's changes three
+        ("bbaba", "bacb", 3),
+        # Two added and two removed against three and three: counted by their
+        # sum, not by anything else made of the two
+        ("aaaba", "abcac", 4),
+    ])
+    def test_the_match_that_changes_fewer_lines_is_kept(self, left, right, changed):
+        left_text = "".join(f"{line}\n" for line in left)
+        right_text = "".join(f"{line}\n" for line in right)
+
+        summary = diff_summary(left_text, right_text)
+
+        assert summary.added + summary.removed == changed
+        assert _patched(list(left), unified_diff(left_text, right_text)) == list(right)
+
+    def test_three_lines_of_context_as_diff_u_keeps(self):
+        left = "".join(f"line {number}\n" for number in range(1, 11))
+        right = left.replace("line 5\n", "changed\n")
+
+        assert unified_diff(left, right) == "\n".join([
+            "--- expected", "+++ actual", "@@ -2,7 +2,7 @@",
+            " line 2", " line 3", " line 4", "-line 5", "+changed", " line 6", " line 7", " line 8",
+        ])
+
+    def test_equal_texts_that_are_not_the_same_object_are_equal(self):
+        left = "a\n"
+        right = "".join(["a", "\n"])  # a text of its own, as one read from a box is
+
+        assert diff_summary(left, right).is_equal
+
+
 class TestSummaryMatchesTheShownDiff:
     def test_the_counts_are_the_diffs_own_plus_and_minus_lines(self):
         from hypothesis import given, settings

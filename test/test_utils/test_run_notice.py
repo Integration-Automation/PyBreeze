@@ -39,9 +39,10 @@ def test_every_notice_the_executors_use_is_in_both_dictionaries():
 
 
 def test_no_executor_writes_an_english_notice_of_its_own():
-    # They were f"[Error] ..." literals in append_output and the mail notice
+    # They were f"[Error] ..." literals in append_output and the mail notice;
+    # a plugin run's exit line was one until U-20260926-149
     executors = pathlib.Path(pybreeze.__file__).parent / "extend" / "process_executor"
-    literal = re.compile(r'f?"\[(?:Error|Run|Compile|Compile failed|Stopped|Mail)\]')
+    literal = re.compile(r'f?"\\?n?\[(?:Error|Run|Compile|Compile failed|Stopped|Mail|Process exited)\b')
     offenders = [path.name for path in executors.rglob("*.py") if literal.search(path.read_text(encoding="utf-8"))]
     assert not offenders
 

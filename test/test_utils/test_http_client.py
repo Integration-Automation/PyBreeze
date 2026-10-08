@@ -63,6 +63,26 @@ class TestReadCappedText:
         resp = FakeResponse(b"x" * 100)
         assert len(read_capped_text(resp, max_bytes=100)) == 100
 
+    def test_one_byte_over_the_cap_is_refused(self):
+        with pytest.raises(ResponseTooLargeError):
+            read_capped_text(FakeResponse(b"x" * 101), max_bytes=100)
+
+    def test_by_default_an_answer_may_take_five_minutes_as_the_guide_says(self):
+        # docs/source/*/ai_tools.rst: a request past five minutes is stopped
+        import inspect
+
+        from pybreeze.utils.network.http_client import DEFAULT_MAX_READ_SECONDS
+
+        assert DEFAULT_MAX_READ_SECONDS == 5 * 60
+        assert inspect.signature(read_capped_text).parameters["max_seconds"].default == DEFAULT_MAX_READ_SECONDS
+
+    def test_by_default_an_answer_of_a_few_megabytes_is_read_and_16_mb_is_the_cap(self):
+        from pybreeze.utils.network.http_client import DEFAULT_MAX_RESPONSE_BYTES
+
+        assert DEFAULT_MAX_RESPONSE_BYTES == 16 * 1024 * 1024
+        answer = b"x" * (3 * 1024 * 1024)
+        assert len(read_capped_text(FakeResponse(answer, chunk=65536))) == len(answer)
+
     def test_falls_back_to_default_encoding_when_none(self):
         resp = FakeResponse("héllo".encode("utf-8"), encoding=None)
         assert read_capped_text(resp, default_encoding="utf-8") == "héllo"
@@ -76,6 +96,10 @@ class TestReadCappedText:
 class TestTruncateForDisplay:
     def test_short_text_unchanged(self):
         assert truncate_for_display("short", limit=100) == "short"
+
+    def test_text_exactly_at_the_limit_is_unchanged_and_one_more_is_cut(self):
+        assert truncate_for_display("x" * 100, limit=100) == "x" * 100
+        assert truncate_for_display("x" * 101, limit=100).startswith("x" * 100 + "…")
 
     def test_long_text_truncated_with_marker(self):
         result = truncate_for_display("x" * 5000, limit=100)
@@ -98,7 +122,7 @@ class TestSucceeded:
     def test_a_2xx_is_an_answer(self, status):
         assert succeeded(SimpleNamespace(status_code=status))
 
-    @pytest.mark.parametrize("status", [199, 301, 302, 304, 400, 404, 500])
+    @pytest.mark.parametrize("status", [199, 300, 301, 302, 304, 400, 404, 500])
     def test_anything_else_is_not(self, status):
         # 3xx included, although requests calls it "ok"
         assert not succeeded(SimpleNamespace(status_code=status))
@@ -137,6 +161,30 @@ class TestHowLongAnAnswerMayTake:
         with pytest.raises(requests.exceptions.ReadTimeout):
             read_capped_text(resp, max_seconds=300)
         assert resp.closed
+
+    def test_reading_stops_at_the_first_chunk_past_the_deadline(self, monkeypatch):
+        # Not only the timeout at the end: the rest of a slow answer is not read.
+        # The clock never lands on the deadline itself, as a real one does not.
+        import requests
+
+        from pybreeze.utils.network import http_client
+
+        # From 1000, not 0: a deadline computed wrongly from the start time (1000 * 300,
+        # say) would be far off and never reached; from 0 it is 0 either way
+        clock = iter(range(1000, 20_000, 7))
+        monkeypatch.setattr(http_client.time, "monotonic", lambda: next(clock))
+        read: list = []
+
+        class Counted(FakeResponse):
+            def iter_content(self, chunk_size: int = 65536):
+                for piece in super().iter_content(chunk_size):
+                    read.append(piece)
+                    yield piece
+
+        with pytest.raises(requests.exceptions.ReadTimeout):
+            read_capped_text(Counted(b"x" * 100, chunk=1), max_seconds=300)
+        # 7 s a chunk: 300 s is passed around the 43rd of the 100
+        assert len(read) < 50
 
     def test_a_byte_now_and_then_inside_one_chunk_is_cut_off_too(self):
         # A server announcing a long body and sending a byte every so often held
@@ -239,3 +287,63 @@ class TestTheWatchdog:
 
         assert watchdog.fired
         watchdog.cancel()
+
+
+def _compressed(encoding: str, megabytes: int) -> bytes:
+    """*megabytes* of zeros compressed as HTTP's *encoding* names it, built a megabyte at a time."""
+    import zlib
+
+    block = bytes(1024 * 1024)
+    if encoding == "br":
+        brotli = pytest.importorskip("brotli")
+        compressor = brotli.Compressor(quality=5)
+        return b"".join(compressor.process(block) for _ in range(megabytes)) + compressor.finish()
+    compressor = zlib.compressobj(wbits=31 if encoding == "gzip" else 15)
+    return b"".join(compressor.compress(block) for _ in range(megabytes)) + compressor.flush()
+
+
+class TestACompressedBomb:
+    """The cap counts what the body decodes to, and decoding stops with it.
+
+    A body of a few hundred bytes can decode to hundreds of megabytes. urllib3
+    before 2.7.0 decoded all the rest of a Brotli body on the second read
+    (CVE-2026-44432); read chunk by chunk here, it did not, and this keeps it so.
+    """
+
+    @pytest.mark.parametrize("encoding", ["gzip", "deflate", "br"])
+    def test_it_is_refused_at_the_cap_without_being_decoded_whole(self, encoding):
+        import http.server
+        import threading
+        import tracemalloc
+
+        import requests
+
+        payload = _compressed(encoding, 128)
+
+        class Bomb(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Encoding", encoding)
+                self.send_header("Content-Length", str(len(payload)))
+                self.end_headers()
+                self.wfile.write(payload)
+
+            def log_message(self, *_args):
+                pass
+
+        server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Bomb)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        tracemalloc.start()
+        try:
+            response = requests.get(  # noqa: S113 — a loopback server this test started; timeout given
+                f"http://127.0.0.1:{server.server_port}/", stream=True, timeout=(5, 30))
+            with pytest.raises(ResponseTooLargeError):
+                read_capped_text(response, max_bytes=1024 * 1024)
+            _current, peak = tracemalloc.get_traced_memory()
+        finally:
+            tracemalloc.stop()
+            server.shutdown()
+            server.server_close()
+
+        assert peak < 32 * 1024 * 1024

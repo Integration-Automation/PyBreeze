@@ -21,6 +21,38 @@ class TestHead:
     def test_an_explicit_method_wins(self):
         assert parse_curl("curl -I -X OPTIONS https://x").method == "OPTIONS"
 
+    def test_an_explicit_get_wins_too(self):
+        # It could not be told from curl's default GET, and became HEAD
+        assert parse_curl("curl -I -X GET https://x").method == "GET"
+
+
+class TestAnExplicitGetWithABody:
+    """curl sends -X GET -d ... as a GET with a body; an Elasticsearch search is often written so."""
+
+    @pytest.mark.parametrize("command", [
+        "curl -X GET -d 'q=1' https://x",
+        "curl --request GET --data-raw 'q=1' https://x",
+        "curl -XGET -d 'q=1' https://x",
+        "curl -X get -d 'q=1' https://x",
+    ])
+    def test_it_stays_a_get(self, command):
+        request = parse_curl(command)
+
+        assert (request.method, request.body) == ("GET", "q=1")
+
+    def test_the_script_sends_a_get_with_the_body(self):
+        code = to_requests_code(parse_curl("curl -X GET -d 'q=1' https://x"))
+
+        assert 'requests.request("GET", url, data=data)' in code
+
+    @pytest.mark.parametrize(("command", "method"), [
+        ("curl -d 'q=1' https://x", "POST"),     # a body alone is still a POST
+        ("curl -I -d 'q=1' https://x", "HEAD"),  # and -I still a HEAD
+        ("curl -X PUT -d 'q=1' https://x", "PUT"),
+    ])
+    def test_without_an_explicit_get_nothing_changes(self, command, method):
+        assert parse_curl(command).method == method
+
 
 class TestOauth2Bearer:
     def test_it_becomes_the_authorization_header(self):
@@ -180,8 +212,9 @@ class TestACookieFile:
         from pybreeze.utils.curl_import.script_templates import to_apitestka_action_json
         from pybreeze.utils.exception.exceptions import CurlParseException
 
+        request = parse_curl("curl -b cookies.txt https://h/")
         with pytest.raises(CurlParseException):
-            to_apitestka_action_json(parse_curl("curl -b cookies.txt https://h/"))
+            to_apitestka_action_json(request)
 
     def test_an_empty_name_is_no_file_so_the_json_action_is_made(self):
         # curl -b '' reads no file: it only switches the cookie engine on
@@ -206,3 +239,29 @@ def test_get_data_is_added_after_a_query_kept_as_written():
     prepared = _what_requests_sends(to_requests_code(parse_curl("curl -G 'https://h/a?q=a%20b' -d k=v")))
 
     assert prepared.url == "https://h/a?q=a%20b&k=v"
+
+
+def test_a_form_field_without_an_equals_sign_is_left_out():
+    from pybreeze.utils.curl_import.curl_parser import CurlRequest
+
+    request = CurlRequest(form_fields=["just-a-name", "kept=1"])
+
+    assert form_parts(request) == ({"kept": "1"}, {})
+
+
+def test_a_form_string_without_an_equals_sign_is_left_out_too():
+    from pybreeze.utils.curl_import.curl_parser import CurlRequest
+
+    request = CurlRequest(form_strings=["just-a-name", "kept=@not-a-file"])
+
+    # --form-string takes the value as it is: an @ there names no file
+    assert form_parts(request) == ({"kept": "@not-a-file"}, {})
+
+
+def test_the_json_action_keeps_every_value_of_a_form_field_given_twice():
+    # As a dict the second -F tag replaced the first, and one tag was sent
+    from pybreeze.utils.curl_import.script_templates import to_apitestka_action
+
+    action = to_apitestka_action(parse_curl("curl https://x/api -F tag=a -F tag=b"))
+
+    assert action[1]["files"] == [["tag", [None, "a"]], ["tag", [None, "b"]]]

@@ -24,7 +24,7 @@ from PySide6.QtCore import QObject, Qt, QThread, Signal, Slot
 from PySide6.QtWidgets import QMessageBox
 
 from pybreeze.utils.app_dirs import pybreeze_data_dir
-from pybreeze.utils.exception.exception_tags import host_key_rejected_error
+from pybreeze.utils.exception.exception_tags import host_key_changed_error, host_key_rejected_error
 from pybreeze.utils.file_process.replace_file import replace_written
 from pybreeze.utils.logging.logger import pybreeze_logger
 from pybreeze.pybreeze_ui.plain_text import as_text
@@ -105,6 +105,34 @@ def _is_trusted_on_disk(hostname: str, key: paramiko.PKey) -> bool:
     return entry is not None and entry.get(key.get_name()) == key
 
 
+def changed_host_key_message(error: paramiko.BadHostKeyException) -> str:
+    """What a host showing another key than the one trusted means, and where to undo the trust.
+
+    paramiko's own text gave both keys whole in base64 and nothing to act on. The
+    trusted key is in PyBreeze's file or, when not there, in ``~/.ssh/known_hosts``.
+    """
+    trusted = error.expected_key
+    return host_key_changed_error.format(
+        hostname=error.hostname,
+        fingerprint=_fingerprint_sha256(error.key),
+        trusted=_fingerprint_sha256(trusted),
+        known_hosts=(_known_hosts_path() if _trusted_here(error.hostname, trusted)
+                     else Path.home() / ".ssh" / "known_hosts"),
+    )
+
+
+def _trusted_here(hostname: str, key: paramiko.PKey) -> bool:
+    """Whether PyBreeze's file trusts *key* for *hostname*, on any port.
+
+    The exception names the host without its port, and the file names one on
+    another port ``[host]:port``. The same key under another name (the server's
+    address, say) is not this host's line.
+    """
+    known = _read_known_hosts()
+    names = [name for name in known.keys() if name == hostname or name.startswith(f"[{hostname}]:")]
+    return any(known[name].get(key.get_name()) == key for name in names)
+
+
 def _store(hostname: str, key: paramiko.PKey) -> None:
     """Add a line for the key to the file as it is now.
 
@@ -181,8 +209,14 @@ class InteractiveHostKeyPolicy(paramiko.MissingHostKeyPolicy):
             if _is_trusted_on_disk(hostname, key):
                 client.get_host_keys().add(hostname, key_type, key)
                 return
-            if _declined_just_now(hostname, fingerprint) or not self._asked(title, message):
+            # Only a No the user gave starts the ten seconds: renewed by each
+            # refusal made from it, they slid on while Connect was clicked
+            # again, and the question never came back
+            declined = _declined_just_now(hostname, fingerprint)
+            if not declined and not self._asked(title, message):
                 _RECENT_DECLINES[(hostname, fingerprint)] = time.monotonic()
+                declined = True
+            if declined:
                 pybreeze_logger.warning(
                     "SSH host key for %s rejected by user (%s)", hostname, fingerprint
                 )

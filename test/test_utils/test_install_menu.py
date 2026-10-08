@@ -162,7 +162,8 @@ class TestInstallingPrthinker:
         install_menu.install_prthinker(object())
 
         (run,) = _runs(processes)
-        assert run[0] == "pip" and run[1][2].startswith(str(tmp_path))
+        assert run[0] == "pip"
+        assert run[1][2].startswith(str(tmp_path))
 
     def test_a_folder_that_is_not_its_source_is_not_saved(self, app, processes, monkeypatch, tmp_path):
         from PySide6.QtWidgets import QFileDialog, QMessageBox
@@ -183,3 +184,25 @@ class TestInstallingPrthinker:
         # A wrong pick used to be remembered, so every later click ran a pip that failed.
         assert saved == []
         assert _runs(processes) == []
+
+    def test_a_source_folder_picked_is_remembered_and_installed(self, app, processes, monkeypatch, tmp_path):
+        from PySide6.QtWidgets import QFileDialog
+
+        from pybreeze.pybreeze_ui.menu.install_menu.automation_menu import (
+            build_automation_install_menu as install_menu,
+        )
+
+        (tmp_path / "pyproject.toml").write_text(
+            '[project]\nname = "prthinker"\n', encoding="utf-8")
+        saved: list = []
+        monkeypatch.setattr(install_menu, "load_setting", lambda: {"source_path": "", "backend": "kept"})
+        monkeypatch.setattr(install_menu, "save_setting", saved.append)
+        monkeypatch.setattr(
+            QFileDialog, "getExistingDirectory", staticmethod(lambda *a, **k: str(tmp_path)))
+
+        install_menu.install_prthinker(None)
+
+        # Asked once: the next install takes it from the settings
+        assert saved == [{"source_path": str(tmp_path), "backend": "kept"}]
+        (run,) = _runs(processes)
+        assert run[1][2].startswith(str(tmp_path))

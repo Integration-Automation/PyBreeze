@@ -282,7 +282,7 @@ class TestMermaidImportEndToEnd:
         assert len(scene.get_all_nodes()) == 4
         assert len(scene.get_all_connections()) == 3
         texts = {n.text() for n in scene.get_all_nodes()}
-        assert {"DB", "B", "C", "Decision"} == texts
+        assert texts == {"DB", "B", "C", "Decision"}
         styles = sorted(c._style.name for c in scene.get_all_connections())
         assert styles == ["DOTTED", "DOTTED", "SOLID"]  # two dotted fan-out, one thick
 
@@ -480,10 +480,14 @@ class TestTheUndoScope:
         from pybreeze.pybreeze_ui.diagram_editor.diagram_items import DiagramNode, NodeShape
 
         scene = DiagramScene()
-        with pytest.raises(RuntimeError):
+
+        def half_done() -> None:
             with scene.undo_scope("Half done"):
                 scene.addItem(DiagramNode(x=0, y=0, text="A", shape=NodeShape.RECTANGLE))
                 raise RuntimeError("something in the middle went wrong")
+
+        with pytest.raises(RuntimeError):
+            half_done()
 
         assert scene._pending_undo_snapshot is None
         pushed = scene.undo_stack.count()

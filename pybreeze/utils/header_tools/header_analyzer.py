@@ -16,7 +16,7 @@ from __future__ import annotations
 import re
 import textwrap
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 # Severity of a finding: something to fix, or something merely worth knowing.
 LEVEL_WARNING = "warning"
@@ -38,6 +38,23 @@ _CONTENT_TYPE_OPTIONS_HEADER = "x-content-type-options"
 _CORS_ORIGIN_HEADER = "access-control-allow-origin"
 _CORS_CREDENTIALS_HEADER = "access-control-allow-credentials"
 _SET_COOKIE_HEADER = "set-cookie"
+_FRAME_OPTIONS_HEADER = "x-frame-options"
+_XSS_PROTECTION_HEADER = "x-xss-protection"
+# The CSP directive that obsoletes X-Frame-Options (OWASP HTTP Headers Cheat Sheet)
+_FRAME_ANCESTORS_DIRECTIVE = "frame-ancestors"
+# Headers current browsers ignore: X-XSS-Protection (the XSS auditors are gone),
+# Expect-CT and Public-Key-Pins (OWASP: do not use), P3P, and CSP's old
+# prefixed names. Feature-Policy is not here: Chrome still reads part of it.
+_DEPRECATED_HEADERS = frozenset({
+    _XSS_PROTECTION_HEADER, "expect-ct", "public-key-pins", "public-key-pins-report-only",
+    "p3p", "x-content-security-policy", "x-webkit-csp",
+})
+# X-XSS-Protection's value that turns the auditor off, which OWASP recommends
+_XSS_PROTECTION_OFF = "0"
+# Cookie name prefixes a browser holds to rules, lower-case (matched in any case)
+_SECURE_PREFIX = "__secure-"
+_HOST_PREFIX = "__host-"
+_SECURE_ATTRIBUTE = "secure"
 
 # An HSTS policy shorter than 180 days is too short to survive a browser restart
 # cycle and is below what the preload list accepts.
@@ -54,7 +71,7 @@ _REPEATABLE_HEADERS = frozenset({
 # is treated as a request, where the missing-response-header checks make no sense.
 _RESPONSE_ONLY_HEADERS = frozenset({
     _SET_COOKIE_HEADER, _CSP_HEADER, _HSTS_HEADER, _CONTENT_TYPE_OPTIONS_HEADER,
-    _CORS_ORIGIN_HEADER, "server", "x-powered-by", "x-frame-options", "referrer-policy",
+    _CORS_ORIGIN_HEADER, "server", "x-powered-by", _FRAME_OPTIONS_HEADER, "referrer-policy",
     "permissions-policy", "www-authenticate", "location", "etag", "last-modified",
     "age", "retry-after", "content-encoding",
 })
@@ -64,7 +81,7 @@ _RESPONSE_SECURITY_HEADERS: tuple[tuple[str, str, str], ...] = (
     (_HSTS_HEADER, "Strict-Transport-Security", "missing_hsts"),
     (_CSP_HEADER, "Content-Security-Policy", "missing_csp"),
     (_CONTENT_TYPE_OPTIONS_HEADER, "X-Content-Type-Options", "missing_content_type_options"),
-    ("x-frame-options", "X-Frame-Options", "missing_frame_options"),
+    (_FRAME_OPTIONS_HEADER, "X-Frame-Options", "missing_frame_options"),
     ("referrer-policy", "Referrer-Policy", "missing_referrer_policy"),
 )
 
@@ -83,10 +100,13 @@ class HeaderField:
 
     :param name: the header name, in its original casing
     :param value: the header value, stripped of surrounding whitespace
+    :param line: the line of the text it starts on, from 1, when it was read from text;
+        two fields of one name and value are equal wherever they stand
     """
 
     name: str
     value: str
+    line: int | None = field(default=None, compare=False)
 
 
 @dataclass(frozen=True)
@@ -98,12 +118,15 @@ class HeaderFinding:
     :param header: the header the finding is about
     :param detail: an untranslated fragment for the message (a value, a count,
         a cookie name); never a credential
+    :param line: the line of the text the finding is about, from 1; ``None``
+        for one about the block as a whole (a header that is missing)
     """
 
     code: str
     level: str
     header: str
     detail: str = ""
+    line: int | None = field(default=None, compare=False)
 
 
 @dataclass
@@ -137,7 +160,7 @@ def parse_headers(text: str) -> list[HeaderField]:
     # The block's common indent is not folding: a block copied from an indented
     # document read as one header folded over every line, and nothing was checked
     block = textwrap.dedent(text.replace("\r\n", "\n").replace("\r", "\n"))
-    for line in block.split("\n"):
+    for number, line in enumerate(block.split("\n"), start=1):
         if not line.strip():
             if fields:
                 break  # the blank line between the headers and the body
@@ -146,19 +169,20 @@ def parse_headers(text: str) -> list[HeaderField]:
             # A folded continuation: part of the value above, joined by one
             # space. Dropped, a CSP directive written on it went unchecked.
             last = fields[-1]
-            fields[-1] = HeaderField(name=last.name, value=f"{last.value} {line.strip()}".strip())
+            fields[-1] = HeaderField(
+                name=last.name, value=f"{last.value} {line.strip()}".strip(), line=last.line)
             continue
         match = HEADER_LINE_RE.match(line)
         if match is not None:
-            fields.append(HeaderField(name=match.group(1), value=match.group(2).strip()))
+            fields.append(HeaderField(name=match.group(1), value=match.group(2).strip(), line=number))
     return fields
 
 
-def _first_value(fields: list[HeaderField], name: str) -> str | None:
-    """Return the first value of the header called *name*, or ``None``."""
+def _first_field(fields: list[HeaderField], name: str) -> HeaderField | None:
+    """Return the first header called *name*, or ``None``."""
     for header in fields:
         if header.name.lower() == name:
-            return header.value
+            return header
     return None
 
 
@@ -171,13 +195,15 @@ def _duplicate_counts(fields: list[HeaderField]) -> dict[str, int]:
     return {name: count for name, count in counts.items() if count > 1}
 
 
-def _duplicate_findings(duplicates: dict[str, int]) -> list[HeaderFinding]:
-    """Report repeated headers, except the ones HTTP expects to repeat."""
-    return [
-        HeaderFinding("duplicate_header", LEVEL_WARNING, name, str(count))
-        for name, count in duplicates.items()
-        if name not in _REPEATABLE_HEADERS
-    ]
+def _duplicate_findings(fields: list[HeaderField], duplicates: dict[str, int]) -> list[HeaderFinding]:
+    """Report repeated headers, except the ones HTTP expects to repeat, each at its first repeat."""
+    findings: list[HeaderFinding] = []
+    for name, count in duplicates.items():
+        if name in _REPEATABLE_HEADERS:
+            continue
+        repeats = [header.line for header in fields if header.name.lower() == name][1:]
+        findings.append(HeaderFinding("duplicate_header", LEVEL_WARNING, name, str(count), line=repeats[0]))
+    return findings
 
 
 def _check_content_type_options(header: HeaderField) -> list[HeaderFinding]:
@@ -216,18 +242,55 @@ def _check_cors_origin(header: HeaderField) -> list[HeaderFinding]:
     return [HeaderFinding("cors_wildcard_origin", LEVEL_INFO, header.name)]
 
 
-def _check_set_cookie(header: HeaderField) -> list[HeaderFinding]:
-    """Check one ``Set-Cookie`` for the attributes that keep it from leaking."""
-    segments = header.value.split(";")
-    attributes = [segment.strip().lower() for segment in segments[1:]]
-    cookie_name = segments[0].split("=", 1)[0].strip() or header.name
+def _cookie_attributes(segments: list[str]) -> dict[str, str]:
+    """A ``Set-Cookie``'s attributes as lower-case name -> value (``""`` for a flag such as Secure)."""
+    attributes: dict[str, str] = {}
+    for segment in segments:
+        name, _, value = segment.partition("=")
+        attributes[name.strip().lower()] = value.strip()
+    return attributes
+
+
+def _prefix_rules_broken(cookie_name: str, attributes: dict[str, str]) -> bool:
+    """Whether *cookie_name*'s prefix asks for what *attributes* do not give.
+
+    RFC 6265bis (draft 22, 5.7), matching a prefix in any case: ``__Secure-``
+    needs Secure; ``__Host-`` needs Secure, ``Path=/`` and no Domain. A browser
+    ignores a cookie that breaks them.
+    """
+    lowered = cookie_name.lower()
+    secure = _SECURE_ATTRIBUTE in attributes
+    if lowered.startswith(_SECURE_PREFIX):
+        return not secure
+    if lowered.startswith(_HOST_PREFIX):
+        return not secure or attributes.get("path") != "/" or bool(attributes.get("domain"))
+    return False
+
+
+def _dropped_cookie_findings(header: HeaderField, cookie_name: str,
+                             attributes: dict[str, str]) -> list[HeaderFinding]:
+    """The reasons a browser ignores this cookie entirely: its prefix's rules, or SameSite=None without Secure."""
     findings: list[HeaderFinding] = []
-    if "secure" not in attributes:
+    if _prefix_rules_broken(cookie_name, attributes):
+        findings.append(HeaderFinding("cookie_prefix_rejected", LEVEL_WARNING, header.name, cookie_name))
+    if attributes.get("samesite", "").lower() == "none" and _SECURE_ATTRIBUTE not in attributes:
+        findings.append(
+            HeaderFinding("cookie_samesite_none_not_secure", LEVEL_WARNING, header.name, cookie_name))
+    return findings
+
+
+def _check_set_cookie(header: HeaderField) -> list[HeaderFinding]:
+    """Check one ``Set-Cookie`` for what makes a browser drop it, and for the attributes that keep it from leaking."""
+    segments = header.value.split(";")
+    attributes = _cookie_attributes(segments[1:])
+    cookie_name = segments[0].split("=", 1)[0].strip() or header.name
+    findings = _dropped_cookie_findings(header, cookie_name, attributes)
+    if _SECURE_ATTRIBUTE not in attributes:
         findings.append(HeaderFinding("cookie_not_secure", LEVEL_WARNING, header.name, cookie_name))
     if "httponly" not in attributes:
         findings.append(
             HeaderFinding("cookie_not_httponly", LEVEL_WARNING, header.name, cookie_name))
-    if not any(attribute.startswith("samesite") for attribute in attributes):
+    if "samesite" not in attributes:
         findings.append(HeaderFinding("cookie_no_samesite", LEVEL_INFO, header.name, cookie_name))
     return findings
 
@@ -248,7 +311,9 @@ def _check_banner(header: HeaderField) -> list[HeaderFinding]:
 
 
 def _check_deprecated(header: HeaderField) -> list[HeaderFinding]:
-    """Note a header browsers no longer honour."""
+    """Note a header browsers no longer honour, but not ``X-XSS-Protection: 0``, which OWASP recommends."""
+    if header.name.lower() == _XSS_PROTECTION_HEADER and header.value.strip() == _XSS_PROTECTION_OFF:
+        return []
     return [HeaderFinding("deprecated_header", LEVEL_INFO, header.name, header.value)]
 
 
@@ -263,7 +328,7 @@ _FIELD_CHECKS: dict[str, Callable[[HeaderField], list[HeaderFinding]]] = {
     "content-type": _check_content_type,
     "server": _check_banner,
     "x-powered-by": _check_banner,
-    "x-xss-protection": _check_deprecated,
+    **dict.fromkeys(_DEPRECATED_HEADERS, _check_deprecated),
 }
 
 
@@ -274,10 +339,10 @@ def _field_findings(fields: list[HeaderField]) -> list[HeaderFinding]:
         lowered = header.name.lower()
         check = _FIELD_CHECKS.get(lowered)
         if check is not None:
-            findings.extend(check(header))
+            findings.extend(replace(finding, line=header.line) for finding in check(header))
         if lowered in _SENSITIVE_HEADERS:
             # The value is a credential, so it is deliberately not reported.
-            findings.append(HeaderFinding("sensitive_header", LEVEL_INFO, header.name))
+            findings.append(HeaderFinding("sensitive_header", LEVEL_INFO, header.name, line=header.line))
     return findings
 
 
@@ -287,18 +352,38 @@ def _cors_credentials_findings(fields: list[HeaderField]) -> list[HeaderFinding]
     Browsers reject that combination outright, so a policy that sends both never
     worked the way its author expected.
     """
-    origin = _first_value(fields, _CORS_ORIGIN_HEADER)
-    credentials = _first_value(fields, _CORS_CREDENTIALS_HEADER)
-    if origin is None or origin.strip() != "*":
+    origin = _first_field(fields, _CORS_ORIGIN_HEADER)
+    credentials = _first_field(fields, _CORS_CREDENTIALS_HEADER)
+    if origin is None or origin.value.strip() != "*":
         return []
-    if credentials is None or credentials.strip().lower() != "true":
+    if credentials is None or credentials.value.strip().lower() != "true":
         return []
-    return [HeaderFinding("cors_wildcard_with_credentials", LEVEL_WARNING, _CORS_ORIGIN_HEADER)]
+    return [HeaderFinding(
+        "cors_wildcard_with_credentials", LEVEL_WARNING, _CORS_ORIGIN_HEADER, line=origin.line)]
+
+
+def _has_enforced_csp_directive(fields: list[HeaderField], directive: str) -> bool:
+    """Whether a ``Content-Security-Policy`` (not its Report-Only twin) has *directive*.
+
+    A directive is the first word of a ``;``-separated part; policies joined
+    into one field are ``,``-separated.
+    """
+    return any(
+        part.split()[0].lower() == directive
+        for header in fields if header.name.lower() == _CSP_HEADER
+        for part in re.split(r"[;,]", header.value) if part.split()
+    )
 
 
 def _missing_security_findings(fields: list[HeaderField]) -> list[HeaderFinding]:
-    """Report the response security headers that are not present."""
+    """Report the response security headers that are not present.
+
+    A CSP ``frame-ancestors`` directive stands for X-Frame-Options: it obsoletes
+    it in the browsers that read it, and it was still reported missing.
+    """
     present = {header.name.lower() for header in fields}
+    if _has_enforced_csp_directive(fields, _FRAME_ANCESTORS_DIRECTIVE):
+        present.add(_FRAME_OPTIONS_HEADER)
     return [
         HeaderFinding(code, LEVEL_INFO, canonical)
         for name, canonical, code in _RESPONSE_SECURITY_HEADERS if name not in present
@@ -322,7 +407,7 @@ def analyze_headers(text: str) -> HeaderAnalysis:
     duplicates = _duplicate_counts(fields)
     from_response = _looks_like_response(text, fields)
 
-    findings = _duplicate_findings(duplicates)
+    findings = _duplicate_findings(fields, duplicates)
     findings.extend(_field_findings(fields))
     findings.extend(_cors_credentials_findings(fields))
     if from_response:

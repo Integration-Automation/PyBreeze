@@ -10,7 +10,10 @@
 pytest
 pytest-cov
 hypothesis
-ruff
+# ruff 0.16 預設啟用的規則從 59 條變成 413 條，本專案沒有 [tool.ruff] 設定：釘住版本，各處檢查結果才一致。
+# ruff 0.16 enables 413 rules by default instead of 59, and this repository has no
+# [tool.ruff] table: pinned, `ruff check` says the same wherever it runs.
+ruff==0.15.22
 sphinx
 sphinx-rtd-theme
 build

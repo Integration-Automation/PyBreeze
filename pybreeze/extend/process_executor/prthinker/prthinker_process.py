@@ -9,7 +9,7 @@ same as the other automation tools, so the editor never waits on it.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 from je_editor import EditorWidget
 
@@ -17,7 +17,7 @@ from pybreeze.extend.prthinker_extend.prthinker_setting import (
     PRTHINKER_PACKAGE, environment_for, load_setting, review_file_arguments,
     review_pr_arguments
 )
-from pybreeze.extend.process_executor.process_executor_utils import build_task_process
+from pybreeze.extend.process_executor.process_executor_utils import DEFAULT_PROGRAM_BUFFER, build_task_process
 from pybreeze.utils.logging.logger import pybreeze_logger
 
 if TYPE_CHECKING:
@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 
 
 def review_current_file(
-        main_window: PyBreezeMainWindow, program_buffer: int = 1024000) -> bool:
+        main_window: PyBreezeMainWindow, program_buffer: int = DEFAULT_PROGRAM_BUFFER) -> bool:
     """
     審查目前分頁的檔案
     Review the file in the current tab.
@@ -51,7 +51,7 @@ def review_current_file(
 
 def review_pull_request(
         main_window: PyBreezeMainWindow, pull_request_number: int,
-        program_buffer: int = 1024000) -> bool:
+        program_buffer: int = DEFAULT_PROGRAM_BUFFER) -> bool:
     """
     審查一個 Pull Request
     Review one pull request.
@@ -70,7 +70,7 @@ def review_pull_request(
         setting, program_buffer)
 
 
-def _run(main_window: PyBreezeMainWindow, arguments: List[str],
+def _run(main_window: PyBreezeMainWindow, arguments: list[str],
          setting: dict, program_buffer: int) -> bool:
     """開一個執行視窗把 prthinker 跑起來 / Open a run window and start prthinker in it."""
     process = build_task_process(main_window, program_buffer=program_buffer)

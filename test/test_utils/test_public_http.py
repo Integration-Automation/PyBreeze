@@ -103,6 +103,12 @@ class _Listener:
         self._thread.join(5)
 
 
+def _read(opener: urllib.request.OpenerDirector, url: str) -> bytes:
+    """The whole body of *url*, fetched through *opener*."""
+    with opener.open(url, timeout=3) as response:
+        return response.read()
+
+
 def _session() -> requests.Session:
     """``public_session()``, ignoring any proxy this machine has set."""
     session = public_session()
@@ -203,6 +209,24 @@ class TestUrllibOpener:
 
         assert listener.received[0].startswith(b"GET http://rebind.test/i.png HTTP/1.1\r\n")
 
+    def test_a_proxy_is_used_whatever_its_name_sorts_against_the_hosts(self, dns, listener, monkeypatch):
+        # Found through the host names differing, not their order: a proxy named
+        # after the host (zproxy.test, rebind.test) must be used just the same
+        looked_up = socket.getaddrinfo
+
+        def with_the_proxy(host, port=None, *args, **kwargs):
+            if host == "zproxy.test":
+                return _answer("127.0.0.1", port)
+            return looked_up(host, port, *args, **kwargs)
+
+        monkeypatch.setattr(socket, "getaddrinfo", with_the_proxy)
+        opener = urllib.request.build_opener(
+            urllib.request.ProxyHandler({"http": f"http://zproxy.test:{listener.port}"}),
+            PublicHTTPHandler(), PublicHTTPSHandler())
+
+        with opener.open("http://rebind.test/i.png", timeout=3) as reply:
+            assert reply.read() == b"ok"
+
     def test_https_through_a_proxy_is_left_to_the_proxy(self, dns, listener):
         # The proxy connects to the name; there is no address here to pin
         opener = urllib.request.build_opener(
@@ -253,14 +277,16 @@ class TestEveryCheckedAddressIsTried:
 
     def test_requests_fails_when_no_address_answers(self, two_addresses, loopback_allowed):
         # After the last address the error is the connection's own, not a hang or a None raised
+        url = f"http://two.test:{self._closed_port()}/"
         with _session() as session, pytest.raises(requests.ConnectionError):
-            session.get(f"http://two.test:{self._closed_port()}/", timeout=(3, 3))
+            session.get(url, timeout=(3, 3))
 
     def test_urllib_fails_when_no_address_answers(self, two_addresses, loopback_allowed):
         opener = urllib.request.build_opener(PublicHTTPHandler())
+        url = f"http://two.test:{self._closed_port()}/"
 
         with pytest.raises(urllib.error.URLError):
-            opener.open(f"http://two.test:{self._closed_port()}/", timeout=3)
+            opener.open(url, timeout=3)
 
     def test_one_blocked_address_still_refuses_the_name(self, two_addresses, listener):
         with _session() as session, pytest.raises(requests.ConnectionError):
@@ -333,6 +359,16 @@ class TestTheDeadlineItself:
         deadline.watch(None)
         deadline.end()
 
+    def test_a_failure_before_the_time_is_up_is_reported_as_itself(self):
+        # Not as "took too long": the host refused, say, well inside the minutes allowed
+        from pybreeze.utils.network.public_http import overall_deadline
+
+        refused = requests.exceptions.ConnectionError("refused")
+        with pytest.raises(requests.exceptions.ConnectionError) as raised, overall_deadline(60):
+            raise refused
+
+        assert raised.value is refused
+
 
 class TestTheOverallDeadline:
     """A read timeout restarts with every byte; the deadline bounds the whole request."""
@@ -371,8 +407,9 @@ class TestTheOverallDeadline:
         server, thread = self._trickling_headers(stop)
         started = time.monotonic()
         try:
+            url = f"http://service.test:{server.getsockname()[1]}/"
             with pytest.raises(requests.exceptions.ReadTimeout), overall_deadline(1), _session() as session:
-                session.get(f"http://service.test:{server.getsockname()[1]}/", timeout=(3, 3), stream=True)
+                session.get(url, timeout=(3, 3), stream=True)
             assert time.monotonic() - started < 4
         finally:
             stop.set()
@@ -398,8 +435,9 @@ class TestTheOverallDeadline:
         opener = urllib.request.build_opener(PublicHTTPHandler())
         started = time.monotonic()
         try:
+            url = f"http://service.test:{server.getsockname()[1]}/"
             with pytest.raises(requests.exceptions.ReadTimeout), overall_deadline(1):
-                opener.open(f"http://service.test:{server.getsockname()[1]}/", timeout=3).read()
+                _read(opener, url)
             assert time.monotonic() - started < 4
         finally:
             stop.set()
@@ -433,8 +471,9 @@ class TestTheOverallDeadline:
         opener = urllib.request.build_opener(PublicHTTPHandler())
         started = time.monotonic()
         try:
+            url = f"http://service.test:{server.getsockname()[1]}/"
             with pytest.raises(requests.exceptions.ReadTimeout), overall_deadline(1):
-                opener.open(f"http://service.test:{server.getsockname()[1]}/", timeout=3).read()
+                _read(opener, url)
             assert time.monotonic() - started < 4
         finally:
             stop.set()

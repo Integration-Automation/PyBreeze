@@ -22,7 +22,7 @@ panel) from the **Dock** menu:
    * - Diagram editor
      - **Tools > Diagram Editor Tab**
      - **Dock > Diagram Editor Dock**
-   * - HTTP / API utilities
+   * - HTTP / API utilities, JSON editor, automation keywords, MCP client, report viewer
      - **Tools >** *<tool>* **Tab**
      - **Dock >** *<tool>* **Dock**
 
@@ -60,7 +60,7 @@ details.
 HTTP and API Utilities
 ----------------------
 
-Thirteen tools, each opened from **Tools** as a tab or from **Dock** as a dock. None of
+Fourteen tools, each opened from **Tools** as a tab or from **Dock** as a dock. None of
 them sends a request: they parse, convert and generate text. In a tool with one main
 button, **Ctrl+Enter** anywhere in it presses that button (its text boxes take Enter as a
 new line); in Query / JSON and the URL parser / builder, which convert both ways, it goes
@@ -74,8 +74,10 @@ the way the input reads: from JSON when the input is a JSON object.
      - Description
    * - **cURL Import**
      - Turns a ``curl`` command copied from a browser's dev tools into a Python
-       ``requests`` script, a pytest test, APITestka (Python or a JSON action list) or a
-       LoadDensity Locust load test.
+       ``requests`` script, a pytest test, APITestka (Python or a JSON action list), a
+       LoadDensity Locust load test, or a WebRunner action list that visits the URL in a
+       browser. A line under the generated code says what the chosen target leaves out
+       of the request. See :doc:`tutorials/t06_curl_har_to_tests`.
    * - **HAR Import**
      - Lists the requests in a browser's HAR export and turns the ones selected into one
        test script, with the same targets as cURL Import.
@@ -100,12 +102,52 @@ the way the input reads: from JSON when the input is a JSON object.
      - A unified diff of two texts, with an added / removed summary.
    * - **JSON Format**
      - Pretty-prints or minifies JSON.
+   * - **JSON Editor**
+     - Edits a JSON file as a tree and as text, both views of one document: add, delete,
+       move, rename and retype in the tree; type in the text; one Undo history for both;
+       unsaved changes are asked about. A file is written back with its own indent. See
+       :doc:`tutorials/t08_visual_json_editing`.
    * - **HTTP Header Analyzer**
      - Reports repeated headers, cookie flags, CORS, HSTS and CSP weaknesses, and missing
        security headers. Headers carrying credentials are reported by name only.
+       **Export findings as SARIF** saves them as SARIF 2.1.0; the same analysis runs
+       without the IDE as ``python -m pybreeze.utils.header_tools.header_sarif``. See
+       :doc:`tutorials/t07_header_sarif_ci`.
    * - **Response Inspector**
      - Reads a pasted HTTP response: status, headers, a JSON body and any JWT in it, each
        one a click away from its own tool.
+
+Automation Keywords
+-------------------
+
+**Automation Keywords Tab** lists the keywords a WebRunner, AutoControl or LoadDensity
+action script may use, as the installed package gives them: each framework's version,
+every keyword with its parameters and documentation, a filter, and **Copy as Action**.
+The keywords are read for the interpreter that runs your scripts; when a framework gives
+none, the tab says why. The editor completes and checks ``.json`` action scripts from
+the same keywords. See :doc:`tutorials/t09_keywords_language_service`.
+
+MCP Client
+----------
+
+**MCP Client Tab** connects to Model Context Protocol servers started as local programs.
+Servers are set up once (a name, the command one argument a line, environment
+variables, a time limit) and kept in ``~/.pybreeze/mcp_servers.json``. The tab lists a
+connected server's tools, resources and prompts. A tool call is asked about before it
+is sent, with its arguments, unless that tool of that server was trusted; a server
+named by a project's ``.mcp.json`` is never started without being asked about. Calls
+can be cancelled, and the session's calls are exported or opened in the report viewer.
+See :doc:`tutorials/t10_mcp_client`.
+
+Report Viewer
+-------------
+
+**Report Viewer Tab** opens runs into one view: the automation packages' own reports
+(``<name>_success.json`` / ``<name>_failure.json`` or the ``.xml`` pair), JUnit XML, and
+reports exported from PyBreeze. Runs are shown as a tree and filtered together by
+ending, time taken, package and text; the selected result shows its details, output,
+attachments and the package's own record. A run is exported as JSON, JUnit XML or an
+HTML page. See :doc:`tutorials/t11_reports_ci`.
 
 Diagram Editor
 --------------
@@ -147,7 +189,7 @@ The second row starts with the file buttons:
    * - Button
      - Description
    * - **New**
-     - Clears the canvas, asking first when anything is on it.
+     - Clears the canvas, asking first when it has changes that are not saved.
    * - **Open**
      - Loads a previously saved ``.diagram.json`` file, asking first when the diagram
        has changes that are not saved. A file that is not a diagram changes nothing.
@@ -158,8 +200,11 @@ The second row starts with the file buttons:
      - Saves the diagram as a new ``.diagram.json`` file.
    * - **Import**
      - Pastes Mermaid ``flowchart`` / ``graph`` source and converts it to editable,
-       automatically laid out nodes and connections. It replaces the canvas as one undo
-       step.
+       automatically laid out nodes and connections. Labels read as Mermaid shows them:
+       ``<br>`` starts a new line, an entity code (``#quot;``, ``#9829;``) is its
+       character, and a markdown string (``"`**bold**`"``) is its text, plain, over as
+       many lines as it runs. Mermaid 11's named shapes (``A@{ shape: circle }``) become the nearest
+       of the four node shapes. It replaces the canvas as one undo step.
    * - **PNG** / **SVG**
      - Exports the canvas to a raster (PNG) or vector (SVG) image.
 

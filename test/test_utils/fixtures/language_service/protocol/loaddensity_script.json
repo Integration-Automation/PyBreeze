@@ -1,0 +1,151 @@
+{
+ "about": "A LoadDensity script: a keyword that takes any name, a misspelt parameter and keyword.",
+ "frameworks": [
+  "je_load_density"
+ ],
+ "exchange": [
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "method": "textDocument/didOpen",
+    "params": {
+     "textDocument": {
+      "uri": "file:///project/script.json",
+      "languageId": "json",
+      "version": 1,
+      "text": "[\n  [\"LD_start_test\", {\"user_detail_dict\": {\"user\": \"fast_http_user\"}, \"user_count\": 10, \"anything\": 1}],\n  [\"LD_generate_html_report\", {\"html_nam\": \"report\"}],\n  [\"LD_generate_jsn\"]\n]\n"
+     }
+    }
+   },
+   "expect": [
+    {
+     "jsonrpc": "2.0",
+     "method": "textDocument/publishDiagnostics",
+     "params": {
+      "uri": "file:///project/script.json",
+      "version": 1,
+      "diagnostics": [
+       {
+        "range": {
+         "start": {
+          "line": 2,
+          "character": 31
+         },
+         "end": {
+          "line": 2,
+          "character": 41
+         }
+        },
+        "severity": 1,
+        "code": "unknown-parameter",
+        "source": "je_load_density",
+        "message": "LD_generate_html_report has no parameter named html_nam. Did you mean html_name?"
+       },
+       {
+        "range": {
+         "start": {
+          "line": 3,
+          "character": 3
+         },
+         "end": {
+          "line": 3,
+          "character": 20
+         }
+        },
+        "severity": 1,
+        "code": "unknown-keyword",
+        "source": "je_load_density",
+        "message": "LD_generate_jsn is not a keyword of LoadDensity 0.0.64. Did you mean LD_generate_json?"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "id": 14,
+    "method": "textDocument/completion",
+    "params": {
+     "textDocument": {
+      "uri": "file:///project/script.json"
+     },
+     "position": {
+      "line": 1,
+      "character": 21
+     }
+    }
+   },
+   "expect": [
+    {
+     "jsonrpc": "2.0",
+     "id": 14,
+     "result": {
+      "isIncomplete": false,
+      "items": [
+       {
+        "label": "\"user_detail_dict\"",
+        "detail": "user_detail_dict: Dict[str, Any]",
+        "documentation": ""
+       },
+       {
+        "label": "\"spawn_rate\"",
+        "detail": "spawn_rate: int = 10",
+        "documentation": ""
+       },
+       {
+        "label": "\"test_time\"",
+        "detail": "test_time: Optional[int] = 60",
+        "documentation": ""
+       },
+       {
+        "label": "\"web_ui_dict\"",
+        "detail": "web_ui_dict: Optional[Dict[str, Any]] = None",
+        "documentation": ""
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "id": 15,
+    "method": "textDocument/hover",
+    "params": {
+     "textDocument": {
+      "uri": "file:///project/script.json"
+     },
+     "position": {
+      "line": 1,
+      "character": 8
+     }
+    }
+   },
+   "expect": [
+    {
+     "jsonrpc": "2.0",
+     "id": 15,
+     "result": {
+      "contents": {
+       "kind": "plaintext",
+       "value": "LD_start_test(user_detail_dict: Dict[str, Any], user_count: int = 50, spawn_rate: int = 10, test_time: Optional[int] = 60, web_ui_dict: Optional[Dict[str, Any]] = None, **kwargs)\n\n啟動壓力測試\nStart load test\n"
+      },
+      "range": {
+       "start": {
+        "line": 1,
+        "character": 3
+       },
+       "end": {
+        "line": 1,
+        "character": 18
+       }
+      }
+     }
+    }
+   ]
+  }
+ ]
+}

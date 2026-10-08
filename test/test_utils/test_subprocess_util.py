@@ -50,6 +50,20 @@ class TestWhatTheIdeSetsForItself:
 
         assert child_environment()["PYBREEZE_TEST_IDE_ONLY"] == "1"
 
+    def test_it_is_known_by_its_value_not_by_the_object(self, monkeypatch):
+        # The same text built anew, as one inherited from a parent process would be
+        monkeypatch.setenv("PYBREEZE_TEST_IDE_ONLY", "".join(list(IDE_ONLY)))
+
+        assert "PYBREEZE_TEST_IDE_ONLY" not in child_environment()
+
+    # Values sorting before and after the marker
+    @pytest.mark.parametrize("value", ["0", "zzz"])
+    def test_any_other_value_is_passed_on(self, monkeypatch, value):
+        monkeypatch.setenv("PYBREEZE_TEST_IDE_ONLY", value)
+
+        assert child_environment()["PYBREEZE_TEST_IDE_ONLY"] == value
+
+
     def test_a_real_child_runs_without_it(self, monkeypatch):
         self._set_for_the_ide(monkeypatch, "PYBREEZE_TEST_IDE_ONLY")
 
@@ -116,6 +130,32 @@ class TestStoppingATree:
 
         assert heartbeat.read_text(encoding="utf-8") == last, "the grandchild is still running"
 
+    def test_on_windows_taskkill_is_run_as_a_list_without_a_shell(self, monkeypatch):
+        # A fixed argument list, no shell, no window, its output kept, bounded in time
+        from pybreeze.utils import subprocess_util
+
+        monkeypatch.setattr(subprocess_util.sys, "platform", "win32")
+        monkeypatch.setenv("SystemRoot", "C:\\Windows")
+        calls: list = []
+        monkeypatch.setattr(subprocess_util.subprocess, "run", lambda args, **options: calls.append((args, options)))
+
+        class Running:
+            pid = 4242
+
+            def poll(self):
+                return None if not calls else 0
+
+            def terminate(self):
+                raise AssertionError("taskkill ended it")
+
+        subprocess_util.stop_tree(Running())
+
+        ((args, options),) = calls
+        assert args[1:] == ["/T", "/F", "/PID", "4242"]
+        assert args[0].lower().endswith("taskkill.exe")
+        assert {name: options[name] for name in ("capture_output", "timeout", "check", "shell")} == {
+            "capture_output": True, "timeout": 10, "check": False, "shell": False}
+
     def test_a_process_that_has_ended_is_left_alone(self, monkeypatch):
         from pybreeze.utils import subprocess_util
 
@@ -154,3 +194,55 @@ class TestStoppingATree:
         subprocess_util.stop_tree(child)
 
         assert child.terminated
+
+
+class TestOnPosix:
+    """What the POSIX branches do, run on any platform with ``sys.platform`` stood in for (CI is Windows)."""
+
+    @pytest.fixture
+    def posix(self, monkeypatch):
+        from types import SimpleNamespace
+
+        from pybreeze.utils import subprocess_util
+
+        monkeypatch.setattr(subprocess_util, "sys", SimpleNamespace(platform="linux"))
+        return subprocess_util
+
+    def test_a_child_gets_no_window_flag_and_a_session_of_its_own(self, posix):
+        assert posix.no_window_creationflags() == 0
+        assert posix.own_session_options() == {"start_new_session": True}
+
+    def test_stopping_a_tree_signals_the_process_group(self, posix, monkeypatch):
+        import signal
+
+        signalled: list = []
+
+        class Running:
+            pid = 4242
+
+            def poll(self):
+                return 0 if signalled else None
+
+            def terminate(self):
+                raise AssertionError("the group was signalled; the child needs no terminate")
+
+        monkeypatch.setattr(posix.os, "killpg", lambda pid, sig: signalled.append((pid, sig)), raising=False)
+        monkeypatch.setattr(posix.subprocess, "run", lambda *a, **k: pytest.fail("taskkill was run"))
+
+        posix.stop_tree(Running())
+
+        assert signalled == [(4242, signal.SIGTERM)]
+
+
+class TestOwnSessionOptions:
+    """A child gets a process group of its own on POSIX, for stop_tree; Windows needs none."""
+
+    @pytest.mark.parametrize(("platform", "options"), [
+        ("win32", {}), ("linux", {"start_new_session": True}), ("darwin", {"start_new_session": True}),
+    ])
+    def test_by_platform(self, monkeypatch, platform, options):
+        from pybreeze.utils import subprocess_util
+
+        monkeypatch.setattr(subprocess_util.sys, "platform", platform)
+
+        assert subprocess_util.own_session_options() == options

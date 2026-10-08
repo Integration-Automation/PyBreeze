@@ -119,6 +119,32 @@ class TestAPatternThatNeverFinishes:
         QApplication.processEvents()
         assert widget.test_button.isEnabled()
 
+    def test_pressing_test_again_while_it_runs_starts_nothing_more(self, widget, monkeypatch):
+        import threading
+
+        from pybreeze.pybreeze_ui.tools_gui import regex_gui
+
+        answering = threading.Event()
+        calls: list = []
+
+        def slow(*_args):
+            calls.append("run")
+            answering.wait(10)
+            return []
+
+        monkeypatch.setattr(regex_gui, "find_matches_bounded", slow)
+        widget.pattern_edit.setText("a")
+        widget.text_edit.setPlainText("a")
+        widget.test()
+        first = widget._match_thread
+
+        widget.test()
+
+        assert widget._match_thread is first
+        answering.set()
+        assert first.wait(10_000)
+        assert calls == ["run"]
+
     def test_catastrophic_backtracking_is_stopped_and_reported(self, widget, monkeypatch):
         from pybreeze.utils.regex_tools import regex_tester
 

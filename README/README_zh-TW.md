@@ -74,9 +74,11 @@ PyBreeze 開箱即用，涵蓋自動化測試的完整範疇：
 
 - **自動化關鍵字集** — 在 JEditor 的語言支援之上，`AT_*`／GUI／Web／Load 關鍵字集註冊給 `.json`，TestPioneer 的結構描述註冊給 `.yml` 與 `.yaml`。JEditor 目前還不會為它們上色：它用自己針對這些副檔名的規則高亮，不會用到註冊的關鍵字
 - **程式碼編輯器** — 以 [JEditor](https://github.com/Integration-Automation/JEDITOR) 為基礎：分頁、專案樹、格式檢查、除錯器、終端機與 git 用戶端面板
-- **腳本執行** — 單一或批次執行，每次執行都有自己的視窗與 Stop 按鈕（Run ▸ Stop All Program 會全部停止）；動作檔以路徑傳入，而目前分頁中的腳本若超過 Windows 命令列長度上限（約 32 KB），會改用暫存檔傳遞
+- **導覽面板** — 左側的停駐窗格把選單裡的功能列成一棵樹（自動化、工具、設定）：在搜尋框輸入名稱就能找到工具或指令，按 Enter 或按兩下即可開啟。Dock 選單裡的 **導覽** 可以顯示或隱藏它，刻意關掉的面板下次啟動時仍然是關著的
+- **小螢幕也放得下** — 工具分頁需要的寬度不會超過 60 個字高：一列按鈕放不下時會換到下一行，而不是把視窗撐得比螢幕還寬
+- **腳本執行** — 單一或批次執行，每次執行都有自己的視窗與 Stop 按鈕（Run ▸ Stop All Program 會全部停止），執行中關閉視窗時會先問要不要停止；動作檔以路徑傳入，而目前分頁中的腳本若超過 Windows 命令列長度上限（約 32 KB），會改用暫存檔傳遞
 - **報告產生** — 執行後產生 HTML／JSON／XML 報告，並可選擇以電子郵件寄送
-- **整合 JupyterLab** — 以分頁方式啟動，使用與執行腳本相同的直譯器；那裡沒有 JupyterLab 時會自動安裝
+- **整合 JupyterLab** — 以分頁方式啟動，使用與執行腳本相同的直譯器；那裡沒有 JupyterLab 時會自動安裝，JupyterLab 或它的伺服器是有已知漏洞的版本時（JupyterLab 4.5.10 之前或 4.6.0–4.6.1、jupyter_server 2.20.0 之前）會先升級；分頁只停在 lab 上，連到其他地方的連結會用你的瀏覽器開啟
 - **虛擬環境感知** — 執行時使用在 **Python Env** 選擇的直譯器；沒有選擇時，自動偵測並使用工作資料夾中的 `venv/` 或 `.venv/`，都沒有時則以 IDE 本身使用的直譯器執行
 
 ---
@@ -87,13 +89,13 @@ PyBreeze 開箱即用，涵蓋自動化測試的完整範疇：
 
 ### cURL 匯入 — 複製下來的請求變成可執行的腳本
 
-從瀏覽器開發者工具貼上一段 `curl` 指令，再選擇輸出目標。解析器能處理方法、URL、標頭、本文、Basic 驗證、`-G` 查詢參數、`-F` multipart 欄位（上傳檔案會變成 `files=open(...)`）、`--json` 簡寫、`-d @file` 本文，以及多行接續。重複的 `-H` 值會照 HTTP 的方式合併（cookie 用 `; `，其他用 `, `），而不是默默只留下最後一個。過程中不會執行任何東西——純粹是解析。
+從瀏覽器開發者工具貼上一段 `curl` 指令，再選擇輸出目標。解析器能處理方法、URL、標頭、本文、Basic 驗證、`-G` 與 `--url-query` 查詢參數、`-F` multipart 欄位（上傳檔案會變成 `files=open(...)`）、`--json` 簡寫、`-d @file` 本文，以及多行接續。其他需要參數的 curl 選項也會把參數吃掉，不會被誤當成 URL；`--expand-` 選項照它展開的那個選項讀，其中的 `{{變數}}` 照原樣保留。重複的 `-H` 值會照 HTTP 的方式合併（cookie 用 `; `，其他用 `, `），而不是默默只留下最後一個。瀏覽器送出、接受 `br`、`zstd` 或 `*` 的 `Accept-Encoding` 不會寫進產生的程式碼，讓 `requests` 只要求它解得開的編碼（照抄的話，伺服器以 zstd 回應時，只裝了 `requests` 的環境會印出壓縮後的位元組）。方法和 curl 實際送出的一樣：有本文就是 POST、`-I` 是 HEAD，除非 `-X` 指定了方法（`-X GET -d ...` 仍是帶本文的 GET）。過程中不會執行任何東西——純粹是解析。
 
 | 目標：pytest | 目標：APITestka JSON 動作 |
 |---|---|
 | ![cURL 匯入為 pytest](../images/tool_curl_import.png) | ![cURL 匯入為 APITestka 動作](../images/tool_curl_import_action.png) |
 
-輸出目標：Python `requests`、可直接執行的 **pytest** 測試、**APITestka**（Python，或可由 `execute_files` 直接執行的 `[["AT_test_api_method", {...}]]` 動作清單），以及 **LoadDensity** 的 Locust 負載測試。輸出可以複製、直接開到編輯器分頁，或以正確的副檔名儲存。只要按一下，也能把解析出的 URL 交給 URL 解析／建構器，或把標頭交給標頭分析器。
+輸出目標：Python `requests`、可直接執行的 **pytest** 測試、**APITestka**（Python，或可由 `execute_files` 直接執行的 `[["AT_test_api_method", {...}]]` 動作清單）、**LoadDensity** 的 Locust 負載測試，以及在瀏覽器裡造訪該網址的 **WebRunner** 動作清單。目標沒辦法送出請求裡的全部內容時，輸出下方會說少了什麼（「這個目標不會送出：標頭 · 本文」）：LoadDensity 只照方法與 URL 發送，瀏覽器造訪只保留 URL、cookie 與時間限制。輸出可以複製、直接開到編輯器分頁，或以正確的副檔名儲存。只要按一下，也能把解析出的 URL 交給 URL 解析／建構器，或把標頭交給標頭分析器。
 
 ### HAR 匯入 — 整段工作階段變成測試套件
 
@@ -113,7 +115,15 @@ PyBreeze 開箱即用，涵蓋自動化測試的完整範疇：
 
 ![標頭分析器](../images/tool_header_analyzer.png)
 
-會回報：送出不只一次的名稱、缺少 `Secure`／`HttpOnly`／`SameSite` 的 `Set-Cookie` 項目、萬用字元 CORS（以及瀏覽器會直接拒絕的「萬用字元加憑證」組合）、短到撐不過重新啟動的 HSTS `max-age`、CSP 的 `unsafe-inline`／`unsafe-eval`、產品版本標語、已淘汰的標頭，以及——針對回應——缺少的安全標頭。攜帶憑證的標頭**只回報名稱**；它們的值絕不會進入報告。
+會回報：送出不只一次的名稱、缺少 `Secure`／`HttpOnly`／`SameSite` 的 `Set-Cookie` 項目，以及瀏覽器會直接丟棄的 cookie（不符合 `__Secure-`／`__Host-` 名稱規則的、`SameSite=None` 卻沒有 `Secure` 的）、萬用字元 CORS（以及瀏覽器會直接拒絕的「萬用字元加憑證」組合）、短到撐不過重新啟動的 HSTS `max-age`、CSP 的 `unsafe-inline`／`unsafe-eval`、產品版本標語、現行瀏覽器已忽略的標頭（值不是 `0` 的 `X-XSS-Protection`、`Expect-CT`、`Public-Key-Pins`、`P3P`、舊的 CSP 前綴名稱），以及——針對回應——缺少的安全標頭；CSP 有 `frame-ancestors` 指令時視同有 `X-Frame-Options`，和 OWASP HTTP Headers Cheat Sheet 的建議一致。攜帶憑證的標頭**只回報名稱**；它們的值絕不會進入報告。
+
+**將發現匯出為 SARIF** 會把分析結果存成 SARIF 2.1.0 檔，GitHub Code Scanning 與其他資安工具都讀得懂：每一項發現附上規則、等級、行號、處理方式與參考連結。同一個匯出功能不需要 IDE 也能執行，可用在 CI：
+
+```bash
+python -m pybreeze.utils.header_tools.header_sarif response-headers.txt -o headers.sarif
+```
+
+`-` 表示從標準輸入讀取標頭，不給 `-o` 就寫到標準輸出，`--fail-on-warning` 在有警告等級的發現時以 1 結束。報告只寫規則與行號，不引用任何標頭的值。
 
 ### 文字比對
 
@@ -121,20 +131,73 @@ PyBreeze 開箱即用，涵蓋自動化測試的完整範疇：
 
 比較兩段內容——例如預期與實際的 API 回應——得到 unified diff（新增與刪除的行以主題的顏色標示），以及一行新增／刪除摘要。
 
+### 報告檢視器
+
+**Tools → Report Viewer Tab** 把一次執行產生的結果開進同一個檢視，不論是誰執行的。
+
+- **讀取**各自動化套件自己的報告（APITestka、AutoControl、WebRunner、LoadDensity：`<name>_success.json`／`<name>_failure.json` 這一對，或 `.xml` 那一對；開啟其中一個，另一個會一起讀進來）、**JUnit XML**（pytest 的 `--junitxml`，以及大多數其他執行器），以及從 PyBreeze 匯出的報告。檔案是什麼，由它的內容判斷。
+- **顯示**每次執行的樹狀結構，以及每個結果如何結束、花了多久；選取的結果會顯示詳細資料與錯誤、它的輸出、它留下的東西，以及套件自己對它的紀錄（原樣保留）。
+- **篩選**同時套用到所有開啟的執行：依結果（通過、失敗、錯誤、略過）、依花費時間、依套件，以及依名稱或錯誤裡的文字。樹狀結構下方的一行會統計目前顯示的內容。
+- **匯出**一次執行為執行報告（JSON）、給 CI 服務測試摘要用的 **JUnit XML**，或給人看的單一檔案 **HTML 頁面**（之後可以再從這裡開啟）。
+- **MCP 用戶端**的呼叫紀錄頁可以用**在報告檢視器開啟**把這次工作階段開到這裡。
+
+報告是從別處來的檔案：它只被當成資料讀取（宣告了文件類型的 XML 會被拒絕），裡面的一切都以文字顯示，它提到的路徑只會列出來，不會被開啟。
+
+### MCP 用戶端
+
+**Tools → MCP Client Tab** 可以連線到 [Model Context Protocol](https://modelcontextprotocol.io) 伺服器，並顯示它提供的東西：可以呼叫的**工具**、可以讀取的**資源**、可以填入的**提示**。
+
+- **伺服器**設定一次就會替你保存（`~/.pybreeze/mcp_servers.json`，只有你自己能讀）：名稱、啟動伺服器的指令（每行一個引數，不經過 shell）、它的環境變數，以及每個請求最多等多久。檔案使用其他用戶端也採用的 `mcpServers` 格式，所以在別處建立的清單可以直接放進來。
+- **呼叫前會先詢問**：顯示工具、伺服器與實際要送出的引數，預設是「否」。勾選「不再詢問」可以信任某個伺服器的某個工具。伺服器對自己工具的說法（「不會更動任何東西」）只會顯示出來，不會被當成依據。
+- **隨專案而來的伺服器**（專案資料夾裡的 `.mcp.json`）會列出來，但不會自己啟動：連線時會顯示它的指令並詢問。
+- **取消**可以放棄進行中的呼叫；伺服器沒有在時限內回應就放棄；伺服器結束時會告知，並附上它自己記錄的最後一行。再按一次**連線**就能重新開始。
+- **呼叫紀錄**列出這次工作階段：時間、工具、結果、花了多久。**匯出這次工作階段...** 會把它存成執行報告（JSON）。
+
+金鑰與 token 請放在伺服器的環境變數裡，不要放在指令裡：它們的值以圓點顯示，而且不論出現在哪裡，都會從記錄檔、錯誤訊息與匯出的工作階段中去除。伺服器以本機程式的方式啟動（協定的標準輸入輸出傳輸）。
+
+### 動作腳本的關鍵字
+
+WebRunner、AutoControl 或 LoadDensity 的腳本是一個 JSON 動作清單，每個動作是 `["關鍵字"]` 或 `["關鍵字", 引數]`。在編輯器開啟這樣的檔案（`.json`），就會依照該框架**實際安裝的版本**的關鍵字來補全與檢查：
+
+- **補全** — 在動作名稱的位置提供該框架的關鍵字，在引數名稱的位置提供該關鍵字的參數。
+- **診斷** — 那個版本沒有的關鍵字（並建議最接近的一個）、關鍵字不接受的參數、漏掉的必填參數、長度不對的值清單、形狀不對的動作，以及不是 JSON 的文字。訊息使用 IDE 的語言。
+- **懸停說明**與**跳到定義** — 關鍵字的簽名與說明文件，以及套件中定義它的那一行。
+
+PyBreeze 不保存任何關鍵字資料。每個框架都由執行你腳本的那個直譯器（在 IDE 選的、專案裡的 `.venv`，否則是 IDE 自己的）在獨立的行程裡詢問，所以升級框架後提供的內容就會跟著改變。某個框架沒安裝或匯入失敗，只會少掉它自己的關鍵字，不影響其他功能。
+
+**Tools → Automation Keywords Tab** 顯示同一份關鍵字：每個框架的版本、編輯器能為它提供什麼、每個關鍵字的參數與說明、篩選，以及**複製成動作**。某個框架沒有關鍵字時，會說明原因。
+
+編輯器是透過一個語言伺服器取得這些功能，任何支援 Language Server Protocol 的編輯器也都能啟動它：
+
+```bash
+python -m pybreeze.extend.language_server [--interpreter /path/to/python] [--language Traditional_Chinese]
+```
+
+### JSON 編輯器
+
+把一個 JSON 檔當成**樹狀**或**文字**來編輯（**Tools → JSON Editor Tab**）。兩者是同一份文件的兩個檢視，不會互相矛盾。
+
+- **樹狀** — 新增、刪除、上移、下移，在原地改名；直接在值上輸入，或換成另一種類型（物件、陣列、字串、數字、布林值、null）。數字照寫下的樣子保留：`1.0` 仍是 `1.0`。
+- **文字** — JSON 本身，隨時都在。輸入時就會檢查，檢視下方的一行會指出它從哪裡開始不是 JSON；樹狀檢視會等它重新成為 JSON，輸入的內容不會被丟掉。
+- **復原／重做**一步步走過這份文件，不論是哪個檢視改的；有未儲存變更的分頁在關閉或開啟另一個檔案前會先詢問。
+- 檔案照原本的樣子寫回去：它的縮排（空白或 tab）、原本是一行就維持一行、結尾的換行。手動對齊的排版與空行，在樹狀檢視編輯後不會保留。
+
+它是 JSON 編輯器，不是第二個程式碼編輯器：檔案要從它的**開啟...**按鈕開進來。
+
 ### 日常小工具
 
 每個都是分頁或停駐面板，底部都有同樣的一排：複製／在編輯器開啟／儲存成檔案。
 
 ![JWT 解碼器、正規表示式測試器、HTTP 狀態碼參考、JSON 格式化](../images/tools_montage_a.png)
 
-- **JWT 解碼器** — 標頭與酬載以格式化的 JSON 顯示，`exp`／`iat`／`nbf`／`auth_time` 轉成易讀的 UTC。只做檢視：絕不驗證簽章，也絕不信任權杖。
+- **JWT 解碼器** — 標頭與酬載以格式化的 JSON 顯示，`exp`／`iat`／`nbf`／`auth_time` 轉成易讀的 UTC。只做檢視：絕不驗證簽章，也絕不信任權杖。加密的權杖（JWE，五段）會直接指出來：它的宣告需要接收方的金鑰才能讀。
 - **正規表示式測試器** — 支援 `IGNORECASE`／`MULTILINE`／`DOTALL`／`VERBOSE`，列出每個比對結果的位移、編號群組與具名群組。在樣式欄按 Enter 即執行。無效的樣式會顯示友善的錯誤訊息，不會當掉。
-- **HTTP 狀態碼參考** — 以代碼前綴或關鍵字搜尋完整的狀態碼表（資料來自標準函式庫，因此會保持最新）。
+- **HTTP 狀態碼參考** — 以代碼前綴或關鍵字搜尋完整的狀態碼表（資料來自標準函式庫，在每個支援的 Python 上都用 RFC 9110 與 Python 3.14 的用詞）；也能用 RFC 9110 取代前的舊名稱（`Unprocessable Entity`）找到狀態碼。
 - **JSON 格式化** — 格式化或壓縮，輸入不是 JSON 時會給出清楚的驗證錯誤。
 
 ![時間戳記轉換器、雜湊產生器、Query/JSON、URL 建構器](../images/tools_montage_b.png)
 
-- **時間戳記轉換器** — 輸入 Unix epoch（秒、毫秒、微秒或奈秒，自動判斷）或 ISO-8601 日期時間（可帶 `Z`、`+08`、`+0800` 或 `+08:00`，小數位數不限，基本或延伸格式皆可），輸出所有 UTC 表示法。結果固定，不受本機時區影響。
+- **時間戳記轉換器** — 輸入 Unix epoch（秒、毫秒、微秒或奈秒，自動判斷）或 ISO-8601 日期時間（可帶 `Z`、`+08`、`+0800` 或 `+08:00`，小數位數不限，基本或延伸格式皆可，偏移量後面也可以像 Java `ZonedDateTime` 那樣帶 RFC 9557 時區：`+01:00[Europe/Paris]`）或 HTTP 日期（`Sun, 06 Nov 1994 08:49:37 GMT`，也就是 `Date`、`Last-Modified` 的值，以及 RFC 9110 仍接受的兩種舊格式），輸出所有 UTC 表示法。結果固定，不受本機時區影響。
 - **雜湊產生器** — 同時計算 SHA-256、SHA-512、SHA-1 與 MD5（MD5／SHA-1 以 `usedforsecurity=False` 提供互通用途，絕不用於安全判斷）。
 - **Query ⇄ JSON** — `application/x-www-form-urlencoded` 轉成格式化的 JSON，也能轉回來；重複的鍵會變成陣列，反之亦然。
 - **URL 解析器／建構器** — 把 scheme、主機、連接埠、路徑、查詢、片段與憑證拆成可編輯的 JSON 物件，也能組回 URL。會自動為 IPv6 位址加上方括號，並重新編碼查詢參數。
@@ -145,13 +208,13 @@ PyBreeze 開箱即用，涵蓋自動化測試的完整範疇：
 
 *把 Mermaid `flowchart` 貼進匯入器後自動排版的結果。*
 
-以 `QGraphicsScene` 打造的所見即所得編輯器：矩形、圓角矩形、橢圓與菱形節點，可加上連線標籤的貝茲曲線連線，還有自由文字與圖片。Mermaid `flowchart`／`graph` 匯入會執行 Sugiyama 式排版（分層、減少交叉、跨軸對齊）。可儲存與開啟 `.diagram.json`，匯出為 PNG 或 SVG，並支援復原／重做、對齊、均分、格線、貼齊與縮放。從 URL 下載的圖片會經過 SSRF 驗證並有大小上限。
+以 `QGraphicsScene` 打造的所見即所得編輯器：矩形、圓角矩形、橢圓與菱形節點，可加上連線標籤的貝茲曲線連線，還有自由文字與圖片。Mermaid `flowchart`／`graph` 匯入會照 Mermaid 的顯示方式讀標籤（`<br>` 換行、`#quot;`／`#9829;` 實體碼、markdown 字串以純文字呈現），把 Mermaid 11 的具名形狀（`A@{ shape: circle }`）換成四種節點中最接近的一種，並執行 Sugiyama 式排版（分層、減少交叉、跨軸對齊）。可儲存與開啟 `.diagram.json`，匯出為 PNG 或 SVG，並支援復原／重做、對齊、均分、格線、貼齊與縮放。從 URL 下載的圖片會經過 SSRF 驗證並有大小上限。
 
 ### SSH 用戶端 — 終端機與遠端檔案樹並排
 
 ![SSH 用戶端](../images/ssh_client.png)
 
-支援密碼或私鑰驗證（金鑰檔以 Browse 挑選，從 `~/.ssh` 開始：OpenSSH 或 PEM 格式的 RSA、Ed25519、ECDSA 金鑰，PKCS#8 也可以；PuTTY 的 `.ppk` 金鑰要先在 PuTTYgen 匯出成 OpenSSH 金鑰，錯誤訊息會說明怎麼做；勾選金鑰驗證時，密碼欄會改成「密語」，填入私鑰的密語），具備 keepalive、會顯示 ANSI 顏色的互動式 shell，以等寬字型顯示，視窗大小改變時會把新的寬度與高度告訴 shell（上下方向鍵叫回先前送出的指令，空白的一行按 Enter 也會送到 shell，`clear` 與 `reset` 會清空畫面，**Interrupt**（中斷）按鈕、或在沒有選取文字的指令列按 Ctrl+C，可停止 shell 中正在執行的程式；畫面是一行一行顯示輸出，所以 `vim`、`htop` 這類移動游標畫滿整個畫面的程式會顯示錯亂），以及延遲載入的 SFTP 檔案樹，可建立資料夾／重新命名／刪除／上傳／下載（和專案檔案樹一樣，F2 重新命名、Delete 刪除目前的項目）。每個 SFTP 請求都在背景執行，連線卡住也不會讓 IDE 凍結。上傳時若要取代伺服器上的檔案會先詢問，傳輸也能從檔案樹的選單取消。上下傳都會先寫入暫存檔，所以連線中斷時舊的檔案仍完整無缺。未知的主機金鑰**不會**自動接受：第一次連線時會顯示 SHA256 指紋供確認（首次使用即信任），並保存到 `~/.pybreeze/ssh_known_hosts`。
+支援密碼或私鑰驗證（金鑰檔以 Browse 挑選，從 `~/.ssh` 開始：OpenSSH 或 PEM 格式的 RSA、Ed25519、ECDSA 金鑰，PKCS#8 也可以；PuTTY 的 `.ppk` 金鑰要先在 PuTTYgen 匯出成 OpenSSH 金鑰，錯誤訊息會說明怎麼做；勾選金鑰驗證時，密碼欄會改成「密語」，填入私鑰的密語），具備 keepalive、會顯示 ANSI 顏色的互動式 shell，以等寬字型顯示，視窗大小改變時會把新的寬度與高度告訴 shell（上下方向鍵叫回先前送出的指令，空白的一行按 Enter 也會送到 shell，`clear` 與 `reset` 會清空畫面，**Interrupt**（中斷）按鈕、或在沒有選取文字的指令列按 Ctrl+C，可停止 shell 中正在執行的程式；畫面是一行一行顯示輸出，所以 `vim`、`htop` 這類移動游標畫滿整個畫面的程式會顯示錯亂），以及延遲載入的 SFTP 檔案樹，可建立資料夾／重新命名／刪除／上傳／下載（和專案檔案樹一樣，F2 重新命名、Delete 刪除目前的項目）。每個 SFTP 請求都在背景執行，連線卡住也不會讓 IDE 凍結。上傳時若要取代伺服器上的檔案會先詢問，傳輸也能從檔案樹的選單取消。上下傳都會先寫入暫存檔，所以連線中斷時舊的檔案仍完整無缺。未知的主機金鑰**不會**自動接受：第一次連線時會顯示 SHA256 指紋供確認（首次使用即信任），並保存到 `~/.pybreeze/ssh_known_hosts`；`~/.ssh/known_hosts` 裡的主機也同樣信任。信任過的主機若換成另一把金鑰，會直接拒絕、不再詢問，並列出兩個 SHA256 指紋，以及金鑰是刻意更換時要從哪個檔案刪掉它那一行。
 
 ### 其他
 
@@ -177,7 +240,7 @@ PyBreeze 開箱即用，涵蓋自動化測試的完整範疇：
 
 ![prthinker 設定](../images/prthinker_setting.png)
 
-一張設定表就包含推論後端（`remote`、`local`、OpenAI 相容、Anthropic、Gemini、Cohere、Mistral、`claude-cli`、`codex-cli`）、程式碼託管平台（GitHub／GitLab／Gitea）與儲存庫。**金鑰與權杖以環境變數交給審查，絕不放在命令列上**——那裡會被行程清單看到——而且在日誌中會被遮蔽。模型名稱會交給所選的後端。規則檢索（RAG）預設為 `off`，設為 `remote` 時會向 prthinker 伺服器的 `/rag` 查詢：prthinker 的本機規則索引隨它的儲存庫提供，不在由它安裝的套件裡。審查以 `Python Env` 選定的直譯器執行，因此 PyBreeze 本身可以停留在比 prthinker 所需的 3.12 更舊的 Python 上。
+一張設定表就包含推論後端（`remote`、`local`、OpenAI 相容、Anthropic、Gemini、Cohere、Mistral、`claude-cli`、`codex-cli`）、程式碼託管平台（GitHub／GitLab／Gitea）與儲存庫。**金鑰與權杖以環境變數交給審查，絕不放在命令列上**——那裡會被行程清單看到——而且在日誌中會被遮蔽。模型名稱會交給所選的後端。Gemini、Cohere、Mistral 沒有金鑰欄位：選了它們，設定表會說出 prthinker 從哪個環境變數讀取金鑰（`PRTHINKER_GEMINI_API_KEY`、`PRTHINKER_COHERE_API_KEY`、`PRTHINKER_MISTRAL_API_KEY`），須在啟動 PyBreeze 之前設定。規則檢索（RAG）預設為 `off`，設為 `remote` 時會向 prthinker 伺服器的 `/rag` 查詢：prthinker 的本機規則索引隨它的儲存庫提供，不在由它安裝的套件裡。審查以 `Python Env` 選定的直譯器執行，因此 PyBreeze 本身可以停留在比 prthinker 所需的 3.12 更舊的 Python 上。
 
 ### CoT 提示詞編輯器
 
@@ -215,7 +278,7 @@ PyBreeze 沿用 JEditor 的外掛架構，會自動從工作目錄中的 `jedito
 - **English**（英文，預設）
 - **繁體中文**（Traditional Chinese）
 
-選單、對話框、工具拒絕輸入時說明的原因，以及執行視窗自己的訊息（`[錯誤] …`、`[執行] …`）都會跟著所選的語言顯示。兩份字典都有相同的 760 個鍵，並有測試強制兩者一致，因此新字串不可能只出現在其中一種語言。語言選單另外列出 JEditor 的日文與簡體中文：選了之後 JEditor 自己的選單會改變，PyBreeze 的字串則維持英文。其他語言可透過翻譯外掛加入。
+選單、對話框、工具拒絕輸入時說明的原因，以及執行視窗自己的訊息（`[錯誤] …`、`[執行] …`）都會跟著所選的語言顯示。兩份字典都有相同的 995 個鍵，並有測試強制兩者一致，因此新字串不可能只出現在其中一種語言。English 與繁體中文是 PyBreeze 自己維護的語言。語言選單另外列出 JEditor 的日文（日本語）與簡體中文（简体中文），PyBreeze 只是原樣提供、沒有翻譯：選了之後 JEditor 自己的選單會改變，PyBreeze 的字串則維持英文。其他語言可透過翻譯外掛加入。
 
 ---
 
@@ -299,6 +362,12 @@ flowchart TB
 pip install pybreeze
 ```
 
+開發通道跟著 `dev` 分支走。每次推送到 `dev` 通過測試、而且套件內容有變動時，CI 就會發佈新的 `pybreeze_dev`：
+
+```bash
+pip install pybreeze_dev
+```
+
 ### 從原始碼安裝
 
 ```bash
@@ -337,6 +406,17 @@ start_editor(theme="dark_teal.xml")         # 任何 qt_material 主題；它會
 4. **產生** — HTML／JSON／XML 報告
 5. **寄送** — 透過 MailThunder 整合以電子郵件寄出
 
+第一次使用？[教學](https://pybreeze.readthedocs.io/en/latest/Zh/tutorials/index.html)共十三篇，每一篇都很短，各有一個可以直接執行的範例與預期結果：第一次啟動，第一個 API、瀏覽器、桌面與壓力測試，從 cURL 與 HAR 產生測試，把 header 的發現變成 CI 裡的 SARIF，JSON 編輯器，動作腳本的關鍵字，MCP 用戶端，CI 裡的報告，外掛，以及疑難排解。它們測試的是你自己電腦上的一個小網站，所以都不需要任何帳號。
+
+### 日誌檔
+
+PyBreeze 的日誌寫在 `~/.pybreeze/logs/PyBreeze.log`：UTF-8，每次執行都接在後面，每行帶著行程編號。只有警告與錯誤也會出現在編輯器的 Code Result 面板。兩個環境變數可以改變這些：
+
+| 變數 | 作用 |
+|---|---|
+| `PYBREEZE_LOG_FILE` | 改寫到這個檔案 |
+| `PYBREEZE_LOG_MAX_BYTES` | PyBreeze 行程第一次寫日誌時，檔案若大於這個位元組數，先改名為原檔名加上 `.1`，取代上一份（預設 104857600，即 100 MB；`0` 表示不改名） |
+
 ---
 
 ## 整合的自動化模組
@@ -367,8 +447,6 @@ PyBreeze/
 │   │   │   ├── process_executor_utils.py        # build_process / start_process
 │   │   │   ├── file_runner_process.py           # 外掛執行設定（任何語言）
 │   │   │   ├── queue_pump.py                    # 共用的管線讀取器 + QTimer 取出
-│   │   │   ├── api_testka/ auto_control/ web_runner/
-│   │   │   ├── load_density/ file_automation/ mail_thunder/
 │   │   │   ├── test_pioneer/ prthinker/
 │   │   ├── mail_thunder_extend/       # 測試後郵件報告掛鉤
 │   │   └── prthinker_extend/          # prthinker 設定與參數組裝
@@ -389,6 +467,7 @@ PyBreeze/
 ├── exe/                               # 獨立啟動器與建置設定
 ├── docs/                              # Sphinx 文件原始碼；updates/ 是更新紀錄
 ├── test/                              # 單元測試（test_utils）+ 啟動測試
+├── scripts/                           # 開發通道的發佈輔助腳本（dev_release.py）
 ├── images/                            # 截圖
 ├── architecture.md                    # 架構總覽：分層、主要流程、跨專案約定
 ├── architecture_explore.md            # 逐模組的架構筆記
@@ -432,9 +511,9 @@ python -m pip install -r dev_requirements.txt
 python -m pytest test/test_utils/ -v --tb=short
 ```
 
-- **單元測試** — `test/test_utils/`，涵蓋純邏輯層（curl 與 HAR 解析、標頭分析、SSRF 驗證、JWT、雜湊、時間戳記、比對），加上透過 `QT_QPA_PLATFORM=offscreen` 的無視窗 Qt 元件測試，以及針對各解析器的 Hypothesis 性質測試
+- **單元測試** — `test/test_utils/`，涵蓋純邏輯層（curl 與 HAR 解析、標頭分析、SSRF 驗證、JWT、雜湊、時間戳記、比對），加上透過 `QT_QPA_PLATFORM=offscreen` 的無視窗 Qt 元件測試，以及針對各解析器的 Hypothesis 性質測試。SSH 終端機與 SFTP 檔案樹另外會實際登入測試在本機回環位址啟動的 SSH 伺服器，它以 SFTP 提供一個暫存資料夾
 - **啟動測試** — `test/unit_test/start_automation/` 以 debug 模式啟動 IDE，確認它能正常開啟並乾淨地結束
-- **CI** — 在 Windows 上以 GitHub Actions 跑 Python 3.10 – 3.14，每次 push 與 PR 都會執行，另外每晚執行一次
+- **CI** — 以 GitHub Actions 執行：在 Windows 上以 Python 3.10 – 3.14 跑完整測試，在 Linux 與 macOS 上跑一小組平台冒煙測試；每次 push 與 PR 都會執行，另外每晚執行一次；推送到 `dev` 通過完整測試、而且套件內容有變動時，還會發佈 `pybreeze_dev`
 - **靜態分析** — SonarCloud、Codacy 與 Bandit
 
 ---

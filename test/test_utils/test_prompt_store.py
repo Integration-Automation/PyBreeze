@@ -442,6 +442,36 @@ class TestSwitchingTemplatesWithUnsavedEdits:
         editor.close()
         editor.deleteLater()
 
+    def test_reload_answered_yes_shows_the_file_again(self, prompts, monkeypatch):
+        from PySide6.QtWidgets import QMessageBox
+
+        write(prompts, "linter.md", "on disk")
+        editor = _cot_editor(monkeypatch)
+        editor.file_selector.setCurrentIndex(editor.prompt_files.index("linter.md"))
+        self._typed(editor, "MY EDITS")
+        monkeypatch.setattr(
+            QMessageBox, "question",
+            staticmethod(lambda *a, **k: QMessageBox.StandardButton.Yes))
+
+        editor.reload_button.click()
+
+        assert editor.middle_editor.toPlainText() == "on disk"
+        editor.close()
+        editor.deleteLater()
+
+    def test_picking_the_template_already_shown_asks_nothing(self, prompts, monkeypatch):
+        from PySide6.QtWidgets import QMessageBox
+
+        editor = _cot_editor(monkeypatch)
+        self._typed(editor, "MY EDITS")
+        monkeypatch.setattr(QMessageBox, "question", staticmethod(lambda *a, **k: pytest.fail("asked")))
+
+        editor._on_template_chosen(editor.file_selector.currentIndex())
+
+        assert editor.middle_editor.toPlainText() == "MY EDITS"
+        editor.close()
+        editor.deleteLater()
+
 
 class TestAnEditedPromptThatReachesIntoAPlaceholder:
     @pytest.mark.parametrize("edited", [
@@ -464,7 +494,8 @@ class TestAnEditedPromptThatReachesIntoAPlaceholder:
 
         prompt = build_prompt("linter.md", {CODE_DIFF: CODE})
 
-        assert "{literal}" in prompt and CODE in prompt
+        assert "{literal}" in prompt
+        assert CODE in prompt
 
 
 def _prompt_editor():
@@ -531,3 +562,89 @@ class TestThePromptEditorKeepsWhatWasTyped:
         editor.close()
         editor.deleteLater()
 
+
+
+class TestCreatingAPromptFile:
+    def test_a_create_whose_save_fails_watches_nothing_and_says_no_success(self, prompts, monkeypatch):
+        # save_prompt_text has already said why; there is no file to watch
+        from pybreeze.pybreeze_ui.extend_ai_gui.prompt_edit_gui import prompt_editor_widget
+
+        editor = _cot_editor(monkeypatch)
+        editor.file_selector.setCurrentIndex(editor.prompt_files.index("linter.md"))
+        watched_before = list(editor.watcher.files())
+        monkeypatch.setattr(prompt_editor_widget, "save_prompt_text", lambda *args: False)
+
+        editor.create_file()
+
+        assert editor.watcher.files() == watched_before
+        assert editor.shown == []  # no "created" message
+        editor.close()
+        editor.deleteLater()
+
+    def test_create_writes_the_built_in_and_watches_it(self, prompts, monkeypatch):
+        editor = _cot_editor(monkeypatch)
+        editor.file_selector.setCurrentIndex(editor.prompt_files.index("linter.md"))
+
+        editor.create_file()
+
+        built_in = editor.templates["linter.md"]
+        assert (prompts / "linter.md").read_text(encoding="utf-8") == built_in
+        assert editor.middle_editor.toPlainText() == built_in
+        assert not editor.middle_editor.document().isModified()
+        assert str(prompts / "linter.md") in editor.watcher.files()
+        assert len(editor.shown) == 1  # the file was created
+        editor.close()
+        editor.deleteLater()
+
+    def test_a_file_already_there_is_left_as_it_is(self, prompts, monkeypatch):
+        write(prompts, "linter.md", "my own linter prompt")
+        editor = _cot_editor(monkeypatch)
+        editor.file_selector.setCurrentIndex(editor.prompt_files.index("linter.md"))
+
+        editor.create_file()
+
+        assert (prompts / "linter.md").read_text(encoding="utf-8") == "my own linter prompt"
+        assert len(editor.shown) == 1
+        assert "linter.md" in editor.shown[0][2]  # it says which file is already there
+        editor.close()
+        editor.deleteLater()
+
+
+class TestWithNoFileShown:
+    # As after a prompt file that could not be read: nothing was shown, so
+    # nothing may be written back or created in its place.
+    def test_save_says_no_file_is_selected_and_writes_nothing(self, prompts, monkeypatch):
+        editor = _cot_editor(monkeypatch)
+        editor.current_file = None
+        editor.middle_editor.setPlainText("typed with no file")
+
+        editor.save_file()
+
+        assert len(editor.shown) == 1
+        assert not prompts.exists() or list(prompts.iterdir()) == []
+        editor.close()
+        editor.deleteLater()
+
+    def test_create_does_nothing(self, prompts, monkeypatch):
+        editor = _cot_editor(monkeypatch)
+        editor.current_file = None
+
+        editor.create_file()
+
+        assert editor.shown == []
+        assert not prompts.exists()
+        editor.close()
+        editor.deleteLater()
+
+    def test_a_change_to_another_file_is_not_reloaded(self, prompts, monkeypatch):
+        write(prompts, "linter.md", "the linter prompt")
+        editor = _cot_editor(monkeypatch)
+        editor.file_selector.setCurrentIndex(editor.prompt_files.index("linter.md"))
+        editor.middle_editor.setPlainText("typed")
+        editor.middle_editor.document().setModified(True)
+
+        editor.on_file_changed(str(prompts / "judge.md"))
+
+        assert editor.middle_editor.toPlainText() == "typed"
+        editor.close()
+        editor.deleteLater()

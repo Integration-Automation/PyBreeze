@@ -1,0 +1,6 @@
+curl https://api.example.test/v1/items \
+  -H 'Content-Type: application/json' \
+  -H 'X-Request-Id: r-1' \
+  -u alice:s3cret \
+  -m 15 \
+  -d '{"name": "Ada", "tags": ["a", "b"], "active": true, "price": 12.5, "parent": null}'

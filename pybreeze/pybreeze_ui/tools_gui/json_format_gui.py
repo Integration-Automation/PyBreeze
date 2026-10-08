@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.busy_cursor import busy_cursor
 from pybreeze.pybreeze_ui.run_shortcut import press_on_ctrl_enter
 from pybreeze.pybreeze_ui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.output_actions import OutputActions
@@ -68,6 +69,8 @@ class JsonFormatGUI(QWidget):
             self.input_edit.setPlainText(initial_json)
             self.format_json()
 
+    # A few megabytes take seconds to lay out and show
+    @busy_cursor()
     def _run(self, transform) -> None:
         """Apply a JSON transform, showing the result or a friendly error."""
         word = language_wrapper.language_word_dict

@@ -74,10 +74,10 @@ def stop_tree(process: subprocess.Popen) -> None:
     try:
         if sys.platform == "win32":
             taskkill = os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "System32", "taskkill.exe")
-            subprocess.run(  # nosec B603 — fixed argument list, no shell
-                [taskkill, "/T", "/F", "/PID", str(process.pid)],
+            subprocess.run(  # nosec B603  # nosemgrep — fixed argument list, no shell
+                [taskkill, "/T", "/F", "/PID", str(process.pid)],  # nosemgrep — SystemRoot is the user's own
                 capture_output=True, timeout=_TREE_KILL_SECONDS, check=False, shell=False,
-                creationflags=no_window_creationflags())
+                env=child_environment(), creationflags=no_window_creationflags())
         else:
             os.killpg(process.pid, signal.SIGTERM)
     except (OSError, subprocess.SubprocessError) as error:

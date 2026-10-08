@@ -4,9 +4,11 @@ from typing import TYPE_CHECKING
 
 from je_editor import language_wrapper
 from je_editor.pyside_ui.main_ui.save_settings.user_color_setting_file import actually_color_dict
-from PySide6.QtCore import QTimer, Signal
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QGuiApplication, QTextCharFormat, QTextCursor
-from PySide6.QtWidgets import QWidget, QGridLayout, QHBoxLayout, QPlainTextEdit, QPushButton, QScrollArea
+from PySide6.QtWidgets import (
+    QWidget, QGridLayout, QHBoxLayout, QMessageBox, QPlainTextEdit, QPushButton, QScrollArea
+)
 
 from pybreeze.pybreeze_ui.fixed_pitch import use_fixed_pitch_font
 from pybreeze.pybreeze_ui.terminal_view import insert_rewinding
@@ -82,16 +84,48 @@ class CodeWindow(QWidget):
     def closeEvent(self, event) -> None:
         """Let the main window forget this one, unless its run is still going.
 
+        Closed by the user while its run goes on, it asks first: Yes stops the
+        run, No lets it run on without a window (a load test that mails its
+        report, say), Cancel keeps the window. Closing it used to let the run go
+        on unasked, with nothing left to see or stop it by but Stop All Program
+        or closing the IDE. A close from code (the IDE closing, which stops
+        every run itself) asks nothing.
+
         A run that is still going keeps its window in the list: it is where
         the rest of the output goes, and closing the IDE stops it from there.
         It is let go of when the run ends (``run_ended``); it used to stay for
         the rest of the session.
         """
+        if self.is_running() and self._closed_by_the_user(event):
+            answer = self._ask_about_the_run()
+            if answer == QMessageBox.StandardButton.Cancel:
+                event.ignore()
+                return
+            if answer == QMessageBox.StandardButton.Yes:
+                self.stop_runner()
         if self.is_running():
             self._closed_while_running = True
         else:
             self.finished_and_closed.emit()
         super().closeEvent(event)
+
+    @staticmethod
+    def _closed_by_the_user(event) -> bool:
+        """Whether *event* came from the window system (the window's close button), not from ``close()``."""
+        return event.spontaneous()
+
+    def _ask_about_the_run(self) -> QMessageBox.StandardButton:
+        """Ask whether to stop the run going on here; No, which lets it go on, is where the focus starts."""
+        word = language_wrapper.language_word_dict
+        box = QMessageBox(self)
+        box.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        box.setIcon(QMessageBox.Icon.Question)
+        box.setWindowTitle(word.get("code_window_close_running_title"))
+        box.setText(word.get("code_window_close_running_message"))
+        box.setStandardButtons(
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No | QMessageBox.StandardButton.Cancel)
+        box.setDefaultButton(QMessageBox.StandardButton.No)
+        return QMessageBox.StandardButton(box.exec())
 
     def run_started(self) -> None:
         """Called by the executor once its child is running: it may be stopped from here."""

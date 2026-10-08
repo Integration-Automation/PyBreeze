@@ -22,7 +22,7 @@ import sys
 import pytest
 
 from pybreeze.extend.prthinker_extend.prthinker_setting import (
-    BACKENDS, DEFAULT_SETTING, PRTHINKER_PACKAGE, environment_for, review_file_arguments,
+    BACKENDS, DEFAULT_SETTING, KEY_FROM_ENVIRONMENT, PRTHINKER_PACKAGE, environment_for, review_file_arguments,
     review_pr_arguments
 )
 from pybreeze.utils.subprocess_util import utf8_subprocess_env
@@ -147,11 +147,9 @@ def test_the_model_reaches_the_backend_it_was_set_for(closed_url, backend):
     }
     environment = {
         **utf8_subprocess_env("utf-8"),
-        # The three keys PyBreeze has no field for: prthinker reads them from
-        # the environment the IDE was started in.
-        "PRTHINKER_GEMINI_API_KEY": "not-a-real-key",
-        "PRTHINKER_COHERE_API_KEY": "not-a-real-key",
-        "PRTHINKER_MISTRAL_API_KEY": "not-a-real-key",
+        # The keys PyBreeze has no field for: prthinker reads them from the
+        # environment the IDE was started in, under the names the form gives
+        **dict.fromkeys(KEY_FROM_ENVIRONMENT.values(), "not-a-real-key"),
         **environment_for(setting),
     }
     completed = subprocess.run(  # noqa: S603 — fixed interpreter and a literal script

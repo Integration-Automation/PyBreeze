@@ -147,10 +147,10 @@ def _apply_query(request: CurlRequest, raw_request: dict, query: str) -> None:
     them once on the way out.
     """
     carried = parse_qsl(query, keep_blank_values=True)
-    if query_round_trips(query):
+    if query_round_trips(query):  # an empty query does
         for key, value in carried:
             add_repeated_value(request.params, key, value)
-    elif query:
+    else:
         # Split and encoded again it would not be what was sent
         request.url = f"{request.url}?{query}"
     # The recorded list repeats the URL's parameters: only a name the URL did

@@ -103,6 +103,24 @@ class TestSendAfterTest:
         assert sending.wait(5)
         release.set()
 
+    def test_the_mail_thread_does_not_keep_the_ide_open(self, monkeypatch):
+        # A daemon: a mail server that never answers must not hold the IDE's exit
+        started: list = []
+
+        class Recorded:
+            def __init__(self, **options) -> None:
+                started.append(options)
+
+            def start(self) -> None:
+                """Not run: only how it was made is looked at."""
+
+        monkeypatch.setattr(mail.threading, "Thread", Recorded)
+
+        mail.send_after_test("report.html")
+
+        (options,) = started
+        assert (options["daemon"], options["name"]) == (True, "pybreeze-report-mail")
+
 
 class TestSendReport:
     def test_the_report_goes_to_the_user(self, mail_thunder, logger, report):
@@ -140,26 +158,28 @@ class TestSendReport:
         assert reason == "the run wrote no absent.html"
         assert reason in _logged(logger)
 
-    def test_a_failed_login_is_logged_and_the_connection_closed(self, mail_thunder, logger, report):
-        FakeSmtp.logs_in = False
+    def test_a_failed_login_is_logged_and_the_connection_closed(self, mail_thunder, logger, report, monkeypatch):
+        monkeypatch.setattr(FakeSmtp, "logs_in", False)
 
         mail.send_report(report)
 
         (smtp,) = FakeSmtp.instances
-        assert smtp.sent == [] and smtp.quit_called
+        assert smtp.sent == []
+        assert smtp.quit_called
         assert mail.send_html_exception_tag in _logged(logger)
 
     @pytest.mark.parametrize("error", [ConnectionRefusedError("refused"), MailThunderException("bad")])
-    def test_a_failed_send_is_logged_and_the_connection_closed(self, mail_thunder, logger, report, error):
-        FakeSmtp.send_error = error
+    def test_a_failed_send_is_logged_and_the_connection_closed(
+            self, mail_thunder, logger, report, error, monkeypatch):
+        monkeypatch.setattr(FakeSmtp, "send_error", error)
 
         mail.send_report(report)
 
         assert FakeSmtp.instances[0].quit_called
         assert "Failed to send report" in _logged(logger)
 
-    def test_an_unreachable_server_is_logged(self, mail_thunder, logger, report):
-        FakeSmtp.connect_error = TimeoutError("timed out")
+    def test_an_unreachable_server_is_logged(self, mail_thunder, logger, report, monkeypatch):
+        monkeypatch.setattr(FakeSmtp, "connect_error", TimeoutError("timed out"))
 
         mail.send_report(report)
 
@@ -198,6 +218,17 @@ class TestAReportFromAnEarlierRun:
         assert mail.send_report(report, not_before=time.time() - 1) is None
         assert len(FakeSmtp.instances[0].sent) == 1
 
+    # Up to two seconds older than the run is still its own: file systems keep
+    # times to a second or two. Whole seconds, so the file keeps them exactly.
+    @pytest.mark.parametrize(("older_by", "sent"), [(1, True), (2, True), (3, False)])
+    def test_the_two_seconds_of_slack(self, mail_thunder, logger, report, older_by, sent):
+        run_started = 1_700_000_000
+        os.utime(report, (run_started - older_by, run_started - older_by))
+
+        reason = mail.send_report(report, not_before=run_started)
+
+        assert (reason is None) is sent
+
     def test_a_folder_in_its_place_is_not_sent(self, mail_thunder, logger, tmp_path):
         folder = tmp_path / "default_name.html"
         folder.mkdir()
@@ -216,13 +247,14 @@ class TestTheAnswer:
 
         assert mail.send_report(report) == "no mail user is set"
 
-    def test_login_failed(self, mail_thunder, logger, report):
-        FakeSmtp.logs_in = False
+    def test_login_failed(self, mail_thunder, logger, report, monkeypatch):
+        monkeypatch.setattr(FakeSmtp, "logs_in", False)
 
         assert mail.send_report(report) == "the mail server login failed"
 
-    def test_send_failed_names_only_the_error_kind(self, mail_thunder, logger, report):
-        FakeSmtp.send_error = ConnectionRefusedError("refused by mail.example.com for tester@example.com")
+    def test_send_failed_names_only_the_error_kind(self, mail_thunder, logger, report, monkeypatch):
+        monkeypatch.setattr(
+            FakeSmtp, "send_error", ConnectionRefusedError("refused by mail.example.com for tester@example.com"))
 
         reason = mail.send_report(report)
 
@@ -278,3 +310,87 @@ class TestAMailSettingsFileThatCannotBeRead:
             "the mail settings file (mail_thunder_content.json) could not be read")
         assert FakeSmtp.instances == []
         assert "could not be read" in _logged(logger)
+
+
+class TestAServerThatStopsAnswering:
+    """MailThunder's SMTPWrapper passes no timeout on: a server that took the connection and fell silent held the thread."""
+
+    @staticmethod
+    def _silent_server():
+        import socket
+
+        listener = socket.socket()
+        listener.bind(("127.0.0.1", 0))
+        listener.listen(1)
+        held: list = []
+
+        def accept() -> None:
+            try:
+                connection, _address = listener.accept()
+                held.append(connection)  # never says a word
+            except OSError:
+                return
+
+        threading.Thread(target=accept, daemon=True).start()
+        return listener, held
+
+    def test_the_report_gives_up_on_it(self, mail_thunder, logger, report, monkeypatch):
+        import smtplib
+
+        listener, held = self._silent_server()
+        port = listener.getsockname()[1]
+
+        class SilentServerWrapper(smtplib.SMTP_SSL):
+            """MailThunder's SMTPWrapper as it is, pointed at the silent server."""
+
+            def __init__(self) -> None:
+                super().__init__("127.0.0.1", port)
+                self.login_state = False
+
+        mail_thunder.SMTPWrapper = SilentServerWrapper
+        monkeypatch.setattr(mail, "_SMTP_TIMEOUT_SECONDS", 1)
+        outcome: list = []
+        started = time.monotonic()
+        sender = threading.Thread(target=lambda: outcome.append(mail.send_report(report)), daemon=True)
+        sender.start()
+        sender.join(15)
+        try:
+            assert outcome == ["sending failed (TimeoutError)"]
+            assert time.monotonic() - started < 15
+        finally:
+            listener.close()
+            for connection in held:
+                connection.close()
+
+    def test_each_step_gets_thirty_seconds(self):
+        # Whatever the client asked for, its socket gets the module's timeout
+        seen: list = []
+
+        class Recording:
+            def _get_socket(self, host, port, timeout):
+                seen.append((host, port, timeout))
+
+        mail._with_timeout(Recording)()._get_socket("smtp.example", 465, None)
+
+        assert seen == [("smtp.example", 465, 30)]
+
+    def test_the_timeout_reaches_mailthunders_own_client(self, monkeypatch):
+        # What _with_timeout relies on: SMTPWrapper is an SMTP_SSL that connects
+        # as it is built, through _get_socket
+        mail_thunder = pytest.importorskip("je_mail_thunder")
+        import smtplib
+
+        assert issubclass(mail_thunder.SMTPWrapper, smtplib.SMTP_SSL)
+        listener, held = self._silent_server()
+        monkeypatch.setattr(mail, "_SMTP_TIMEOUT_SECONDS", 1)
+        timed_client = mail._with_timeout(mail_thunder.SMTPWrapper)
+        port = listener.getsockname()[1]
+        started = time.monotonic()
+        try:
+            with pytest.raises(TimeoutError):
+                timed_client("127.0.0.1", port)
+            assert time.monotonic() - started < 15
+        finally:
+            listener.close()
+            for connection in held:
+                connection.close()

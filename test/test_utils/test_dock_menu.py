@@ -47,3 +47,17 @@ def test_without_one_they_get_their_own(app):
 
     assert "AI" in _submenus(dock_menu)
     assert len(window.dock_ai_menu.actions()) == _AI_DOCKS
+
+
+def test_each_entry_opens_its_own_dock(app, monkeypatch):
+    from pybreeze.pybreeze_ui.menu.tools import tools_menu
+
+    opened: list = []
+    monkeypatch.setattr(tools_menu, "add_dock", lambda window, widget_key: opened.append(widget_key))
+    window = SimpleNamespace(dock_menu=QMenu())
+    extend_dock_menu(window)
+
+    for tool in tools_menu.TOOLS.values():
+        getattr(window, tool.dock_attribute).trigger()
+
+    assert opened == list(tools_menu.TOOLS)

@@ -23,13 +23,16 @@ from pybreeze.pybreeze_ui.plain_text import as_text
 if TYPE_CHECKING:
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
 
+# Most bytes a run window's reader takes from the child's pipe at a time
+DEFAULT_PROGRAM_BUFFER = 1024000
+
 
 def build_process(
         main_window: PyBreezeMainWindow,
         package: str,
         exec_str: str | None = None,
         send_mail: bool = False,
-        program_buffer: int = 1024000,
+        program_buffer: int = DEFAULT_PROGRAM_BUFFER,
 ):
     """Run *package* against a script: *exec_str*, or the code in the tab in front.
 
@@ -49,7 +52,7 @@ def build_process(
 
 
 def report_no_script_tab(
-        main_window: PyBreezeMainWindow, package: str, program_buffer: int = 1024000) -> None:
+        main_window: PyBreezeMainWindow, package: str, program_buffer: int = DEFAULT_PROGRAM_BUFFER) -> None:
     """Open a run window saying the run needs the script's tab in front.
 
     A run takes the code from the editor tab in front. With another kind of tab
@@ -69,7 +72,7 @@ def start_process(
         package: str,
         test_format_code: str,
         send_mail: bool = False,
-        program_buffer: int = 1024000,
+        program_buffer: int = DEFAULT_PROGRAM_BUFFER,
         subject: str = "",
 ):
     process = build_task_process(main_window, send_mail, program_buffer)
@@ -85,7 +88,7 @@ def build_process_from_file(
         package: str,
         file_path: str,
         send_mail: bool = False,
-        program_buffer: int = 1024000,
+        program_buffer: int = DEFAULT_PROGRAM_BUFFER,
         then: Callable[[], None] | None = None,
 ) -> TaskProcessManager:
     """Run ``package`` against an action JSON file path; return the run's manager.
@@ -103,7 +106,7 @@ def run_dir_files_with_package(
         main_window: PyBreezeMainWindow,
         package: str,
         send_mail: bool = False,
-        program_buffer: int = 1024000,
+        program_buffer: int = DEFAULT_PROGRAM_BUFFER,
 ) -> None:
     """Prompt for a directory and run every matching file through *package*, one after another.
 
@@ -128,7 +131,7 @@ def run_dir_files_with_package(
 
 def run_one_after_another(
         main_window: PyBreezeMainWindow, package: str, files: list[str],
-        send_mail: bool = False, program_buffer: int = 1024000) -> None:
+        send_mail: bool = False, program_buffer: int = DEFAULT_PROGRAM_BUFFER) -> None:
     """Run *files* through *package*, each in its own window once the one before has ended.
 
     A run that was stopped (its Stop, or the IDE closing) ends the batch; a
@@ -244,7 +247,7 @@ def report_mail_hook(code_window: CodeWindow) -> Callable[[], None]:
 def build_task_process(
         main_window: PyBreezeMainWindow,
         send_mail: bool = False,
-        program_buffer: int = 1024000,
+        program_buffer: int = DEFAULT_PROGRAM_BUFFER,
         then: Callable[[], None] | None = None,
 ) -> TaskProcessManager:
     """Open a fresh run window and the task process manager that writes to it.

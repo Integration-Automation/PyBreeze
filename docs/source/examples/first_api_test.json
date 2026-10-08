@@ -1,0 +1,8 @@
+[
+  ["AT_test_api_method", {
+    "http_method": "get",
+    "test_url": "http://127.0.0.1:8765/users.json",
+    "result_check_dict": {"status_code": 200}
+  }],
+  ["AT_generate_json_report", {"json_file_name": "api_report"}]
+]

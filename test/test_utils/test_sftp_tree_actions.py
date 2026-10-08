@@ -290,7 +290,8 @@ class TestTheMenu:
             # The Type column read "dir" / "file"
             folder, file = widget.make_item("a", "dir", 0, "/a"), widget.make_item("b", "file", 5, "/b")
             assert (folder.text(1), file.text(1)) == ("資料夾", "檔案")
-            assert tree_mod.is_folder(folder) and tree_mod.is_file(file)
+            assert tree_mod.is_folder(folder)
+            assert tree_mod.is_file(file)
         finally:
             widget.close()
             widget.deleteLater()
@@ -354,7 +355,8 @@ class TestDeletingAFolder:
 
         word = tree_mod.language_wrapper.language_word_dict
         expected = word.get("ssh_file_viewer_message_folder_not_removed").format(error="Failure")
-        assert len(shown) == 1 and expected in shown[0]
+        assert len(shown) == 1
+        assert expected in shown[0]
         assert _child(root, "src").text(3) == "/src"
 
     def test_a_file_refusal_is_shown_as_it_is(self, app, tree, monkeypatch):
@@ -370,7 +372,9 @@ class TestDeletingAFolder:
         widget.action_delete(_child(root, "notes.txt"))
         _wait_for(lambda: _idle(widget))
 
-        assert len(shown) == 1 and "empty" not in shown[0] and "Permission denied" in shown[0]
+        assert len(shown) == 1
+        assert "empty" not in shown[0]
+        assert "Permission denied" in shown[0]
 
 
 class TestTheKeys:
@@ -411,7 +415,8 @@ class TestTheKeys:
 
         self._shortcut(widget, "Del").activated.emit()
 
-        assert reported and "Socket is closed" in reported[0]
+        assert reported
+        assert "Socket is closed" in reported[0]
 
 
 class TestDownloadAndUpload:
@@ -496,4 +501,63 @@ class TestDownloadAndUpload:
         widget.action_create_folder(None)
 
         assert len(told) == 1
+        assert client.made == []
+
+
+class TestConnecting:
+    def test_without_a_host_or_user_it_asks_for_them_and_starts_nothing(self, app, monkeypatch):
+        told: list = []
+        monkeypatch.setattr(QMessageBox, "warning", lambda *args: told.append(args[2]))
+        widget = tree_mod.SSHFileTreeManager()
+        widget.login_widget.host_edit.setText("   ")
+        widget.login_widget.user_edit.setText("me")
+
+        widget._connect()
+
+        assert told == [widget.word_dict.get("ssh_file_viewer_dialog_message_missing_input")]
+        assert widget._connecting is None
+        widget.close()
+        widget.deleteLater()
+
+    def test_a_root_that_cannot_be_listed_is_reported_as_a_failed_connect(self, app, monkeypatch):
+        # The session is up but "/" cannot be read (permissions, a dropped link)
+        told: list = []
+        monkeypatch.setattr(QMessageBox, "critical", lambda *args: told.append(args[2]))
+        widget = tree_mod.SSHFileTreeManager()
+
+        def refused(_path):
+            raise OSError("Permission denied")
+
+        monkeypatch.setattr(widget, "load_root", refused)
+        changes: list = []
+        widget.state_changed.connect(lambda: changes.append(True))
+
+        widget._on_connected()
+
+        (message,) = told
+        assert "Permission denied" in message
+        assert changes == [True]
+        widget.close()
+        widget.deleteLater()
+
+
+class TestWhatTheUserCalledOff:
+    def test_a_delete_answered_no_removes_nothing(self, tree, monkeypatch):
+        widget, client, root, _warnings = tree
+        monkeypatch.setattr(QMessageBox, "question", lambda *_args: QMessageBox.StandardButton.No)
+
+        widget.action_delete(_child(root, "notes.txt"))
+        _wait_for(lambda: _idle(widget))
+
+        assert client.removed == []
+        assert _child(root, "notes.txt") is not None
+
+    @pytest.mark.parametrize(("text", "ok"), [("new", False), ("   ", True), ("", True)])
+    def test_a_folder_not_named_is_not_made(self, tree, monkeypatch, text, ok):
+        widget, client, root, _warnings = tree
+        monkeypatch.setattr(widget, "get_text", lambda *_args: (text, ok))
+
+        widget.action_create_folder(root)
+        _wait_for(lambda: _idle(widget))
+
         assert client.made == []

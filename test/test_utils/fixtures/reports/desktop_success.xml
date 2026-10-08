@@ -1,0 +1,15 @@
+<?xml version="1.0" ?>
+<xml_data>
+	<Success_Test1>
+		<function_name>set_mouse_position</function_name>
+		<param>{'x': 100, 'y': 200}</param>
+		<time>2026-10-08 11:30:00.000000</time>
+		<exception>None</exception>
+	</Success_Test1>
+	<Success_Test2>
+		<function_name>click_mouse</function_name>
+		<param>{'mouse_keycode': 'mouse_left', 'x': None, 'y': None}</param>
+		<time>2026-10-08 11:30:00.400000</time>
+		<exception>None</exception>
+	</Success_Test2>
+</xml_data>

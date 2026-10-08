@@ -54,6 +54,22 @@ def test_as_a_python_string_literal_it_means_the_same():
     assert eval(dumps_for_view(NOT_KEPT)) == NOT_KEPT  # noqa: S307 — the literal this test just wrote
 
 
+# Each one a view does not keep, and both ends of the surrogate range
+@pytest.mark.parametrize("code", [0x85, 0x2028, 0x2029, 0xFDD0, 0xFDD1, 0xD800, 0xDBFF, 0xDC00, 0xDFFF])
+def test_each_character_a_view_does_not_keep_is_escaped(code):
+    assert escape_for_view(f'"{chr(code)}"') == f'"\\u{code:04x}"'
+
+
+# The characters just beside them, which a view keeps
+@pytest.mark.parametrize("code", [0x84, 0x86, 0x2027, 0x202A, 0xD7FF, 0xE000, 0xFDCF, 0xFDD2])
+def test_the_characters_beside_them_are_not(code):
+    assert escape_for_view(f'"{chr(code)}"') == f'"{chr(code)}"'
+
+
+def test_the_rest_is_written_as_it_is_not_escaped():
+    assert dumps_for_view({"名稱": "中文 café"}) == '{"名稱": "中文 café"}'
+
+
 @pytest.mark.parametrize("convert", ["reformat", "minify", "query", "url"])
 def test_each_json_tool_output_survives_its_view(app, convert):
     from pybreeze.utils.json_format.json_process import minify_json, reformat_json

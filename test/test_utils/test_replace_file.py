@@ -65,7 +65,8 @@ class TestReplaceWritten:
 
         replace_written(tmp_path / "out.png", write)
 
-        assert given[0].suffix == ".png" and given[0].parent == tmp_path
+        assert given[0].suffix == ".png"
+        assert given[0].parent == tmp_path
         assert (tmp_path / "out.png").read_bytes() == b"new"
         assert list(tmp_path.iterdir()) == [tmp_path / "out.png"]
 
@@ -114,3 +115,20 @@ def test_text_utf8_cannot_encode_leaves_the_file_and_nothing_else(tmp_path):
 
     assert target.read_text(encoding="utf-8") == "old"
     assert list(tmp_path.iterdir()) == [target]
+
+
+@pytest.mark.parametrize(("options", "mode"), [({}, 0o666), ({"private": True}, 0o600)])
+def test_the_mode_the_file_is_created_with_is_private_only_when_asked(tmp_path, monkeypatch, options, mode):
+    # Recorded as os.open is asked, so it runs where the permission bits do not (CI is Windows)
+    modes: list = []
+    opened = replace_file.os.open
+
+    def record(path, flags, requested=0o777):
+        modes.append(requested)
+        return opened(path, flags, requested)
+
+    monkeypatch.setattr(replace_file.os, "open", record)
+
+    replace_text(tmp_path / "file.txt", "x", **options)
+
+    assert modes == [mode]

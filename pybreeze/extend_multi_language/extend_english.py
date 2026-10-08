@@ -1,15 +1,16 @@
 from __future__ import annotations
 
-from je_editor import english_word_dict
-
+from pybreeze.extend_multi_language.english_integrations import ENGLISH_INTEGRATION_WORDS
 from pybreeze.utils.exception.error_templates import (
     ERROR_TEXT_KEY_PREFIX,
     error_templates,
 )
+from pybreeze.utils.header_tools.header_rules import HEADER_FINDING_KEY_PREFIX, RULES
 
 _COT_PROMPT_EDITOR = "CoT Prompt Editor"
 _SKILL_PROMPT_EDITOR = "Skill Prompt Editor"
 _RESULT_LABEL = "Result:"
+_COT_CODE_REVIEW = "CoT Code Review"
 
 # PyBreeze-specific English translations
 pybreeze_english_word_dict = {
@@ -17,6 +18,10 @@ pybreeze_english_word_dict = {
     "application_name": "PyBreeze",
     # Run window
     "code_window_stop_button": "Stop",
+    "code_window_close_running_title": "The run is still going",
+    "code_window_close_running_message": (
+        "The program in this window is still running. Stop it?\n\n"
+        "No lets it run on without a window (a report it mails still goes); Cancel keeps the window open."),
     # Menubar
     "automation_menu_label": "Automation",
     "install_menu_label": "Install",
@@ -149,6 +154,9 @@ pybreeze_english_word_dict = {
     "prthinker_setting_extra_arguments_label": "Extra command-line arguments",
     "prthinker_setting_source_path_label": "prthinker source folder",
     "prthinker_setting_stored_at_label": "Stored at:",
+    "prthinker_setting_key_from_environment": (
+        "This backend takes its key from the environment variable {variable}, set before PyBreeze starts; "
+        "there is no field for it here."),
     "prthinker_setting_bad_extra_arguments": "The extra arguments cannot be read: a quote is left open. Close it or remove it, then save.",
     "prthinker_setting_save_failed": "The settings could not be saved to {path}. What was there before is kept.",
     # Prompt editors — where the edited prompts override the built-in ones from
@@ -337,14 +345,23 @@ pybreeze_english_word_dict = {
     "extend_tools_menu_tools_menu": "Tools",
     "extend_tools_menu_tools_ssh_menu": "SSH",
     "extend_tools_menu_tools_ai_menu": "AI",
+    # Navigation panel
+    "navigation_dock_title": "Navigation",
+    "navigation_filter_placeholder": "Find a tool or a command",
+    "navigation_no_match": "Nothing matches",
+    "navigation_category_automation": "Automation",
+    "navigation_category_tools": "Tools",
+    "navigation_category_mcp": "MCP",
+    "navigation_category_reports": "Reports",
+    "navigation_category_settings": "Settings",
     "extend_tools_menu_ssh_client_tab_action": "SSH Client Tab",
     "extend_tools_menu_ssh_client_tab_label": "SSH Client",
     "extend_tools_menu_ai_code_review_tab_action": "AI Code Review Tab",
     "extend_tools_menu_ai_code_review_tab_label": "AI Code Review",
     "extend_tools_menu_cot_prompt_editor_tab_action": _COT_PROMPT_EDITOR + " Tab",
     "extend_tools_menu_cot_prompt_editor_tab_label": _COT_PROMPT_EDITOR,
-    "extend_tools_menu_cot_code_review_tab_action": "CoT Code Review Tab",
-    "extend_tools_menu_cot_code_review_tab_label": "CoT Code Review",
+    "extend_tools_menu_cot_code_review_tab_action": _COT_CODE_REVIEW + " Tab",
+    "extend_tools_menu_cot_code_review_tab_label": _COT_CODE_REVIEW,
     "extend_tools_menu_skill_prompt_editor_tab_action": _SKILL_PROMPT_EDITOR + " Tab",
     "extend_tools_menu_skill_prompt_editor_tab_label": _SKILL_PROMPT_EDITOR,
     "extend_tools_menu_skill_prompt_send_tab_label": "Skill Send",
@@ -354,8 +371,8 @@ pybreeze_english_word_dict = {
     "extend_tools_menu_ssh_client_dock_action": "SSH Client Dock",
     "extend_tools_menu_ai_code_review_dock_action": "AI Code Review Dock",
     "extend_tools_menu_cot_prompt_editor_dock_action": "CoT Prompt Editor Dock",
-    "extend_tools_menu_cot_code_review_dock_action": "CoT Code Review Dock",
-    "extend_tools_menu_cot_code_review_dock_title": "CoT Code Review",
+    "extend_tools_menu_cot_code_review_dock_action": _COT_CODE_REVIEW + " Dock",
+    "extend_tools_menu_cot_code_review_dock_title": _COT_CODE_REVIEW,
     "extend_tools_menu_skill_prompt_editor_dock_action": "Skill Prompt Editor Dock",
     "extend_tools_menu_ssh_client_dock_title": "SSH Client",
     "extend_tools_menu_ai_code_review_dock_title": "AI Code Review",
@@ -364,7 +381,7 @@ pybreeze_english_word_dict = {
     "extend_tools_menu_skill_prompt_send_dock_action": "Skill Send Dock",
     "extend_tools_menu_skill_prompt_send_dock_title": "Skill Send",
     # CoT code-review GUI
-    "cot_gui_window_title": "CoT Code Review",
+    "cot_gui_window_title": _COT_CODE_REVIEW,
     "cot_gui_label_api_url": "API URL:",
     "cot_gui_placeholder_api_url": "The API URL to send to, e.g. https://llm.example.com/api",
     "cot_gui_placeholder_code_paste_area": "Paste the code to review here",
@@ -393,6 +410,7 @@ pybreeze_english_word_dict = {
     # JupyterLab GUI
     "jupyterlab_init": "Initializing...",
     "jupyterlab_downloading": "Downloading...",
+    "jupyterlab_upgrading": "Known vulnerabilities in {found}: upgrading...",
     "jupyterlab_loading": "Loading...",
     "jupyterlab_timeout": "JupyterLab did not start in time",
     "jupyterlab_exited_early": "JupyterLab exited early (code {code}): {output}",
@@ -448,6 +466,19 @@ pybreeze_english_word_dict = {
     "curl_import_target_apitestka_python": "APITestka (Python)",
     "curl_import_target_apitestka_action": "APITestka (JSON action)",
     "curl_import_target_loaddensity_python": "LoadDensity (Python)",
+    "curl_import_target_webrunner_action": "WebRunner (JSON action)",
+    # What a target leaves out of a request (tools_gui/import_gaps.py)
+    "import_target_gaps_note": "Not sent by this target: {parts}",
+    "request_part_method": "the method (this target makes a GET)",
+    "request_part_headers": "headers",
+    "request_part_cookies": "cookies",
+    "request_part_body": "the body",
+    "request_part_form_fields": "form fields",
+    "request_part_file_upload": "file uploads",
+    "request_part_body_file": "a body read from a file",
+    "request_part_cookie_file": "cookies read from a file",
+    "request_part_auth": "the user name and password",
+    "request_part_timeout": "the time limit",
     "curl_import_open_url_button": "Open URL in parser / builder",
     "curl_import_open_headers_button": "Open headers in analyzer",
     # HAR Import — Menu
@@ -603,6 +634,14 @@ pybreeze_english_word_dict = {
     "extend_tools_menu_json_format_tab_label": "JSON Format",
     "extend_tools_menu_json_format_dock_action": "JSON Format Dock",
     "extend_tools_menu_json_format_dock_title": "JSON Format",
+    "extend_tools_menu_json_editor_tab_action": "JSON Editor Tab",
+    "extend_tools_menu_json_editor_tab_label": "JSON Editor",
+    "extend_tools_menu_json_editor_dock_action": "JSON Editor Dock",
+    "extend_tools_menu_json_editor_dock_title": "JSON Editor",
+    "extend_tools_menu_keyword_reference_tab_action": "Automation Keywords Tab",
+    "extend_tools_menu_keyword_reference_tab_label": "Automation Keywords",
+    "extend_tools_menu_keyword_reference_dock_action": "Automation Keywords Dock",
+    "extend_tools_menu_keyword_reference_dock_title": "Automation Keywords",
     # JSON Format — Widget
     "json_format_input_label": "JSON:",
     "json_format_input_placeholder": "{\"a\": 1, \"b\": [2, 3]}",
@@ -611,6 +650,40 @@ pybreeze_english_word_dict = {
     "json_format_output_label": _RESULT_LABEL,
     "json_format_error": "Invalid JSON: {error}",
     "json_format_empty_hint": "Paste JSON above, then format or minify.",
+    # JSON editor
+    "json_editor_open_button": "Open...",
+    "json_editor_save_button": "Save",
+    "json_editor_save_as_button": "Save As...",
+    "json_editor_undo_button": "Undo",
+    "json_editor_redo_button": "Redo",
+    "json_editor_tree_view": "Tree",
+    "json_editor_text_view": "Text",
+    "json_editor_column_key": "Key",
+    "json_editor_column_value": "Value",
+    "json_editor_column_type": "Type",
+    "json_editor_add_button": "Add",
+    "json_editor_delete_button": "Delete",
+    "json_editor_up_button": "Move Up",
+    "json_editor_down_button": "Move Down",
+    "json_editor_type_label": "Type:",
+    "json_editor_kind_object": "object",
+    "json_editor_kind_array": "array",
+    "json_editor_kind_string": "string",
+    "json_editor_kind_number": "number",
+    "json_editor_kind_boolean": "boolean",
+    "json_editor_kind_null": "null",
+    "json_editor_root": "(document)",
+    "json_editor_untitled": "Untitled",
+    "json_editor_valid": "Valid JSON",
+    "json_editor_problem_at": "Line {line}, column {column}: {reason}",
+    "json_editor_read_error": "The file could not be read: {error}",
+    "json_editor_close_over_edits":
+        "The JSON document has changes that are not saved. Close and lose them?",
+    "json_editor_open_over_edits":
+        "The JSON document has changes that are not saved. Open another and lose them?",
+    "json_editor_open_dialog_title": "Open a JSON file",
+    "json_editor_save_dialog_title": "Save the JSON document",
+    "json_editor_file_filter": "JSON (*.json);;All Files (*)",
     # Response Inspector — Menu
     "extend_tools_menu_response_tab_action": "Response Inspector Tab",
     "extend_tools_menu_response_tab_label": "Response Inspector",
@@ -650,41 +723,9 @@ pybreeze_english_word_dict = {
     "header_analyzer_level_warning": "WARNING",
     "header_analyzer_level_info": "INFO",
     "header_analyzer_open_jwt_button": "Open JWT in decoder",
-    # HTTP Header Analyzer — Findings ({header} is the header, {detail} its value)
-    "header_finding_duplicate_header":
-        "{header}: sent {detail} times; the receiver joins the values into one.",
-    "header_finding_content_type_options_not_nosniff":
-        "{header}: '{detail}' has no effect, only 'nosniff' stops MIME sniffing.",
-    "header_finding_hsts_weak_max_age":
-        "{header}: max-age={detail} is short; 15552000 (180 days) is the usual minimum.",
-    "header_finding_csp_unsafe_directive":
-        "{header}: contains '{detail}', which re-allows what the policy should block.",
-    "header_finding_cors_wildcard_origin": "{header}: every origin is allowed (*).",
-    "header_finding_cors_wildcard_with_credentials":
-        "{header}: '*' with Access-Control-Allow-Credentials: true is rejected by browsers.",
-    "header_finding_cookie_not_secure":
-        "{header}: cookie '{detail}' has no Secure attribute, so it can travel over plain HTTP.",
-    "header_finding_cookie_not_httponly":
-        "{header}: cookie '{detail}' has no HttpOnly attribute, so scripts can read it.",
-    "header_finding_cookie_no_samesite":
-        "{header}: cookie '{detail}' has no SameSite attribute; browsers default it to Lax.",
-    "header_finding_content_type_no_charset":
-        "{header}: '{detail}' names no charset, so the client has to guess the encoding.",
-    "header_finding_server_banner": "{header}: '{detail}' reveals the software in use.",
-    "header_finding_deprecated_header":
-        "{header}: '{detail}' is deprecated and ignored by current browsers.",
-    "header_finding_sensitive_header":
-        "{header}: carries a credential; mask it before sharing this output.",
-    "header_finding_missing_hsts":
-        "{header}: not set, so a browser may fall back to plain HTTP.",
-    "header_finding_missing_csp":
-        "{header}: not set, so nothing limits where scripts may be loaded from.",
-    "header_finding_missing_content_type_options":
-        "{header}: not set, so a browser may MIME-sniff the response.",
-    "header_finding_missing_frame_options":
-        "{header}: not set; it (or CSP frame-ancestors) controls who may frame the page.",
-    "header_finding_missing_referrer_policy":
-        "{header}: not set, so full URLs may leak to other sites.",
+    "header_analyzer_export_sarif_button": "Export findings as SARIF",
+    "header_analyzer_sarif_dialog_title": "Export findings as SARIF",
+    "header_analyzer_sarif_filter": "SARIF (*.sarif);;JSON (*.json)",
     # Diagram Editor — Tools
     "diagram_editor_tool_select": "Select",
     "diagram_editor_tool_rect": "Rect",
@@ -719,8 +760,8 @@ pybreeze_english_word_dict = {
     "diagram_editor_distribute_h": "Distribute Horizontal",
     "diagram_editor_distribute_v": "Distribute Vertical",
     # Diagram Editor — Dialogs
-    "diagram_editor_confirm_title": "Confirm",
-    "diagram_editor_confirm_new": "Discard current diagram?",
+    "diagram_editor_confirm_new":
+        "The diagram has changes that are not saved. Start a new one and lose them?",
     "diagram_editor_dialog_open": "Open Diagram",
     "diagram_editor_filter_diagram": "Diagram JSON (*.diagram.json)",
     "diagram_editor_filter_png": "PNG Image (*.png)",
@@ -819,18 +860,19 @@ pybreeze_english_word_dict = {
     "run_window_no_interpreter": "[Error] No Python interpreter found: {error}",
     "run_window_package_could_not_start": "[Error] {package} could not start: {reason}",
     "run_window_exit_code": "Task exit with code {code}",
+    "run_window_process_exited": "[Process exited with code {code}]",
     "run_window_output_still_held":
         "[A process started by this run still holds its output; what it writes from now on is not shown]",
 }
+# The words of the features that reach outside the IDE, kept in a file of their own
+pybreeze_english_word_dict.update(ENGLISH_INTEGRATION_WORDS)
+
 # Why a tool refused its input (pybreeze_ui/error_text.py): in English, the
 # constants the tools raise
 pybreeze_english_word_dict.update(
     {ERROR_TEXT_KEY_PREFIX + name: template for name, template in error_templates().items()})
 
-
-def update_english_word_dict():
-    # Mutate jeditor's built-in English dict in-place.
-    # This works because language_wrapper.language_word_dict is a direct reference
-    # to english_word_dict — do NOT use register_natural_language() for built-in
-    # languages, as that would replace the reference and break the link.
-    english_word_dict.update(pybreeze_english_word_dict)
+# What the header analyzer found ({header} is the header, {detail} its value): in
+# English, the sentence of each rule, which an exported SARIF report carries too
+pybreeze_english_word_dict.update(
+    {HEADER_FINDING_KEY_PREFIX + rule.id: rule.message for rule in RULES.values()})

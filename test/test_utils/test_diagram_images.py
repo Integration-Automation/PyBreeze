@@ -112,7 +112,8 @@ class TestFetchingAnImage:
 
         assert downloads == [_A_URL], "the image was fetched again"
         images = scene.get_all_images()
-        assert images and not images[0]._pix_item.pixmap().isNull()
+        assert images
+        assert not images[0]._pix_item.pixmap().isNull()
         scene.let_image_downloads_run_out()
 
     def test_two_images_from_one_source_share_a_single_fetch(self, app, downloads):

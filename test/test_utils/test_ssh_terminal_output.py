@@ -185,6 +185,33 @@ class TestTheReader:
 
         assert b"".join(received) == b"last words"
 
+    def test_a_read_that_fails_is_said_once_as_the_close(self, app):
+        from je_editor import language_wrapper
+
+        class Broken(FakeChannel):
+            def recv_ready(self) -> bool:
+                raise OSError("socket is closed")
+
+        reader = SSHReaderThread(Broken([]))
+        closes: list[str] = []
+        reader.closed.connect(closes.append)
+
+        reader.run()
+
+        failed = language_wrapper.language_word_dict.get("ssh_command_widget_error_message_reader_failed")
+        assert closes == [f"{failed} socket is closed"]
+
+    def test_a_shell_that_ends_is_said_once_as_the_close(self, app):
+        from je_editor import language_wrapper
+
+        reader = SSHReaderThread(FakeChannel([]))
+        closes: list[str] = []
+        reader.closed.connect(closes.append)
+
+        reader.run()
+
+        assert closes == [language_wrapper.language_word_dict.get("ssh_command_widget_log_message_reader_closed")]
+
 
 class PartialSendChannel:
     """Takes at most one packet per send, as paramiko's Channel.send does."""
@@ -235,6 +262,23 @@ class TestSendingACommand:
 
         assert channel.sent == [b"\n"]
         widget.shell_channel = None
+        widget.close()
+
+    def test_without_a_session_a_typed_command_asks_to_connect(self, app, monkeypatch):
+        from je_editor import language_wrapper
+
+        shown: list = []
+        monkeypatch.setattr(ssh_command_widget.QMessageBox, "information", lambda *args: shown.append(args[1:]))
+        widget = SSHCommandWidget()
+
+        widget.send_command()  # nothing typed: nothing said
+        widget.command_input_edit.setText("ls")
+        widget.send_command()
+
+        word = language_wrapper.language_word_dict
+        assert shown == [(word.get("ssh_command_widget_dialog_title_not_connected"),
+                          word.get("ssh_command_widget_dialog_message_not_connected_shell"))]
+        assert widget.command_input_edit.text() == "ls"  # kept for when it is connected
         widget.close()
 
     def test_interrupt_sends_ctrl_c_and_keeps_the_line(self, app):
@@ -543,3 +587,94 @@ class TestColours:
 
         assert widget.terminal.toPlainText() == "a\nb"
         widget.close()
+
+
+class TestWhatTheOtherPathsDo:
+    """The reader's error stream, a send that fails, Disconnect, and the shell being opened."""
+
+    def test_the_error_stream_reaches_the_terminal_too(self, app):
+        class ErrorsOnly(FakeChannel):
+            def __init__(self) -> None:
+                super().__init__([])
+                self.errors = [b"ls: cannot access 'x'"]
+
+            def recv_stderr_ready(self) -> bool:
+                return bool(self.errors)
+
+            def recv_stderr(self, _size: int) -> bytes:
+                return self.errors.pop(0)
+
+        reader = SSHReaderThread(ErrorsOnly())
+        received: list[bytes] = []
+        reader.data_received.connect(received.append)
+
+        reader.run()
+
+        assert received == [b"ls: cannot access 'x'"]
+
+    def test_a_send_that_fails_says_so_and_keeps_the_line(self, app):
+        class Dropped(PartialSendChannel):
+            def send(self, data) -> int:
+                raise OSError("Socket is closed")
+
+        widget = SSHCommandWidget()
+        widget.shell_channel = Dropped()
+        widget.command_input_edit.setText("uptime")
+
+        widget.send_command()
+
+        assert "Socket is closed" in widget.terminal.toPlainText()
+        assert widget.command_input_edit.text() == "uptime"
+        widget.shell_channel = None
+        widget.close()
+
+    def test_disconnect_closes_the_session_and_says_so(self, app):
+        class Closing:
+            closed = False
+
+            def close(self) -> None:
+                self.closed = True
+
+        widget = SSHCommandWidget()
+        channel, client = Closing(), Closing()
+        widget.shell_channel, widget.ssh_client = channel, client
+        changes: list = []
+        widget.state_changed.connect(lambda: changes.append(True))
+
+        widget.disconnect_ssh()
+
+        assert channel.closed
+        assert client.closed
+        assert widget.shell_channel is None
+        assert widget.ssh_client is None
+        assert widget.login_widget.status_label.text() == widget.word_dict.get(
+            "ssh_command_widget_status_label_disconnected")
+        assert changes == [True]
+        widget.close()
+
+    def test_the_shell_is_opened_with_keepalive_its_size_and_no_blocking(self):
+        calls: list = []
+
+        class Transport:
+            def set_keepalive(self, seconds) -> None:
+                calls.append(("keepalive", seconds))
+
+        class Channel:
+            def settimeout(self, timeout) -> None:
+                calls.append(("timeout", timeout))
+
+        class Client:
+            def get_transport(self):
+                return Transport()
+
+            def invoke_shell(self, **options):
+                calls.append(("shell", options))
+                return Channel()
+
+        ssh_command_widget.open_shell_channel(Client(), (132, 40))
+
+        assert calls == [
+            ("keepalive", ssh_command_widget.SSH_KEEPALIVE_SECONDS),
+            ("shell", {"term": "xterm", "width": 132, "height": 40}),
+            ("timeout", 0.0),
+        ]

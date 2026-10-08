@@ -1,0 +1,9 @@
+{
+    "Failure_Test1": {
+        "Method": "POST",
+        "test_url": "https://example.com/login",
+        "name": "/login",
+        "status_code": "503",
+        "error": "HTTPError('503 Server Error: Service Unavailable for url: /login')"
+    }
+}

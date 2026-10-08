@@ -1,6 +1,8 @@
 """Tests for the epoch / ISO-8601 timestamp converter."""
 from __future__ import annotations
 
+import sys
+
 import pytest
 
 from pybreeze.utils.exception.exceptions import TimestampParseException
@@ -22,6 +24,16 @@ class TestDetectEpochUnit:
 
     def test_zero_is_seconds(self):
         assert detect_epoch_unit(0) == "s"
+
+    @pytest.mark.parametrize(("threshold", "below", "unit"), [
+        (10 ** 11, "s", "ms"),
+        (10 ** 14, "ms", "us"),
+        (10 ** 17, "us", "ns"),
+    ])
+    def test_each_unit_starts_at_its_threshold(self, threshold, below, unit):
+        assert detect_epoch_unit(threshold - 1) == below
+        assert detect_epoch_unit(threshold) == unit
+        assert detect_epoch_unit(-threshold) == unit  # before 1970, by its size
 
 
 class TestConvertFromEpoch:
@@ -116,6 +128,24 @@ class TestSubSecondPrecision:
     def test_an_iso_time_with_milliseconds_keeps_them(self):
         assert convert_timestamp("2021-01-01T00:00:00.250Z").epoch_millis == 1609459200250
 
+    def test_an_iso_time_keeps_all_six_microsecond_digits(self):
+        assert convert_timestamp("2024-01-01T00:00:00.123456Z").iso_utc == "2024-01-01T00:00:00.123456+00:00"
+
+    def test_a_nanosecond_epoch_is_cut_not_rounded_to_the_microsecond(self):
+        # As a float, 1700000000123456.789 microseconds rounds up to ...457
+        assert convert_timestamp("1700000000123456789").iso_utc == "2023-11-14T22:13:20.123456+00:00"
+
+
+class TestUtcFromEpochSeconds:
+    @pytest.mark.parametrize(("seconds", "iso"), [
+        (_EPOCH_2021, "2021-01-01T00:00:00+00:00"),
+        (-1.5, "1969-12-31T23:59:58.500000+00:00"),
+    ])
+    def test_the_instant_that_many_seconds_from_1970(self, seconds, iso):
+        from pybreeze.utils.timestamp_tools.timestamp_converter import utc_from_epoch_seconds
+
+        assert utc_from_epoch_seconds(seconds).isoformat() == iso
+
 
 class TestFormsToolsWrite:
     """Read the same on Python 3.10 as on 3.14: fromisoformat took less before 3.11."""
@@ -171,7 +201,19 @@ class TestFormsToolsWrite:
 
         with pytest.raises(TimestampParseException):
             convert_timestamp("2024-01-01T00:00+05:99")
+        with pytest.raises(TimestampParseException):
+            convert_timestamp("2024-01-01T00:00+05:60")
         assert convert_timestamp("2024-01-01T00:00+05:59").iso_utc == "2023-12-31T18:01:00+00:00"
+
+    @pytest.mark.parametrize(("text", "iso"), [
+        ("2024-01-01T00:00-05:30", "2024-01-01T05:30:00+00:00"),
+        ("2024-01-01T00:00+0530", "2023-12-31T18:30:00+00:00"),
+        ("2024-01-01T00:00-0530", "2024-01-01T05:30:00+00:00"),
+    ])
+    def test_an_offset_moves_the_time_by_its_hours_and_minutes(self, text, iso):
+        from pybreeze.utils.timestamp_tools.timestamp_converter import convert_timestamp
+
+        assert convert_timestamp(text).iso_utc == iso
 
 
 class TestADecimalEpochRoundsTowardThePast:
@@ -198,3 +240,78 @@ class TestADecimalEpochRoundsTowardThePast:
 
         with pytest.raises(TimestampParseException):
             convert_timestamp(text)
+
+
+class TestWhatOnlyFromisoformatReads:
+    """ISO forms the converter's own pattern does not take go to ``datetime.fromisoformat``."""
+
+    @pytest.mark.skipif(sys.version_info < (3, 11), reason="fromisoformat reads week dates from 3.11")
+    def test_a_week_date_is_read(self):
+        assert convert_timestamp("2026-W39-6T12:00").iso_utc == "2026-09-26T12:00:00+00:00"
+
+    @pytest.mark.skipif(sys.version_info < (3, 11), reason="fromisoformat reads week dates from 3.11")
+    def test_a_week_date_with_its_own_offset_is_moved_to_utc(self):
+        assert convert_timestamp("2026-W39-6T12:00+08:00").iso_utc == "2026-09-26T04:00:00+00:00"
+
+    @pytest.mark.skipif(sys.version_info >= (3, 11), reason="before 3.11 fromisoformat refuses week dates")
+    def test_before_3_11_a_week_date_is_refused(self):
+        with pytest.raises(TimestampParseException):
+            convert_timestamp("2026-W39-6T12:00")
+
+
+class TestHttpDates:
+    """The three forms RFC 9110 (5.6.7) has a recipient accept: Date, Last-Modified, Expires..."""
+
+    @pytest.mark.parametrize("text", [
+        "Sun, 06 Nov 1994 08:49:37 GMT",   # IMF-fixdate
+        "Sunday, 06-Nov-94 08:49:37 GMT",  # the obsolete RFC 850 form
+        "Sun Nov  6 08:49:37 1994",        # asctime, which is in GMT
+    ])
+    def test_each_form_is_read(self, text):
+        # Pasted from a response header, each was "not a recognized epoch number"
+        assert convert_timestamp(text).iso_utc == "1994-11-06T08:49:37+00:00"
+
+    @pytest.mark.parametrize(("text", "iso"), [
+        ("Mon, 01 Jan 2024 00:00:00 +0100", "2023-12-31T23:00:00+00:00"),
+        ("Mon, 01 Jan 2024 00:00:00 PST", "2024-01-01T08:00:00+00:00"),
+    ])
+    def test_an_email_style_zone_is_applied(self, text, iso):
+        assert convert_timestamp(text).iso_utc == iso
+
+    @pytest.mark.parametrize("text", ["Sun, 31 Feb 1994 08:49:37 GMT", "Sun, 06 Nov 1994 25:49:37 GMT", "Nov 6"])
+    def test_a_date_that_is_not_one_is_refused(self, text):
+        with pytest.raises(TimestampParseException):
+            convert_timestamp(text)
+
+
+class TestRfc9557Suffixes:
+    """An RFC 3339 date-time with a bracketed time zone or tags, as Java's ZonedDateTime writes it."""
+
+    @pytest.mark.parametrize(("text", "iso"), [
+        ("2024-01-01T00:00:00+01:00[Europe/Paris]", "2023-12-31T23:00:00+00:00"),
+        ("2024-01-01T00:00+01:00[Europe/Paris]", "2023-12-31T23:00:00+00:00"),
+        ("2024-01-01T09:00:00Z[UTC]", "2024-01-01T09:00:00+00:00"),
+        ("2024-01-01T00:00:00.123+01:00[!Europe/Paris][u-ca=gregory]", "2023-12-31T23:00:00.123000+00:00"),
+    ])
+    def test_the_offset_gives_the_instant(self, text, iso):
+        assert convert_timestamp(text).iso_utc == iso
+
+    @pytest.mark.parametrize("text", [
+        "2024-01-01T00:00:00[Europe/Paris]",
+        "2024-01-01[Europe/Paris]",  # a date's last "-01" is not an offset
+        "2024-01-01T00:00:00+01:00[Europe/Paris",
+    ])
+    def test_without_an_offset_or_a_closing_bracket_it_is_refused(self, text):
+        # Taken as UTC, a time in Paris would have come out an hour off
+        with pytest.raises(TimestampParseException):
+            convert_timestamp(text)
+
+    def test_a_long_run_of_brackets_is_read_in_linear_time(self):
+        import time
+
+        started = time.perf_counter()
+        for text in ("2024-01-01T00:00Z" + "[a]" * 20000 + "x]", "2024-01-01T00:00Z" + "[" * 20000 + "]"):
+            with pytest.raises(TimestampParseException):
+                convert_timestamp(text)
+
+        assert time.perf_counter() - started < 1

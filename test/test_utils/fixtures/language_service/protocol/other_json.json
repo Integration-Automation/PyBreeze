@@ -1,0 +1,129 @@
+{
+ "about": "A JSON file that is nobody's script is only told whether it is JSON.",
+ "frameworks": [
+  "je_web_runner",
+  "je_auto_control",
+  "je_load_density"
+ ],
+ "exchange": [
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "method": "textDocument/didOpen",
+    "params": {
+     "textDocument": {
+      "uri": "file:///project/script.json",
+      "languageId": "json",
+      "version": 1,
+      "text": "{\n  \"name\": \"demo\",\n  \"tags\": [\"a\" \"b\"]\n}\n"
+     }
+    }
+   },
+   "expect": [
+    {
+     "jsonrpc": "2.0",
+     "method": "textDocument/publishDiagnostics",
+     "params": {
+      "uri": "file:///project/script.json",
+      "version": 1,
+      "diagnostics": [
+       {
+        "range": {
+         "start": {
+          "line": 2,
+          "character": 15
+         },
+         "end": {
+          "line": 2,
+          "character": 16
+         }
+        },
+        "severity": 1,
+        "code": "json-syntax",
+        "source": "json",
+        "message": "This is not valid JSON"
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "id": 16,
+    "method": "textDocument/completion",
+    "params": {
+     "textDocument": {
+      "uri": "file:///project/script.json"
+     },
+     "position": {
+      "line": 2,
+      "character": 12
+     }
+    }
+   },
+   "expect": [
+    {
+     "jsonrpc": "2.0",
+     "id": 16,
+     "result": {
+      "isIncomplete": false,
+      "items": []
+     }
+    }
+   ]
+  },
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "id": 17,
+    "method": "textDocument/hover",
+    "params": {
+     "textDocument": {
+      "uri": "file:///project/script.json"
+     },
+     "position": {
+      "line": 1,
+      "character": 4
+     }
+    }
+   },
+   "expect": [
+    {
+     "jsonrpc": "2.0",
+     "id": 17,
+     "result": null
+    }
+   ]
+  },
+  {
+   "send": {
+    "jsonrpc": "2.0",
+    "method": "textDocument/didChange",
+    "params": {
+     "textDocument": {
+      "uri": "file:///project/script.json",
+      "version": 2
+     },
+     "contentChanges": [
+      {
+       "text": "{\n  \"name\": \"demo\",\n  \"tags\": [\"a\", \"b\"]\n}\n"
+      }
+     ]
+    }
+   },
+   "expect": [
+    {
+     "jsonrpc": "2.0",
+     "method": "textDocument/publishDiagnostics",
+     "params": {
+      "uri": "file:///project/script.json",
+      "version": 2,
+      "diagnostics": []
+     }
+    }
+   ]
+  }
+ ]
+}

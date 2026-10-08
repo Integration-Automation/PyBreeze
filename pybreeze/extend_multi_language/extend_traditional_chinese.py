@@ -1,10 +1,14 @@
 from __future__ import annotations
 
-from je_editor import traditional_chinese_word_dict
+from pybreeze.extend_multi_language.traditional_chinese_error_text import TRADITIONAL_CHINESE_ERROR_TEXT
+from pybreeze.extend_multi_language.traditional_chinese_integrations import (
+    TRADITIONAL_CHINESE_INTEGRATION_WORDS,
+)
 
 _COT_PROMPT_EDITOR = "CoT 提示詞編輯器"
 _SKILL_PROMPT_EDITOR = "Skill 提示詞編輯器"
 _RESULT_LABEL = "結果："
+_COT_CODE_REVIEW = "CoT 程式碼審查"
 
 # PyBreeze-specific Traditional Chinese translations
 pybreeze_traditional_chinese_word_dict = {
@@ -12,6 +16,10 @@ pybreeze_traditional_chinese_word_dict = {
     "application_name": "PyBreeze",
     # Run window
     "code_window_stop_button": "停止",
+    "code_window_close_running_title": "程式還在執行",
+    "code_window_close_running_message": (
+        "這個視窗裡的程式還在執行。要停止它嗎？\n\n"
+        "選「否」會讓它在沒有視窗的情況下繼續執行（要寄的報告照樣會寄出）；選「取消」則保留這個視窗。"),
     # Menubar
     "automation_menu_label": "自動化",
     "install_menu_label": "安裝",
@@ -144,6 +152,7 @@ pybreeze_traditional_chinese_word_dict = {
     "prthinker_setting_extra_arguments_label": "額外的命令列參數",
     "prthinker_setting_source_path_label": "prthinker 原始碼資料夾",
     "prthinker_setting_stored_at_label": "設定檔位置：",
+    "prthinker_setting_key_from_environment": "這個後端從環境變數 {variable} 讀取金鑰，須在啟動 PyBreeze 之前設定；這裡沒有它的欄位。",
     "prthinker_setting_bad_extra_arguments": "額外參數無法解讀：有引號沒有關上。請補上或刪掉後再存檔。",
     "prthinker_setting_save_failed": "設定無法存到 {path}，原本的設定保持不變。",
     # Prompt 編輯器 —— 編輯過的 prompt 會覆寫內建版本
@@ -327,14 +336,23 @@ pybreeze_traditional_chinese_word_dict = {
     "extend_tools_menu_tools_menu": "工具",
     "extend_tools_menu_tools_ssh_menu": "SSH",
     "extend_tools_menu_tools_ai_menu": "AI",
+    # Navigation panel
+    "navigation_dock_title": "導覽",
+    "navigation_filter_placeholder": "尋找工具或指令",
+    "navigation_no_match": "沒有符合的項目",
+    "navigation_category_automation": "自動化",
+    "navigation_category_tools": "工具",
+    "navigation_category_mcp": "MCP",
+    "navigation_category_reports": "報告",
+    "navigation_category_settings": "設定",
     "extend_tools_menu_ssh_client_tab_action": "SSH 用戶端分頁",
     "extend_tools_menu_ssh_client_tab_label": "SSH 用戶端",
     "extend_tools_menu_ai_code_review_tab_action": "AI 程式碼審查分頁",
     "extend_tools_menu_ai_code_review_tab_label": "AI 程式碼審查",
     "extend_tools_menu_cot_prompt_editor_tab_action": _COT_PROMPT_EDITOR + "分頁",
     "extend_tools_menu_cot_prompt_editor_tab_label": _COT_PROMPT_EDITOR,
-    "extend_tools_menu_cot_code_review_tab_action": "CoT 程式碼審查分頁",
-    "extend_tools_menu_cot_code_review_tab_label": "CoT 程式碼審查",
+    "extend_tools_menu_cot_code_review_tab_action": _COT_CODE_REVIEW + "分頁",
+    "extend_tools_menu_cot_code_review_tab_label": _COT_CODE_REVIEW,
     "extend_tools_menu_skill_prompt_editor_tab_action": _SKILL_PROMPT_EDITOR + "分頁",
     "extend_tools_menu_skill_prompt_editor_tab_label": _SKILL_PROMPT_EDITOR,
     "extend_tools_menu_skill_prompt_send_tab_label": "Skill 提示詞傳送",
@@ -344,8 +362,8 @@ pybreeze_traditional_chinese_word_dict = {
     "extend_tools_menu_ssh_client_dock_action": "SSH 用戶端停駐窗格",
     "extend_tools_menu_ai_code_review_dock_action": "AI 程式碼審查停駐窗格",
     "extend_tools_menu_cot_prompt_editor_dock_action": "CoT 提示詞編輯器停駐窗格",
-    "extend_tools_menu_cot_code_review_dock_action": "CoT 程式碼審查停駐窗格",
-    "extend_tools_menu_cot_code_review_dock_title": "CoT 程式碼審查",
+    "extend_tools_menu_cot_code_review_dock_action": _COT_CODE_REVIEW + "停駐窗格",
+    "extend_tools_menu_cot_code_review_dock_title": _COT_CODE_REVIEW,
     "extend_tools_menu_skill_prompt_editor_dock_action": "Skill 提示詞編輯器停駐窗格",
     "extend_tools_menu_ssh_client_dock_title": "SSH 用戶端",
     "extend_tools_menu_ai_code_review_dock_title": "AI 程式碼審查",
@@ -354,7 +372,7 @@ pybreeze_traditional_chinese_word_dict = {
     "extend_tools_menu_skill_prompt_send_dock_action": "Skill 提示詞傳送停駐窗格",
     "extend_tools_menu_skill_prompt_send_dock_title": "Skill 提示詞傳送",
     # CoT code-review GUI
-    "cot_gui_window_title": "CoT 程式碼審查",
+    "cot_gui_window_title": _COT_CODE_REVIEW,
     "cot_gui_label_api_url": "API URL：",
     "cot_gui_placeholder_api_url": "要傳送到的 API URL，例如 https://llm.example.com/api",
     "cot_gui_placeholder_code_paste_area": "在這裡貼上要審查的程式碼",
@@ -383,6 +401,7 @@ pybreeze_traditional_chinese_word_dict = {
     # JupyterLab GUI
     "jupyterlab_init": "初始化中...",
     "jupyterlab_downloading": "下載中...",
+    "jupyterlab_upgrading": "這個直譯器的 {found} 有已知的安全漏洞，正在升級...",
     "jupyterlab_loading": "載入中...",
     "jupyterlab_timeout": "JupyterLab 啟動超時",
     "jupyterlab_exited_early": "JupyterLab 提早結束（結束代碼 {code}）：{output}",
@@ -410,6 +429,19 @@ pybreeze_traditional_chinese_word_dict = {
     "curl_import_target_apitestka_python": "APITestka（Python）",
     "curl_import_target_apitestka_action": "APITestka（JSON action）",
     "curl_import_target_loaddensity_python": "LoadDensity（Python）",
+    "curl_import_target_webrunner_action": "WebRunner（JSON action）",
+    # What a target leaves out of a request (tools_gui/import_gaps.py)
+    "import_target_gaps_note": "這個目標不會送出：{parts}",
+    "request_part_method": "請求方法（這個目標一律是 GET）",
+    "request_part_headers": "標頭",
+    "request_part_cookies": "cookie",
+    "request_part_body": "本文",
+    "request_part_form_fields": "表單欄位",
+    "request_part_file_upload": "上傳的檔案",
+    "request_part_body_file": "讀自檔案的本文",
+    "request_part_cookie_file": "讀自檔案的 cookie",
+    "request_part_auth": "使用者名稱與密碼",
+    "request_part_timeout": "時間限制",
     "curl_import_open_url_button": "在 URL 解析／組建器開啟網址",
     "curl_import_open_headers_button": "在分析器開啟標頭",
     # HAR 匯入 — 選單
@@ -565,6 +597,14 @@ pybreeze_traditional_chinese_word_dict = {
     "extend_tools_menu_json_format_tab_label": "JSON 格式化",
     "extend_tools_menu_json_format_dock_action": "JSON 格式化停駐窗格",
     "extend_tools_menu_json_format_dock_title": "JSON 格式化",
+    "extend_tools_menu_json_editor_tab_action": "JSON 編輯器分頁",
+    "extend_tools_menu_json_editor_tab_label": "JSON 編輯器",
+    "extend_tools_menu_json_editor_dock_action": "JSON 編輯器停駐窗格",
+    "extend_tools_menu_json_editor_dock_title": "JSON 編輯器",
+    "extend_tools_menu_keyword_reference_tab_action": "自動化關鍵字分頁",
+    "extend_tools_menu_keyword_reference_tab_label": "自動化關鍵字",
+    "extend_tools_menu_keyword_reference_dock_action": "自動化關鍵字停駐窗格",
+    "extend_tools_menu_keyword_reference_dock_title": "自動化關鍵字",
     # JSON 格式化 — 介面
     "json_format_input_label": "JSON：",
     "json_format_input_placeholder": "{\"a\": 1, \"b\": [2, 3]}",
@@ -573,6 +613,40 @@ pybreeze_traditional_chinese_word_dict = {
     "json_format_output_label": _RESULT_LABEL,
     "json_format_error": "無效的 JSON：{error}",
     "json_format_empty_hint": "請在上方貼上 JSON，再按格式化或壓縮。",
+    # JSON editor
+    "json_editor_open_button": "開啟...",
+    "json_editor_save_button": "儲存",
+    "json_editor_save_as_button": "另存新檔...",
+    "json_editor_undo_button": "復原",
+    "json_editor_redo_button": "重做",
+    "json_editor_tree_view": "樹狀",
+    "json_editor_text_view": "文字",
+    "json_editor_column_key": "鍵",
+    "json_editor_column_value": "值",
+    "json_editor_column_type": "類型",
+    "json_editor_add_button": "新增",
+    "json_editor_delete_button": "刪除",
+    "json_editor_up_button": "上移",
+    "json_editor_down_button": "下移",
+    "json_editor_type_label": "類型：",
+    "json_editor_kind_object": "物件",
+    "json_editor_kind_array": "陣列",
+    "json_editor_kind_string": "字串",
+    "json_editor_kind_number": "數字",
+    "json_editor_kind_boolean": "布林值",
+    "json_editor_kind_null": "null",
+    "json_editor_root": "（文件）",
+    "json_editor_untitled": "未命名",
+    "json_editor_valid": "有效的 JSON",
+    "json_editor_problem_at": "第 {line} 行第 {column} 欄：{reason}",
+    "json_editor_read_error": "無法讀取檔案：{error}",
+    "json_editor_close_over_edits":
+        "JSON 文件還有沒存的變更。要關閉並捨棄它們嗎？",
+    "json_editor_open_over_edits":
+        "JSON 文件還有沒存的變更。要開啟另一個並捨棄它們嗎？",
+    "json_editor_open_dialog_title": "開啟 JSON 檔",
+    "json_editor_save_dialog_title": "儲存 JSON 文件",
+    "json_editor_file_filter": "JSON (*.json);;所有檔案 (*)",
     # 回應檢視器 — 選單
     "extend_tools_menu_response_tab_action": "回應檢視器分頁",
     "extend_tools_menu_response_tab_label": "回應檢視器",
@@ -612,6 +686,9 @@ pybreeze_traditional_chinese_word_dict = {
     "header_analyzer_level_warning": "警告",
     "header_analyzer_level_info": "資訊",
     "header_analyzer_open_jwt_button": "在解碼器開啟 JWT",
+    "header_analyzer_export_sarif_button": "將發現匯出為 SARIF",
+    "header_analyzer_sarif_dialog_title": "將發現匯出為 SARIF",
+    "header_analyzer_sarif_filter": "SARIF (*.sarif);;JSON (*.json)",
     # HTTP 標頭分析器 — 發現（{header} 為標頭名稱，{detail} 為其值）
     "header_finding_duplicate_header":
         "{header}：送出 {detail} 次，接收端會把這些值合併成一個。",
@@ -630,6 +707,11 @@ pybreeze_traditional_chinese_word_dict = {
         "{header}：cookie '{detail}' 沒有 HttpOnly 屬性，指令碼可以讀取。",
     "header_finding_cookie_no_samesite":
         "{header}：cookie '{detail}' 沒有 SameSite 屬性，瀏覽器會預設為 Lax。",
+    "header_finding_cookie_prefix_rejected":
+        "{header}：cookie '{detail}' 不符合名稱前綴的規則（__Secure- 需要 Secure；__Host- 需要 "
+        "Secure、Path=/ 而且不能有 Domain），瀏覽器會直接丟棄。",
+    "header_finding_cookie_samesite_none_not_secure":
+        "{header}：cookie '{detail}' 設了 SameSite=None 卻沒有 Secure，瀏覽器會直接丟棄。",
     "header_finding_content_type_no_charset":
         "{header}：'{detail}' 沒有指定 charset，用戶端只能自行猜測編碼。",
     "header_finding_server_banner": "{header}：'{detail}' 洩漏了所使用的軟體。",
@@ -681,8 +763,7 @@ pybreeze_traditional_chinese_word_dict = {
     "diagram_editor_distribute_h": "水平均分",
     "diagram_editor_distribute_v": "垂直均分",
     # Diagram Editor — 對話框
-    "diagram_editor_confirm_title": "確認",
-    "diagram_editor_confirm_new": "是否捨棄目前的架構圖？",
+    "diagram_editor_confirm_new": "架構圖還有沒存的變更。要新建一個並捨棄它們嗎？",
     "diagram_editor_dialog_open": "開啟架構圖",
     "diagram_editor_filter_diagram": "架構圖 JSON (*.diagram.json)",
     "diagram_editor_filter_png": "PNG 圖片 (*.png)",
@@ -794,78 +875,6 @@ pybreeze_traditional_chinese_word_dict = {
     "plugin_browser_status_downloading": "正在下載 {name}...",
     "plugin_browser_status_installed": "已安裝：{path}",
     "plugin_browser_restart_hint": "外掛已下載至：\n{path}\n\n請重新啟動編輯器以啟用。",
-    # 工具拒絕輸入的原因（pybreeze_ui/error_text.py）：exception_tags 各常數的翻譯
-    "error_text_cant_reformat_json_error": "無法重新格式化 JSON：型別正確嗎？",
-    "error_text_wrong_json_data_error": "無法解析 JSON",
-    "error_text_json_duplicate_key_error": "這份 JSON 在同一個物件裡給了兩次 {key} 鍵",
-    "error_text_empty_curl_command_error": "沒有提供 curl 指令",
-    "error_text_not_a_curl_command_error": "這看起來不是 curl 指令",
-    "error_text_malformed_curl_command_error": "無法解析 curl 指令：請檢查引號",
-    "error_text_no_url_in_curl_error": "curl 指令裡找不到 URL",
-    "error_text_get_with_file_body_error":
-        "-G 會把資料放進查詢字串，產生的腳本無法從檔案讀取：請把資料直接寫在指令裡",
-    "error_text_action_cannot_read_files_error":
-        "APITestka JSON 動作無法上傳檔案，也無法從檔案讀取內容或 Cookie：請選擇 Python 目標",
-    "error_text_malformed_url_error": "URL 格式錯誤（例如 [ 沒有關上，或連接埠不是數字）",
-    "error_text_invalid_http_method_error":
-        "不是 HTTP 方法：方法是由字母、數字與 !#$%&'*+.^_`|~- 組成的一個字",
-    "error_text_empty_har_error": "沒有提供 HAR 內容",
-    "error_text_invalid_har_json_error": "無法把檔案解析為 JSON：這不是有效的 HAR 匯出檔",
-    "error_text_not_a_har_document_error": "這份 JSON 沒有 log.entries 清單，不是 HAR 匯出檔",
-    "error_text_no_entries_in_har_error": "這份 HAR 匯出檔沒有任何請求",
-    "error_text_empty_jwt_error": "沒有提供權杖",
-    "error_text_malformed_jwt_error": "JWT 必須是以點分隔的三段",
-    "error_text_jwt_segment_decode_error": "無法解碼 JWT 的某一段：base64url 或 JSON 無效",
-    "error_text_empty_timestamp_error": "沒有提供數值",
-    "error_text_unrecognized_timestamp_error": "無法辨識為 epoch 數值或 ISO-8601 日期時間",
-    "error_text_invalid_json_object_error": "輸入必須是由鍵值組成的 JSON 物件",
-    "error_text_nested_query_value_error": "查詢值必須是字串、數字、true/false 或 null，或由它們組成的清單",
-    "error_text_invalid_json_for_query_error": "無法把輸入解析為 JSON",
-    "error_text_query_not_utf8_error": "查詢字串裡的百分比跳脫不是 UTF-8 文字（例如 %B0），因此沒有對應的 JSON",
-    "error_text_unencodable_text_error": "有個值含有 URL 無法表示的字元（例如 \\ud83d 這種落單的代理字元）",
-    "error_text_empty_regex_pattern_error": "沒有提供正規表示式",
-    "error_text_invalid_regex_pattern_error": "無效的正規表示式：{detail}",
-    "error_text_invalid_json_for_url_error": "無法把輸入解析為 JSON",
-    "error_text_invalid_url_components_error": "輸入必須是由 URL 各部分組成的 JSON 物件",
-    "error_text_unreadable_url_error": "輸入不是可以讀取的 URL",
-    "error_text_url_port_out_of_range_error": "連接埠必須是 0 到 65535 之間的數字",
-    "error_text_regex_timeout_error":
-        "這個正規表示式執行 {seconds} 秒後仍未結束，已被停止；(a+)+ 這類巢狀重複遇到幾乎符合的文字時，"
-        "執行時間可能呈指數成長",
-    "error_text_regex_worker_error": "無法執行這個正規表示式：{detail}",
-    "error_text_url_unsafe_characters_error": "URL 含有反斜線、空白或控制字元。",
-    "error_text_url_unparsable_error": "無法解析這個 URL。",
-    "error_text_url_ambiguous_host_error": "這個 URL 的主機名稱有兩種讀法。",
-    "error_text_url_scheme_not_allowed_error": "不允許 '{scheme}' 協定，請使用 http 或 https。",
-    "error_text_url_no_hostname_error": "URL 沒有主機名稱。",
-    "error_text_hostname_unresolved_error": "無法解析主機名稱 '{hostname}'：{detail}",
-    "error_text_hostname_without_address_error": "無法解析主機名稱 '{hostname}'。",
-    "error_text_address_not_public_error": "不允許連到非公開位址 {address}。",
-    "error_text_response_too_large_error": "回應內容超過 {limit} 位元組的上限。",
-    "error_text_request_timed_out_error": "請求逾時",
-    "error_text_request_tls_failed_error": "無法建立安全連線",
-    "error_text_request_no_connection_error": "無法連線到伺服器",
-    "error_text_request_too_many_redirects_error": "重新導向次數過多",
-    "error_text_request_invalid_url_error": "URL 無效",
-    "error_text_image_is_text_error": "預期收到圖片，伺服器卻傳回 '{content_type}'。",
-    "error_text_image_declared_too_large_error": "圖片太大（{size} 位元組，上限 {limit}）。",
-    "error_text_image_too_large_error": "圖片超過 {megabytes} MB 的上限。",
-    "error_text_host_key_rejected_error": "已拒絕 {hostname} 的主機金鑰。",
-    "error_text_redirect_not_followed_error": "重新導向（未跟隨）至 {where}",
-    "error_text_redirect_same_server_error": "重新導向（未跟隨）至這台伺服器上的另一個路徑",
-    "error_text_redirect_nowhere_error": "重新導向（未跟隨），但沒有指出目的地",
-    "error_text_authorization_failed_error": "驗證或授權失敗",
-    "error_text_server_error_error": "伺服器錯誤：{body}",
-    "error_text_diagram_not_an_object_error": "架構圖檔案應該是一個物件，而不是 {kind}",
-    "error_text_diagram_section_not_a_list_error": "架構圖的 '{section}' 應該是清單，而不是 {kind}",
-    "error_text_mail_not_installed_error": "沒有安裝 je_mail_thunder",
-    "error_text_mail_settings_unreadable_error": "無法讀取郵件設定檔（mail_thunder_content.json）",
-    "error_text_mail_no_user_error": "沒有設定郵件使用者",
-    "error_text_mail_login_failed_error": "郵件伺服器登入失敗",
-    "error_text_mail_send_failed_error": "寄送失敗（{kind}）",
-    "error_text_report_missing_error": "這次執行沒有寫出 {name}",
-    "error_text_report_not_a_file_error": "{name} 不是檔案",
-    "error_text_report_stale_error": "這次執行沒有寫出新的 {name}；現有的是之前執行留下的",
     # 執行視窗自己對這次執行的說明（extend/process_executor/run_notice.py）
     "run_window_no_compiler": "[錯誤] 這個執行設定沒有指定編譯器",
     "run_window_compile": "[編譯] {command}",
@@ -881,14 +890,10 @@ pybreeze_traditional_chinese_word_dict = {
     "run_window_no_interpreter": "[錯誤] 找不到 Python 直譯器：{error}",
     "run_window_package_could_not_start": "[錯誤] 無法啟動 {package}：{reason}",
     "run_window_exit_code": "執行結束，結束代碼 {code}",
+    "run_window_process_exited": "[行程已結束，結束代碼 {code}]",
     "run_window_output_still_held": "[這次執行啟動的某個行程仍握著輸出；它之後寫出的內容不會顯示]",
 }
-
-
-def update_traditional_chinese_word_dict():
-    # Mutate jeditor's built-in Traditional Chinese dict in-place.
-    # This works because language_wrapper.choose_language_dict["Traditional_Chinese"]
-    # is a direct reference to traditional_chinese_word_dict — do NOT use
-    # register_natural_language() for built-in languages, as that would replace
-    # the reference and break the link.
-    traditional_chinese_word_dict.update(pybreeze_traditional_chinese_word_dict)
+# The words of the features that reach outside the IDE, and the reasons a tool
+# refuses its input: each kept in a file of its own
+pybreeze_traditional_chinese_word_dict.update(TRADITIONAL_CHINESE_INTEGRATION_WORDS)
+pybreeze_traditional_chinese_word_dict.update(TRADITIONAL_CHINESE_ERROR_TEXT)

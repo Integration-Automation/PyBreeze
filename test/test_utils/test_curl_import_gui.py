@@ -80,7 +80,8 @@ class TestCurlImportGUI:
     def test_target_selector_has_all_targets(self, widget):
         keys = [widget.target_select.itemData(i) for i in range(widget.target_select.count())]
         assert keys == [
-            "requests", "pytest", "apitestka_python", "apitestka_action", "loaddensity_python"]
+            "requests", "pytest", "apitestka_python", "apitestka_action", "loaddensity_python",
+            "webrunner_action"]
 
     def test_generate_apitestka_python(self, widget):
         widget.input_edit.setPlainText("curl https://example.com/api")
@@ -266,6 +267,14 @@ class TestCurlImportOpenHeadersInAnalyzer:
         widget.convert()
         assert widget.open_headers_button.isEnabled()
 
+    def test_with_no_header_and_no_cookie_nothing_opens(self, widget_with_window):
+        gui, window = widget_with_window
+        gui.input_edit.setPlainText("curl https://x")
+        gui.convert()
+
+        assert gui.open_headers_in_analyzer() is None
+        assert window.tab_widget.added == []
+
     def test_open_headers_opens_prefilled_analyzer(self, widget_with_window):
         from pybreeze.pybreeze_ui.tools_gui.header_analyzer_gui import HeaderAnalyzerGUI
         gui, window = widget_with_window
@@ -297,7 +306,8 @@ class TestCurlImportOpenHeadersInAnalyzer:
         gui.open_headers_in_analyzer()
 
         output = window.tab_widget.added[0][0].output_edit.toPlainText()
-        assert "Cookie: a=1" in output and "c=3" not in output
+        assert "Cookie: a=1" in output
+        assert "c=3" not in output
 
     def test_open_headers_before_convert_is_noop(self, widget_with_window):
         gui, window = widget_with_window

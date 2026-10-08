@@ -7,10 +7,12 @@ from __future__ import annotations
 
 
 from PySide6.QtWidgets import (
-    QHBoxLayout, QLabel, QPushButton, QTextEdit, QVBoxLayout, QWidget
+    QLabel, QPushButton, QTextEdit, QVBoxLayout, QWidget
 )
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.busy_cursor import busy_cursor
+from pybreeze.pybreeze_ui.design.panels import wrapping_row
 from pybreeze.pybreeze_ui.run_shortcut import press_on_ctrl_enter
 from pybreeze.pybreeze_ui.exact_text import exact_text
 from pybreeze.pybreeze_ui.tools_gui.header_analyzer_gui import HeaderAnalyzerGUI
@@ -123,11 +125,9 @@ class ResponseInspectorGUI(QWidget):
             basename="response", extension="txt",
             is_valid=lambda: self._analysis is not None)
 
-        cross_tool = QHBoxLayout()
-        cross_tool.addWidget(self.open_status_button)
-        cross_tool.addWidget(self.open_headers_button)
-        cross_tool.addWidget(self.open_body_button)
-        cross_tool.addWidget(self.open_jwt_button)
+        # Wrapping: side by side the four made the tab wider than a small screen
+        cross_tool = wrapping_row(
+            self.open_status_button, self.open_headers_button, self.open_body_button, self.open_jwt_button)
 
         layout = QVBoxLayout()
         layout.addWidget(self.input_label)
@@ -139,17 +139,20 @@ class ResponseInspectorGUI(QWidget):
         layout.addLayout(self.output_actions.button_row())
         self.setLayout(layout)
 
+    # A large JSON body takes seconds to lay out and show
+    @busy_cursor()
     def analyze(self) -> None:
         """Analyse the pasted response, show the report, and enable cross-tool actions."""
         word = language_wrapper.language_word_dict
-        text = exact_text(self.input_edit).strip()
+        typed = exact_text(self.input_edit)
+        text = typed.strip()
         if not text:
             self._analysis = None
             self._set_cross_tool_enabled(jwt=False, status=False, headers=False, body=False)
             self.output_edit.setPlainText(word.get("response_empty_hint"))
             return
         self._analysis = analyze_response(text)
-        self._analysed_text = exact_text(self.input_edit)
+        self._analysed_text = typed
         self.output_edit.setPlainText(build_report_text(self._analysis))
         self._set_cross_tool_enabled(
             jwt=bool(self._analysis.jwt_findings),

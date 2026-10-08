@@ -76,6 +76,16 @@ class TestHeaderAnalyzerGUI:
         widget.analyze()
         assert widget.output_edit.toPlainText() == EN["header_analyzer_no_headers"]
 
+    def test_the_report_of_text_without_headers_says_so(self, widget):
+        # build_header_report is public: it says so itself, not only the tab
+        from pybreeze.pybreeze_ui.tools_gui.header_analyzer_gui import build_header_report
+
+        assert build_header_report(analyze_headers("just some prose")) == EN["header_analyzer_no_headers"]
+
+    def test_before_an_analysis_there_are_no_tokens(self, widget):
+        assert widget.header_tokens() == []
+        assert not widget.open_jwt_button.isEnabled()
+
     def test_initial_headers_are_analysed_on_open(self, app):
         from pybreeze.pybreeze_ui.tools_gui.header_analyzer_gui import HeaderAnalyzerGUI
         gui = HeaderAnalyzerGUI(initial_headers=_RESPONSE)

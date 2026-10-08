@@ -126,8 +126,9 @@ class TestADownload:
         sftp = FakeSftp()
         sftp.fail_after = b"half"
 
+        wrapper = _wrapper(sftp)
         with pytest.raises(OSError):
-            _wrapper(sftp).download("/report.txt", str(target))
+            wrapper.download("/report.txt", str(target))
 
         # get() emptied the target before the first byte; a dropped link left
         # it cut short.

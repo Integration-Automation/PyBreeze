@@ -164,6 +164,40 @@ class TestShellConnect:
         assert client.closed
         assert widget.ssh_client is None
 
+    def test_a_connect_that_ends_after_disconnect_is_closed_and_opens_no_shell(self, app, monkeypatch):
+        # The tab stays open: the late connect's own signal still arrives
+        release = threading.Event()
+        client = FakeClient(release)
+        widget = _shell(monkeypatch, client)
+        widget._start_shell = lambda *args: pytest.fail("shell opened after disconnect")
+
+        widget.connect_ssh()
+        thread = widget._connecting
+        widget.disconnect_ssh()
+        client.closed = False  # the disconnect closed it once; the late connect must close it again
+        release.set()
+        _wait_for(lambda: client.closed and not thread.isRunning())
+        QApplication.processEvents()
+
+        assert widget.ssh_client is None
+        widget.close()
+
+    def test_a_connect_that_fails_after_disconnect_says_nothing(self, app, monkeypatch):
+        release = threading.Event()
+        widget = _shell(monkeypatch, FakeClient(release, OSError("refused late")))
+
+        widget.connect_ssh()
+        thread = widget._connecting
+        widget.disconnect_ssh()
+        shown = widget.terminal.toPlainText()
+        release.set()
+        _wait_for(lambda: not thread.isRunning())
+        QApplication.processEvents()
+
+        assert "refused late" not in widget.terminal.toPlainText()
+        assert widget.terminal.toPlainText() == shown
+        widget.close()
+
     def test_closing_while_connecting_closes_the_late_session(self, app, monkeypatch):
         release = threading.Event()
         client = FakeClient(release)
@@ -317,7 +351,8 @@ class TestTheRealWrapperGivenUpOn:
         worker.join(WAIT_SECONDS)
 
         assert raised == [None]
-        assert wrapper.connected and not client.closed
+        assert wrapper.connected
+        assert not client.closed
 
     def test_disconnect_while_connecting_reports_no_failure(self, app, monkeypatch):
         release = threading.Event()
@@ -402,8 +437,9 @@ class TestSha1IsRefused:
         monkeypatch.setattr(sftp_session.paramiko, "SSHClient", Client)
         monkeypatch.setattr(sftp_session, "apply_host_key_policy", lambda _client, _parent: None)
 
+        wrapper = sftp_session.SFTPClientWrapper()
         with pytest.raises(OSError):
-            sftp_session.SFTPClientWrapper().connect("host", 22, "user", "pw")
+            wrapper.connect("host", 22, "user", "pw")
 
         assert connects[0]["disabled_algorithms"] is sftp_session.SHA1_ALGORITHMS
 

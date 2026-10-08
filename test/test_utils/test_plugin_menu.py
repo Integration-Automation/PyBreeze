@@ -7,6 +7,7 @@ installed.
 from __future__ import annotations
 
 import os
+import sys
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -166,7 +167,8 @@ class TestRefusingToRunTheWrongFile:
 
         run_current_file_with(window, GO_CONFIG)
 
-        assert shown and ".py" in shown[0]
+        assert shown
+        assert ".py" in shown[0]
         assert not started
 
     def test_no_file_means_nothing_runs(self, window, monkeypatch):
@@ -291,8 +293,10 @@ class TestThePluginMenu:
             plugin_menu.QMessageBox, "exec", lambda self: shown.append(self.text()))
         plugin_menu._make_about_callback(None, "Go", "2.1", "someone")()
 
-        assert "版本" in shown[0] and "作者" in shown[0]
-        assert "Version" not in shown[0] and "Author" not in shown[0]
+        assert "版本" in shown[0]
+        assert "作者" in shown[0]
+        assert "Version" not in shown[0]
+        assert "Author" not in shown[0]
 
     def test_the_about_dialog_shows_markup_as_text(self, app, monkeypatch):
         # A plugin's name or author went to the box as markup, <img> and all
@@ -409,7 +413,8 @@ class TestASaveThatFailsBeforeARun:
 
         # It used to raise out of the menu slot, so nothing said why nothing ran.
         assert save_current_file_for_run(window) is None
-        assert warned and "legacy.txt" in warned[0][2]
+        assert warned
+        assert "legacy.txt" in warned[0][2]
         # ... and the tab still expects no write of its own, so the next real
         # change made outside the editor is not swallowed.
         assert tab.events == []
@@ -463,6 +468,27 @@ class TestAPluginThatDoesNotFollowTheRules:
 
         assert submenu_action_texts(window.plugin_menu)
 
+    def test_an_entry_that_cannot_be_built_costs_only_itself(self, window, monkeypatch):
+        # Anything a plugin's metadata makes the entry raise is logged; the next plugin still gets its entry
+        built = plugin_menu._add_plugin_entry
+        logged: list = []
+
+        def add(window_, meta):
+            if meta["name"] == "Broken":
+                raise KeyError("version")
+            built(window_, meta)
+
+        monkeypatch.setattr(plugin_menu, "_add_plugin_entry", add)
+        monkeypatch.setattr(plugin_menu.pybreeze_logger, "error", lambda *args: logged.append(args))
+        monkeypatch.setattr(
+            plugin_menu, "get_all_plugin_metadata",
+            lambda: [{"name": "Broken"}, {"name": "French", "version": "1.0", "author": "someone"}])
+        set_plugin_menu(window)
+
+        assert "French" in labels(window.plugin_menu)
+        assert "Broken" not in labels(window.plugin_menu)
+        assert logged
+
     def test_run_configs_with_none_and_text_names_sort(self, window, monkeypatch):
         # sorted() raised comparing None with a string
         monkeypatch.setattr(
@@ -491,7 +517,31 @@ class TestTheEncodingAProgramWrites:
 
         from pybreeze.pybreeze_ui.menu.plugin_menu.build_run_with_menu import output_encoding
 
-        assert output_encoding({"encoding": "locale"}, "utf-8") == locale.getpreferredencoding(False)
+        machines = locale.getencoding() if hasattr(locale, "getencoding") else locale.getpreferredencoding(False)
+        assert output_encoding({"encoding": "locale"}, "utf-8") == machines
+
+    @pytest.mark.skipif(sys.version_info < (3, 11), reason="locale.getencoding is new in 3.11")
+    def test_locale_means_this_machines_in_utf8_mode_too(self, tmp_path):
+        # Python 3.15 turns UTF-8 mode on by default (PEP 686), and in it
+        # getpreferredencoding answers UTF-8 whatever the machine's code page is:
+        # a Java program's MS950 output was then decoded as UTF-8
+        import codecs
+        import json
+        import subprocess
+        from pathlib import Path
+
+        script = (
+            "import json, locale\n"
+            "from pybreeze.pybreeze_ui.menu.plugin_menu.build_run_with_menu import output_encoding\n"
+            "print(json.dumps([output_encoding({'encoding': 'locale'}, 'utf-8'), locale.getencoding()]))\n")
+        environment = {**os.environ, "PYTHONPATH": str(Path(__file__).resolve().parents[2]),
+                       "QT_QPA_PLATFORM": "offscreen"}
+        completed = subprocess.run(  # noqa: S603 — this interpreter and a script built from literals
+            [sys.executable, "-X", "utf8", "-c", script], capture_output=True, text=True, cwd=tmp_path,
+            env=environment, timeout=120, check=True)
+        chosen, machines = json.loads(completed.stdout.strip().splitlines()[-1])
+
+        assert codecs.lookup(chosen).name == codecs.lookup(machines).name
 
     @pytest.mark.parametrize("named", ["no-such-codec", 5, "  "])
     def test_anything_else_keeps_the_default(self, named):

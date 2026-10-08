@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
 )
 from je_editor import language_wrapper
 
+from pybreeze.pybreeze_ui.design.flow_layout import FlowLayout
 from pybreeze.pybreeze_ui.diagram_editor.diagram_mermaid_parser import parse_mermaid
 from pybreeze.pybreeze_ui.diagram_editor.diagram_property_panel import DiagramPropertyPanel
 from pybreeze.pybreeze_ui.diagram_editor.diagram_scene import (
@@ -184,9 +185,9 @@ class DiagramEditorWidget(QWidget):
     # UI construction
     # ------------------------------------------------------------------
 
-    def _build_tool_row(self) -> QHBoxLayout:
-        """Row 1: drawing tool modes and image insertion."""
-        row1 = QHBoxLayout()
+    def _build_tool_row(self) -> FlowLayout:
+        """Row 1: drawing tool modes and image insertion. It wraps when the editor is narrow."""
+        row1 = FlowLayout()
         row1.setContentsMargins(8, 6, 8, 2)
         row1.setSpacing(6)
 
@@ -217,12 +218,11 @@ class DiagramEditorWidget(QWidget):
         img_url_btn.clicked.connect(self._add_image_from_url)
         row1.addWidget(img_url_btn)
 
-        row1.addStretch()
         return row1
 
-    def _build_action_row(self) -> QHBoxLayout:
-        """Row 2: file actions, undo, align, grid, export and zoom."""
-        row2 = QHBoxLayout()
+    def _build_action_row(self) -> FlowLayout:
+        """Row 2: file actions, undo, align, grid, export and zoom. It wraps when the editor is narrow."""
+        row2 = FlowLayout()
         row2.setContentsMargins(8, 2, 8, 6)
         row2.setSpacing(6)
 
@@ -238,10 +238,9 @@ class DiagramEditorWidget(QWidget):
         row2.addWidget(_make_hsep())
         self._add_zoom_controls(row2)
 
-        row2.addStretch()
         return row2
 
-    def _add_file_buttons(self, row2: QHBoxLayout) -> None:
+    def _add_file_buttons(self, row2: FlowLayout) -> None:
         for lang_key, handler in [
             ("diagram_editor_action_new", self._new_diagram),
             ("diagram_editor_action_open", self._open_diagram),
@@ -253,7 +252,7 @@ class DiagramEditorWidget(QWidget):
             btn.clicked.connect(handler)
             row2.addWidget(btn)
 
-    def _add_undo_redo_buttons(self, row2: QHBoxLayout) -> None:
+    def _add_undo_redo_buttons(self, row2: FlowLayout) -> None:
         self._undo_btn = _make_action_btn(_lang("diagram_editor_action_undo", "Undo"))
         self._undo_btn.clicked.connect(self._scene.undo_stack.undo)
         self._undo_btn.setEnabled(False)
@@ -267,7 +266,7 @@ class DiagramEditorWidget(QWidget):
         self._scene.undo_stack.canUndoChanged.connect(self._undo_btn.setEnabled)
         self._scene.undo_stack.canRedoChanged.connect(self._redo_btn.setEnabled)
 
-    def _add_align_menu(self, row2: QHBoxLayout) -> None:
+    def _add_align_menu(self, row2: FlowLayout) -> None:
         align_btn = _make_tool_btn(_lang("diagram_editor_align_menu", "Align"))
         align_menu = QMenu(self)
         for lang_key, method in [
@@ -286,7 +285,7 @@ class DiagramEditorWidget(QWidget):
         align_btn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         row2.addWidget(align_btn)
 
-    def _add_grid_snap_checkboxes(self, row2: QHBoxLayout) -> None:
+    def _add_grid_snap_checkboxes(self, row2: FlowLayout) -> None:
         self._grid_cb = QCheckBox(_lang("diagram_editor_action_grid", "Grid"))
         self._grid_cb.toggled.connect(self._toggle_grid)
         row2.addWidget(self._grid_cb)
@@ -295,7 +294,7 @@ class DiagramEditorWidget(QWidget):
         self._snap_cb.toggled.connect(self._toggle_snap)
         row2.addWidget(self._snap_cb)
 
-    def _add_export_buttons(self, row2: QHBoxLayout) -> None:
+    def _add_export_buttons(self, row2: FlowLayout) -> None:
         for lang_key, handler in [
             ("diagram_editor_action_export_png", self._export_png),
             ("diagram_editor_action_export_svg", self._export_svg),
@@ -304,7 +303,7 @@ class DiagramEditorWidget(QWidget):
             btn.clicked.connect(handler)
             row2.addWidget(btn)
 
-    def _add_zoom_controls(self, row2: QHBoxLayout) -> None:
+    def _add_zoom_controls(self, row2: FlowLayout) -> None:
         zoom_out_btn = _make_action_btn(" - ")
         zoom_out_btn.clicked.connect(self._view.zoom_out)
         row2.addWidget(zoom_out_btn)
@@ -322,7 +321,7 @@ class DiagramEditorWidget(QWidget):
         fit_btn.clicked.connect(self._zoom_fit)
         row2.addWidget(fit_btn)
 
-    def _build_main_layout(self, row1: QHBoxLayout, row2: QHBoxLayout) -> None:
+    def _build_main_layout(self, row1: FlowLayout, row2: FlowLayout) -> None:
         """Stack the toolbar rows above the canvas/property splitter."""
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -406,16 +405,12 @@ class DiagramEditorWidget(QWidget):
     # ------------------------------------------------------------------
 
     def _new_diagram(self) -> None:
-        if self._scene.items():
-            reply = QMessageBox.question(
-                self,
-                _lang("diagram_editor_confirm_title", "Confirm"),
-                _lang("diagram_editor_confirm_new", "Discard current diagram?"),
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                QMessageBox.StandardButton.No,
-            )
-            if reply != QMessageBox.StandardButton.Yes:
-                return
+        # Asked only about unsaved changes, as Open and Close are: a diagram
+        # just saved was asked about too
+        if not self._may_discard_edits(
+                "diagram_editor_confirm_new",
+                "The diagram has changes that are not saved. Start a new one and lose them?"):
+            return
         self._scene._clear_items()
         self._scene.undo_stack.clear()
         self._scene.item_count_changed.emit()

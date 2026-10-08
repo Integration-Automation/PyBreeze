@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from PySide6.QtGui import QAction, Qt
@@ -8,7 +9,9 @@ from je_editor import language_wrapper
 
 from je_editor import jeditor_logger
 
+from pybreeze.pybreeze_ui.busy_cursor import busy_cursor
 from pybreeze.pybreeze_ui.closing import AskingDock
+from pybreeze.pybreeze_ui.design.tokens import apply_spacing
 from pybreeze.pybreeze_ui.connect_gui.url.ai_code_review_gui import AICodeReviewClient
 from pybreeze.pybreeze_ui.diagram_editor.diagram_editor_widget import DiagramEditorWidget
 from pybreeze.pybreeze_ui.extend_ai_gui.code_review.cot_code_review_gui import CoTCodeReviewGUI
@@ -16,10 +19,14 @@ from pybreeze.pybreeze_ui.extend_ai_gui.prompt_edit_gui.cot_prompt_editor_widget
 from pybreeze.pybreeze_ui.extend_ai_gui.prompt_edit_gui.skills_prompt_editor_widget import \
     SkillPromptEditor
 from pybreeze.pybreeze_ui.extend_ai_gui.skills.skills_send_gui import SkillsSendGUI
+from pybreeze.pybreeze_ui.mcp_gui.mcp_client_gui import McpClientGUI
+from pybreeze.pybreeze_ui.report_gui.report_viewer_gui import ReportViewerGUI
 from pybreeze.pybreeze_ui.tools_gui.curl_import_gui import CurlImportGUI
 from pybreeze.pybreeze_ui.tools_gui.diff_gui import DiffGUI
+from pybreeze.pybreeze_ui.tools_gui.json_editor_gui import JsonEditorGUI
 from pybreeze.pybreeze_ui.tools_gui.json_format_gui import JsonFormatGUI
 from pybreeze.pybreeze_ui.tools_gui.jwt_decoder_gui import JwtDecoderGUI
+from pybreeze.pybreeze_ui.tools_gui.keyword_reference_gui import KeywordReferenceGUI
 from pybreeze.pybreeze_ui.tools_gui.har_import_gui import HarImportGUI
 from pybreeze.pybreeze_ui.tools_gui.hash_gui import HashGUI
 from pybreeze.pybreeze_ui.tools_gui.header_analyzer_gui import HeaderAnalyzerGUI
@@ -36,8 +43,72 @@ if TYPE_CHECKING:
     from pybreeze.pybreeze_ui.editor_main.main_ui import PyBreezeMainWindow
 
 # ---------------------------------------------------------------------------
-# Widget registry
+# The tools
 # ---------------------------------------------------------------------------
+
+# What follows "extend_tools_menu_<words>" in a tool's four language keys
+TOOL_WORD_SUFFIXES = ("_tab_action", "_tab_label", "_dock_action", "_dock_title")
+_WORD_PREFIX = "extend_tools_menu_"
+
+
+@dataclass(frozen=True)
+class ToolDescriptor:
+    """One tool: what builds it, and how the menus and the navigation panel name it.
+
+    A tool used to be a row in four tables keyed by the same string (its
+    factory, its dock title, its tab entry and its dock entry). It is one
+    descriptor now, and the Tools menu, the Dock menu and the navigation panel
+    are all built from the same table.
+
+    :param key: the tool's stable name
+    :param words: the stem of its language keys, ``extend_tools_menu_<words>``
+        followed by each of ``TOOL_WORD_SUFFIXES``
+    :param factory: builds the widget, given the main window
+    :param tab_attribute: the main-window attribute that keeps its tab entry alive
+    :param dock_attribute: the same for its dock entry
+    :param group: the submenu it is listed in: none, ``"ssh"`` or ``"ai"``
+    :param category: where the navigation panel lists it
+        (``navigation_model.CATEGORIES``)
+    """
+
+    key: str
+    words: str
+    factory: Callable[[PyBreezeMainWindow], QWidget]
+    tab_attribute: str
+    dock_attribute: str
+    group: str = ""
+    category: str = "tools"
+
+    @property
+    def tab_action_key(self) -> str:
+        """The language key of its Tools menu entry."""
+        return f"{_WORD_PREFIX}{self.words}_tab_action"
+
+    @property
+    def tab_label_key(self) -> str:
+        """The language key of its tab's label."""
+        return f"{_WORD_PREFIX}{self.words}_tab_label"
+
+    @property
+    def dock_action_key(self) -> str:
+        """The language key of its Dock menu entry."""
+        return f"{_WORD_PREFIX}{self.words}_dock_action"
+
+    @property
+    def dock_title_key(self) -> str:
+        """The language key of its dock's title."""
+        return f"{_WORD_PREFIX}{self.words}_dock_title"
+
+
+def _tool(
+        key: str, words: str, factory: Callable[[PyBreezeMainWindow], QWidget], *,
+        group: str = "", category: str = "tools",
+        tab_attribute: str | None = None, dock_attribute: str | None = None) -> ToolDescriptor:
+    """A descriptor whose action attributes are ``tools_<words>_action`` and ``tools_<words>_dock_action`` unless given."""
+    return ToolDescriptor(
+        key=key, words=words, factory=factory, group=group, category=category,
+        tab_attribute=tab_attribute or f"tools_{words}_action",
+        dock_attribute=dock_attribute or f"tools_{words}_dock_action")
 
 
 def _ssh_widget() -> QWidget:
@@ -47,156 +118,64 @@ def _ssh_widget() -> QWidget:
     return SSHMainWidget()
 
 
-# Widget key -> factory taking the main window. Shared by the Tools-menu tab
-# actions and the dock actions so each widget's constructor is written once.
-_WIDGET_FACTORIES: dict[str, Callable[[PyBreezeMainWindow], object]] = {
-    "SSH": lambda _win: _ssh_widget(),
-    "AICodeReview": lambda _win: AICodeReviewClient(),
-    "CoTPromptEditor": lambda _win: CoTPromptEditor(),
-    "CoTCodeReview": lambda _win: CoTCodeReviewGUI(),
-    "SkillPromptEditor": lambda _win: SkillPromptEditor(),
-    "SkillSendGUI": lambda _win: SkillsSendGUI(),
-    "DiagramEditor": lambda _win: DiagramEditorWidget(),
-    "CurlImport": lambda win: CurlImportGUI(win),
-    "HarImport": lambda win: HarImportGUI(win),
-    "JwtDecoder": lambda win: JwtDecoderGUI(main_window=win),
-    "Timestamp": lambda win: TimestampGUI(win),
-    "Hash": lambda win: HashGUI(win),
-    "QueryJson": lambda win: QueryJsonGUI(win),
-    "UrlBuilder": lambda win: UrlBuilderGUI(win),
-    "Regex": lambda win: RegexGUI(win),
-    "HttpStatus": lambda win: HttpStatusGUI(main_window=win),
-    "Diff": lambda win: DiffGUI(win),
-    "JsonFormat": lambda win: JsonFormatGUI(win),
-    "HeaderAnalyzer": lambda win: HeaderAnalyzerGUI(win),
-    "ResponseInspector": lambda win: ResponseInspectorGUI(win),
+_SSH_GROUP = "ssh"
+_AI_GROUP = "ai"
+
+# Every tool, in the order the menus list them. A new tool is one line here.
+TOOLS: dict[str, ToolDescriptor] = {tool.key: tool for tool in (
+    _tool("SSH", "ssh_client", lambda _win: _ssh_widget(), group=_SSH_GROUP,
+          tab_attribute="tools_ssh_client_tab_action"),
+    _tool("AICodeReview", "ai_code_review", lambda _win: AICodeReviewClient(), group=_AI_GROUP),
+    _tool("CoTPromptEditor", "cot_prompt_editor", lambda _win: CoTPromptEditor(), group=_AI_GROUP,
+          tab_attribute="tools_ai_cot_prompt_editor_action"),
+    _tool("CoTCodeReview", "cot_code_review", lambda _win: CoTCodeReviewGUI(), group=_AI_GROUP,
+          tab_attribute="tools_ai_cot_code_review_action"),
+    _tool("SkillPromptEditor", "skill_prompt_editor", lambda _win: SkillPromptEditor(), group=_AI_GROUP,
+          tab_attribute="tools_ai_skill_prompt_editor_action"),
+    _tool("SkillSendGUI", "skill_prompt_send", lambda _win: SkillsSendGUI(), group=_AI_GROUP,
+          tab_attribute="tools_ai_skill_send_action", dock_attribute="tools_skill_send_dock_action"),
+    _tool("DiagramEditor", "diagram_editor", lambda _win: DiagramEditorWidget()),
+    _tool("CurlImport", "curl_import", lambda win: CurlImportGUI(win)),
+    _tool("HarImport", "har_import", lambda win: HarImportGUI(win)),
+    _tool("JwtDecoder", "jwt_decoder", lambda win: JwtDecoderGUI(main_window=win)),
+    _tool("Timestamp", "timestamp", lambda win: TimestampGUI(win)),
+    _tool("Hash", "hash", lambda win: HashGUI(win)),
+    _tool("QueryJson", "query_json", lambda win: QueryJsonGUI(win)),
+    _tool("UrlBuilder", "url_builder", lambda win: UrlBuilderGUI(win)),
+    _tool("Regex", "regex", lambda win: RegexGUI(win)),
+    _tool("HttpStatus", "http_status", lambda win: HttpStatusGUI(main_window=win)),
+    _tool("Diff", "diff", lambda win: DiffGUI(win)),
+    _tool("JsonFormat", "json_format", lambda win: JsonFormatGUI(win)),
+    _tool("JsonEditor", "json_editor", lambda _win: JsonEditorGUI()),
+    _tool("KeywordReference", "keyword_reference", lambda win: KeywordReferenceGUI(win)),
+    _tool("McpClient", "mcp_client", lambda win: McpClientGUI(win), category="mcp"),
+    _tool("ReportViewer", "report_viewer", lambda _win: ReportViewerGUI(), category="reports"),
+    _tool("HeaderAnalyzer", "header_analyzer", lambda win: HeaderAnalyzerGUI(win)),
+    _tool("ResponseInspector", "response", lambda win: ResponseInspectorGUI(win)),
+)}
+
+# Group -> (the main-window attribute of its Tools submenu, of its Dock submenu)
+_GROUP_MENUS: dict[str, tuple[str, str]] = {
+    "": ("tools_menu", "dock_menu"),
+    _SSH_GROUP: ("tools_ssh_menu", "dock_ssh_menu"),
+    _AI_GROUP: ("tools_ai_menu", "dock_ai_menu"),
 }
-
-# Widget key -> language key for the dock window title.
-_DOCK_TITLES: dict[str, str] = {
-    "SSH": "extend_tools_menu_ssh_client_dock_title",
-    "AICodeReview": "extend_tools_menu_ai_code_review_dock_title",
-    "CoTPromptEditor": "extend_tools_menu_cot_prompt_editor_dock_title",
-    "CoTCodeReview": "extend_tools_menu_cot_code_review_dock_title",
-    "SkillPromptEditor": "extend_tools_menu_skill_prompt_editor_dock_title",
-    "SkillSendGUI": "extend_tools_menu_skill_prompt_send_dock_title",
-    "DiagramEditor": "extend_tools_menu_diagram_editor_dock_title",
-    "CurlImport": "extend_tools_menu_curl_import_dock_title",
-    "HarImport": "extend_tools_menu_har_import_dock_title",
-    "JwtDecoder": "extend_tools_menu_jwt_decoder_dock_title",
-    "Timestamp": "extend_tools_menu_timestamp_dock_title",
-    "Hash": "extend_tools_menu_hash_dock_title",
-    "QueryJson": "extend_tools_menu_query_json_dock_title",
-    "UrlBuilder": "extend_tools_menu_url_builder_dock_title",
-    "Regex": "extend_tools_menu_regex_dock_title",
-    "HttpStatus": "extend_tools_menu_http_status_dock_title",
-    "Diff": "extend_tools_menu_diff_dock_title",
-    "JsonFormat": "extend_tools_menu_json_format_dock_title",
-    "HeaderAnalyzer": "extend_tools_menu_header_analyzer_dock_title",
-    "ResponseInspector": "extend_tools_menu_response_dock_title",
-}
-
-# ---------------------------------------------------------------------------
-# Menu tables
-# ---------------------------------------------------------------------------
-
-# (widget key, main-window attribute, menu attribute, action key, tab label key)
-_TAB_ACTIONS: tuple[tuple[str, str, str, str, str], ...] = (
-    ("SSH", "tools_ssh_client_tab_action", "tools_ssh_menu",
-     "extend_tools_menu_ssh_client_tab_action", "extend_tools_menu_ssh_client_tab_label"),
-    ("AICodeReview", "tools_ai_code_review_action", "tools_ai_menu",
-     "extend_tools_menu_ai_code_review_tab_action", "extend_tools_menu_ai_code_review_tab_label"),
-    ("CoTPromptEditor", "tools_ai_cot_prompt_editor_action", "tools_ai_menu",
-     "extend_tools_menu_cot_prompt_editor_tab_action",
-     "extend_tools_menu_cot_prompt_editor_tab_label"),
-    ("CoTCodeReview", "tools_ai_cot_code_review_action", "tools_ai_menu",
-     "extend_tools_menu_cot_code_review_tab_action",
-     "extend_tools_menu_cot_code_review_tab_label"),
-    ("SkillPromptEditor", "tools_ai_skill_prompt_editor_action", "tools_ai_menu",
-     "extend_tools_menu_skill_prompt_editor_tab_action",
-     "extend_tools_menu_skill_prompt_editor_tab_label"),
-    ("SkillSendGUI", "tools_ai_skill_send_action", "tools_ai_menu",
-     "extend_tools_menu_skill_prompt_send_tab_action",
-     "extend_tools_menu_skill_prompt_send_tab_label"),
-    ("DiagramEditor", "tools_diagram_editor_action", "tools_menu",
-     "extend_tools_menu_diagram_editor_tab_action", "extend_tools_menu_diagram_editor_tab_label"),
-    ("CurlImport", "tools_curl_import_action", "tools_menu",
-     "extend_tools_menu_curl_import_tab_action", "extend_tools_menu_curl_import_tab_label"),
-    ("HarImport", "tools_har_import_action", "tools_menu",
-     "extend_tools_menu_har_import_tab_action", "extend_tools_menu_har_import_tab_label"),
-    ("JwtDecoder", "tools_jwt_decoder_action", "tools_menu",
-     "extend_tools_menu_jwt_decoder_tab_action", "extend_tools_menu_jwt_decoder_tab_label"),
-    ("Timestamp", "tools_timestamp_action", "tools_menu",
-     "extend_tools_menu_timestamp_tab_action", "extend_tools_menu_timestamp_tab_label"),
-    ("Hash", "tools_hash_action", "tools_menu",
-     "extend_tools_menu_hash_tab_action", "extend_tools_menu_hash_tab_label"),
-    ("QueryJson", "tools_query_json_action", "tools_menu",
-     "extend_tools_menu_query_json_tab_action", "extend_tools_menu_query_json_tab_label"),
-    ("UrlBuilder", "tools_url_builder_action", "tools_menu",
-     "extend_tools_menu_url_builder_tab_action", "extend_tools_menu_url_builder_tab_label"),
-    ("Regex", "tools_regex_action", "tools_menu",
-     "extend_tools_menu_regex_tab_action", "extend_tools_menu_regex_tab_label"),
-    ("HttpStatus", "tools_http_status_action", "tools_menu",
-     "extend_tools_menu_http_status_tab_action", "extend_tools_menu_http_status_tab_label"),
-    ("Diff", "tools_diff_action", "tools_menu",
-     "extend_tools_menu_diff_tab_action", "extend_tools_menu_diff_tab_label"),
-    ("JsonFormat", "tools_json_format_action", "tools_menu",
-     "extend_tools_menu_json_format_tab_action", "extend_tools_menu_json_format_tab_label"),
-    ("HeaderAnalyzer", "tools_header_analyzer_action", "tools_menu",
-     "extend_tools_menu_header_analyzer_tab_action",
-     "extend_tools_menu_header_analyzer_tab_label"),
-    ("ResponseInspector", "tools_response_action", "tools_menu",
-     "extend_tools_menu_response_tab_action", "extend_tools_menu_response_tab_label"),
-)
-
-# (widget key, main-window attribute, menu attribute, action key)
-_DOCK_ACTIONS: tuple[tuple[str, str, str, str], ...] = (
-    ("SSH", "tools_ssh_client_dock_action", "dock_ssh_menu",
-     "extend_tools_menu_ssh_client_dock_action"),
-    ("AICodeReview", "tools_ai_code_review_dock_action", "dock_ai_menu",
-     "extend_tools_menu_ai_code_review_dock_action"),
-    ("CoTPromptEditor", "tools_cot_prompt_editor_dock_action", "dock_ai_menu",
-     "extend_tools_menu_cot_prompt_editor_dock_action"),
-    ("CoTCodeReview", "tools_cot_code_review_dock_action", "dock_ai_menu",
-     "extend_tools_menu_cot_code_review_dock_action"),
-    ("SkillPromptEditor", "tools_skill_prompt_editor_dock_action", "dock_ai_menu",
-     "extend_tools_menu_skill_prompt_editor_dock_action"),
-    ("SkillSendGUI", "tools_skill_send_dock_action", "dock_ai_menu",
-     "extend_tools_menu_skill_prompt_send_dock_action"),
-    ("DiagramEditor", "tools_diagram_editor_dock_action", "dock_menu",
-     "extend_tools_menu_diagram_editor_dock_action"),
-    ("CurlImport", "tools_curl_import_dock_action", "dock_menu",
-     "extend_tools_menu_curl_import_dock_action"),
-    ("HarImport", "tools_har_import_dock_action", "dock_menu",
-     "extend_tools_menu_har_import_dock_action"),
-    ("JwtDecoder", "tools_jwt_decoder_dock_action", "dock_menu",
-     "extend_tools_menu_jwt_decoder_dock_action"),
-    ("Timestamp", "tools_timestamp_dock_action", "dock_menu",
-     "extend_tools_menu_timestamp_dock_action"),
-    ("Hash", "tools_hash_dock_action", "dock_menu",
-     "extend_tools_menu_hash_dock_action"),
-    ("QueryJson", "tools_query_json_dock_action", "dock_menu",
-     "extend_tools_menu_query_json_dock_action"),
-    ("UrlBuilder", "tools_url_builder_dock_action", "dock_menu",
-     "extend_tools_menu_url_builder_dock_action"),
-    ("Regex", "tools_regex_dock_action", "dock_menu",
-     "extend_tools_menu_regex_dock_action"),
-    ("HttpStatus", "tools_http_status_dock_action", "dock_menu",
-     "extend_tools_menu_http_status_dock_action"),
-    ("Diff", "tools_diff_dock_action", "dock_menu",
-     "extend_tools_menu_diff_dock_action"),
-    ("JsonFormat", "tools_json_format_dock_action", "dock_menu",
-     "extend_tools_menu_json_format_dock_action"),
-    ("HeaderAnalyzer", "tools_header_analyzer_dock_action", "dock_menu",
-     "extend_tools_menu_header_analyzer_dock_action"),
-    ("ResponseInspector", "tools_response_dock_action", "dock_menu",
-     "extend_tools_menu_response_dock_action"),
-)
 
 
 # ---------------------------------------------------------------------------
 # Builders
 # ---------------------------------------------------------------------------
+
+
+def build_tool_widget(ui_we_want_to_set: PyBreezeMainWindow, key: str) -> QWidget:
+    """Build the widget of the tool *key*, with the gaps every PyBreeze panel has around its content."""
+    with busy_cursor():
+        widget = TOOLS[key].factory(ui_we_want_to_set)
+    layout = widget.layout()
+    # A panel that fills its tab edge to edge (the diagram editor) set its own margins to none
+    if layout is not None and not layout.contentsMargins().isNull():
+        apply_spacing(layout)
+    return widget
 
 
 def _register_action(
@@ -214,26 +193,21 @@ def _register_action(
     getattr(ui_we_want_to_set, menu_attribute).addAction(action)
 
 
-def _open_tab_handler(
-        ui_we_want_to_set: PyBreezeMainWindow, widget_key: str,
-        label_key: str) -> Callable[[], None]:
-    """Return a handler opening *widget_key*'s widget as a new tab."""
+def _open_tab_handler(ui_we_want_to_set: PyBreezeMainWindow, tool: ToolDescriptor) -> Callable[[], None]:
+    """Return a handler opening *tool*'s widget as a new tab."""
 
     def handler() -> None:
-        ui_we_want_to_set.tab_widget.addTab(
-            _WIDGET_FACTORIES[widget_key](ui_we_want_to_set),
-            language_wrapper.language_word_dict.get(label_key),
-        )
+        widget = build_tool_widget(ui_we_want_to_set, tool.key)
+        ui_we_want_to_set.tab_widget.addTab(widget, language_wrapper.language_word_dict.get(tool.tab_label_key))
 
     return handler
 
 
-def _open_dock_handler(
-        ui_we_want_to_set: PyBreezeMainWindow, widget_key: str) -> Callable[[], None]:
-    """Return a handler opening *widget_key*'s widget as a dock."""
+def _open_dock_handler(ui_we_want_to_set: PyBreezeMainWindow, tool: ToolDescriptor) -> Callable[[], None]:
+    """Return a handler opening *tool*'s widget as a dock."""
 
     def handler() -> None:
-        add_dock(ui_we_want_to_set, widget_key)
+        add_dock(ui_we_want_to_set, tool.key)
 
     return handler
 
@@ -250,10 +224,10 @@ def build_tools_menu(ui_we_want_to_set: PyBreezeMainWindow):
         "extend_tools_menu_tools_ai_menu"
     ))
 
-    for widget_key, attribute, menu_attribute, action_key, label_key in _TAB_ACTIONS:
+    for tool in TOOLS.values():
         _register_action(
-            ui_we_want_to_set, attribute, menu_attribute, action_key,
-            _open_tab_handler(ui_we_want_to_set, widget_key, label_key),
+            ui_we_want_to_set, tool.tab_attribute, _GROUP_MENUS[tool.group][0], tool.tab_action_key,
+            _open_tab_handler(ui_we_want_to_set, tool),
         )
 
 
@@ -269,17 +243,16 @@ def extend_dock_menu(ui_we_want_to_set: PyBreezeMainWindow):
             language_wrapper.language_word_dict.get("extend_tools_menu_dock_ai_menu")
         )
 
-    for widget_key, attribute, menu_attribute, action_key in _DOCK_ACTIONS:
+    for tool in TOOLS.values():
         _register_action(
-            ui_we_want_to_set, attribute, menu_attribute, action_key,
-            _open_dock_handler(ui_we_want_to_set, widget_key),
+            ui_we_want_to_set, tool.dock_attribute, _GROUP_MENUS[tool.group][1], tool.dock_action_key,
+            _open_dock_handler(ui_we_want_to_set, tool),
         )
 
 
 def add_dock(ui_we_want_to_set: PyBreezeMainWindow, widget_type: str | None = None):
-    jeditor_logger.info("build_dock_menu.py add_dock_widget "
-                        f"ui_we_want_to_set: {ui_we_want_to_set} "
-                        f"widget_type: {widget_type}")
+    jeditor_logger.info("build_dock_menu.py add_dock_widget ui_we_want_to_set: %s widget_type: %s",
+                        ui_we_want_to_set, widget_type)
 
     # 建立一個可銷毀的 Dock 容器
     # Create a destroyable dock container
@@ -287,10 +260,10 @@ def add_dock(ui_we_want_to_set: PyBreezeMainWindow, widget_type: str | None = No
     # unsaved changes closed from the dock's button without a word
     dock_widget = AskingDock()
 
-    title_key = _DOCK_TITLES.get(widget_type)
-    if title_key is not None:
-        dock_widget.setWindowTitle(language_wrapper.language_word_dict.get(title_key))
-        dock_widget.setWidget(_WIDGET_FACTORIES[widget_type](ui_we_want_to_set))
+    tool = TOOLS.get(widget_type)
+    if tool is not None:
+        dock_widget.setWindowTitle(language_wrapper.language_word_dict.get(tool.dock_title_key))
+        dock_widget.setWidget(build_tool_widget(ui_we_want_to_set, tool.key))
 
     # 如果成功建立了 widget，將其加到主視窗右側 Dock 區域
     # If widget is created, add it to the right dock area of the main window

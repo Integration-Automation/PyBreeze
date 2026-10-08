@@ -19,6 +19,8 @@ from test_utils.started_window import run_started_window
 
 # The readiness wait as the launcher has it, before a test replaces it
 _REAL_WAIT_UNTIL_READY = jupyter_lab_thread.JupyterLauncherThread._wait_until_ready
+# Releases with none of the flaws the tab upgrades for
+_CURRENT = {"jupyterlab": "4.6.4", "jupyter_server": "2.21.1"}
 
 
 @pytest.fixture(scope="module")
@@ -55,7 +57,7 @@ def launched(monkeypatch) -> list:
         return server
 
     monkeypatch.setattr(jupyter_lab_thread, "default_interpreter", lambda: "python")
-    monkeypatch.setattr(jupyter_lab_thread, "is_jupyter_installed", lambda _python: True)
+    monkeypatch.setattr(jupyter_lab_thread, "installed_jupyter", lambda _python: _CURRENT)
     monkeypatch.setattr(jupyter_lab_thread.subprocess, "Popen", popen)
     monkeypatch.setattr(
         jupyter_lab_thread.JupyterLauncherThread, "_wait_until_ready", lambda self, port: None)
@@ -73,6 +75,20 @@ class TestHowTheServerIsStarted:
         # With no token, a wildcard origin would let any page the user visits
         # drive this server's API and kernel sockets.
         assert not [arg for arg in argv if arg.startswith("--ServerApp.allow_origin")]
+        thread.stop()
+
+    def test_it_takes_no_token_or_password_under_both_generations_of_names(self, app, launched):
+        # jupyter_server 2 reads IdentityProvider's; ServerApp's are 1.x's, which 2
+        # still reads with a deprecation warning. With only the old ones, a server
+        # that drops them makes a token of its own, and the tab gets a login page.
+        thread = jupyter_lab_thread.JupyterLauncherThread()
+
+        thread.run()
+
+        argv = launched[0].argv
+        for flag in ("--IdentityProvider.token=", "--PasswordIdentityProvider.hashed_password=",
+                     "--ServerApp.token=", "--ServerApp.password="):
+            assert flag in argv
         thread.stop()
 
     def test_it_runs_without_what_the_ide_set_for_itself(self, app, launched, monkeypatch):
@@ -196,11 +212,11 @@ class TestStoppingBeforeTheServerStarts:
     def test_a_stopped_launcher_starts_nothing(self, app, launched, monkeypatch):
         thread = jupyter_lab_thread.JupyterLauncherThread()
 
-        def installed_while_the_tab_closes(_python: str) -> bool:
+        def installed_while_the_tab_closes(_python: str) -> dict:
             thread.stop()  # the tab closes during the check (or the install)
-            return True
+            return _CURRENT
 
-        monkeypatch.setattr(jupyter_lab_thread, "is_jupyter_installed", installed_while_the_tab_closes)
+        monkeypatch.setattr(jupyter_lab_thread, "installed_jupyter", installed_while_the_tab_closes)
 
         thread.run()
 

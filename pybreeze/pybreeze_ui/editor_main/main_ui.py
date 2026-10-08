@@ -14,7 +14,7 @@ from pybreeze.utils.subprocess_util import IDE_ONLY
 # is kept, for both.
 environ["LOCUST_SKIP_MONKEY_PATCH"] = environ.get("LOCUST_SKIP_MONKEY_PATCH") or IDE_ONLY
 
-from PySide6.QtCore import QTimer, QCoreApplication
+from PySide6.QtCore import QTimer, QCoreApplication, Qt
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QWidget
 from je_editor import EditorMain, EditorWidget, language_wrapper
@@ -22,16 +22,21 @@ from je_editor.pyside_ui.main_ui.dock.destroy_dock import DestroyDock
 from je_editor.pyside_ui.main_ui.save_settings.user_setting_file import user_setting_dict
 from qt_material import apply_stylesheet
 
+from pybreeze.extend.language_server.launch import ACTION_SCRIPT_SUFFIX, can_serve, offer_to_jeditor
+from pybreeze.extend.process_executor.python_task_process_manager import default_interpreter
 from pybreeze.extend_multi_language.update_language_dict import update_language_dict
 from pybreeze.pybreeze_ui.code_result_logs import show_only_warnings_in_code_result
 from pybreeze.pybreeze_ui.closing import AskingDock, may_close
 from pybreeze.pybreeze_ui.editor_main.file_tree_context_menu import setup_file_tree_context_menu
 from pybreeze.pybreeze_ui.gui_thread_gc import collect_garbage_on_gui_thread
 from pybreeze.pybreeze_ui.menu.build_menubar import add_menu_to_menubar
+from pybreeze.pybreeze_ui.navigation.navigation_dock import VISIBLE_STATE, NavigationDock
+from pybreeze.pybreeze_ui.navigation.navigation_model import build_navigation
 from pybreeze.pybreeze_ui.show_code_window.code_window import CodeWindow
 from pybreeze.pybreeze_ui.syntax.syntax_extend import \
     syntax_extend_package
 from pybreeze.utils.logging.logger import pybreeze_logger
+from pybreeze.utils.ui_state import read_ui_state, remember
 
 
 EDITOR_EXTEND_TAB: dict[str, type[QWidget]] = {
@@ -40,6 +45,11 @@ EDITOR_EXTEND_TAB: dict[str, type[QWidget]] = {
 # Shipped beside this module (package data): it was read from the working
 # folder, which a started IDE never has, and the window had no icon
 _ICON_PATH = Path(__file__).with_name("pybreeze_icon.ico")
+
+
+def _remember_navigation_visible(visible: bool) -> None:
+    """Keep for the next start whether the navigation panel is shown (its Dock menu entry was used)."""
+    remember(VISIBLE_STATE, visible)
 
 
 def _close_guarded(widget: QWidget, *steps) -> None:
@@ -104,6 +114,12 @@ class PyBreezeMainWindow(EditorMain):
         # JEditor's Stop All Program stops what its own menus started; PyBreeze's runs join it
         self.run_menu.stop_all_program_action.triggered.connect(self.stop_all_runs)
 
+        # Navigation: what the menus hold, as a tree that stays in view
+        self._add_navigation_dock()
+
+        # Action scripts are completed and checked from the installed frameworks' keywords
+        self._offer_language_server()
+
         # Tab
         self._add_extend_tabs()
 
@@ -115,6 +131,41 @@ class PyBreezeMainWindow(EditorMain):
             close_timer.setInterval(10000)
             close_timer.timeout.connect(self.debug_close)
             close_timer.start()
+
+    def _add_navigation_dock(self) -> None:
+        """Add the navigation panel at the left, shown unless the user closed it last time.
+
+        Built after the menus: each of its lines is one of their actions. Its
+        entry in the Dock menu shows and hides it. Whether it is shown is
+        remembered only when the user says so (that entry, or the panel's own
+        close button): the entry's checked state also changes as the IDE closes.
+        """
+        self.navigation_dock = NavigationDock(build_navigation(self), self)
+        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.navigation_dock)
+        self.navigation_dock.setVisible(read_ui_state().get(VISIBLE_STATE) is not False)
+        toggle = self.navigation_dock.toggleViewAction()
+        toggle.triggered.connect(_remember_navigation_visible)
+        self.dock_menu.addAction(toggle)
+
+    def _offer_language_server(self) -> None:
+        """Have the editors ask PyBreeze's language server about JSON files.
+
+        The server reads the keywords of the frameworks installed for the
+        interpreter the scripts run with, as it is when the IDE starts. A
+        packaged build has no interpreter to run the server with, and offers
+        none. The editors JEditor restored looked for a server while it was
+        building them, before this one was on offer: those holding a JSON
+        file look again.
+        """
+        if not can_serve():
+            return
+        offer_to_jeditor(self.python_compiler or default_interpreter(), language_wrapper.language)
+        for index in range(self.tab_widget.count()):
+            widget = self.tab_widget.widget(index)
+            if not isinstance(widget, EditorWidget) or widget.code_edit.current_file is None:
+                continue
+            if Path(str(widget.code_edit.current_file)).suffix.lower() == ACTION_SCRIPT_SUFFIX:
+                widget.code_edit.start_language_server()
 
     def _add_extend_tabs(self) -> None:
         """Add every registered ``EDITOR_EXTEND_TAB`` widget as a tab.

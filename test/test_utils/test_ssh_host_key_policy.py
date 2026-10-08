@@ -79,7 +79,8 @@ def test_two_tabs_accepting_two_hosts_keep_both(asked, keys):
     policy.missing_host_key(second, "two.example", keys[1])
 
     known = paramiko.HostKeys(str(policy_mod._known_hosts_path()))
-    assert known.lookup("one.example") and known.lookup("two.example")
+    assert known.lookup("one.example")
+    assert known.lookup("two.example")
 
 
 def test_another_key_for_a_known_host_is_still_asked_about(asked, keys):
@@ -152,6 +153,81 @@ class TestAQuestionNobodyCanAnswer:
         assert answers == [False]
 
 
+def test_there_is_one_asker_made_on_first_use(app, monkeypatch):
+    # The SSH panels call it as they are built, on the UI thread, so a connect
+    # thread asking later finds it living where a box can be shown
+    monkeypatch.setattr(policy_mod, "_ASKER", None)
+
+    first = policy_mod.host_key_asker()
+
+    assert isinstance(first, policy_mod.HostKeyAsker)
+    assert policy_mod.host_key_asker() is first
+    assert first.thread() is app.thread()
+
+
+class TestTheQuestionBoxItself:
+    """The other tests stand in for the asker; here its message box is only kept from showing."""
+
+    @pytest.mark.parametrize(("pressed", "trusted"), [("Yes", True), ("No", False)])
+    def test_only_yes_trusts_the_key(self, app, monkeypatch, pressed, trusted):
+        from PySide6.QtWidgets import QMessageBox
+
+        seen: list = []
+
+        def answer(box):
+            buttons = box.standardButtons()
+            no_is_the_default = box.defaultButton() is box.button(QMessageBox.StandardButton.No)
+            seen.append((box.windowTitle(), box.text(), buttons, no_is_the_default))
+            return getattr(QMessageBox.StandardButton, pressed)
+
+        monkeypatch.setattr(policy_mod.QMessageBox, "exec", answer)
+
+        from pybreeze.pybreeze_ui.plain_text import as_text
+
+        message = "fingerprint <b>SHA256:x</b>"
+        assert policy_mod.HostKeyAsker().ask(None, "Unknown host", message) is trusted
+        # Yes and No only, the focus starting on No, the message shown as text, not markup
+        yes_or_no = QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        assert seen == [("Unknown host", as_text(message), yes_or_no, True)]
+
+    def test_the_panel_that_asked_gets_the_box(self, app, monkeypatch):
+        # Only a panel that has been closed goes without; an open one is asked on
+        from PySide6.QtWidgets import QMessageBox, QWidget
+
+        owners: list = []
+
+        def answer(box):
+            owners.append(box.parent())
+            return QMessageBox.StandardButton.Yes
+
+        monkeypatch.setattr(policy_mod.QMessageBox, "exec", answer)
+        panel = QWidget()
+
+        assert policy_mod.HostKeyAsker().ask(panel, "Unknown host", "message") is True
+        assert owners == [panel]
+        panel.deleteLater()
+
+
+@pytest.mark.parametrize("start", [5.0, 1000.0])
+def test_a_no_is_remembered_for_ten_seconds_and_then_forgotten(asked, keys, monkeypatch, start):
+    # From 5 as well: 1010.5 % 1000 is 10.5 too, so from 1000 alone a remainder passed for the difference
+    now = [start]
+    monkeypatch.setattr(policy_mod.time, "monotonic", lambda: now[0])
+    asked["answer"] = False
+
+    with pytest.raises(paramiko.SSHException):
+        _meet("host.example", keys[0])
+    now[0] += 9.5
+    with pytest.raises(paramiko.SSHException):
+        _meet("host.example", keys[0])
+    assert asked["count"] == 1  # still the same Connect's other half: not asked
+    now[0] += 1.0
+    with pytest.raises(paramiko.SSHException):
+        _meet("host.example", keys[0])
+
+    assert asked["count"] == 2  # asked again: a later Connect is a new question
+
+
 def test_a_store_that_fails_keeps_the_hosts_already_trusted(asked, keys, tmp_path, monkeypatch):
     # HostKeys.save emptied the file first: a failure part-way lost every host
     from pybreeze.utils.file_process import replace_file
@@ -175,15 +251,25 @@ _BAD_LINE = "badhost ssh-ed25519 abc"
 _DSA_LINE = "old.example ssh-dss AAAAB3NzaC1kc3MAAACBAP=="
 
 
-def test_a_bad_line_skips_that_line_and_the_rest_still_load(asked, keys, tmp_path):
+def test_a_bad_line_skips_that_line_and_the_rest_still_load(asked, keys, tmp_path, caplog):
     good = paramiko.hostkeys.HostKeyEntry(["good.example"], keys[0]).to_line().strip()
-    (tmp_path / "ssh_known_hosts").write_text(f"{_BAD_LINE}\n{good}\n", encoding="utf-8")
+    (tmp_path / "ssh_known_hosts").write_text(f"# trusted hosts\n{_BAD_LINE}\n{good}\n", encoding="utf-8")
     client = paramiko.SSHClient()
 
-    policy_mod.apply_host_key_policy(client, None)
+    with caplog.at_level("WARNING", logger="Pybreeze"):
+        policy_mod.apply_host_key_policy(client, None)
 
     assert client.get_host_keys().lookup("good.example")["ssh-rsa"] == keys[0]
     assert client.get_host_keys().lookup("badhost") is None
+    # The log names the line as an editor numbers it, and only that line
+    skipped = [record.getMessage() for record in caplog.records if "of ssh_known_hosts" in record.getMessage()]
+    assert skipped == ["Skipping line 2 of ssh_known_hosts: InvalidHostKey"]
+
+
+def test_the_first_host_trusted_is_the_file_s_first_line(asked, keys, tmp_path):
+    _meet("host.example", keys[0])
+
+    assert (tmp_path / "ssh_known_hosts").read_bytes().startswith(b"host.example ")
 
 
 def test_accepting_a_host_keeps_the_lines_paramiko_could_not_read(asked, keys, tmp_path):
@@ -238,6 +324,45 @@ def test_a_file_without_a_last_newline_keeps_its_last_host(asked, keys):
     assert known.lookup("second.example")["ssh-rsa"] == keys[1]
 
 
+class TestAKeyOtherThanTheTrustedOne:
+    """paramiko refuses it on its own; the message says what it may mean and where the trust is kept."""
+
+    def test_trusted_here_names_pybreeze_s_file(self, asked, keys):
+        _meet("host.example", keys[0])
+
+        message = policy_mod.changed_host_key_message(
+            paramiko.BadHostKeyException("host.example", keys[1], keys[0]))
+
+        assert message == policy_mod.host_key_changed_error.format(
+            hostname="host.example", fingerprint=policy_mod._fingerprint_sha256(keys[1]),
+            trusted=policy_mod._fingerprint_sha256(keys[0]), known_hosts=policy_mod._known_hosts_path())
+        assert "AAAA" not in message  # no key in base64, as paramiko gave them
+
+    def test_trusted_on_another_port_names_pybreeze_s_file(self, asked, keys):
+        _meet("[host.example]:2222", keys[0])
+
+        message = policy_mod.changed_host_key_message(
+            paramiko.BadHostKeyException("host.example", keys[1], keys[0]))
+
+        assert message.endswith(f"remove its line from {policy_mod._known_hosts_path()} and connect again.")
+
+    @pytest.mark.parametrize("trusted_here", [
+        [],  # PyBreeze's file holds nothing for the host
+        [("host.example.org", 0)],  # the same key, but for another name
+        [("host.example", 1)],  # another key for the host (an older one, not the one it failed)
+    ])
+    def test_trusted_elsewhere_names_the_system_file(self, asked, keys, trusted_here):
+        from pathlib import Path
+
+        for name, key in trusted_here:
+            _meet(name, keys[key])
+
+        message = policy_mod.changed_host_key_message(
+            paramiko.BadHostKeyException("host.example", keys[1], keys[0]))
+
+        assert message.endswith(f"remove its line from {Path.home() / '.ssh' / 'known_hosts'} and connect again.")
+
+
 class TestThePanelThatAsked:
     def test_its_question_carries_the_panel(self, asked, keys, monkeypatch):
         from PySide6.QtWidgets import QWidget
@@ -251,9 +376,10 @@ class TestThePanelThatAsked:
 
         monkeypatch.setattr(policy_mod, "host_key_asker", Asker)
         panel = QWidget()
+        policy = policy_mod.InteractiveHostKeyPolicy(panel)
+        client = paramiko.SSHClient()
         with pytest.raises(paramiko.SSHException):  # the answer was No
-            policy_mod.InteractiveHostKeyPolicy(panel).missing_host_key(
-                paramiko.SSHClient(), "host.example", keys[0])
+            policy.missing_host_key(client, "host.example", keys[0])
 
         assert parents == [panel]
         panel.deleteLater()
@@ -268,6 +394,7 @@ class TestThePanelThatAsked:
         del panel
         gc.collect()
 
+        client = paramiko.SSHClient()
         with pytest.raises(paramiko.SSHException):
-            policy.missing_host_key(paramiko.SSHClient(), "host.example", keys[0])
+            policy.missing_host_key(client, "host.example", keys[0])
         assert asked["count"] == 0  # nobody was asked on its behalf

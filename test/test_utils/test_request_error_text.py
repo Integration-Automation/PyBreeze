@@ -66,7 +66,8 @@ class TestDescribeRequestError:
         text = describe_request_error(error)
 
         assert words in text
-        assert _SECRET not in text and "api.example" not in text
+        assert _SECRET not in text
+        assert "api.example" not in text
 
     def test_the_size_cap_and_the_ssrf_check_keep_their_own_words(self):
         assert describe_request_error(ResponseTooLargeError("too big")) == "too big"
@@ -85,7 +86,8 @@ def test_the_skills_panel_does_not_show_the_url(monkeypatch):
 
     thread.run()
 
-    assert errors and all(_SECRET not in error for error in errors)
+    assert errors
+    assert all(_SECRET not in error for error in errors)
 
 
 def test_the_review_client_does_not_show_the_url(monkeypatch):
@@ -100,7 +102,8 @@ def test_the_review_client_does_not_show_the_url(monkeypatch):
 
     thread.run()
 
-    assert failed and all(_SECRET not in message for message in failed)
+    assert failed
+    assert all(_SECRET not in message for message in failed)
 
 
 def test_the_cot_review_does_not_show_the_url():
@@ -111,4 +114,5 @@ def test_the_cot_review_does_not_show_the_url():
     reply, answered = thread._ask(_Refusing(requests.ConnectionError(_QUOTING_THE_URL)), "linter.md", "prompt")
 
     assert not answered
-    assert _SECRET not in reply and "could not connect" in reply
+    assert _SECRET not in reply
+    assert "could not connect" in reply

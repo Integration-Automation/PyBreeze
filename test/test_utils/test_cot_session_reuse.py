@@ -251,7 +251,8 @@ def test_a_failed_step_does_not_log_the_url(monkeypatch):
                           url="https://example.com/api?token=not-a-real-token")
     thread._run_templates(_Refusing(), "print('x')")
 
-    assert logged and all("not-a-real-token" not in line for line in logged)
+    assert logged
+    assert all("not-a-real-token" not in line for line in logged)
 
 
 def _sending_gui(monkeypatch):
@@ -283,6 +284,17 @@ def test_sending_resolves_nothing_on_the_ui_thread(monkeypatch):
     gui.deleteLater()
 
 
+def test_a_step_answering_again_replaces_its_answer_under_one_entry(monkeypatch):
+    gui = _sending_gui(monkeypatch)
+    gui.handle_response("linter.md", "first answer")
+    gui.handle_response("linter.md", "second answer")
+
+    assert gui.response_selector.count() == 1
+    assert gui.responses == {"linter.md": "second answer"}
+    assert gui.response_view.toPlainText() == "second answer"
+    gui.deleteLater()
+
+
 def test_a_new_run_clears_the_last_runs_answers(monkeypatch):
     gui = _sending_gui(monkeypatch)
     gui.handle_response("error", "Cannot resolve hostname")
@@ -293,4 +305,46 @@ def test_a_new_run_clears_the_last_runs_answers(monkeypatch):
     assert gui.responses == {}
     assert gui.response_selector.count() == 0
     assert gui.response_view.toPlainText() == ""
+    gui.deleteLater()
+
+
+def test_a_name_that_is_not_a_step_of_the_chain_is_skipped():
+    _qt_app()
+    from pybreeze.pybreeze_ui.extend_ai_gui.code_review.code_review_thread import SenderThread
+
+    thread = SenderThread(files=["not_a_step.md", "linter.md"], code="print('x')", url="https://example.com/api")
+    shown: list = []
+    thread.update_response.connect(lambda name, _reply: shown.append(name))
+    session = _FakeSession()
+
+    thread._run_templates(session, "print('x')")
+
+    assert len(session.post_calls) == 1
+    assert shown == ["linter.md"]
+
+
+def test_a_second_start_while_a_review_runs_is_ignored(monkeypatch):
+    _qt_app()
+    from pybreeze.pybreeze_ui.extend_ai_gui.code_review import cot_code_review_gui
+    from pybreeze.pybreeze_ui.extend_ai_gui.code_review.cot_code_review_gui import CoTCodeReviewGUI
+
+    class Running:
+        @staticmethod
+        def isRunning() -> bool:
+            return True
+
+    def second_review(*_args, **_kwargs):
+        raise AssertionError("a second review was started")
+
+    gui = CoTCodeReviewGUI()
+    running = Running()
+    gui.request_thread = running
+    monkeypatch.setattr(cot_code_review_gui, "SenderThread", second_review)
+    gui.url_input.setText("https://example.com/api")
+    gui.code_paste_area.setPlainText("print('x')")
+
+    gui.start_sending()
+
+    assert gui.request_thread is running
+    gui.request_thread = None
     gui.deleteLater()

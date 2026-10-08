@@ -6,13 +6,14 @@ import json
 import pytest
 
 from pybreeze.utils.exception.exceptions import HarParseException
-from pybreeze.utils.har_import.har_codegen import generate_har_script, unique_test_names
+from pybreeze.utils.har_import.har_codegen import unique_test_names
 from pybreeze.utils.har_import.har_parser import (
     api_entries,
     is_api_like,
     parse_har,
     summarize,
 )
+from pybreeze.utils.import_targets.builtin_targets import IMPORT_TARGETS
 
 
 def _har(*entries: dict) -> str:
@@ -93,8 +94,9 @@ class TestParseHarErrors:
             parse_har("[1, 2, 3]")
 
     def test_no_usable_entries(self):
+        text = _har()
         with pytest.raises(HarParseException):
-            parse_har(_har())
+            parse_har(text)
 
     def test_an_entry_with_a_malformed_url_is_skipped(self):
         # Listing it raised ValueError out of the tab, which kept showing the
@@ -215,6 +217,19 @@ class TestRequestBody:
     def test_no_post_data_leaves_no_body(self):
         assert not parse_har(_har(_entry()))[0].request.has_body
 
+    def test_a_form_recorded_as_text_alone_keeps_its_text(self):
+        entry = parse_har(_har(_entry(method="POST", post_data={
+            "mimeType": "application/x-www-form-urlencoded", "text": "a=1&b=2"})))[0]
+
+        assert entry.request.body == "a=1&b=2"
+
+    def test_params_beside_a_json_body_do_not_replace_it(self):
+        entry = parse_har(_har(_entry(method="POST", post_data={
+            "mimeType": "application/json", "text": '{"a": 1}',
+            "params": [{"name": "a", "value": "1"}]})))[0]
+
+        assert entry.request.body == '{"a": 1}'
+
 
 class TestApiFiltering:
     def test_json_response_is_api_like(self):
@@ -253,7 +268,29 @@ class TestSummary:
 
     def test_entry_summary_line(self):
         line = parse_har(_har(_entry(url="https://x/api/items?a=1")))[0].summary()
-        assert "GET" in line and "/api/items?a=1" in line and "200" in line
+        assert "GET" in line
+        assert "/api/items?a=1" in line
+        assert "200" in line
+
+    def test_the_line_names_the_media_type_only_when_there_is_one(self):
+        with_type = parse_har(_har(_entry(url="https://x/api")))[0].summary()
+        without = parse_har(_har(_entry(url="https://x/api", mime="")))[0].summary()
+
+        assert with_type == "GET  /api  200  application/json"
+        assert without == "GET  /api  200"
+
+    def test_an_empty_summary_counts_nothing(self):
+        from pybreeze.utils.har_import.har_parser import HarSummary
+
+        assert (HarSummary().total, HarSummary().api, HarSummary().hosts) == (0, 0, [])
+
+    # 0 is what browsers record for a request that got no response
+    @pytest.mark.parametrize("status", [0, -1, "200", None])
+    def test_a_status_that_is_no_positive_number_is_none(self, status):
+        assert parse_har(_har(_entry(status=status)))[0].status is None
+
+    def test_an_empty_query_value_is_kept(self):
+        assert parse_har(_har(_entry(url="https://x/p?a=&b=1")))[0].request.params == {"a": "", "b": "1"}
 
 
 class TestUniqueTestNames:
@@ -276,37 +313,55 @@ class TestUniqueTestNames:
         assert len(set(names)) == len(names)
         assert "test_get_a_2" in names
 
+    @pytest.mark.parametrize(("paths", "expected"), [
+        (("a", "a", "a/2"), ["test_get_a", "test_get_a_3", "test_get_a_2"]),
+        (("a", "a", "a", "a"), ["test_get_a", "test_get_a_2", "test_get_a_3", "test_get_a_4"]),
+    ])
+    def test_the_numbers_given(self, paths, expected):
+        requests = [e.request for e in parse_har(_har(*[_entry(url=f"https://x/{p}") for p in paths]))]
+
+        assert unique_test_names(requests) == expected
+
 
 class TestGenerateHarScript:
     def _requests(self, *urls: str):
         return [e.request for e in parse_har(_har(*[_entry(url=url) for url in urls]))]
 
     def test_no_requests_yields_empty_text(self):
-        assert generate_har_script("requests", []) == ""
+        assert IMPORT_TARGETS.generate("requests", []) == ""
 
-    def test_single_request_matches_the_curl_importer(self):
-        from pybreeze.utils.curl_import.script_templates import generate_template
+    @pytest.mark.parametrize("target", ["pytest", "requests", "apitestka_python", "loaddensity_python"])
+    def test_single_request_matches_the_curl_importer(self, target):
         requests = self._requests("https://x/api/items")
-        assert generate_har_script("pytest", requests) == generate_template("pytest", requests[0])
+        single_form = IMPORT_TARGETS.target(target).generate_one(requests[0])
+        assert IMPORT_TARGETS.generate(target, requests) == single_form
+
+    @pytest.mark.parametrize("target", ["requests", "apitestka_python", "loaddensity_python"])
+    def test_the_blocks_are_numbered_from_one(self, target):
+        code = IMPORT_TARGETS.generate(target, self._requests("https://x/one", "https://x/two"))
+
+        assert "# 1. GET https://x/one" in code
+        assert "# 2. GET https://x/two" in code
 
     def test_requests_script_covers_every_request(self):
-        code = generate_har_script("requests", self._requests("https://x/one", "https://x/two"))
+        code = IMPORT_TARGETS.generate("requests", self._requests("https://x/one", "https://x/two"))
         assert code.count("import requests") == 1
-        assert "https://x/one" in code and "https://x/two" in code
+        assert "https://x/one" in code
+        assert "https://x/two" in code
 
     def test_pytest_script_defines_one_test_per_request(self):
-        code = generate_har_script("pytest", self._requests("https://x/api/a", "https://x/api/b"))
+        code = IMPORT_TARGETS.generate("pytest", self._requests("https://x/api/a", "https://x/api/b"))
         assert "def test_get_api_a():" in code
         assert "def test_get_api_b():" in code
         assert code.count("import requests") == 1
 
     def test_pytest_script_never_defines_the_same_test_twice(self):
-        code = generate_har_script("pytest", self._requests("https://x/api/a", "https://x/api/a"))
+        code = IMPORT_TARGETS.generate("pytest", self._requests("https://x/api/a", "https://x/api/a"))
         assert "def test_get_api_a():" in code
         assert "def test_get_api_a_2():" in code
 
     def test_apitestka_action_script_is_one_action_list(self):
-        code = generate_har_script(
+        code = IMPORT_TARGETS.generate(
             "apitestka_action", self._requests("https://x/api/a", "https://x/api/b"))
         actions = json.loads(code)
         assert [action[0] for action in actions] == ["AT_test_api_method"] * 2
@@ -314,20 +369,21 @@ class TestGenerateHarScript:
             "https://x/api/a", "https://x/api/b"]
 
     def test_apitestka_python_script_imports_once(self):
-        code = generate_har_script(
+        code = IMPORT_TARGETS.generate(
             "apitestka_python", self._requests("https://x/api/a", "https://x/api/b"))
         assert code.count("from je_api_testka import") == 1
         assert code.count("test_api_method_requests(") == 2
 
     def test_loaddensity_script_keeps_every_request(self):
         # Merging into one tasks dict would drop all but the last GET.
-        code = generate_har_script(
+        code = IMPORT_TARGETS.generate(
             "loaddensity_python", self._requests("https://x/api/a", "https://x/api/b"))
         assert code.count("start_test(") == 2
-        assert "https://x/api/a" in code and "https://x/api/b" in code
+        assert "https://x/api/a" in code
+        assert "https://x/api/b" in code
 
     def test_unknown_target_falls_back_to_requests(self):
-        code = generate_har_script("nonsense", self._requests("https://x/one", "https://x/two"))
+        code = IMPORT_TARGETS.generate("nonsense", self._requests("https://x/one", "https://x/two"))
         assert "import requests" in code
 
 
@@ -356,8 +412,9 @@ class TestWhatReachesTheGeneratedCode:
     """A recording's method and URL end up in code; nothing in them may become code."""
 
     def test_a_method_that_is_not_a_token_is_refused(self):
+        text = _har(_entry(method="GET():\n    __import__('os').system('calc')\ndef t"))
         with pytest.raises(HarParseException, match="not an HTTP method"):
-            parse_har(_har(_entry(method="GET():\n    __import__('os').system('calc')\ndef t")))
+            parse_har(text)
 
     @pytest.mark.parametrize("bad", [
         {"url": "https://x/a?q=\ud800"},
@@ -381,7 +438,7 @@ class TestWhatReachesTheGeneratedCode:
         url = "https://x/a\nimport os; os.system('calc')  #"
         requests = [e.request for e in parse_har(_har(_entry(url=url), _entry()))]
 
-        code = generate_har_script("requests", requests)
+        code = IMPORT_TARGETS.generate("requests", requests)
 
         imports = [node for node in ast.parse(code).body if isinstance(node, ast.Import)]
         assert [alias.name for node in imports for alias in node.names] == ["requests"]
@@ -412,3 +469,24 @@ def test_json_nested_too_deep_is_reported_not_raised_out_of_the_tab():
     # json.loads raises RecursionError, which the tab did not catch
     with pytest.raises(HarParseException):
         parse_har("[" * 100000)
+
+
+def test_a_header_entry_that_is_not_an_object_is_skipped():
+    # A HAR another tool wrote with a stray string among the headers
+    entry = parse_har(_har(_entry(headers=["X-Stray", {"name": "Accept", "value": "text/plain"}])))[0]
+
+    assert entry.request.headers == {"Accept": "text/plain"}
+
+
+def test_a_form_parameter_without_a_name_is_left_out():
+    post = {"mimeType": "application/x-www-form-urlencoded",
+            "params": [{"value": "orphan"}, "not a parameter", {"name": "kept", "value": "1"}]}
+    entry = parse_har(_har(_entry(method="POST", post_data=post)))[0]
+
+    assert entry.request.data_parts == ["kept=1"]
+
+
+def test_a_body_with_no_text_sends_nothing():
+    entry = parse_har(_har(_entry(method="POST", post_data={"mimeType": "text/plain", "text": ""})))[0]
+
+    assert entry.request.data_parts == []

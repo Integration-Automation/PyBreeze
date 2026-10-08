@@ -76,7 +76,8 @@ def test_distributing_leaves_equal_gaps_between_the_outer_two(scene):
 
     lefts = [node.pos().x() for node in nodes]
     gaps = [lefts[1] - (lefts[0] + 100), lefts[2] - (lefts[1] + 60)]
-    assert lefts[0] == 0 and lefts[2] == 400
+    assert lefts[0] == 0
+    assert lefts[2] == 400
     assert gaps[0] == pytest.approx(gaps[1])
 
 
@@ -93,7 +94,10 @@ def test_one_undo_takes_the_whole_alignment_back(scene):
     assert not scene.undo_stack.canUndo()
 
 
-@pytest.mark.parametrize("operation", ["align_left", "align_center_v", "distribute_h", "distribute_v"])
+@pytest.mark.parametrize("operation", [
+    "align_left", "align_right", "align_top", "align_bottom", "align_center_h", "align_center_v",
+    "distribute_h", "distribute_v",
+])
 def test_too_few_nodes_changes_nothing_and_leaves_no_undo_step(scene, operation):
     nodes = _nodes(scene, (0, 0, 100, 40), (300, 100, 50, 20))[: 1 if operation.startswith("align") else 2]
     for extra in scene.selectedItems():

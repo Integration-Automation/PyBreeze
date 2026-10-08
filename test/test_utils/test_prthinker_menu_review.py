@@ -10,6 +10,7 @@ from PySide6.QtWidgets import QApplication, QMainWindow, QTabWidget, QWidget
 
 from pybreeze.pybreeze_ui.menu.automation_menu.prthinker_menu import build_prthinker_menu as menu
 
+_TELL = menu._tell  # the window fixture stands in for it
 
 class EditorTab(QWidget):
     """Stands in for a JEditor editor tab."""
@@ -57,6 +58,34 @@ def test_a_tab_that_is_not_an_editor_says_what_is_needed(window, monkeypatch):
     menu._review_current_file(window)
 
     assert window.events == [("told", "prthinker_need_saved_file_message")]
+
+
+def test_a_saved_file_the_review_cannot_take_says_what_is_needed(window, monkeypatch):
+    window.tab_widget.addTab(EditorTab(), "main.py")
+    monkeypatch.setattr(menu, "save_current_file_for_run", lambda _window: "main.py")
+    monkeypatch.setattr(menu, "review_current_file", lambda _window: False)
+
+    menu._review_current_file(window)
+
+    assert window.events == [("told", "prthinker_need_saved_file_message")]
+
+
+def test_what_it_tells_is_a_message_box_of_the_window(window, monkeypatch):
+    from PySide6.QtCore import Qt
+    from PySide6.QtWidgets import QMessageBox
+
+    from pybreeze.extend_multi_language.update_language_dict import update_language_dict
+
+    update_language_dict()
+    shown: list = []
+    monkeypatch.setattr(QMessageBox, "exec", lambda box: shown.append(
+        (box.parent(), box.windowTitle(), box.text(), box.testAttribute(Qt.WidgetAttribute.WA_DeleteOnClose))))
+
+    _TELL(window, "prthinker_need_repository_message")
+
+    words = menu.language_wrapper.language_word_dict
+    assert shown == [(window, words.get("prthinker_menu_label"),
+                      words.get("prthinker_need_repository_message"), True)]
 
 
 class TestReviewAPullRequest:

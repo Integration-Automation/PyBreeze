@@ -2,6 +2,8 @@ import logging
 import os
 import tempfile
 
+import pytest
+
 from pybreeze.utils.logging.logger import PyBreezeLogger, pybreeze_logger
 
 
@@ -16,16 +18,28 @@ class TestPyBreezeLogger:
     def test_logger_has_handler(self):
         assert len(pybreeze_logger.handlers) > 0
 
-    def test_does_not_reconfigure_root_logger(self):
-        # A library must not force the root logger level or call basicConfig;
-        # that would override the host application's logging configuration.
-        import inspect
+    def test_does_not_reconfigure_root_logger(self, tmp_path):
+        # A library must not force the root logger level or add handlers to it
+        # (basicConfig does both): that overrides the host application's logging.
+        # A fresh interpreter, since this one has long imported the package.
+        import json
+        import subprocess
+        import sys
+        from pathlib import Path
 
-        from pybreeze.utils.logging import logger as logger_module
+        script = (
+            "import json, logging\n"
+            "root = logging.getLogger()\n"
+            "root.setLevel(logging.ERROR)\n"
+            "before = (root.level, list(root.handlers))\n"
+            "import pybreeze.utils.logging.logger\n"
+            "print(json.dumps({'level': root.level == before[0], 'handlers': root.handlers == before[1]}))\n")
+        environment = {**os.environ, "PYTHONPATH": str(Path(__file__).resolve().parents[2])}
+        completed = subprocess.run(  # noqa: S603 — this interpreter and a script built from literals
+            [sys.executable, "-c", script], capture_output=True, text=True, cwd=tmp_path,
+            env=environment, timeout=120, check=True)
 
-        source = inspect.getsource(logger_module)
-        assert "root.setLevel" not in source
-        assert "basicConfig" not in source
+        assert json.loads(completed.stdout.strip().splitlines()[-1]) == {"level": True, "handlers": True}
 
     def test_custom_handler_creation(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -101,6 +115,18 @@ class TestWhereTheLogGoes:
         assert modes[data] == 0o700
         assert (data / "logs").is_dir()
 
+    def test_the_folders_a_log_needs_are_made_and_found_again(self, monkeypatch, tmp_path):
+        # A home not made yet, a log file set deep down, and a second start
+        from pybreeze.utils.logging import logger as logger_module
+
+        data = tmp_path / "home" / ".pybreeze"
+        monkeypatch.setattr(logger_module, "pybreeze_data_path", lambda: data)
+        for log_file in (data / "logs" / "PyBreeze.log", tmp_path / "a" / "b" / "PyBreeze.log"):
+            for _start in range(2):
+                _log_once(log_file, "a run")
+
+            assert log_file.read_text(encoding="utf-8").count("a run") == 2
+
     def test_the_package_handler_opens_nothing_at_import(self):
         from pybreeze.utils.logging.logger import file_handler
 
@@ -132,7 +158,8 @@ class TestWhereTheLogGoes:
             test_logger.removeHandler(handler)
 
         text = log_file.read_text(encoding="utf-8")
-        assert "first run" in text and "second run" in text
+        assert "first run" in text
+        assert "second run" in text
 
     def test_a_file_that_cannot_be_opened_turns_logging_off_not_the_caller(self, tmp_path):
         import pytest
@@ -147,3 +174,102 @@ class TestWhereTheLogGoes:
             test_logger.error("goes nowhere")
         handler.close()
         test_logger.removeHandler(handler)
+
+
+def _log_once(log_file, message: str) -> None:
+    """Open a handler on *log_file* as a new process would, log *message*, close it."""
+    handler = PyBreezeLogger(filename=str(log_file))
+    test_logger = logging.getLogger("test_pybreeze_rotation")
+    test_logger.addHandler(handler)
+    test_logger.setLevel(logging.DEBUG)
+    try:
+        test_logger.info(message)
+    finally:
+        handler.close()
+        test_logger.removeHandler(handler)
+
+
+class TestRotatingOnOpen:
+    # A process moves a file past PYBREEZE_LOG_MAX_BYTES to <name>.1 as it
+    # opens it: the log is appended to by every run and would grow for ever.
+    def test_a_file_past_the_size_is_moved_aside(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("PYBREEZE_LOG_MAX_BYTES", "10")
+        log_file = tmp_path / "PyBreeze.log"
+        log_file.write_text("an old run, longer than ten bytes\n", encoding="utf-8")
+        (tmp_path / "PyBreeze.log.1").write_text("the run before that\n", encoding="utf-8")
+
+        _log_once(log_file, "this run")
+
+        assert (tmp_path / "PyBreeze.log.1").read_text(encoding="utf-8") == "an old run, longer than ten bytes\n"
+        assert "this run" in log_file.read_text(encoding="utf-8")
+        assert "an old run" not in log_file.read_text(encoding="utf-8")
+
+    def test_a_file_within_the_size_is_appended_to(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("PYBREEZE_LOG_MAX_BYTES", "1000")
+        log_file = tmp_path / "PyBreeze.log"
+        log_file.write_text("an old run\n", encoding="utf-8")
+
+        _log_once(log_file, "this run")
+
+        assert log_file.read_text(encoding="utf-8").startswith("an old run\n")
+        assert not (tmp_path / "PyBreeze.log.1").exists()
+
+    def test_a_size_of_zero_turns_it_off(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("PYBREEZE_LOG_MAX_BYTES", "0")
+        log_file = tmp_path / "PyBreeze.log"
+        log_file.write_text("an old run\n", encoding="utf-8")
+
+        _log_once(log_file, "this run")
+
+        assert not (tmp_path / "PyBreeze.log.1").exists()
+
+    @pytest.mark.parametrize(("limit", "moved"), [
+        ("11", False),   # exactly the size: kept ("an old run\n" is 11 bytes)
+        ("10", True),
+        ("1", True),     # the smallest size there is still rotates
+        ("-5", False),   # below zero is off, as zero is
+    ])
+    def test_the_size_is_a_bound_the_file_may_reach(self, tmp_path, monkeypatch, limit, moved):
+        monkeypatch.setenv("PYBREEZE_LOG_MAX_BYTES", limit)
+        log_file = tmp_path / "PyBreeze.log"
+        log_file.write_bytes(b"an old run\n")  # bytes: write_text makes the line ending \r\n on Windows
+
+        _log_once(log_file, "this run")
+
+        assert (tmp_path / "PyBreeze.log.1").exists() is moved
+
+    def test_the_default_is_the_100_mb_the_guide_gives(self, monkeypatch):
+        # docs/source/Eng/getting_started.rst: "The default is 104857600 (100 MB)"
+        from pybreeze.utils.logging import logger
+
+        monkeypatch.delenv("PYBREEZE_LOG_MAX_BYTES", raising=False)
+
+        assert logger._rotate_at_bytes() == logger.DEFAULT_MAX_LOG_BYTES == 104857600
+
+    def test_a_size_that_is_not_a_number_is_the_default(self, monkeypatch):
+        from pybreeze.utils.logging import logger
+
+        monkeypatch.setenv("PYBREEZE_LOG_MAX_BYTES", "100MB")
+
+        assert logger._rotate_at_bytes() == logger.DEFAULT_MAX_LOG_BYTES
+
+    def test_a_file_that_cannot_be_moved_is_still_logged_to(self, tmp_path, monkeypatch):
+        # Windows refuses the rename while another process holds the file
+        import pytest
+
+        from pybreeze.utils.logging import logger
+
+        def refused(_source, _target):
+            raise PermissionError(13, "The file is in use")
+
+        monkeypatch.setenv("PYBREEZE_LOG_MAX_BYTES", "10")
+        monkeypatch.setattr(logger.os, "replace", refused)
+        log_file = tmp_path / "PyBreeze.log"
+        log_file.write_text("an old run, longer than ten bytes\n", encoding="utf-8")
+
+        with pytest.warns(RuntimeWarning, match="not rotated"):
+            _log_once(log_file, "this run")
+
+        text = log_file.read_text(encoding="utf-8")
+        assert text.startswith("an old run")
+        assert "this run" in text

@@ -12,7 +12,7 @@ je_web_runner
 je_load_density
 je_api_testka
 je-mail-thunder
-automation-file
+automation-file[all]
 test_pioneer
 paramiko
 jupyterlab

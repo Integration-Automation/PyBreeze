@@ -1,0 +1,20 @@
+{
+    "Success_Test1": {
+        "function_name": "web runner manager new_driver",
+        "param": "{'webdriver_name': 'chrome', 'options': None}",
+        "time": "2026-10-08 10:00:00.100000",
+        "exception": "None"
+    },
+    "Success_Test2": {
+        "function_name": "webdriver wrapper to_url",
+        "param": "{'url': 'https://example.com'}",
+        "time": "2026-10-08 10:00:02.500000",
+        "exception": "None"
+    },
+    "Success_Test3": {
+        "function_name": "web runner manager quit",
+        "param": "None",
+        "time": "2026-10-08 10:00:09.000000",
+        "exception": "None"
+    }
+}

@@ -1,0 +1,6 @@
+[
+  ["WR_get_webdriver_manager", {"webdriver_name": "chrome"}],
+  ["WR_to_urll", {"url": "http://127.0.0.1:8765/"}],
+  ["WR_to_url", {"urls": "http://127.0.0.1:8765/"}],
+  ["WR_quit"]
+]

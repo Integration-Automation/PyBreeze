@@ -1,0 +1,4 @@
+curl https://api.example.test/v1/profile \
+  -F 'name=Ada' \
+  -F 'role=admin' \
+  -F 'role=owner'

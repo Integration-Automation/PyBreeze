@@ -106,3 +106,18 @@ When PyBreeze starts, the main window opens maximized with:
 
 PyBreeze inherits its core editor functionality from **JEditor** and extends it
 with automation-specific menus, tools, and integrations.
+
+The Log File
+------------
+
+PyBreeze writes its log to ``~/.pybreeze/logs/PyBreeze.log``: UTF-8, appended to by every
+run, each line carrying the process ID. Only warnings and errors also appear in the
+**Code result** tab. Two environment variables change this:
+
+``PYBREEZE_LOG_FILE``
+   The log file to write instead.
+
+``PYBREEZE_LOG_MAX_BYTES``
+   When a PyBreeze process first writes to the log and the file is larger than this many
+   bytes, the file is first renamed with ``.1`` appended, replacing the previous one.
+   The default is 104857600 (100 MB); ``0`` never renames it.

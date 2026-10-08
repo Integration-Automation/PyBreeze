@@ -92,3 +92,19 @@ class RegexTesterException(ITEException):
 
 class UrlConvertException(ITEException):
     pass
+
+
+# Execution report
+
+class ExecutionReportException(ITEException):
+    pass
+
+# Language services
+
+class LanguageServiceException(ITEException):
+    pass
+
+# MCP
+
+class McpException(ITEException):
+    pass

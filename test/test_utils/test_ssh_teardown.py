@@ -73,7 +73,8 @@ class TestClosingTheShell:
 
         widget.close()
 
-        assert reader.stopped and reader.waited
+        assert reader.stopped
+        assert reader.waited
         assert channel.closed
         assert client.closed
         assert widget.reader_thread is None
@@ -190,7 +191,8 @@ class TestATransfer:
 
         tree._connect()
 
-        assert tree._connecting is None and connects == []
+        assert tree._connecting is None
+        assert connects == []
         assert said, "the user was not told why nothing happened"
         answering.set()
         tree._transfer.wait(5000)
@@ -229,7 +231,8 @@ class TestATransfer:
 
         thread.run()
 
-        assert problems and "link went away" in problems[0][2]
+        assert problems
+        assert "link went away" in problems[0][2]
 
     def test_closing_leaves_a_transfer_to_finish_then_closes_the_session(self, app, monkeypatch):
         import threading
@@ -306,7 +309,8 @@ class TestTheShellEndingOnTheServer:
         widget._on_closed("EOF")
 
         # It used to stay open, sending keepalives, until the next Connect.
-        assert channel.closed and client.closed
+        assert channel.closed
+        assert client.closed
         assert widget.ssh_client is None
 
     def test_the_shared_label_still_reports_a_connected_file_tree(self, app):

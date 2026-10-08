@@ -42,6 +42,33 @@ class TestReadingAndWritingTheSettings:
             json.dumps({"nonsense": "value"}), encoding="utf-8")
         assert "nonsense" not in load_setting()
 
+    def test_the_fields_after_an_unknown_one_are_still_read(self, data_dir):
+        (data_dir / "prthinker_setting.json").write_text(
+            json.dumps({"nonsense": "value", "repository": "owner/name"}), encoding="utf-8")
+
+        assert load_setting()["repository"] == "owner/name"
+
+    def test_the_file_is_laid_out_four_spaces_a_level(self, data_dir):
+        save_setting(DEFAULT_SETTING)
+
+        assert (data_dir / "prthinker_setting.json").read_text(encoding="utf-8").startswith('{\n    "')
+
+    def test_a_data_folder_under_a_home_not_made_yet_is_made(self, tmp_path, monkeypatch):
+        data = tmp_path / "home" / ".pybreeze"
+        monkeypatch.setattr(prthinker_setting, "pybreeze_data_path", lambda: data)
+
+        assert save_setting(DEFAULT_SETTING) is True
+        assert (data / "prthinker_setting.json").is_file()
+
+    @pytest.mark.parametrize(("separator", "arguments"), [
+        ("/", ["--x", "a b"]),          # POSIX: a backslash escapes, as in a shell
+        ("\\", ["--x", "a\\", "b"]),    # Windows: a backslash is a path's
+    ])
+    def test_extra_arguments_read_backslashes_as_the_platform_does(self, monkeypatch, separator, arguments):
+        monkeypatch.setattr(prthinker_setting.os, "sep", separator)
+
+        assert prthinker_setting.read_extra_arguments("--x a\\ b") == arguments
+
     @pytest.mark.parametrize("value", [None, 5, True, ["--a", "--b"], {"k": "v"}])
     def test_a_value_that_is_not_text_keeps_its_default(self, data_dir, value):
         # str() made null the text "None", sent on as the API key and model.
@@ -57,6 +84,10 @@ class TestReadingAndWritingTheSettings:
 
     def test_a_broken_file_does_not_stop_the_feature(self, data_dir):
         (data_dir / "prthinker_setting.json").write_text("{ not json", encoding="utf-8")
+        assert load_setting() == DEFAULT_SETTING
+
+    def test_json_that_is_not_an_object_reads_as_the_defaults(self, data_dir):
+        (data_dir / "prthinker_setting.json").write_text('["backend", "remote"]', encoding="utf-8")
         assert load_setting() == DEFAULT_SETTING
 
     def test_saving_reports_failure_instead_of_raising(self, data_dir, monkeypatch):
@@ -175,7 +206,8 @@ class TestTheModelName:
              "model_name": "the-model"})
 
         assert not [name for name in environment if name.endswith(("_MODEL", "_MODEL_NAME"))]
-        assert logged and "the-model" in logged[0]
+        assert logged
+        assert "the-model" in logged[0]
 
 
 class TestRuleRetrieval:

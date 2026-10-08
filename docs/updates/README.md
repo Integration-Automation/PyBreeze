@@ -58,6 +58,211 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 
 | ID | Date | Title | Tags | Batch |
 |---|---|---|---|---|
+| U-20261008-20 | 2026-10-08 | Linux and macOS platform smoke checks pass | #done #ci #platforms | [2026-10](2026-10.md) |
+| U-20261008-19 | 2026-10-08 | Keep FileAutomation backends installed after its extras split | #done #dependencies | [2026-10](2026-10.md) |
+| U-20261008-18 | 2026-10-08 | Name independent deterministic results and normalize hosts with HTTPS | #done #tests #security | [2026-10](2026-10.md) |
+| U-20261008-17 | 2026-10-08 | Let framework executors choose the built-ins they register | #done #tests #compatibility | [2026-10](2026-10.md) |
+| U-20261008-16 | 2026-10-08 | Give Linux platform tests an X11 display and review XML scan findings | #ci #security | [2026-10](2026-10.md) |
+| U-20261008-15 | 2026-10-08 | Thirteen tutorials in two languages, each with an example that is run and checked | #docs #tutorials #roadmap | [2026-10](2026-10.md) |
+| U-20261008-14 | 2026-10-08 | A report viewer for every run: the packages' own reports, JUnit XML and MCP sessions in one view | #feature #reports #roadmap | [2026-10](2026-10.md) |
+| U-20261008-13 | 2026-10-08 | An MCP client tab: servers kept per user, every call asked about, sessions kept as reports | #feature #mcp #security #roadmap | [2026-10](2026-10.md) |
+| U-20261008-12 | 2026-10-08 | Action scripts are completed and checked from the installed frameworks' keywords | #feature #lsp #editor #roadmap | [2026-10](2026-10.md) |
+| U-20261008-11 | 2026-10-08 | A JSON editor: one document as a tree and as text, with one history | #feature #tools #json #roadmap | [2026-10](2026-10.md) |
+| U-20261008-10 | 2026-10-08 | The languages PyBreeze supports are listed, and the list is checked | #feature #i18n #roadmap | [2026-10](2026-10.md) |
+| U-20261008-09 | 2026-10-08 | Header findings have rules and are exported as SARIF 2.1.0 | #feature #security #sarif #roadmap | [2026-10](2026-10.md) |
+| U-20261008-08 | 2026-10-08 | A WebRunner import target, and a line that says what a target leaves out | #feature #import #roadmap | [2026-10](2026-10.md) |
+| U-20261008-07 | 2026-10-08 | A navigation panel, one table of tools and sizes in ems | #feature #ui #roadmap | [2026-10](2026-10.md) |
+| U-20261008-06 | 2026-10-08 | Platform smoke tests, and a CI job that runs them on Linux and macOS | #ci #test #roadmap | [2026-10](2026-10.md) |
+| U-20261008-05 | 2026-10-08 | Decision records for the four shared contracts | #decision #docs #roadmap | [2026-10](2026-10.md) |
+| U-20261008-04 | 2026-10-08 | One way to ask a framework for completion and diagnostics | #feature #language-service #roadmap | [2026-10](2026-10.md) |
+| U-20261008-03 | 2026-10-08 | One JSON document for a text editor and a visual editor | #feature #json #roadmap | [2026-10](2026-10.md) |
+| U-20261008-02 | 2026-10-08 | One schema for what a run produced, whatever framework ran it | #feature #reports #roadmap | [2026-10](2026-10.md) |
+| U-20261008-01 | 2026-10-08 | Import targets described once, in one registry | #refactor #import #roadmap | [2026-10](2026-10.md) |
+| U-20261007-01 | 2026-10-07 | Read HTTP dates and bracketed time-zone suffixes in timestamps | #done #timestamp | [2026-10](2026-10.md) |
+| U-20261001-06 | 2026-10-01 | architecture_explore.md §18 describes the locked build backend | #docs #X-13 | [2026-10](2026-10.md) |
+| U-20261001-05 | 2026-10-01 | Publish jobs build with the locked setuptools, not a downloaded one | #done #ci #X-13 | [2026-10](2026-10.md) |
+| U-20261001-04 | 2026-10-01 | architecture_explore.md §18 describes the hash-locked publish tooling | #docs #X-13 | [2026-10](2026-10.md) |
+| U-20261001-03 | 2026-10-01 | Publish jobs install hash-locked build tools | #done #ci #X-13 | [2026-10](2026-10.md) |
+| U-20261001-02 | 2026-10-01 | READMEs and architecture_explore.md describe the CI-published dev package | #docs #X-13 | [2026-10](2026-10.md) |
+| U-20261001-01 | 2026-10-01 | CI publishes pybreeze_dev from the dev branch | #release #ci #X-13 | [2026-10](2026-10.md) |
+| U-20260926-154 | 2026-09-26 | The JWT Decoder names an encrypted token (JWE) as one | #fix #tools #i18n | [2026-09-e](2026-09-e.md) |
+| U-20260926-153 | 2026-09-26 | Generated requests code leaves out an Accept-Encoding that asks for codings requests may not decode | #fix #tools | [2026-09-e](2026-09-e.md) |
+| U-20260926-152 | 2026-09-26 | The Mermaid layout is tested on small diagrams it draws without crossings | #test #diagram | [2026-09-e](2026-09-e.md) |
+| U-20260926-151 | 2026-09-26 | The Mermaid importer is tested on layering, nested brackets, quotes, what comes between statements and a layer's centre | #test #diagram | [2026-09-e](2026-09-e.md) |
+| U-20260926-150 | 2026-09-26 | The file tree's rename tests no longer fail on JEditor's external-change question | #test #ci | [2026-09-e](2026-09-e.md) |
+| U-20260926-149 | 2026-09-26 | A plugin run's notices each start a line of their own, and its exit line follows the IDE language | #fix #executor #i18n | [2026-09-e](2026-09-e.md) |
+| U-20260926-148 | 2026-09-26 | The Python run's task manager is tested on its colours, notices, timer, progress, command line and venv lookup | #test #executor | [2026-09-e](2026-09-e.md) |
+| U-20260926-147 | 2026-09-26 | The Header Analyzer reports a cookie a browser drops outright | #feature #tools | [2026-09-e](2026-09-e.md) |
+| U-20260926-146 | 2026-09-26 | The Header Analyzer follows the OWASP HTTP Headers Cheat Sheet on frame-ancestors, X-XSS-Protection and dropped headers | #fix #tools | [2026-09-e](2026-09-e.md) |
+| U-20260926-145 | 2026-09-26 | Mermaid import spaces layers and slots for the largest node, and centres each node on its place | #fix #diagram | [2026-09-e](2026-09-e.md) |
+| U-20260926-144 | 2026-09-26 | The Mermaid importer is tested where the mutation run found it untold: directives, front matter, backticks, brackets, long statements, sizes | #test #diagram | [2026-09-e](2026-09-e.md) |
+| U-20260926-143 | 2026-09-26 | cURL import reads an --expand- option as the option it expands | #fix #tools | [2026-09-e](2026-09-e.md) |
+| U-20260926-142 | 2026-09-26 | cURL import consumes the value of every curl option that takes one, and reads --url-query | #fix #tools | [2026-09-e](2026-09-e.md) |
+| U-20260926-141 | 2026-09-26 | The HTTP status reference reads the same on every Python, and finds a status by the name RFC 9110 replaced | #fix #tools | [2026-09-e](2026-09-e.md) |
+| U-20260926-140 | 2026-09-26 | The Mermaid importer drops four checks that cannot fail | #refactor #diagram | [2026-09-e](2026-09-e.md) |
+| U-20260926-139 | 2026-09-26 | A later Mermaid declaration changes only what it names | #fix #diagram | [2026-09-e](2026-09-e.md) |
+| U-20260926-138 | 2026-09-26 | The Mermaid importer is tested on front matter, a directive and a description never closed, and on a data pair without a colon | #test #diagram | [2026-09-e](2026-09-e.md) |
+| U-20260926-137 | 2026-09-26 | Mermaid import shows a markdown string's text, over as many lines as it runs | #feature #diagram | [2026-09-e](2026-09-e.md) |
+| U-20260926-136 | 2026-09-26 | Mermaid import reads Mermaid 11's named shapes and their labels | #feature #diagram | [2026-09-e](2026-09-e.md) |
+| U-20260926-135 | 2026-09-26 | Mermaid import leaves out front matter, directives over several lines and accessibility text | #fix #diagram | [2026-09-e](2026-09-e.md) |
+| U-20260926-134 | 2026-09-26 | Mermaid import skips a keyword statement after a semicolon, and keeps a one-line subgraph's links | #fix #diagram | [2026-09-e](2026-09-e.md) |
+| U-20260926-133 | 2026-09-26 | Mermaid import reads labels as Mermaid shows them, and a label no longer changes its link's style | #fix #diagram | [2026-09-e](2026-09-e.md) |
+| U-20260926-132 | 2026-09-26 | The timestamp converter is tested at each unit's threshold, on offsets west of UTC and on microsecond digits | #test #tools | [2026-09-e](2026-09-e.md) |
+| U-20260926-131 | 2026-09-26 | The trimmed line match stops filtering out an empty equal block difflib never gives | #refactor #tools | [2026-09-e](2026-09-e.md) |
+| U-20260926-130 | 2026-09-26 | The Diff tab is tested on keeping the match that changes fewer lines, and on identical texts | #test #tools | [2026-09-e](2026-09-e.md) |
+| U-20260926-129 | 2026-09-26 | The JupyterLab version query prints its versions in one call instead of a list built for its side effects | #refactor #jupyter | [2026-09-e](2026-09-e.md) |
+| U-20260926-128 | 2026-09-26 | The JupyterLab tab stays on the lab, and a link to anywhere else opens in the system's browser | #fix #jupyter #security #docs | [2026-09-e](2026-09-e.md) |
+| U-20260926-127 | 2026-09-26 | The run window's pump is tested on a character cut off at the end, readers that are done, and the bounds the map gives | #test #process | [2026-09-e](2026-09-e.md) |
+| U-20260926-126 | 2026-09-26 | The prthinker settings file is tested past an unknown field, on its layout, under a home not made yet, and on each platform's backslashes | #test #prthinker | [2026-09-e](2026-09-e.md) |
+| U-20260926-125 | 2026-09-26 | The report mail is tested on its two seconds of slack, its thirty-second timeout and its daemon thread | #test #mail | [2026-09-e](2026-09-e.md) |
+| U-20260926-124 | 2026-09-26 | The trimmed line match loses a merge that could never run, with the reason it cannot pinned by a test | #refactor #tools | [2026-09-e](2026-09-e.md) |
+| U-20260926-123 | 2026-09-26 | The Diff tab's output is tested as a patch: applied to the left text it gives the right one, each hunk header true to its lines | #test #tools | [2026-09-e](2026-09-e.md) |
+| U-20260926-122 | 2026-09-26 | Where a diagram connection meets a node is tested for every shape, and a connection follows a resized node | #test #diagram | [2026-09-e](2026-09-e.md) |
+| U-20260926-121 | 2026-09-26 | The diagram scene's press handling loses a branch no tool mode reached | #refactor #diagram | [2026-09-e](2026-09-e.md) |
+| U-20260926-120 | 2026-09-26 | The diagram scene is tested on a key typed into a label and a tool picked while one is edited | #test #diagram | [2026-09-e](2026-09-e.md) |
+| U-20260926-119 | 2026-09-26 | The log's rotation size is tested as a bound, its 100 MB default as the guide gives it, and the folders it needs as made | #test #logging | [2026-09-e](2026-09-e.md) |
+| U-20260926-118 | 2026-09-26 | The Header Analyzer's report of text without headers, and its tokens before an analysis, are tested | #test #tools | [2026-09-e](2026-09-e.md) |
+| U-20260926-117 | 2026-09-26 | format_size loses a return that could never run | #refactor #ssh | [2026-09-e](2026-09-e.md) |
+| U-20260926-116 | 2026-09-26 | The SFTP tree is tested on a delete answered No, a folder left unnamed, and sizes past the last unit | #test #ssh | [2026-09-e](2026-09-e.md) |
+| U-20260926-115 | 2026-09-26 | The SSH terminal's late connects, its reader's two ways of ending and a command typed without a session are tested | #test #ssh | [2026-09-e](2026-09-e.md) |
+| U-20260926-114 | 2026-09-26 | The Regex tab's nesting scan is tested after an escape, and a worker killed by a signal is reported | #test #tools | [2026-09-e](2026-09-e.md) |
+| U-20260926-113 | 2026-09-26 | The Regex tab's group-nesting cap is tested at 100 and against closed groups, and a worker's positive exit code is reported | #test #tools | [2026-09-e](2026-09-e.md) |
+| U-20260926-112 | 2026-09-26 | How a run's children are started and stopped is tested: the IDE-only marker by value, the session option by platform, taskkill's own options | #test #process #security | [2026-09-e](2026-09-e.md) |
+| U-20260926-111 | 2026-09-26 | ruff is pinned to 0.15.22, and Dependabot proposes no 0.16 | #build #done | [2026-09-e](2026-09-e.md) |
+| U-20260926-110 | 2026-09-26 | The cURL parser is tested at the edges of bash quoting, of the command and of -G data | #test #tools | [2026-09-e](2026-09-e.md) |
+| U-20260926-109 | 2026-09-26 | The APITestka call and action list the cURL importer writes are compared whole | #test #tools | [2026-09-e](2026-09-e.md) |
+| U-20260926-108 | 2026-09-26 | An imported curl -X GET with a body stays a GET, and -I -X GET a GET, as curl sends them | #fix #tools | [2026-09-e](2026-09-e.md) |
+| U-20260926-107 | 2026-09-26 | The size in the open-file cap's refusal is tested as rounded | #test #tools | [2026-09-e](2026-09-e.md) |
+| U-20260926-106 | 2026-09-26 | Closing a run window while its run goes on asks whether to stop it | #fix #run #i18n #done #docs | [2026-09-e](2026-09-e.md) |
+| U-20260926-105 | 2026-09-26 | A stored prthinker choice the settings form does not list is kept, not replaced by the first one | #fix #prthinker | [2026-09-e](2026-09-e.md) |
+| U-20260926-104 | 2026-09-26 | The cap on a file opened in the HAR tab or the diagram editor is tested at its size, its default and its message | #test #tools | [2026-09-e](2026-09-e.md) |
+| U-20260926-103 | 2026-09-26 | The prthinker settings name the variable a Gemini, Cohere or Mistral key is read from | #fix #prthinker #i18n #docs | [2026-09-e](2026-09-e.md) |
+| U-20260926-102 | 2026-09-26 | status_of is tested on a code nobody registered, and the 1xx class on its label | #test #tools | [2026-09-e](2026-09-e.md) |
+| U-20260926-101 | 2026-09-26 | The generated requests script is compared whole, and python_literal's layout is tested | #test #tools | [2026-09-e](2026-09-e.md) |
+| U-20260926-100 | 2026-09-26 | The HAR parser is tested on a form recorded as text, params beside JSON, the summary line, statuses that are no number and an empty query value | #test #tools | [2026-09-e](2026-09-e.md) |
+| U-20260926-99 | 2026-09-26 | The Response Inspector's parse is tested where the headers end, at a folded third value, and past a token that does not decode | #test #tools | [2026-09-e](2026-09-e.md) |
+| U-20260926-98 | 2026-09-26 | How an imported request's body and form are sent has tests of its own | #test #tools | [2026-09-e](2026-09-e.md) |
+| U-20260926-97 | 2026-09-26 | The HAR script's test names, block numbers and single-request output are compared, not just looked for | #test #tools | [2026-09-e](2026-09-e.md) |
+| U-20260926-96 | 2026-09-26 | The Header Analyzer's checks are tested at their edges: lookups, comparisons, boundaries and the cookie's own name | #test #tools #security | [2026-09-e](2026-09-e.md) |
+| U-20260926-95 | 2026-09-26 | The JupyterLab tab upgrades a vulnerable jupyterlab or jupyter_server before its tokenless server starts | #fix #security #jupyter #done #docs | [2026-09-e](2026-09-e.md) |
+| U-20260926-94 | 2026-09-26 | A palette index is read once, as the colour: the last of the terminal colour run's survivors | #test #ssh | [2026-09-e](2026-09-e.md) |
+| U-20260926-93 | 2026-09-26 | The URL Builder's port bounds, a host with a path that starts with two slashes, and URL to JSON's layout are tested | #test #tools | [2026-09-e](2026-09-e.md) |
+| U-20260926-92 | 2026-09-26 | An RGB colour from the fifth SGR parameter, a cut-off RGB colour and Reformat's indent are tested | #test #ssh #tools | [2026-09-e](2026-09-e.md) |
+| U-20260926-91 | 2026-09-26 | pretty_json_or_none has tests of its own: its layout, characters and numbers as written, and what it turns away | #test #tools | [2026-09-e](2026-09-e.md) |
+| U-20260926-90 | 2026-09-26 | A query with an empty value round-trips, and the Query to JSON layout is compared in full | #test #tools | [2026-09-e](2026-09-e.md) |
+| U-20260926-89 | 2026-09-26 | An extended colour after other SGR parameters, a parameter too long to read and one of five digits are tested | #test #ssh | [2026-09-e](2026-09-e.md) |
+| U-20260926-88 | 2026-09-26 | Each character a text view does not keep is tested as escaped, its neighbours as kept, and the rest as written | #test #tools | [2026-09-e](2026-09-e.md) |
+| U-20260926-87 | 2026-09-26 | Header merging has tests of its own: another name is kept apart, and only Cookie is joined with a semicolon | #test #tools | [2026-09-e](2026-09-e.md) |
+| U-20260926-86 | 2026-09-26 | The run window's read size is one named constant, not nine copies of 1024000 | #refactor #process | [2026-09-e](2026-09-e.md) |
+| U-20260926-85 | 2026-09-26 | A JWT without its signature part, stray characters that leave the padding alone, the first of two tokens and the fallback layout are tested | #test #tools | [2026-09-e](2026-09-e.md) |
+| U-20260926-84 | 2026-09-26 | The automation menus' Run entries come from one function; the six copied executor modules are gone | #refactor #menu #docs | [2026-09-e](2026-09-e.md) |
+| U-20260926-83 | 2026-09-26 | The one host-key asker, made on first use on the UI thread, is tested; the host-key mutation run is read to its end | #test #ssh | [2026-09-e](2026-09-e.md) |
+| U-20260926-82 | 2026-09-26 | The host-key question is tested with an open panel, and the ten-second No from a clock starting at 5 | #test #ssh #security | [2026-09-e](2026-09-e.md) |
+| U-20260926-81 | 2026-09-26 | A host key other than the trusted one is said so, with both fingerprints and the file to edit; a key login no longer calls every failure a key failure | #fix #ssh #security #i18n #docs | [2026-09-e](2026-09-e.md) |
+| U-20260926-80 | 2026-09-26 | A trusted host that comes back with another key is refused without a question, tested against a real server | #test #ssh #security | [2026-09-e](2026-09-e.md) |
+| U-20260926-79 | 2026-09-26 | What a terminal read holds back, and the host-key question's buttons, file and log line, are tested | #test #ssh #security | [2026-09-e](2026-09-e.md) |
+| U-20260926-78 | 2026-09-26 | A refused host key is asked about again ten seconds after the user's No, however often Connect was clicked | #fix #ssh #security | [2026-09-e](2026-09-e.md) |
+| U-20260926-77 | 2026-09-26 | The host-key question box's answer, and a No forgotten after ten seconds, are tested | #test #security #ssh | [2026-09-e](2026-09-e.md) |
+| U-20260926-76 | 2026-09-26 | The read-deadline test's clock starts at 1000, so a deadline computed from the wrong start is caught | #test #network | [2026-09-e](2026-09-e.md) |
+| U-20260926-75 | 2026-09-26 | Settings JSON that is not an object, a pixel-sized font, a step answering twice and a second lab load are tested | #test | [2026-09-e](2026-09-e.md) |
+| U-20260926-74 | 2026-09-26 | A new grid cell size is tested to move the lines while the grid is shown | #test #diagram | [2026-09-e](2026-09-e.md) |
+| U-20260926-73 | 2026-09-26 | A proxy named after its host, and a 300 answer, are tested; the public_http mutation run is read to the end | #test #security #network | [2026-09-e](2026-09-e.md) |
+| U-20260926-72 | 2026-09-26 | Start the 2026-09-e batch | #docs | [2026-09-e](2026-09-e.md) |
+| U-20260926-71 | 2026-09-26 | The prompt editor's Reload answered yes, the template already shown picked again, and a Create whose save fails are tested | #test #ai | [2026-09-d](2026-09-d.md) |
+| U-20260926-70 | 2026-09-26 | An answer one byte over the cap, and a failure before the deadline, are tested | #test #network | [2026-09-d](2026-09-d.md) |
+| U-20260926-69 | 2026-09-26 | Test pressed again during a regex run, and the Diff tab closed mid-comparison, are tested | #test #threads | [2026-09-d](2026-09-d.md) |
+| U-20260926-68 | 2026-09-26 | The Dock menu's entries, a HAR summary of many hosts, a cURL request with no headers and a package with no project folder are tested | #test #menu | [2026-09-d](2026-09-d.md) |
+| U-20260926-67 | 2026-09-26 | The eight known Codacy false positives are marked where they are, each with its reason | #quality | [2026-09-d](2026-09-d.md) |
+| U-20260926-66 | 2026-09-26 | A slow answer is tested to stop being read at the deadline, and a text at the display limit to stay whole | #test #network | [2026-09-d](2026-09-d.md) |
+| U-20260926-65 | 2026-09-26 | replace_text's private mode is tested where CI runs, and its mutation run is read | #test #security | [2026-09-d](2026-09-d.md) |
+| U-20260926-64 | 2026-09-26 | Refactor: the HAR import keeps a query that does not round-trip with a plain else | #refactor #har | [2026-09-d](2026-09-d.md) |
+| U-20260926-63 | 2026-09-26 | The HAR import's nameless form parameter and empty body, and which queries round-trip, are tested | #test #har | [2026-09-d](2026-09-d.md) |
+| U-20260926-62 | 2026-09-26 | Refactor: a cURL value flag goes straight to its handler | #refactor #curl | [2026-09-d](2026-09-d.md) |
+| U-20260926-61 | 2026-09-26 | The cURL parser's value flags, plain --data-binary, junk cookie segments and a thrice-given parameter are tested | #test #curl | [2026-09-d](2026-09-d.md) |
+| U-20260926-60 | 2026-09-26 | The five minutes the guide promises for an AI answer are tested, and the URL-check mutation run is read to the end | #test #network | [2026-09-d](2026-09-d.md) |
+| U-20260926-59 | 2026-09-26 | A folded line after a repeated header, a form field given twice in the JSON action, and a stray HAR header are tested | #test #curl #har | [2026-09-d](2026-09-d.md) |
+| U-20260926-58 | 2026-09-26 | A --form-string without = is tested to be left out, and its @ to name no file | #test #curl | [2026-09-d](2026-09-d.md) |
+| U-20260926-57 | 2026-09-26 | A week date with its own offset is tested to be moved to UTC | #test | [2026-09-d](2026-09-d.md) |
+| U-20260926-56 | 2026-09-26 | The AI panels' default response cap is tested to be 16 MB | #test #network | [2026-09-d](2026-09-d.md) |
+| U-20260926-55 | 2026-09-26 | A reserved address is tested to be refused, IPv6 4000::1 included | #test #security #network | [2026-09-d](2026-09-d.md) |
+| U-20260926-54 | 2026-09-26 | Control characters in a URL are tested to be refused by the character check itself | #test #security #network | [2026-09-d](2026-09-d.md) |
+| U-20260926-53 | 2026-09-26 | A DEL character in a URL is tested to be refused | #test #security #network | [2026-09-d](2026-09-d.md) |
+| U-20260926-52 | 2026-09-26 | Three mutants that survived the URL checks are now killed by tests | #test #security #network | [2026-09-d](2026-09-d.md) |
+| U-20260926-51 | 2026-09-26 | A Mermaid cycle no root reaches is tested to get layers of its own | #test #diagram | [2026-09-d](2026-09-d.md) |
+| U-20260926-50 | 2026-09-26 | A Unicode host with an underscore label is encoded as urllib3 sends it, not refused as ambiguous | #fix #security #network | [2026-09-d](2026-09-d.md) |
+| U-20260926-49 | 2026-09-26 | python -m pybreeze is tested to start the editor only when run as the main module | #test | [2026-09-d](2026-09-d.md) |
+| U-20260926-48 | 2026-09-26 | A write-failure test that never reached its branch is fixed, and curl's $'…' edges and AI Code Review's first checks are tested | #test #ai #curl | [2026-09-d](2026-09-d.md) |
+| U-20260926-47 | 2026-09-26 | The child-IDE harness names a modal dialog instead of waiting two minutes on it | #test #ci | [2026-09-d](2026-09-d.md) |
+| U-20260926-46 | 2026-09-26 | A test helper reads tasklist as bytes, so the run tests pass in UTF-8 mode | #test #python-3.15 | [2026-09-d](2026-09-d.md) |
+| U-20260926-45 | 2026-09-26 | Every child process gets its environment, and JupyterLab's pip install is read as UTF-8 | #fix #subprocess #jupyter #python-3.15 | [2026-09-d](2026-09-d.md) |
+| U-20260926-44 | 2026-09-26 | A run config's "locale" encoding stays the machine's code page in UTF-8 mode | #fix #plugins #python-3.15 | [2026-09-d](2026-09-d.md) |
+| U-20260926-43 | 2026-09-26 | if_alive is tested with a widget that is already gone | #test #threads | [2026-09-d](2026-09-d.md) |
+| U-20260926-42 | 2026-09-26 | A packaged build's regex route, and the key loader's passphrase check at its edges, are tested | #test #regex #ssh | [2026-09-d](2026-09-d.md) |
+| U-20260926-41 | 2026-09-26 | The READMEs say the SSH terminal and SFTP tree are tested against a real SSH server | #docs #ssh | [2026-09-d](2026-09-d.md) |
+| U-20260926-40 | 2026-09-26 | Each diagram node shape is tested by rendering the canvas and reading its pixels | #test #diagram | [2026-09-d](2026-09-d.md) |
+| U-20260926-39 | 2026-09-26 | Two tests that read PyBreeze's own source now check what the code does | #test | [2026-09-d](2026-09-d.md) |
+| U-20260926-38 | 2026-09-26 | start_editor's order of steps is tested by running it, not by reading its source | #test #gc | [2026-09-d](2026-09-d.md) |
+| U-20260926-37 | 2026-09-26 | The diagram editor's grid switches, Save with no file yet, and adding an image from a file are tested | #test #diagram | [2026-09-d](2026-09-d.md) |
+| U-20260926-36 | 2026-09-26 | A plugin entry that cannot be built, a JWT's dates in the Response Inspector, and CoT's skip and re-submit are tested | #test #plugins #ai | [2026-09-d](2026-09-d.md) |
+| U-20260926-35 | 2026-09-26 | An SFTP connect with a key file that cannot be loaded is tested | #test #ssh #sftp | [2026-09-d](2026-09-d.md) |
+| U-20260926-34 | 2026-09-26 | let_run_out is tested with a signal whose disconnect raises | #test #threads | [2026-09-d](2026-09-d.md) |
+| U-20260926-33 | 2026-09-26 | The output reader facing a queue nobody empties, and an escape cut off by the end, are tested | #test #run | [2026-09-d](2026-09-d.md) |
+| U-20260926-32 | 2026-09-26 | An automation run from the editor tab in front, and start_process, are tested | #test #run | [2026-09-d](2026-09-d.md) |
+| U-20260926-31 | 2026-09-26 | A week date, a missing translation, dir(pybreeze), undo merging by key and a bare -F field are tested | #test | [2026-09-d](2026-09-d.md) |
+| U-20260926-30 | 2026-09-26 | The project tree menu's helpers are tested where the file system says no | #test #file-tree | [2026-09-d](2026-09-d.md) |
+| U-20260926-29 | 2026-09-26 | Skill Send's missing input, a second send, its answer, an unknown template and a redirect's port are tested | #test #ai | [2026-09-d](2026-09-d.md) |
+| U-20260926-28 | 2026-09-26 | The diagram canvas's Paste entry, and the commands that have nothing to act on, are tested | #test #diagram | [2026-09-d](2026-09-d.md) |
+| U-20260926-27 | 2026-09-26 | Adding a shape or a text box with a click on the diagram canvas is tested | #test #diagram | [2026-09-d](2026-09-d.md) |
+| U-20260926-26 | 2026-09-26 | The SFTP file tree is tested end to end against a real folder over SFTP | #test #ssh #sftp | [2026-09-d](2026-09-d.md) |
+| U-20260926-25 | 2026-09-26 | Refactor: the loopback SSH server moves to a helper module, with a folder on disk for SFTP | #refactor #test #ssh | [2026-09-d](2026-09-d.md) |
+| U-20260926-24 | 2026-09-26 | The SSH terminal is tested against a real shell channel on the loopback server | #test #ssh | [2026-09-d](2026-09-d.md) |
+| U-20260926-23 | 2026-09-26 | A run with no interpreter found, a tick after the run, and the POSIX venv lookup are tested | #test #run | [2026-09-d](2026-09-d.md) |
+| U-20260926-22 | 2026-09-26 | The AI panels' response cap is tested against compressed bombs, and CVE-2026-44432 found not to reach it | #test #security #network | [2026-09-d](2026-09-d.md) |
+| U-20260926-21 | 2026-09-26 | The regex tester's group-nesting scan and a worker that cannot start or dies part-way are tested | #test #regex | [2026-09-d](2026-09-d.md) |
+| U-20260926-20 | 2026-09-26 | Refactor: one grid-snapping check for diagram nodes and images | #refactor #diagram | [2026-09-d](2026-09-d.md) |
+| U-20260926-19 | 2026-09-26 | Snapping a diagram node or image to the grid is tested | #test #diagram | [2026-09-d](2026-09-d.md) |
+| U-20260926-18 | 2026-09-26 | Refactor: the last typing.List, typing.Dict and quoted annotations give way to the built-in forms | #refactor | [2026-09-d](2026-09-d.md) |
+| U-20260926-17 | 2026-09-26 | A test keeps requirements.txt, pyproject.toml and dev.toml asking for the same packages | #test #packaging | [2026-09-d](2026-09-d.md) |
+| U-20260926-16 | 2026-09-26 | CI actions pinned by commit on their Node 24 releases; only the publish job keeps its token; Dependabot tracks actions after a week | #ci #security | [2026-09-d](2026-09-d.md) |
+| U-20260926-15 | 2026-09-26 | A theme given at launch is tested to survive saved settings that fail to apply | #test #ui | [2026-09-d](2026-09-d.md) |
+| U-20260926-14 | 2026-09-26 | The main window's own answers to a tab or dock that keeps its work are tested | #test #ui | [2026-09-d](2026-09-d.md) |
+| U-20260926-13 | 2026-09-26 | prthinker's menu message and its install from a picked source folder are tested | #test #prthinker | [2026-09-d](2026-09-d.md) |
+| U-20260926-12 | 2026-09-26 | The JupyterLab launcher's port check, output tail and stop without terminate are tested | #test #jupyter | [2026-09-d](2026-09-d.md) |
+| U-20260926-11 | 2026-09-26 | The POSIX side of stopping a run's process tree is tested on any platform | #test #run | [2026-09-d](2026-09-d.md) |
+| U-20260926-10 | 2026-09-26 | JSON Format's failures while writing the result are tested | #test #json | [2026-09-d](2026-09-d.md) |
+| U-20260926-09 | 2026-09-26 | The READMEs and the guide say where the log is and how to move or cap it | #docs #logging | [2026-09-d](2026-09-d.md) |
+| U-20260926-08 | 2026-09-26 | The log file's rotation when a process opens it is tested | #test #logging | [2026-09-d](2026-09-d.md) |
+| U-20260926-07 | 2026-09-26 | The prompt editor's Create, and Save with no file shown, are tested | #test #ai | [2026-09-d](2026-09-d.md) |
+| U-20260926-06 | 2026-09-26 | Refactor: the CoT global rules lose the RAG rules section nothing filled in | #refactor #ai | [2026-09-d](2026-09-d.md) |
+| U-20260926-05 | 2026-09-26 | Each automation menu's Run entries are followed to the run they start | #test #menu #run | [2026-09-d](2026-09-d.md) |
+| U-20260926-04 | 2026-09-26 | The SFTP connect is tested against a real SSH server on the loopback address, on paramiko 4 and 5 | #test #ssh #security | [2026-09-d](2026-09-d.md) |
+| U-20260926-03 | 2026-09-26 | The second test that every translation key is asked for is removed | #test #i18n | [2026-09-d](2026-09-d.md) |
+| U-20260926-02 | 2026-09-26 | A long script that is not JSON, and a run whose done hook fails, are tested | #test #run | [2026-09-d](2026-09-d.md) |
+| U-20260926-01 | 2026-09-26 | Running a folder: the entry itself, a file that cannot start, and a folder that cannot be read are tested | #test #run | [2026-09-d](2026-09-d.md) |
+| U-20260925-135 | 2026-09-25 | The diagram editor's Mermaid import without nodes, and with text it cannot read, is tested | #test #diagram | [2026-09-d](2026-09-d.md) |
+| U-20260925-134 | 2026-09-25 | A test keeps unused keys out of PyBreeze's dictionaries | #test #i18n | [2026-09-d](2026-09-d.md) |
+| U-20260925-133 | 2026-09-25 | The diagram editor's New asks only about unsaved changes, as Open and Close do | #fix #diagram | [2026-09-d](2026-09-d.md) |
+| U-20260925-132 | 2026-09-25 | The SFTP tree's connect: missing input and a root it cannot list are tested | #test #ssh | [2026-09-d](2026-09-d.md) |
+| U-20260925-131 | 2026-09-25 | The SSH terminal's error stream, a failed send, Disconnect and the shell's opening are tested | #test #ssh | [2026-09-d](2026-09-d.md) |
+| U-20260925-130 | 2026-09-25 | The JupyterLab tab passes its empty token under jupyter_server 2's names too | #fix #jupyter | [2026-09-d](2026-09-d.md) |
+| U-20260925-129 | 2026-09-25 | CI caches pip's downloads for the unit-test legs | #ci | [2026-09-d](2026-09-d.md) |
+| U-20260925-128 | 2026-09-25 | The published 1.0.33 starts from its installed files, with its icon | #verify #packaging | [2026-09-d](2026-09-d.md) |
+| U-20260925-127 | 2026-09-25 | The wait cursor shows before the work starts; HAR Import's file read is under it too | #ux #tools | [2026-09-d](2026-09-d.md) |
+| U-20260925-126 | 2026-09-25 | The three tools take the wait cursor as a decorator; Response Inspector reads its input once | #refactor #tools | [2026-09-d](2026-09-d.md) |
+| U-20260925-125 | 2026-09-25 | The report-mail timeout is tested against MailThunder's own client; the packaging test reads the table | #test #mail #packaging | [2026-09-d](2026-09-d.md) |
+| U-20260925-124 | 2026-09-25 | A report mail gives up on a silent mail server after 30 s (progress #102) | #done #fix #mail | [2026-09-d](2026-09-d.md) |
+| U-20260925-123 | 2026-09-25 | A test checks that the published package holds every module and data file | #test #packaging | [2026-09-d](2026-09-d.md) |
+| U-20260925-122 | 2026-09-25 | Assertions in the two diagram test files put the actual value first | #refactor #test #sonarcloud | [2026-09-d](2026-09-d.md) |
+| U-20260925-121 | 2026-09-25 | The rest of SonarCloud's test findings on main: one condition per assertion, one call under pytest.raises, monkeypatch | #refactor #test #sonarcloud | [2026-09-d](2026-09-d.md) |
+| U-20260925-120 | 2026-09-25 | SonarCloud's last findings in the package, after main's analysis of the release | #refactor #sonarcloud | [2026-09-d](2026-09-d.md) |
+| U-20260925-119 | 2026-09-25 | Read the Docs' PDF of latest has its Chinese pages, in Traditional Chinese glyphs | #docs #verify | [2026-09-d](2026-09-d.md) |
+| U-20260925-118 | 2026-09-25 | JSON Format, HAR Import and Response Inspector show the wait cursor while they work | #ux #tools | [2026-09-d](2026-09-d.md) |
+| U-20260925-117 | 2026-09-25 | busy_cursor moves out of the menus into pybreeze_ui | #refactor | [2026-09-d](2026-09-d.md) |
+| U-20260925-116 | 2026-09-25 | Start the 2026-09-d batch | #docs | [2026-09-d](2026-09-d.md) |
+| U-20260925-115 | 2026-09-25 | The JupyterLab tab opens under the wait cursor; two log calls format lazily | #ux #logging | [2026-09-c](2026-09-c.md) |
+| U-20260925-114 | 2026-09-25 | Menu entries that build a slow widget show the wait cursor | #ux #menu | [2026-09-c](2026-09-c.md) |
+| U-20260925-113 | 2026-09-25 | The release PR's test smells: one call under pytest.raises, one condition per assertion | #refactor #test #sonarcloud | [2026-09-c](2026-09-c.md) |
+| U-20260925-112 | 2026-09-25 | The release PR's production-code smells that break this project's rules are cleared | #refactor #quality #sonarcloud | [2026-09-c](2026-09-c.md) |
 | U-20260925-111 | 2026-09-25 | Python 3.15 checked: PyBreeze cannot be installed there until PySide6 moves; the badge says 3.10–3.14 | #compat #docs | [2026-09-c](2026-09-c.md) |
 | U-20260925-110 | 2026-09-25 | Runs from a Chinese folder with Chinese output are tested end to end | #test #encoding | [2026-09-c](2026-09-c.md) |
 | U-20260925-109 | 2026-09-25 | The SSH widgets' optional login widget is typed as optional | #types #ssh | [2026-09-c](2026-09-c.md) |
@@ -514,4 +719,7 @@ In the same commit: delete the item from `progress.md`, add a `#done` entry here
 |---|---|---:|
 | [2026-09.md](2026-09.md) | 2026-09 | 218 |
 | [2026-09-b.md](2026-09-b.md) | 2026-09 | 120 |
-| [2026-09-c.md](2026-09-c.md) | 2026-09 | 111 |
+| [2026-09-c.md](2026-09-c.md) | 2026-09 | 115 |
+| [2026-09-d.md](2026-09-d.md) | 2026-09 | 91 |
+| [2026-09-e.md](2026-09-e.md) | 2026-09 | 83 |
+| [2026-10.md](2026-10.md) | 2026-10 | 22 |

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<testsuites name="pytest tests">
+  <testsuite name="pytest" errors="1" failures="1" skipped="1" tests="5" time="1.250" timestamp="2026-10-08T12:00:00.000000">
+    <testcase classname="tests.test_login" name="test_logs_in" time="0.400"/>
+    <testcase classname="tests.test_login" name="test_wrong_password" time="0.300">
+      <failure message="assert 200 == 401" type="AssertionError">def test_wrong_password():
+&gt;       assert response.status_code == 401
+E       assert 200 == 401</failure>
+      <system-out>POST /login -&gt; 200</system-out>
+    </testcase>
+    <testcase classname="tests.test_profile" name="test_avatar" time="0.050">
+      <error message="fixture 'storage' not found" type="FixtureLookupError">file tests/test_profile.py, line 12</error>
+      <system-err>warning: no storage</system-err>
+    </testcase>
+    <testcase classname="tests.test_profile" name="test_export" time="0.000">
+      <skipped message="needs the export service" type="pytest.skip">tests/test_profile.py:30: needs the export service</skipped>
+    </testcase>
+    <testsuite name="slow" tests="1" time="0.500">
+      <testcase classname="tests.slow.test_report" name="test_builds_a_report" time="0.500"/>
+    </testsuite>
+  </testsuite>
+</testsuites>

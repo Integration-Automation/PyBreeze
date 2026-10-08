@@ -14,13 +14,19 @@ pybreeze/
 │   ├── editor_main/             # Main window (extends JEditor) + file tree context menu
 │   ├── menu/                    # Menu builders: automation / install / tools (tabs and docks) / plugin,
 │   │                            #   menu_utils, extend_jeditor_tab_menu (the JupyterLab tab entry)
-│   ├── tools_gui/               # Tool tabs: cURL, HAR, JWT, diff, regex, headers, …
+│   ├── tools_gui/               # Tool tabs: cURL, HAR, JWT, diff, regex, headers, …; the JSON editor
+│   │                            #   (json_editor_gui.py: one JsonDocument as a tree, json_tree_panel.py, and as text)
 │   ├── diagram_editor/          # WYSIWYG diagram editor (QGraphicsScene, Mermaid import)
 │   ├── extend_ai_gui/           # CoT code review, prompt editors, skill send
 │   ├── connect_gui/             # ssh/ (terminal + SFTP tree), url/ (AI review client)
 │   ├── jupyter_lab_gui/         # JupyterLab tab (QWebEngineView)
+│   ├── mcp_gui/                 # MCP client tab: servers, tools/resources/prompts, asking before a call, the calls
+│   ├── report_gui/              # Report viewer tab: runs of any package as one tree, filtered and exported
 │   ├── show_code_window/        # CodeWindow — subprocess output display
-│   ├── thread_keeper.py         # let_run_out: a worker QThread outlives its closed widget; if_alive: weak slots
+│   ├── design/                  # tokens (sizes in ems, theme colours), FlowLayout, Panel / StatusLine / wrapping_row
+│   ├── navigation/              # The navigation panel: the menus and the tool table as a searchable tree (left dock)
+│   ├── thread_keeper.py         # let_run_out: a worker QThread outlives its closed widget; if_alive: weak slots;
+│   │                            #   KeptThread: a worker kept from its start (one a panel starts on its own)
 │   ├── gui_thread_gc.py         # Garbage collected on a GUI-thread timer, never on a worker
 │   ├── plain_text.py            # as_text: server/file text shown in message boxes as text, not markup
 │   ├── exact_text.py            # exact_text: a text box read as typed (toPlainText changes U+00A0, U+2028)
@@ -30,38 +36,58 @@ pybreeze/
 │   ├── error_text.py            # error_text: a tool's English error (exception_tags) in the IDE language
 │   ├── code_result_logs.py      # Only warnings and errors from loggers reach the editor's Code Result panel
 │   ├── closing.py               # may_close / AskingDock: tabs and docks with unsaved work are asked first
+│   ├── busy_cursor.py           # busy_cursor: the wait cursor while something slow runs on the UI thread
 │   ├── dialog/                  # prthinker settings dialog
 │   └── syntax/                  # Automation keyword highlighting definitions
 ├── extend/
-│   ├── process_executor/        # Process isolation layer (Strategy)
+│   ├── process_executor/        # Process isolation layer
 │   │   ├── python_task_process_manager.py  # TaskProcessManager (subprocess + threads + QTimer)
 │   │   ├── process_executor_utils.py       # build_process / start_process / run_dir_files_*
 │   │   ├── file_runner_process.py          # FileRunnerProcess — plugin run configs (any language)
 │   │   ├── queue_pump.py                   # Shared pipe reader + per-tick queue drain
 │   │   ├── run_notice.py                   # run_notice: a run window's own [Error]/[Run]/… lines, translated
-│   │   ├── api_testka/ auto_control/ web_runner/ load_density/
-│   │   ├── file_automation/ mail_thunder/  # Each delegates to build_process with its package name
 │   │   ├── test_pioneer/        # python -m test_pioneer -e <yaml> via start_module_process
 │   │   └── prthinker/           # Code review via start_module_process (secrets via env)
 │   ├── mail_thunder_extend/     # Post-test email report hook
-│   └── prthinker_extend/        # prthinker settings + argument assembly (pure logic, no Qt)
-├── extend_multi_language/       # Built-in i18n (English, Traditional Chinese)
+│   ├── prthinker_extend/        # prthinker settings + argument assembly (pure logic, no Qt)
+│   └── language_server/         # python -m pybreeze.extend.language_server: the action language server's
+│                                #   process, and launch.py, which offers it to JEditor's editors for .json
+├── extend_multi_language/       # Built-in i18n (English, Traditional Chinese); supported_languages.py says which
+│                                #   languages PyBreeze maintains and which are JEditor's alone; *_integrations.py
+│                                #   and traditional_chinese_error_text.py are parts of the two dictionaries
 └── utils/                       # Pure logic, no Qt — unit-testable
     ├── curl_import/ har_import/ # Request parsing + script generation
-    ├── header_tools/ jwt_tools/ hash_tools/ timestamp_tools/
+    ├── import_targets/          # TargetDescriptor + IMPORT_TARGETS: what a captured request can be generated as;
+    │                            #   NormalizedRequest (the request as sent); the WebRunner target
+    ├── execution_report/        # ExecutionReport / ExecutionResult: what a run produced, whatever framework ran it;
+    │                            #   record_reports.py (the packages' own files), junit_xml.py, html_report.py,
+    │                            #   report_files.py (which adapter a file needs), report_filter.py, safe_xml.py
+    ├── language_service/        # service_adapter.py (the contract: completion and diagnostics asked one way),
+    │                            #   framework_profiles.py, metadata_probe.py (keywords read from the installed
+    │                            #   package in a child process), json_scan.py, action_adapter.py (the three
+    │                            #   frameworks' action scripts), lsp_server.py (the Language Server Protocol)
+    ├── header_tools/ jwt_tools/ hash_tools/ timestamp_tools/   # header_tools: the analyzer, a rule per finding
+    │                                                           #   (header_rules.py), SARIF export and its CLI
     ├── regex_tools/ query_tools/ url_tools/ diff_tools/
-    ├── http_reference/ json_format/ response_inspector/
+    ├── http_reference/ json_format/ response_inspector/   # json_format/json_document.py: JsonDocument, the one copy
+    │                                                      #   a text editor and a visual editor both edit;
+    │                                                      #   json_tree_edit.py: an edit of its tree by path
     ├── network/                 # url_validation (SSRF), public_http (pinned connections), http_client (capped reads)
+    ├── mcp/                     # MCP client: mcp_profile.py (servers, ~/.pybreeze/mcp_servers.json), mcp_transport.py
+    │                            #   (a server process), mcp_client.py, mcp_redaction.py, mcp_call_log.py (a report)
     ├── exception/               # ITEException hierarchy
     ├── logging/ file_process/ app_dirs.py / subprocess_util.py
+    ├── ui_state.py              # read_ui_state / remember: what the IDE keeps of its own panels (~/.pybreeze/ui_state.json)
     ├── terminal_text.py         # Escape sequences and controls stripped from terminal output (SSH, run window)
     ├── terminal_style.py        # SGR colours and emphasis read into a TextStyle (SSH terminal)
     └── manager/package_manager/ # PackageManager — holds syntax_check_list
 ```
 
-**Patterns:** Facade (`__init__.py`) · Strategy (automation modules → `build_process`) · Template Method (`TaskProcessManager` lifecycle) · Observer (Queue + QTimer → UI thread) · Factory (`build_automation_menu`, `_WIDGET_FACTORIES`) · State (`DiagramScene.ToolMode`) · Command (`DiagramSnapshotCommand`) · Plugin (auto-discovery from `jeditor_plugins/`)
+**Patterns:** Facade (`__init__.py`) · Template Method (`TaskProcessManager` lifecycle) · Observer (Queue + QTimer → UI thread) · Factory (`build_automation_menu`, `package_run_actions`) · Registry (`IMPORT_TARGETS`, `TOOLS`) · State (`DiagramScene.ToolMode`) · Command (`DiagramSnapshotCommand`) · Plugin (auto-discovery from `jeditor_plugins/`)
 
 **Keep `architecture_explore.md` current (mandatory).** It is the module-by-module map. Update it *in the same change* that makes it stale — whenever a module/package/class is added, removed, renamed or moved; a layer boundary, executor or threading flow changes; a menu, tool tab or dock is added or removed; persisted data or the test/CI layout changes; or one of its listed observations is fixed. Re-measure any line counts it quotes, and mirror structural edits into the tree above.
+
+**`docs/adr/` records why the shared contracts are shaped as they are** (import targets, the execution report, the JSON document, the language-service adapter), the shell (the navigation panel and the design system) and the features built on them. It is reference material: a rule that follows from a decision is written in this file, not there. A record that has been merged is not rewritten: a decision that changes gets a new record, and the old one is marked as superseded by it.
 
 ## Key types
 
@@ -73,12 +99,16 @@ pybreeze/
 
 ## Branching & CI
 
-- `main`: stable. On every push to `main`, the `publish` job in `stable.yml` bumps the patch version in `pyproject.toml`, uploads `pybreeze` to PyPI, then commits and tags the bump. `dev`: development. `dev.yml` runs the tests and SonarCloud and publishes nothing
-- Never edit a version by hand: CI owns `pyproject.toml`'s, and `dev` is always behind `origin/main`
-- `dev.toml` describes a `pybreeze_dev` package that no workflow builds; PyPI's `pybreeze_dev` stopped at the 1.0.14 it names. Whether CI should publish it or `dev.toml` should be deleted is undecided (workspace X-13). Until then, keep its `dependencies` identical to `pyproject.toml`'s
-- `unit-tests` job: GitHub Actions on Windows, Python 3.10–3.14 — install deps → pytest `test/test_utils/` → `start_automation_test` → `extend_automation_test`
+- `main`: stable. On every push to `main`, the `publish` job in `stable.yml` bumps the patch version in `pyproject.toml`, uploads `pybreeze` to PyPI, then commits and tags the bump. `dev`: development. On a push to `dev` that passes `unit-tests`, the `publish-dev` job in `dev.yml` builds `pybreeze_dev` from `dev.toml` and uploads it to PyPI when the commit is still the tip of `dev` and the wheel differs from the newest published one. `scripts/dev_release.py` takes the version from PyPI (the newest release plus one patch), so nothing is committed back
+- Never edit a version by hand: CI owns `pyproject.toml`'s, and `dev` is always behind `origin/main`. The version in `dev.toml` is only a floor for `pybreeze_dev`
+- `dev.toml` is `pyproject.toml` under the name `pybreeze_dev`. Keep its `dependencies` identical to `pyproject.toml`'s, and `requirements.txt` listing the same packages (`test_requirement_pins.py` fails otherwise); its Python floor, extras, entry points, `[build-system]` and `[tool.setuptools]` table say the same too (`test_dev_toml_parity.py`), or the dev wheel ships something the tests never ran against
+- `publish-dev` needs `unit-tests` only, never `sonarcloud`: that job is skipped on a push, and a skipped dependency skips the upload with it. It keeps no checkout credentials and uploads with `secrets.PYPI_API_TOKEN`, as `publish` does (`test_dev_release.py`)
+- `unit-tests` job: GitHub Actions on Windows, Python 3.10–3.14 — install deps → pytest `test/test_utils/` → `start_automation_test` → `extend_automation_test`. `setup-python` caches pip's downloads (keyed on the requirements files); versions are still resolved from PyPI on every run, so the unpinned dependencies are tested at their newest
+- `platform-smoke` job: Linux and macOS (`ubuntu-latest`, `macos-latest`, Python 3.12) run `test/test_utils/test_platform_smoke.py` and nothing else: a start, a child process, the IDE's files and Qt with no display. The whole suite runs on Windows only; a system joins the `unit-tests` matrix once the suite passes on it (progress #125). No job `needs` `platform-smoke`, so it holds neither the scan nor a release (`test_workflow_actions.py` fails otherwise), and a test in that file must not depend on which system it runs on
 - `sonarcloud` job: CI-based SonarQube Cloud analysis (`sonar-project.properties`), `needs: unit-tests` so it can consume the `coverage-xml` artifact that leg uploads. Automatic Analysis is off and must stay off — the two modes are mutually exclusive and the scanner refuses to run alongside it
 - SonarCloud's plan for this organization exposes results for `main` and for pull requests only. An analysis pushed for another branch succeeds but its results read back 403, so `dev.yml` scans on pull requests only; `stable.yml` also scans pushes to `main`. Do not "fix" this by scanning every `dev` push — the numbers are not readable
+- Every `uses:` in a workflow names a full commit SHA with its release as a comment (`actions/checkout@<sha>  # v7.0.1`), never a movable tag, and each action has one version across both files; Dependabot's `github-actions` entry bumps them on `dev`, a release no sooner than 7 days old (`cooldown`, on the `pip` entry too). Every checkout sets `persist-credentials`: `false`, except the `publish` job, which pushes the version bump. `test_workflow_actions.py` fails otherwise
+- The two jobs that are given the PyPI token (`publish-dev`, `publish`) install their tools with `python -m pip install --require-hashes --only-binary :all: -r .github/requirements/publish.txt` and nothing else: no `pip install --upgrade pip`, no unpinned install beside it. `.github/requirements/publish.in` lists the tools (`build`, `twine`), the build backend (`setuptools`) and the `uv pip compile` command that makes the lock from it; a tool a publish job starts to run is added there and the lock regenerated. Both jobs build with `python -m build --no-isolation`, never a bare `python -m build`: an isolated build downloads the newest `setuptools` as the job runs, outside the lock. `--no-isolation` checks `[build-system]` `requires` (`pyproject.toml`, `dev.toml`) against what the lock installed and installs nothing, so a floor raised there comes with a regenerated lock. Dependabot's `pip` entry names `/.github/requirements` beside `/`, because a directory reaches one folder down, not two. `test_workflow_actions.py` fails otherwise
 - Coverage comes from the 3.12 matrix leg (`pytest --cov`), configured by `.coveragerc`. `relative_files = True` is required: the report is produced on Windows and consumed by a Linux scanner, so it must not carry machine-specific paths. `patch = subprocess` is required too: pytest-cov 7 no longer measures child processes, and without it nothing the tests run in a child interpreter (the real main window, `started_window.py`) counts. coverage traces only the threads Python starts, so `test/test_utils/conftest.py` gives every `QThread` subclass a `run` that installs its tracer on Qt's thread; without it no `QThread.run` counts as covered
 
 ## Development
@@ -90,6 +120,7 @@ python -m pybreeze                                # launch the IDE
 ruff check pybreeze/                              # before committing non-trivial changes
 ```
 
+- `ruff` is pinned to 0.15 in `dev_requirements.txt`, and Dependabot proposes no 0.16: 0.16 enables 413 rules by default instead of 59, and there is no `[tool.ruff]` table. Moving to it (sorting imports, the rules the `# noqa` comments name) is a change of its own
 - Unit tests: `test/test_utils/` — pure logic + headless Qt widgets (`QT_QPA_PLATFORM=offscreen`), Hypothesis property tests
 - Startup tests: `test/unit_test/start_automation/` — launches the IDE in `debug_mode`, verifies startup and extend tab
 
@@ -98,14 +129,21 @@ ruff check pybreeze/                              # before committing non-trivia
 - Python 3.10+: `X | Y` unions, `from __future__ import annotations`, `TYPE_CHECKING` guard for hint-only imports
 - **Never update UI from a worker thread** — Queue + QTimer (see `TaskProcessManager`) or Qt Signal/Slot
 - A slot on a thread (or any object) the widget keeps must not hold the widget: connect a bound method, or `thread_keeper.if_alive(weakref.ref(self), ...)`. A lambda capturing `self` there is a cycle through Qt that Python's collector cannot see, and the closed widget is never freed
+- A worker a panel starts on its own (as it is shown, as a list is filled) is a `thread_keeper.KeptThread` started with `start_kept()`: the panel may be deleted without being closed, and a `QThread` destroyed while it runs ends the IDE. Whether a worker is in flight is the panel's own flag, set as it starts and cleared in the slots of its result signals, never `isRunning()`: a thread still runs for a moment after its result has been delivered, and what was asked for in that moment was never started
 - Automatic garbage collection is off in the IDE: `start_editor()` collects on a GUI-thread timer (`gui_thread_gc.py`), because a collection on a worker destroys Qt objects there. Never call `gc.enable()`
 - Custom exceptions inherit from `ITEException`; log via `pybreeze_logger` (lazy `%s` formatting, never `print()`)
 - Plugin API: `register_programming_language()` / `register_natural_language()` from `je_editor.plugins`
 - A QAction built for a menu must be kept alive: store it on the main window or give it the menu as its parent. A menu does not own the actions added to it, so one held only by a local variable is deleted when the builder returns and its entry disappears
 - A context menu or dialog built on each use with a parent (`QMenu(self)`, `SomeDialog(self)`) is deleted once `exec()` returns (`deleteLater()`, or `WA_DeleteOnClose` for a message box): its parent keeps it otherwise, one more per use
-- A process the IDE starts gets `child_environment()` or `utf8_subprocess_env()` (`utils/subprocess_util.py`) as its `env`, never `os.environ` as it is: a variable the IDE sets for itself alone has the value `IDE_ONLY` and stays out (`LOCUST_SKIP_MONKEY_PATCH`, which a load test must not inherit)
+- A process the IDE starts gets `child_environment()` or `utf8_subprocess_env()` (`utils/subprocess_util.py`) as its `env`, never `os.environ` as it is: a variable the IDE sets for itself alone has the value `IDE_ONLY` and stays out (`LOCUST_SKIP_MONKEY_PATCH`, which a load test must not inherit). `test_child_process_environment.py` fails on a `subprocess` call without `env`
 - Import `je_auto_control` only where it is used, never at the top of a module the IDE loads as it starts: it makes the process system DPI aware as it imports, which keeps Qt from making the IDE per-monitor aware. The automation packages' GUIs and the SSH client (paramiko) are likewise imported by the entry that opens them, which keeps almost two seconds off the start; `test_startup_imports.py` fails when one of them is imported as the IDE starts
 - An instance attribute of a Qt class never takes the name of a member of its Qt base (`self.actions`, `self.thread`, `self.layout`, …): it hides the method from everything that calls it on the widget. `test_no_qt_member_shadowing.py` fails on one
+- A tool is one `_tool(...)` line in `TOOLS` (`menu/tools/tools_menu.py`): the Tools menu, the Dock menu and the navigation panel are all built from it, and nothing else lists a tool. A panel takes its gaps, text sizes and state colours from `pybreeze_ui/design/tokens.py`, counted in ems, never a number of pixels of its own, and a row of controls that may be long is a `wrapping_row()`. `test_tools_fit_small_screens.py` fails on a tool that asks for more than 60 ems of width or 30 of height
+- A menu's submenus are found with `navigation_model.submenus_under()` (`findChildren(QMenu)` and `menuAction()`), never `QAction.menu()`: under PySide6 6.11.0 the object it returns takes the menu with it when it is dropped
+- A dictionary file stays under the 1000-line gate. The words of the features that reach outside the IDE (language service, automation keywords, MCP client) are in `english_integrations.py` and `traditional_chinese_integrations.py`, the Traditional Chinese error texts in `traditional_chinese_error_text.py`; each is merged into its dictionary in `extend_english.py` / `extend_traditional_chinese.py`, which stay the only objects anything reads
+- A framework's keywords are never written down in PyBreeze and the framework is never imported to ask for them, in the IDE or in the language server: `utils/language_service/metadata_probe.read_metadata()` asks the installed package in a child process of the interpreter that runs the scripts. A further framework for the language service is one `FrameworkProfile` (`framework_profiles.py`). A language service's message is a dictionary key (`language_service_*`), formatted in the server from the dictionary of the language it was started with
+- A view of a `JsonDocument` never changes its tree in place and keeps no copy of it to edit. An edit is a function of `utils/json_format/json_tree_edit.py` (a new tree from the old one and a path), handed to `set_tree()` with the revision it was made against. In the JSON editor the tree panel only asks (`JsonTreePanel.edit_asked`); the tab that holds the document makes the edit, records the text before and after as one Undo step, and fills both views from the document
+- A tool tab asks `IMPORT_TARGETS` (`utils/import_targets/builtin_targets.py`) what a captured request can be generated as and how, and never names a target itself. A new target is one `TargetDescriptor` registered there, with the request parts its output sends in `carries`. `test_import_targets.py` fails on a target's key written in `tools_gui/`, and on a `carries` that is not what the generator writes. A generator written from now on reads the request through `normalized_request.normalize()`, not the parse record
 - Delete unused code immediately — no dead imports, unreachable branches, commented-out blocks, or `_old_` prefixes
 - Follow PEP 8 and standard Pythonic practice; `ruff` is the arbiter
 
@@ -118,11 +156,28 @@ features, commands, CLI flags, install/setup, configuration or requirements — 
 language and leave the others stale. No README-parity test guards this, so it is a manual check
 across the three files above.
 
+**Tutorials** (`docs/source/Eng/tutorials/`, `docs/source/Zh/tutorials/`) come in both languages, page
+for page. A tutorial's example is a file under `docs/source/examples/` that the page includes with
+`literalinclude`, never text pasted into the page, and what a page quotes as output is output that was
+produced: run the example again when the tool it shows changes, and say so on the page when it could
+not be run. `test_tutorial_examples.py` fails when the two languages include different examples, when an
+example is used by no page, or when an example stops doing what its page says.
+
+**Supported languages.** PyBreeze supports the languages it maintains: every key translated, listed in
+`extend_multi_language/supported_languages.py` (`MAINTAINED`: English, Traditional Chinese). JEditor's other
+languages are passed on untranslated (`EDITOR_ONLY`) and are not PyBreeze's to fix. A language joins `MAINTAINED`
+whole: its dictionary, its line in that file and its name, as the Language menu shows it, in all three READMEs.
+PyBreeze defines no key JEditor defines except those in `REWORDED_JEDITOR_KEYS`. `test_supported_languages.py`
+fails on a language JEditor offers that is in neither list, on a maintained dictionary that differs from the
+first, on a new key shared with JEditor, and on a README that leaves a language out.
+
 ## Security
 
 **General**
 - Never `eval()` / `exec()` / `pickle.loads()` on untrusted data; `json.loads` for serialisation; `yaml.safe_load` only
 - Never log or display secrets, tokens, passwords or API keys — API URLs may embed tokens, so treat them as credentials
+- A header finding never carries a credential: its `detail` is a cookie's name, a count, a directive or a value that is not a secret, and an exported SARIF report quotes no line of the input. A new finding gets a `HeaderRule` (`utils/header_tools/header_rules.py`), where its English sentence lives, and its Traditional Chinese sentence in the dictionary. `test_header_sarif.py` fails on a code without a rule, a rule without its sentence, and a secret that reaches the report
+- Importing a captured request never sends it: nothing under `utils/curl_import/`, `utils/har_import/` or `utils/import_targets/` imports a package that could (`requests`, `urllib.request`, `http`, `socket`, `subprocess`, an automation package). `test_import_round_trip.py` fails on one
 - Validate all input at system boundaries (file dialogs, URL inputs, network data); never leak stack traces or paths to the user
 
 **Network (SSRF)** — every outbound request to a user-supplied URL must first pass validation:
@@ -138,7 +193,13 @@ Reference implementations: `utils/network/url_validation.py` (`validate_url`), `
 
 **Subprocess** — always argument lists, explicit `shell=False`, `timeout` on every `subprocess.run()`. Never interpolate user input into a command string. Secrets travel as `env`, never argv (see `prthinker_setting.environment_for`). The IDE intentionally runs user-authored scripts — this hardening guards against accidental shell injection, not against malicious local files.
 
-**JupyterLab** — the embedded server is localhost-only; the empty `--ServerApp.token`/`password` and `--ServerApp.disable_check_xsrf=True` are safe *only* because of that. Never change `--ServerApp.ip` to an externally reachable address, and never set `--ServerApp.allow_origin`: a loopback bind does not stop a browser, and with the origin open any page the user visits can drive a tokenless server. The view loads from the same origin and needs nothing relaxed. The server outlives its launcher thread, so its tab stops it on close whatever the thread's state.
+**JupyterLab** — the embedded server is localhost-only; the empty token and password (`--IdentityProvider.token`/`--PasswordIdentityProvider.hashed_password`, and jupyter_server 1.x's `--ServerApp.token`/`password`, which 2.x still reads) and `--ServerApp.disable_check_xsrf=True` are safe *only* because of that. Never change `--ServerApp.ip` to an externally reachable address, and never set `--ServerApp.allow_origin`: a loopback bind does not stop a browser, and with the origin open any page the user visits can drive a tokenless server. The view loads from the same origin and needs nothing relaxed, and its page (`jupyter_lab_gui/lab_page.LabPage`) keeps it there: a page elsewhere, or a link for a new tab, goes to the system's browser, `http`/`https` only. The server outlives its launcher thread, so its tab stops it on close whatever the thread's state.
+
+**Reports** — a report is a file from somewhere. XML is read only through `utils/execution_report/safe_xml.parse_xml()`, which refuses a document that declares a document type or an entity and caps depth and size; never `xml.etree` or `minidom` on a file. A report file is read with a size limit and as data throughout. Everything in a report is shown as text, and an exported HTML page escapes every word and runs no script (its only `<script>` is a JSON data block with `<` escaped). The paths a report names (attachments) are listed, never opened.
+
+**MCP** — an MCP server is a program that acts with the user's rights, and it describes its own tools. A tool call is asked about first (tool, server, arguments as sent; default No) unless the user trusted that tool of that server; `readOnlyHint` / `destructiveHint` are shown and decide nothing. A server named by a project's `.mcp.json` is listed and never started without a yes that shows its command, and none of its tools is trusted whatever the file says. A server is started from an argument list (`shell=False`) with `utf8_subprocess_env()` plus the profile's variables; keys and tokens are environment variables, kept in `~/.pybreeze/mcp_servers.json` with `replace_text(..., private=True)`, shown as dots, and taken out of every log line, error message and exported session by `utils/mcp/mcp_redaction.py` (by name, and by value wherever it turns up). Everything a server sends is data: read field by field, shown as text. Only the standard-input-and-output transport is offered; an HTTP one needs a decision about loopback addresses first.
+
+**Language server** — the action language server (`extend/language_server/`) is a process JEditor's editor starts when a `.json` file is opened, so opening a file must not run code from the folder being looked at. It is started by the path of its `__main__.py`, never `python -m` (which puts the working folder first on the import path), and the keyword probe runs with the interpreter's own folder as its working folder. The probe is a fixed script that imports only the installed framework; what the package prints goes to stderr, and its answer is read as data (`metadata_from_dict` checks every field). Only protocol messages are written to the server's standard output: never `print()` there. A failure reported to the editor or the user carries the exception's name, not its message, which may hold a path.
 
 **File I/O** — dialog-chosen paths are trusted; paths loaded from saved data (`.diagram.json`) are not: check `is_file()` and an extension allowlist, or run URLs through SSRF validation. Use `pathlib`, never string concatenation. Write to `~/.pybreeze/` via `app_dirs.pybreeze_data_dir()` with `encoding="utf-8"`; read through `pybreeze_data_path()`, which creates nothing. Replace a file the user would lose through `utils/file_process/replace_file.replace_text` (written beside it, then moved into place), never an in-place `write_text`; a file something else writes (an image, an SVG export) goes through `replace_written`. Resolve symlinks with `Path.resolve(strict=True)` and verify the result stays in bounds.
 

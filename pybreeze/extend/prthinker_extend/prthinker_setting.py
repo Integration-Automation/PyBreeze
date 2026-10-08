@@ -21,7 +21,6 @@ import os
 import re
 import shlex
 from pathlib import Path
-from typing import Dict, List
 
 from pybreeze.utils.app_dirs import DATA_DIR_MODE, pybreeze_data_path
 from pybreeze.utils.file_process.replace_file import replace_text
@@ -74,6 +73,15 @@ MODEL_ENVIRONMENT = {
     "codex-cli": "PRTHINKER_CODEX_CLI_MODEL",
 }
 
+# 設定表沒有金鑰欄位的後端：prthinker 從啟動 IDE 的環境裡的這個變數讀金鑰
+# The backends with no key field on the settings form: prthinker reads their key
+# from this variable, in the environment the IDE was started in
+KEY_FROM_ENVIRONMENT = {
+    "gemini": "PRTHINKER_GEMINI_API_KEY",
+    "cohere": "PRTHINKER_COHERE_API_KEY",
+    "mistral": "PRTHINKER_MISTRAL_API_KEY",
+}
+
 # 其餘每個設定項對應的環境變數；模型名稱依後端而定，見 MODEL_ENVIRONMENT
 # The variable every other setting is given through; the model name's depends on
 # the backend (MODEL_ENVIRONMENT)
@@ -87,7 +95,7 @@ SETTING_ENVIRONMENT = {
     "platform": "PRTHINKER_PLATFORM",
     "platform_base_url": "PRTHINKER_PLATFORM_BASE_URL",
     "repository": "GITHUB_REPOSITORY",
-    "platform_token": "GITHUB_TOKEN",
+    "platform_token": "GITHUB_TOKEN",  # nosec B105  # NOSONAR S2068 — the variable's name
 }
 
 # 不能寫進紀錄的設定項 / The settings that must never reach a log
@@ -95,7 +103,7 @@ SECRET_SETTINGS = (
     "remote_api_key", "openai_api_key", "anthropic_api_key", "platform_token")
 
 # 預設設定 / The settings as they start out
-DEFAULT_SETTING: Dict[str, str] = {
+DEFAULT_SETTING: dict[str, str] = {
     "backend": "remote",
     "model_name": "",
     "remote_url": "",
@@ -106,7 +114,7 @@ DEFAULT_SETTING: Dict[str, str] = {
     "platform": "github",
     "platform_base_url": "",
     "repository": "",
-    "platform_token": "",
+    "platform_token": "",  # nosec B105  # NOSONAR S2068 — none until the user enters one
     "rag": "off",
     "extra_arguments": "",
     "source_path": "",
@@ -137,7 +145,7 @@ def setting_path() -> Path:
     return pybreeze_data_path() / SETTING_FILE_NAME
 
 
-def load_setting() -> Dict[str, str]:
+def load_setting() -> dict[str, str]:
     """
     讀取設定，缺項與壞檔都退回預設值
     Read the settings, falling back to the defaults for anything missing or broken.
@@ -174,7 +182,7 @@ def load_setting() -> Dict[str, str]:
     return setting
 
 
-def save_setting(setting: Dict[str, str]) -> bool:
+def save_setting(setting: dict[str, str]) -> bool:
     """
     寫回設定
     Write the settings back.
@@ -197,7 +205,7 @@ def save_setting(setting: Dict[str, str]) -> bool:
     return True
 
 
-def environment_for(setting: Dict[str, str]) -> Dict[str, str]:
+def environment_for(setting: dict[str, str]) -> dict[str, str]:
     """
     把設定變成 prthinker 認得的環境變數
     Turn the settings into the environment variables prthinker reads.
@@ -235,7 +243,7 @@ def environment_for(setting: Dict[str, str]) -> Dict[str, str]:
     return environment
 
 
-def extra_arguments(setting: Dict[str, str]) -> List[str]:
+def extra_arguments(setting: dict[str, str]) -> list[str]:
     """
     使用者自己加的命令列參數
     The command-line arguments the user added.
@@ -256,7 +264,7 @@ def extra_arguments(setting: Dict[str, str]) -> List[str]:
         return []
 
 
-def read_extra_arguments(text: str) -> List[str]:
+def read_extra_arguments(text: str) -> list[str]:
     """
     把「額外參數」欄位斷成參數，斷不了就丟 ValueError；設定視窗存檔前用它先檢查
     Split the extra-arguments field into arguments, raising ValueError when it
@@ -272,7 +280,7 @@ def read_extra_arguments(text: str) -> List[str]:
     return split_arguments(text, backslash_escapes=os.sep != "\\")
 
 
-def split_arguments(text: str, *, backslash_escapes: bool) -> List[str]:
+def split_arguments(text: str, *, backslash_escapes: bool) -> list[str]:
     """
     以命令列的規則斷詞
     Split *text* into arguments the way a command line is split.
@@ -298,7 +306,7 @@ def split_arguments(text: str, *, backslash_escapes: bool) -> List[str]:
     return list(lexer)
 
 
-def review_file_arguments(file_path: str, setting: Dict[str, str]) -> List[str]:
+def review_file_arguments(file_path: str, setting: dict[str, str]) -> list[str]:
     """
     組出審查單一檔案的參數
     Build the arguments that review one file.
@@ -310,7 +318,7 @@ def review_file_arguments(file_path: str, setting: Dict[str, str]) -> List[str]:
     return ["review-file", str(file_path), *extra_arguments(setting)]
 
 
-def review_pr_arguments(pull_request_number: int, setting: Dict[str, str]) -> List[str]:
+def review_pr_arguments(pull_request_number: int, setting: dict[str, str]) -> list[str]:
     """
     組出審查一個 Pull Request 的參數
     Build the arguments that review one pull request.
@@ -367,7 +375,7 @@ def _is_prthinker_source(folder: Path) -> bool:
     return _PRTHINKER_PROJECT_NAME.search(text) is not None
 
 
-def loggable(setting: Dict[str, str]) -> Dict[str, str]:
+def loggable(setting: dict[str, str]) -> dict[str, str]:
     """
     可以寫進紀錄的設定
     The settings as they may be written to a log.

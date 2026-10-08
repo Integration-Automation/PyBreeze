@@ -9,8 +9,6 @@ from pybreeze.utils.curl_import.curl_parser import parse_curl
 from pybreeze.utils.curl_import.request_body import body_kind, form_parts
 from pybreeze.utils.curl_import.request_codegen import to_requests_code
 from pybreeze.utils.curl_import.script_templates import (
-    TEMPLATE_TARGETS,
-    generate_template,
     to_apitestka_action_json,
     to_apitestka_python,
     to_loaddensity_python,
@@ -20,6 +18,7 @@ from pybreeze.utils.curl_import.script_templates import (
 from pybreeze.utils.curl_import.script_templates import (
     test_function_name as derive_test_function_name,
 )
+from pybreeze.utils.import_targets.builtin_targets import IMPORT_TARGETS
 
 
 class TestBodyKind:
@@ -50,8 +49,8 @@ class TestBodyKind:
         request = parse_curl(f"curl -H 'Content-Type: application/json' -d '{body}' https://x")
 
         assert body_kind(request) == ("data", body)
-        for target, _label in TEMPLATE_TARGETS:
-            generate_template(target, request)
+        for target in IMPORT_TARGETS.targets():
+            target.generate_one(request)
         compile(to_requests_code(request), "generated", "exec")
 
     def test_numbers_a_float_holds_still_go_as_json(self):
@@ -219,8 +218,9 @@ class TestApitestkaActionJson:
         # The upload, or the body read from a file, was left out without a word
         from pybreeze.utils.exception.exceptions import CurlParseException
 
+        request = parse_curl(command)
         with pytest.raises(CurlParseException):
-            to_apitestka_action_json(parse_curl(command))
+            to_apitestka_action_json(request)
 
 
 class TestLoadDensityPython:
@@ -299,32 +299,33 @@ class TestToPytestTest:
 
 class TestGenerateTemplate:
     def test_targets_are_registered(self):
-        keys = [key for key, _label in TEMPLATE_TARGETS]
+        keys = [target.key for target in IMPORT_TARGETS.targets()]
         assert keys == [
-            "requests", "pytest", "apitestka_python", "apitestka_action", "loaddensity_python"]
+            "requests", "pytest", "apitestka_python", "apitestka_action", "loaddensity_python",
+            "webrunner_action"]
 
     def test_pytest_target(self):
-        code = generate_template("pytest", parse_curl("curl https://x"))
+        code = IMPORT_TARGETS.generate("pytest", [parse_curl("curl https://x")])
         assert "def test_" in code
 
     def test_loaddensity_target(self):
-        code = generate_template("loaddensity_python", parse_curl("curl https://x"))
+        code = IMPORT_TARGETS.generate("loaddensity_python", [parse_curl("curl https://x")])
         assert "start_test" in code
 
     def test_requests_target(self):
-        code = generate_template("requests", parse_curl("curl https://x"))
+        code = IMPORT_TARGETS.generate("requests", [parse_curl("curl https://x")])
         assert "import requests" in code
 
     def test_apitestka_python_target(self):
-        code = generate_template("apitestka_python", parse_curl("curl https://x"))
+        code = IMPORT_TARGETS.generate("apitestka_python", [parse_curl("curl https://x")])
         assert "test_api_method_requests" in code
 
     def test_apitestka_action_target(self):
-        code = generate_template("apitestka_action", parse_curl("curl https://x"))
+        code = IMPORT_TARGETS.generate("apitestka_action", [parse_curl("curl https://x")])
         assert "AT_test_api_method" in code
 
     def test_unknown_target_falls_back_to_requests(self):
-        code = generate_template("nope", parse_curl("curl https://x"))
+        code = IMPORT_TARGETS.generate("nope", [parse_curl("curl https://x")])
         assert "import requests" in code
 
 
@@ -359,11 +360,9 @@ class TestJsonBodiesInGeneratedPython:
     def test_every_python_target_is_free_of_json_names(self):
         import ast
 
-        from pybreeze.utils.curl_import.script_templates import generate_template
-
         request = parse_curl(self._COMMAND)
         for target in ("requests", "pytest", "apitestka_python"):
-            tree = ast.parse(generate_template(target, request))
+            tree = ast.parse(IMPORT_TARGETS.generate(target, [request]))
             names = {node.id for node in ast.walk(tree) if isinstance(node, ast.Name)}
             assert not names & {"true", "false", "null"}, target
 
@@ -408,6 +407,101 @@ def test_a_float_json_allows_but_python_cannot_write_is_spelled_out():
     assert python_literal(float("inf")) == 'float("inf")'
     assert python_literal([float("-inf")], inline=True) == '[float("-inf")]'
     assert python_literal(float("nan")) == 'float("nan")'
+
+
+def test_a_whole_requests_script_as_written():
+    # Each part compared: the password, the body and a repeated parameter's list
+    code = to_requests_code(parse_curl("curl -u alice:s3cret -d 'hello' 'https://x/p?a=1&a=2'"))
+
+    assert code == (
+        "import requests\n"
+        "\n"
+        'url = "https://x/p"\n'
+        "params = {\n"
+        '    "a": ["1", "2"],\n'
+        "}\n"
+        'data = "hello"\n'
+        'auth = ("alice", "s3cret")\n'
+        'response = requests.request("POST", url, params=params, data=data, auth=auth)\n'
+        "print(response.status_code)\n"
+        "print(response.text)\n"
+    )
+
+
+def test_a_whole_apitestka_call_as_written():
+    # The JSON body inline and as the value it is, and the password
+    from pybreeze.utils.curl_import.script_templates import apitestka_call_block
+
+    request = parse_curl(
+        "curl -u alice:s3cret -H 'Content-Type: application/json' -d '{\"a\": [1, {\"b\": null}]}' https://x/p")
+
+    assert apitestka_call_block(request) == (
+        "response = test_api_method_requests(\n"
+        '    "POST",\n'
+        '    test_url="https://x/p",\n'
+        '    headers={"Content-Type": "application/json"},\n'
+        '    json={"a": [1, {"b": None}]},\n'
+        '    auth=("alice", "s3cret"),\n'
+        ")"
+    )
+
+
+def test_an_apitestka_action_list_as_written():
+    assert IMPORT_TARGETS.generate("apitestka_action", [parse_curl("curl https://x/p")]) == (
+        "[\n"
+        "    [\n"
+        '        "AT_test_api_method",\n'
+        "        {\n"
+        '            "http_method": "GET",\n'
+        '            "test_url": "https://x/p"\n'
+        "        }\n"
+        "    ]\n"
+        "]\n"
+    )
+
+
+def test_a_data_file_with_no_recorded_place_goes_after_the_inline_parts():
+    # A request built by hand has no positions for its files
+    from pybreeze.utils.curl_import.curl_parser import CurlRequest
+    from pybreeze.utils.curl_import.request_codegen import data_from_file_expr
+
+    request = CurlRequest(data_file_refs=["a.bin"], data_parts=["x=1"])
+
+    assert data_from_file_expr(request) == (
+        '"x=1".encode() + b"&" + open("a.bin", "rb").read().replace(b"\\r", b"").replace(b"\\n", b"")')
+
+
+class TestPythonLiteralLayout:
+    """Laid out as json.dumps(indent=4) would: a round trip alone passed any layout."""
+
+    VALUE = {"a": [1, {"b": True}], "c": None, "e": [], "f": {}}
+
+    def test_a_block_indents_each_level_by_four(self):
+        from pybreeze.utils.curl_import.request_codegen import python_literal
+
+        assert python_literal(self.VALUE) == (
+            '{\n'
+            '    "a": [\n'
+            '        1,\n'
+            '        {\n'
+            '            "b": True\n'
+            '        }\n'
+            '    ],\n'
+            '    "c": None,\n'
+            '    "e": [],\n'
+            '    "f": {}\n'
+            '}'
+        )
+
+    def test_inline_is_one_line(self):
+        from pybreeze.utils.curl_import.request_codegen import python_literal
+
+        assert python_literal(self.VALUE, inline=True) == '{"a": [1, {"b": True}], "c": None, "e": [], "f": {}}'
+
+    def test_a_nested_block_starts_at_its_level(self):
+        from pybreeze.utils.curl_import.request_codegen import python_literal
+
+        assert python_literal([1], level=2) == "[\n            1\n        ]"
 
 
 def test_a_character_outside_the_bmp_stays_one_character():

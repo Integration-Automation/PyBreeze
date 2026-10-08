@@ -77,11 +77,28 @@ class TestTheFormItBuilds:
         assert made.editors["platform"].currentText() == "gitea"
         made.deleteLater()
 
-    def test_a_stored_value_that_is_not_on_offer_leaves_the_first_choice(self, app, data_dir):
+    def test_a_stored_value_that_is_not_on_offer_is_listed_and_kept(self, app, data_dir):
+        # A newer prthinker's backend: the first choice was shown, and the next Save replaced it
         (data_dir / SETTING_FILE_NAME).write_text(
-            json.dumps({**DEFAULT_SETTING, "backend": "nonsense"}), encoding="utf-8")
+            json.dumps({**DEFAULT_SETTING, "backend": "newer-backend"}), encoding="utf-8")
         made = PRThinkerSettingDialog()
-        assert made.editors["backend"].currentText() == BACKENDS[0]
+        backend = made.editors["backend"]
+
+        assert backend.currentText() == "newer-backend"
+        assert [backend.itemText(index) for index in range(backend.count())] == [*BACKENDS, "newer-backend"]
+        made.editors["repository"].setText("owner/name")
+        made.save()
+        assert stored(data_dir)["backend"] == "newer-backend"
+        made.deleteLater()
+
+    def test_an_empty_stored_value_shows_the_first_choice(self, app, data_dir):
+        (data_dir / SETTING_FILE_NAME).write_text(
+            json.dumps({**DEFAULT_SETTING, "platform": ""}), encoding="utf-8")
+        made = PRThinkerSettingDialog()
+        platform = made.editors["platform"]
+
+        assert platform.currentText() == PLATFORMS[0]
+        assert platform.count() == len(PLATFORMS)
         made.deleteLater()
 
     def test_stored_text_is_filled_in(self, app, data_dir):
@@ -125,7 +142,8 @@ class TestSaving:
         dialog.save()
         assert dialog.result() != QDialog.DialogCode.Accepted
         # It said so: the reason used to go to the log only
-        assert warned and str(prthinker_setting.setting_path()) in warned[0]
+        assert warned
+        assert str(prthinker_setting.setting_path()) in warned[0]
 
     def test_extra_arguments_with_an_open_quote_are_not_saved(self, dialog, data_dir, monkeypatch):
         # Saved, they were dropped whole at run time, and the review ran
@@ -153,4 +171,33 @@ class TestSaving:
         made.editors["repository"].setText("owner/name")
         made.save()
         assert stored(data_dir)["model_name"] == "kept"
+        made.deleteLater()
+
+
+class TestWhereABackendsKeyComesFrom:
+    """Gemini, Cohere and Mistral have no key field: the form says which variable holds it."""
+
+    @pytest.mark.parametrize("backend", ["gemini", "cohere", "mistral"])
+    def test_a_backend_with_no_key_field_names_its_variable(self, dialog, backend):
+        from pybreeze.extend.prthinker_extend.prthinker_setting import KEY_FROM_ENVIRONMENT
+
+        dialog.editors["backend"].setCurrentText(backend)
+
+        assert not dialog.key_note.isHidden()
+        assert KEY_FROM_ENVIRONMENT[backend] in dialog.key_note.text()
+
+    @pytest.mark.parametrize("backend", ["remote", "openai", "anthropic"])
+    def test_a_backend_whose_key_is_on_the_form_says_nothing(self, dialog, backend):
+        dialog.editors["backend"].setCurrentText("gemini")
+        dialog.editors["backend"].setCurrentText(backend)
+
+        assert dialog.key_note.isHidden()
+        assert dialog.key_note.text() == ""
+
+    def test_a_stored_backend_with_no_key_field_is_noted_as_the_form_opens(self, app, data_dir):
+        save_setting({**DEFAULT_SETTING, "backend": "mistral"})
+
+        made = PRThinkerSettingDialog()
+
+        assert "PRTHINKER_MISTRAL_API_KEY" in made.key_note.text()
         made.deleteLater()

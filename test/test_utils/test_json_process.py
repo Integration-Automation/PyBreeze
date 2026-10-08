@@ -21,8 +21,9 @@ class TestReformatJson:
         assert '"z"' in lines[3]
 
     def test_indentation(self):
-        result = reformat_json('{"key": "value"}')
-        assert "    " in result  # 4-space indent
+        # Four spaces a level: the test that a four-space run appears passed any wider indent
+        result = reformat_json('{"key": "value", "n": [1]}')
+        assert result == '{\n    "key": "value",\n    "n": [\n        1\n    ]\n}'
 
     def test_nested_json(self):
         input_json = '{"outer": {"inner": "value"}}'
@@ -148,3 +149,54 @@ class TestLoneSurrogates:
         from pybreeze.utils.json_format.json_process import minify_json
 
         assert minify_json(r'{"a": "\ud83d", "b": "\ud83d\ude00"}') == '{"a":"\\ud83d","b":"\U0001f600"}'
+
+
+class TestWhatCannotBeWrittenBack:
+    def test_a_value_already_parsed_is_laid_out(self):
+        assert reformat_json({"b": 1, "a": [1]}) == '{\n    "a": [\n        1\n    ],\n    "b": 1\n}'
+
+    def test_a_value_json_cannot_hold_is_refused(self):
+        with pytest.raises(ITEJsonException):
+            reformat_json({1, 2})
+
+    @pytest.mark.parametrize("operation", ["reformat_json", "minify_json"])
+    def test_text_that_parses_but_is_too_deep_to_write_is_refused(self, operation, monkeypatch):
+        # On Python 3.14 a list nested ~16,000 deep parses and then cannot be
+        # written; the depth depends on the version, so the writer is made to fail
+        from pybreeze.utils.json_format import json_process
+
+        def too_deep(*_args, **_kwargs):
+            raise RecursionError("maximum recursion depth exceeded")
+
+        monkeypatch.setattr(json_process, "dumps", too_deep)
+
+        with pytest.raises(ITEJsonException):
+            getattr(json_process, operation)("[[1]]")
+
+
+class TestPrettyJsonOrNone:
+    """For text that may be anything (a response body, a token's segment): laid out, or None."""
+
+    def test_laid_out_by_four_with_characters_and_numbers_as_written(self):
+        from pybreeze.utils.json_format.json_process import pretty_json_or_none
+
+        shown = pretty_json_or_none('{"名稱": 1e400, "b": [1]}')
+
+        assert shown == '{\n    "名稱": 1e400,\n    "b": [\n        1\n    ]\n}'
+
+    def test_the_keys_are_sorted_only_when_asked(self):
+        from pybreeze.utils.json_format.json_process import pretty_json_or_none
+
+        assert pretty_json_or_none('{"b": 1, "a": 2}', sort_keys=True) == '{\n    "a": 2,\n    "b": 1\n}'
+        assert pretty_json_or_none('{"b": 1, "a": 2}') == '{\n    "b": 1,\n    "a": 2\n}'
+
+    @pytest.mark.parametrize("text", [
+        "not json",
+        '{"a": 1, "a": 2}',          # a key repeated
+        "NaN",
+        "[" * 100_000 + "]" * 100_000,  # nested past the recursion limit
+    ], ids=["text", "repeated key", "NaN", "too deep"])
+    def test_what_is_not_json_it_accepts_is_none(self, text):
+        from pybreeze.utils.json_format.json_process import pretty_json_or_none
+
+        assert pretty_json_or_none(text) is None
