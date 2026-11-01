@@ -31,6 +31,7 @@
 - [Dependencies](#dependencies)
 - [Testing & CI](#testing--ci)
 - [Target Audience](#target-audience)
+- [Security](#security)
 - [License](#license)
 
 ---
@@ -527,6 +528,10 @@ python -m pytest test/test_utils/ -v --tb=short
 - **DevOps teams** — a place to build and debug integration suites destined for CI/CD
 
 ---
+
+## Security
+
+Report vulnerabilities privately. The policy, supported versions, and operator notes are in [SECURITY.md](SECURITY.md).
 
 ## License
 
