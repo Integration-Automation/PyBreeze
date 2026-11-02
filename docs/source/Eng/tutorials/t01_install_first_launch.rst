@@ -7,7 +7,7 @@ site the later tutorials test.
 Before you start
 ----------------
 
-- Python 3.10 to 3.14, with ``pip``.
+- Python 3.11 to 3.14, with ``pip``.
 - Windows, macOS or Linux with a desktop. On Linux, Qt needs the system libraries listed
   in :doc:`t13_troubleshooting`.
 
