@@ -1,6 +1,6 @@
 # PyBreeze: The Automation-First IDE
 
-[![Python 3.10–3.14](https://img.shields.io/badge/python-3.10--3.14-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.11–3.14](https://img.shields.io/badge/python-3.11--3.14-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![PySide6](https://img.shields.io/badge/GUI-PySide6-green.svg)](https://doc.qt.io/qtforpython/)
 [![Documentation](https://readthedocs.org/projects/pybreeze/badge/?version=latest)](https://pybreeze.readthedocs.io/en/latest/index.html)
@@ -380,7 +380,7 @@ pip install -r requirements.txt
 
 ### System requirements
 
-- **Python**: 3.10 – 3.14
+- **Python**: 3.11 – 3.14
 - **OS**: Windows, macOS, Linux
 - **GUI**: PySide6 6.11.2 (installed automatically)
 
@@ -515,7 +515,7 @@ python -m pytest test/test_utils/ -v --tb=short
 
 - **Unit tests** — `test/test_utils/`, covering the pure-logic layer (curl and HAR parsing, header analysis, SSRF validation, JWT, hashing, timestamps, diffing) plus headless Qt widget tests via `QT_QPA_PLATFORM=offscreen`, with Hypothesis property tests over the parsers. The SSH terminal and the SFTP file tree also log in to an SSH server the tests start on the loopback address, which serves a temporary folder over SFTP
 - **Startup tests** — `test/unit_test/start_automation/` launches the IDE in debug mode and verifies it comes up and exits cleanly
-- **CI** — GitHub Actions: the whole suite on Windows across Python 3.10 – 3.14, and a short set of platform smoke tests on Linux and macOS, on every push and PR plus a nightly run; a push to `dev` that passes the suite also publishes `pybreeze_dev` when the package changed
+- **CI** — GitHub Actions: the whole suite on Windows across Python 3.11 – 3.14, and a short set of platform smoke tests on Linux and macOS, on every push and PR plus a nightly run; a push to `dev` that passes the suite also publishes `pybreeze_dev` when the package changed
 - **Static analysis** — SonarCloud, Codacy and Bandit
 
 ---

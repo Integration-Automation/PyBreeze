@@ -4,7 +4,7 @@
 系統需求
 --------
 
-- Python 3.10 到 3.14
+- Python 3.11 到 3.14
 - pip（Python 套件管理器）
 - Windows、macOS 或 Linux；PySide6 會隨 PyBreeze 一起安裝
 
