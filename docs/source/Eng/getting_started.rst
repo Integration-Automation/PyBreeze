@@ -4,7 +4,7 @@ Getting Started
 Requirements
 ------------
 
-- Python 3.10 to 3.14
+- Python 3.11 to 3.14
 - pip (Python package manager)
 - Windows, macOS or Linux; PySide6 is installed with PyBreeze
 

@@ -6,7 +6,7 @@
 開始之前
 --------
 
-- Python 3.10 到 3.14，以及 ``pip``。
+- Python 3.11 到 3.14，以及 ``pip``。
 - 有桌面環境的 Windows、macOS 或 Linux。在 Linux 上，Qt 需要
   :doc:`t13_troubleshooting` 列出的系統函式庫。
 

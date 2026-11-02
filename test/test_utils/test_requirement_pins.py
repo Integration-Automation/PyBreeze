@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-tomllib = pytest.importorskip("tomllib")  # stdlib from 3.11; CI also runs 3.10
+tomllib = pytest.importorskip("tomllib")  # stdlib from 3.11, the supported floor
 
 _ROOT = Path(__file__).resolve().parents[2]
 _REQUIREMENT = re.compile(r"^\s*([A-Za-z0-9._-]+)\s*([^#;]*)")
